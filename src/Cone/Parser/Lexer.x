@@ -1,5 +1,5 @@
 {
-module Cone.Parser.Lexer (tokenize, Token(..)) where
+module Cone.Parser.Lexer (tokenize, Token(..), Tok(..), AlexPosn(..)) where
 }
 
 %wrapper "posn"
@@ -8,27 +8,34 @@ $digit = 0-9			-- digits
 $alpha = [a-zA-Z]		-- alphabetic characters
 
 tokens :-
-  $white+				;
-  "--".*				;
-  module                                { \p s -> Module p }
-  import                                { \p s -> Import p }
-  let                                   { \p s -> Let p }
-  in                                    { \p s -> In p }
-  $digit+                               { \p s -> Int (read s) p }
-  $alpha [$alpha $digit \_ \\ \']*      { \p s -> Ident s p }
+  ($white # [\n])+				;
+  "--".*				          ;
+  ';'                                   { \p s -> (p, Semi) }
+  '\n'                                  { \p s -> (p, Semi) }
+  module                                { \p s -> (p, Module) }
+  import                                { \p s -> (p, Import) }
+  func                                  { \p s -> (p, Func) }
+  let                                   { \p s -> (p, Let) }
+  in                                    { \p s -> (p, In) }
+  $digit+                               { \p s -> (p, Int (read s)) }
+  $alpha [$alpha $digit \_ \\ \']*      { \p s -> (p, Ident s) }
 
 {
 -- Each action has type :: String -> Token
 
 -- The token type:
-data Token =
-    Module AlexPosn         |
-    Import AlexPosn         |
-    Let AlexPosn            |
-    In AlexPosn             |
-    Ident String AlexPosn   |
-    Int Int AlexPosn
+data Tok =
+    Module          |
+    Import          |
+    Func            |
+    Let             |
+    In              |
+    Ident String    |
+    Int Int         |
+    Semi
     deriving (Eq,Show)
+
+type Token = (AlexPosn, Tok)
 
 tokenize = alexScanTokens
 }

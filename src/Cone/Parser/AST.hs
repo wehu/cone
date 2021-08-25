@@ -1,11 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Cone.Parser.AST
-       (NamePath, Location(..), Module(..), NamedAttr, Attr(..), TopStmt(..),
-        FuncDef(..), Type(..), Kind(..), Case(..), Pattern(..), Expr(..),
-        TypeDef(..), TypeCon(..), EffectDef(..), EffKind(..), EffectType(..),
-        ImportStmt(..))
-       where
+module Cone.Parser.AST where
+
 import Control.Lens
 
 import Data.Maybe
