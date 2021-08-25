@@ -25,13 +25,15 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      Cone
+      Cone.Parser.AST
   other-modules:
       Paths_cone
   hs-source-dirs:
       src
   build-depends:
       base >=4.7 && <5
+    , parsec
   default-language: Haskell2010
 
 executable cone-exe
@@ -44,6 +46,7 @@ executable cone-exe
   build-depends:
       base >=4.7 && <5
     , cone
+    , parsec
   default-language: Haskell2010
 
 test-suite cone-test
@@ -57,4 +60,5 @@ test-suite cone-test
   build-depends:
       base >=4.7 && <5
     , cone
+    , parsec
   default-language: Haskell2010

@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import Cone 
 
 main :: IO ()
-main = someFunc
+main = coneMain
