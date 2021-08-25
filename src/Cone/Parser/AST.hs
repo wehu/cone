@@ -94,7 +94,7 @@ data EffectDef = EffectDef{_effectName :: String,
                            _effectIntfs :: [FuncDef], _effectLoc :: Location}
                    deriving (Eq, Show)
 
-data ImportStmt = ImportStmt{_importStmt :: NamePath,
+data ImportStmt = ImportStmt{_importPath :: NamePath,
                              _importAlias :: Maybe String,
                              _importAttrs :: [NamedAttr],
                              _importLoc :: Location}
@@ -108,7 +108,7 @@ data FuncDef = FuncDef{_funcName :: String, _funcArgs :: [(String, Type)],
 data TopStmt = FDef{_fdef :: FuncDef}
              | TDef{_tdef :: TypeDef}
              | EDef{_edef :: EffectDef}
-             | Import{_importS :: ImportStmt}
+             | Import{_importStmt :: ImportStmt}
                  deriving (Eq, Show)
 
 data Module = Module{_moduleName :: NamePath, _moduleAttrs :: [NamedAttr],
