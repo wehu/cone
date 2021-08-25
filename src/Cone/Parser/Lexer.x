@@ -25,7 +25,7 @@ data Token =
     Module AlexPosn         |
     Import AlexPosn         |
     Let AlexPosn            |
-    In  AlexPosn            |
+    In AlexPosn             |
     Ident String AlexPosn   |
     Int Int AlexPosn
     deriving (Eq,Show)

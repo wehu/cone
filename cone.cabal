@@ -36,6 +36,7 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , lens
     , parsec
   default-language: Haskell2010
 
@@ -50,6 +51,7 @@ executable cone-exe
       array
     , base >=4.7 && <5
     , cone
+    , lens
     , parsec
   default-language: Haskell2010
 
@@ -65,5 +67,6 @@ test-suite cone-test
       array
     , base >=4.7 && <5
     , cone
+    , lens
     , parsec
   default-language: Haskell2010
