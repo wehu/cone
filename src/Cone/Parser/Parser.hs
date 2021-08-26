@@ -9,9 +9,7 @@ import qualified Text.Parsec as P
 import Text.Parsec.Pos (newPos)
 import Data.List.Split
 
-newtype Env = Env{sourceFile :: String}
-
-type Parser a = P.ParsecT [L.Token] Env Identity a
+type Parser a = P.ParsecT [L.Token] () Identity a
 
 token :: (L.Tok -> Bool) -> (L.Tok -> a) -> Parser a
 token test getVal = P.tokenPrim show nextPos testTok
@@ -46,5 +44,5 @@ m = f <$ kmodule <*> ident <*> getPos <* (P.many semi) <* P.eof
 
 parse :: String -> String -> Either P.ParseError A.Module
 parse fn input
-  = P.runParser m Env{sourceFile = fn} fn (L.tokenize $ input ++ "\n")
+  = P.runParser m () fn (L.tokenize $ input ++ "\n")
 
