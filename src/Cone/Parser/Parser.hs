@@ -45,6 +45,7 @@ less = symbol L.Less
 greater = symbol L.Greater
 backSlash = symbol L.Backslash
 arrow = symbol L.Arrow
+star = symbol L.Star
 
 ident
   = token
@@ -69,14 +70,23 @@ imports = P.many $
       <* semi 
   where f n pos alias = A.ImportStmt n alias [] pos
 
-type_ :: Parser A.Type
-type_ = (P.try (A.TApp <$> namePath <* less <*> (P.many1 type_) <* greater)
-         P.<|> P.try (tfunc <$ lParen <*>
-                         (P.sepBy type_ comma) <* rParen <* arrow <*> resultType)
-         P.<|> (A.TVar <$> ident))
-        <*> getPos
-  where tfunc args (effT, resultT) pos = A.TFunc args effT resultT pos
+kind :: Parser A.Kind
+kind = A.KStar <$ star <*> getPos
+       P.<|> (lParen *> kind <* rParen)
 
+type_ :: Parser A.Type
+type_ = (tann <$> 
+         ((P.try (A.TApp <$> namePath <* less <*> (P.many1 type_) <* greater)
+           P.<|> P.try (tfunc <$ lParen <*>
+                           (P.sepBy type_ comma) <* rParen <* arrow <*> resultType)
+           P.<|> (A.TVar <$> ident))
+          <*> getPos)) <*> (P.optionMaybe $ colon *> kind) <*> getPos
+        P.<|> (lParen *> type_ <* rParen)
+  where tfunc args (effT, resultT) pos = A.TFunc args effT resultT pos
+        tann t k pos = case k of
+          Just k' -> A.TAnn t k' pos
+          _ -> t
+  
 resultType :: Parser (Maybe A.EffectType, A.Type)
 resultType = (,) <$> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_) <*> type_ 
 

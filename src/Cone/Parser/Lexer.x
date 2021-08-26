@@ -29,6 +29,7 @@ tokens :-
   \>                                    { \p s -> (p, Greater) }
   \\                                    { \p s -> (p, Backslash) }
   "->"                                  { \p s -> (p, Arrow) }
+  \*                                    { \p s -> (p, Star) }
   $digit+                               { \p s -> (p, Int (read s)) }
   $alpha [$alpha $digit \_ \- \']*      { \p s -> (p, Ident s) }
 
@@ -57,7 +58,8 @@ data Tok =
     Less            |
     Greater         |
     Backslash       |
-    Arrow
+    Arrow           |
+    Star
     deriving (Eq,Show)
 
 type Token = (AlexPosn, Tok)
