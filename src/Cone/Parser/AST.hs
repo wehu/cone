@@ -72,7 +72,7 @@ instance Plated EffKind where
   plate = uniplate
 
 data EffectType = EffVar{_effVarName :: String, _effLoc :: Location}
-                | EffApp{_effAppName :: String, _effAppArgs :: [Type],
+                | EffApp{_effAppName :: NamePath, _effAppArgs :: [Type],
                          _effLoc :: Location}
                 | EffList{_effList :: [EffectType], _effLoc :: Location}
                 | EffAnn{_effAnnType :: EffectType, _effAnnKind :: EffKind,

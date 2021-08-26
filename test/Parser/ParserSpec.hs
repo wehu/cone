@@ -98,6 +98,23 @@ typeSpec = hspec $ do
        ((parse "" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
            ^? ix 0 ^._Just._2.tannType.tvar) `shouldBe` "c"
+
+
+    it "func kind" $ do
+       let source = unpack [text|
+           module foo
+
+	   fun a(a : (c: (*, *) -> *)) : c {
+		   a
+	   }
+       |]
+       --(show $ parse "" source) `shouldBe` "a"
+       ((parse "xxx" source)
+           ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
+           ^? ix 0 ^._Just._2
+           .tannKind.kfuncResult.kloc.fileName) `shouldBe` "xxx"
+
+
 parserSpec = do
     moduleSpec
     typeSpec

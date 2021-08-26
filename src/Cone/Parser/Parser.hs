@@ -71,7 +71,9 @@ imports = P.many $
   where f n pos alias = A.ImportStmt n alias [] pos
 
 kind :: Parser A.Kind
-kind = A.KStar <$ star <*> getPos
+kind = (A.KStar <$ star
+        P.<|> P.try (A.KFunc <$ lParen <*> (P.sepBy kind comma) <* rParen <* arrow <*> kind))
+        <*> getPos
        P.<|> (lParen *> kind <* rParen)
 
 type_ :: Parser A.Type
@@ -91,7 +93,10 @@ resultType :: Parser (Maybe A.EffectType, A.Type)
 resultType = (,) <$> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_) <*> type_ 
 
 effType :: Parser A.EffectType
-effType = A.EffVar <$> ident <*> getPos
+effType = (((P.try $ A.EffApp <$> namePath <* less <*> (P.many1 type_) <* greater)
+           P.<|> (A.EffList <$ less <*> (P.sepBy effType comma) <* greater)
+           P.<|> (A.EffVar <$> ident)) <*> getPos)
+           P.<|> (lParen *> effType <* rParen) 
 
 funcArgs :: Parser [(String, A.Type)]
 funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
