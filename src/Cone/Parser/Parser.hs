@@ -92,11 +92,22 @@ type_ = (tann <$>
 resultType :: Parser (Maybe A.EffectType, A.Type)
 resultType = (,) <$> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_) <*> type_ 
 
+effKind :: Parser A.EffKind
+effKind = (A.EKStar <$ star
+        P.<|> P.try (A.EKFunc <$ lParen <*> (P.sepBy kind comma) <* rParen <* arrow <*> effKind))
+        <*> getPos
+       P.<|> (lParen *> effKind <* rParen)
+
 effType :: Parser A.EffectType
-effType = (((P.try $ A.EffApp <$> namePath <* less <*> (P.many1 type_) <* greater)
+effType = (ekann <$>
+           (((P.try $ A.EffApp <$> namePath <* less <*> (P.many1 type_) <* greater)
            P.<|> (A.EffList <$ less <*> (P.sepBy effType comma) <* greater)
            P.<|> (A.EffVar <$> ident)) <*> getPos)
-           P.<|> (lParen *> effType <* rParen) 
+             <*> (P.optionMaybe $ colon *> effKind) <*> getPos)
+           P.<|> (lParen *> effType <* rParen)
+  where ekann t ek pos = case ek of
+          Just ek' -> A.EffAnn t ek' pos
+          _ -> t
 
 funcArgs :: Parser [(String, A.Type)]
 funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
