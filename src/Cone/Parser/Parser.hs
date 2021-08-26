@@ -7,7 +7,6 @@ import Data.Functor.Identity
 
 import qualified Text.Parsec as P
 import Text.Parsec.Pos (newPos)
-import Data.List.Split
 
 type Parser a = P.ParsecT [L.Token] () Identity a
 
@@ -42,6 +41,9 @@ lBracket = symbol L.LBracket
 rBracket = symbol L.RBracket
 colon = symbol L.Colon
 comma = symbol L.Comma
+less = symbol L.Less
+greater = symbol L.Greater
+backSlash = symbol L.Backslash
 
 ident
   = token
@@ -56,18 +58,19 @@ getPos
        return $
          A.Location (P.sourceName pos) (P.sourceLine pos) (P.sourceColumn pos)
 
-namePath :: String -> [String]
-namePath = splitOn "\\"
+namePath :: Parser [String]
+namePath = P.sepBy ident backSlash
 
 imports :: Parser [A.ImportStmt]
 imports = P.many $ 
-    f <$ kImport <*> ident <*> getPos
+    f <$ kImport <*> namePath <*> getPos
       <*> (P.optionMaybe $ kAs *> ident)
       <* semi 
-  where f n pos alias = A.ImportStmt (namePath n) alias [] pos
+  where f n pos alias = A.ImportStmt n alias [] pos
 
 type_ :: Parser A.Type
 type_ = A.TVar <$> ident <*> getPos
+        -- P.<|> (A.TApp <$> namePath <*> (P.many1 type_))) getPos
 
 effType :: Parser A.EffectType
 effType = A.EffVar <$> ident <*> getPos
@@ -76,7 +79,7 @@ funcArgs :: Parser [(String, A.Type)]
 funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
 
 expr :: Parser A.Expr
-expr = (\n p -> A.EVar (namePath n) p) <$> ident <*> getPos <* semi
+expr = A.EVar <$> namePath <*> getPos <* semi
 
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> getPos
@@ -89,11 +92,11 @@ topStmt :: Parser A.TopStmt
 topStmt = ((A.FDef <$> func)) <* semi
 
 module_ :: Parser A.Module
-module_ = f <$ kModule <*> ident <*> getPos <* semi
+module_ = f <$ kModule <*> namePath <*> getPos <* semi
             <*> imports
             <*> (P.many topStmt)
             <* P.eof
-  where f n pos ims stmts = A.Module (namePath n) [] [] ims stmts pos
+  where f n pos ims stmts = A.Module n [] [] ims stmts pos
 
 parse :: String -> String -> Either P.ParseError A.Module
 parse fn input

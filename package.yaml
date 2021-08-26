@@ -24,7 +24,6 @@ dependencies:
 - parsec
 - array
 - lens
-- split
 
 library:
   source-dirs: src

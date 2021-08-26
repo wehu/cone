@@ -25,8 +25,11 @@ tokens :-
   \]                                    { \p s -> (p, RBracket) }
   \:                                    { \p s -> (p, Colon) }
   \,                                    { \p s -> (p, Comma) }
+  \<                                    { \p s -> (p, Less) }
+  \>                                    { \p s -> (p, Greater) }
+  \\                                    { \p s -> (p, Backslash) }
   $digit+                               { \p s -> (p, Int (read s)) }
-  $alpha [$alpha $digit \_ \\ \']*      { \p s -> (p, Ident s) }
+  $alpha [$alpha $digit \_ \']*         { \p s -> (p, Ident s) }
 
 {
 -- Each action has type :: String -> Token
@@ -49,7 +52,10 @@ data Tok =
     LBracket        |
     RBracket        |
     Colon           |
-    Comma
+    Comma           |
+    Less            |
+    Greater         |
+    Backslash
     deriving (Eq,Show)
 
 type Token = (AlexPosn, Tok)
