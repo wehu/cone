@@ -157,7 +157,7 @@ funcProto = f <$> getPos
            Just (effT, resT) -> (pos, args, (effT, Just resT))
            _ -> (pos, args, (Nothing, Nothing))
 
-funcDef = (,) <$> funcProto <*> braces expr
+funcDef = (\f e -> (f, Just e)) <$> funcProto <*> braces expr
 
 expr :: Parser A.Expr
 expr = eapp <$> (parens expr
@@ -181,13 +181,20 @@ typeDef :: Parser A.TypeDef
 typeDef = A.TypeDef <$ kType <*> ident <*> typeArgs
     <*> braces (P.sepBy1 typeCon $ P.try $ semi <* P.notFollowedBy rBrace) <*> getPos
 
+effectDef :: Parser A.EffectDef
+effectDef = A.EffectDef <$ kEffect <*> ident <*> typeArgs
+    <*> braces (P.sepBy1 (f <$ kFunc <*> ident <*> funcProto) $ 
+                P.try $ semi <* P.notFollowedBy rBrace) <*> getPos
+  where f n (pos, args, (effT, resT)) = A.FuncDef n args effT resT Nothing pos
+
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> funcDef
   where f n ((pos, args, (effT, resT)), e) = A.FuncDef n args effT resT e pos
 
 topStmt :: Parser A.TopStmt
 topStmt = ((A.FDef <$> func)
-           P.<|> A.TDef <$> typeDef) <* semi
+           P.<|> A.TDef <$> typeDef
+           P.<|> A.EDef <$> effectDef) <* semi
 
 module_ :: Parser A.Module
 module_ = f <$ kModule <*> namePath <*> getPos <* semi

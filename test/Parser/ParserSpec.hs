@@ -171,7 +171,7 @@ exprSpec = hspec $ do
        --(show $ parse "" source) `shouldBe` "a"
        ((parse "" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcExpr
-           .eappFunc.evarName) `shouldBe` ["foo"]
+           ._Just.eappFunc.evarName) `shouldBe` ["foo"]
 
     it "expr lambda" $ do
        let source = unpack [text|
@@ -183,7 +183,7 @@ exprSpec = hspec $ do
        |]
        --(show $ parse "" source) `shouldBe` "a"
        ((parse "" source)
-           ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcExpr.elamArgs
+           ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcExpr._Just.elamArgs
            ^? ix 0 ^._Just._1) `shouldBe` "arg"
 
 typeDefSpec = hspec $ do

@@ -94,7 +94,7 @@ instance Plated Pattern where
 
 data Expr = EVar{_evarName :: NamePath, _eloc :: Location}
           | ELam{_elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
-                 _elamResultType :: Maybe Type, _elamExpr :: Expr,
+                 _elamResultType :: Maybe Type, _elamExpr :: Maybe Expr,
                  _eloc :: Location}
           | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
           | EApp{_eappFunc :: Expr, _eappArgs :: [Expr], _eloc :: Location}
@@ -149,7 +149,7 @@ instance Plated ImportStmt where
 
 data FuncDef = FuncDef{_funcName :: String, _funcArgs :: [(String, Maybe Type)],
                        _funcEffectType :: Maybe EffectType, _funcResultType :: Maybe Type,
-                       _funcExpr :: Expr, _funcLoc :: Location}
+                       _funcExpr :: Maybe Expr, _funcLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable)
 
 instance Plated FuncDef where
