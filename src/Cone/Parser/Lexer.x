@@ -14,6 +14,7 @@ tokens :-
   module                                { \p s -> (p, Module) }
   import                                { \p s -> (p, Import) }
   func                                  { \p s -> (p, Func) }
+  as                                    { \p s -> (p, As) }
   let                                   { \p s -> (p, Let) }
   in                                    { \p s -> (p, In) }
   $digit+                               { \p s -> (p, Int (read s)) }
@@ -27,6 +28,7 @@ data Tok =
     Module          |
     Import          |
     Func            |
+    As              |
     Let             |
     In              |
     Ident String    |

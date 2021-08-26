@@ -35,5 +35,14 @@ moduleSpec = hspec $ do
        ((parse "" source)
           ^._Right.imports ^? ix 1 ^._Just.importPath) `shouldBe` ["bar"]
 
+    it "module with import alias" $ do
+       let source = unpack [text|
+           module foo\bar
+	   import foo as f
+	   import bar\baz
+       |]
+       ((parse "" source)
+          ^._Right.imports ^? ix 0 ^._Just.importAlias) `shouldBe` (Just "f")
+
 parserSpec = do
     moduleSpec

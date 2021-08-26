@@ -25,8 +25,9 @@ keyword t = token (== t) (\ _ -> t)
 
 symbol = keyword
 
-kmodule = keyword L.Module
-kimport = keyword L.Import
+kModule = keyword L.Module
+kImport = keyword L.Import
+kAs     = keyword L.As
 
 semi = symbol L.Semi
 
@@ -47,11 +48,14 @@ namePath :: String -> [String]
 namePath = splitOn "\\"
 
 imports :: Parser [A.ImportStmt]
-imports = P.many $ f <$ kimport <*> ident <*> getPos <* semi 
-  where f n pos = A.ImportStmt (namePath n) Nothing [] pos
+imports = P.many $ 
+    f <$ kImport <*> ident <*> getPos
+      <*> (P.optionMaybe $ kAs *> ident)
+      <* semi 
+  where f n pos alias = A.ImportStmt (namePath n) alias [] pos
 
 m :: Parser A.Module
-m = f <$ kmodule <*> ident <*> getPos <* semi <*> imports <* P.eof
+m = f <$ kModule <*> ident <*> getPos <* semi <*> imports <* P.eof
   where f n pos ims = A.Module (namePath n) [] [] ims [] pos
 
 parse :: String -> String -> Either P.ParseError A.Module
