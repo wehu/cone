@@ -201,7 +201,7 @@ typeDefSpec = hspec $ do
 
 effectDefSpec = hspec $ do
   describe "effect definition syntax" $ do
-    it "effect def with one construct" $ do
+    it "effect def with one intf" $ do
        let source = unpack [text|
            module foo
 

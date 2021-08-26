@@ -181,11 +181,15 @@ typeDef :: Parser A.TypeDef
 typeDef = A.TypeDef <$ kType <*> ident <*> typeArgs
     <*> braces (P.sepBy1 typeCon $ P.try $ semi <* P.notFollowedBy rBrace) <*> getPos
 
+funcIntf :: Parser A.FuncIntf
+funcIntf = A.FuncIntf <$ kFunc <*> ident <*>
+      (parens (P.sepBy1 type_ comma)
+       P.<|> (return [])) <*> getPos
+
 effectDef :: Parser A.EffectDef
 effectDef = A.EffectDef <$ kEffect <*> ident <*> typeArgs
-    <*> braces (P.sepBy1 (f <$ kFunc <*> ident <*> funcProto) $ 
+    <*> braces (P.sepBy1 funcIntf $ 
                 P.try $ semi <* P.notFollowedBy rBrace) <*> getPos
-  where f n (pos, args, (effT, resT)) = A.FuncDef n args effT resT Nothing pos
 
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> funcDef

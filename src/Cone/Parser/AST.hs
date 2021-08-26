@@ -130,9 +130,16 @@ data TypeCon = TypeCon{_typeConName :: String, _typeConArgs :: [Type],
 instance Plated TypeCon where
   plate = uniplate
 
+data FuncIntf = FuncIntf{_intfName :: String, _intfArgs :: [Type],
+                         _intfLoc :: Location}
+                  deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated FuncIntf where
+  plate = uniplate
+
 data EffectDef = EffectDef{_effectName :: String,
                            _effectArgs :: [(String, Maybe Kind)],
-                           _effectIntfs :: [FuncDef], _effectLoc :: Location}
+                           _effectIntfs :: [FuncIntf], _effectLoc :: Location}
                    deriving (Eq,Ord,Show,Read,Data,Typeable)
 
 instance Plated EffectDef where
@@ -223,6 +230,10 @@ makePrisms ''EffectDef
 makeLenses ''ImportStmt
 
 makePrisms ''ImportStmt
+
+makeLenses ''FuncIntf
+
+makePrisms ''FuncIntf
 
 makeLenses ''FuncDef
 
