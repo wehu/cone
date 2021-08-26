@@ -75,6 +75,8 @@ getPos
        return $
          A.Location (P.sourceName pos) (P.sourceLine pos) (P.sourceColumn pos)
 
+parens e = lParen *> e <* rParen
+
 namePath :: Parser [String]
 namePath = P.sepBy ident backSlash
 
@@ -87,7 +89,7 @@ imports = P.many $
 
 kind :: Parser A.Kind
 kind = (A.KStar <$ star
-        P.<|> P.try (A.KFunc <$ lParen <*> (P.sepBy kind comma) <* rParen <* arrow <*> kind))
+        P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind))
         <*> getPos
        P.<|> (lParen *> kind <* rParen)
 
@@ -109,8 +111,7 @@ primType = A.I8 <$ i8
 type_ :: Parser A.Type
 type_ = (tann <$> 
          ((P.try (A.TApp <$> namePath <* less <*> (P.many1 type_) <* greater)
-           P.<|> P.try (tfunc <$ lParen <*>
-                           (P.sepBy type_ comma) <* rParen <* arrow <*> resultType)
+           P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType)
            P.<|> (A.TVar <$> ident)
            P.<|> (A.TPrim <$> primType))
           <*> getPos)) <*> (P.optionMaybe $ colon *> kind) <*> getPos
@@ -125,8 +126,7 @@ resultType = (,) <$> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_) <*> 
 
 effKind :: Parser A.EffKind
 effKind = (A.EKStar <$ star
-        P.<|> P.try (A.EKFunc <$ 
-           lParen <*> (P.sepBy kind comma) <* rParen <* arrow <*> effKind))
+        P.<|> P.try (A.EKFunc <$> parens (P.sepBy kind comma) <* arrow <*> effKind))
         <*> getPos
        P.<|> (lParen *> effKind <* rParen)
 
@@ -145,17 +145,18 @@ funcArgs :: Parser [(String, A.Type)]
 funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
 
 funcDef = (,,,) <$> getPos
-         <* lParen <*> funcArgs <* rParen
+         <*> parens funcArgs
          <* colon <*> resultType <* lBrace <* semi <*> expr <* semi <* rBrace
 
 expr :: Parser A.Expr
-expr = (((P.try $ A.EApp <$> ((lParen *> expr <* rParen)
-                              P.<|> (A.EVar <$> namePath <*> getPos))
-                         <* lParen <*> (P.sepBy expr comma) <* rParen)
-          P.<|> ((\(pos, args, (effT, resT), e) -> A.ELam args effT resT e)
+expr = eapp <$> (((((\(pos, args, (effT, resT), e) -> A.ELam args effT resT e)
                    <$ kFn <*> funcDef)
           P.<|> A.EVar <$> namePath) <*> getPos)
-        P.<|> (lParen *> expr <* rParen)
+        P.<|> (lParen *> expr <* rParen)) 
+        <*> (P.optionMaybe $ parens $ P.sepBy expr comma) <*> getPos
+  where eapp e args pos = case args of
+                       Just args' -> A.EApp e args' pos
+                       _ -> e
 
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> funcDef
