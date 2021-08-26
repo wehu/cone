@@ -113,7 +113,9 @@ funcArgs :: Parser [(String, A.Type)]
 funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
 
 expr :: Parser A.Expr
-expr = A.EVar <$> namePath <*> getPos <* semi
+expr = ((A.EVar <$> namePath <*> getPos)
+        P.<|> (lParen *> expr <* rParen))
+       <* semi
 
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> getPos

@@ -31,7 +31,7 @@ tokens :-
   "->"                                  { \p s -> (p, Arrow) }
   \*                                    { \p s -> (p, Star) }
   $digit+                               { \p s -> (p, Int (read s)) }
-  $alpha [$alpha $digit \_ \- \']*      { \p s -> (p, Ident s) }
+  $alpha [$alpha $digit \_]*            { \p s -> (p, Ident s) }
 
 {
 -- Each action has type :: String -> Token
