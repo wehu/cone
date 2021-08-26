@@ -31,6 +31,7 @@ kModule = keyword L.Module
 kImport = keyword L.Import
 kAs     = keyword L.As
 kFunc   = keyword L.Func
+kFn     = keyword L.Fn
 
 semi = symbol L.Semi
 lParen = symbol L.LParen
@@ -143,18 +144,22 @@ effType = (ekann <$>
 funcArgs :: Parser [(String, A.Type)]
 funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
 
+funcDef = (,,,) <$> getPos
+         <* lParen <*> funcArgs <* rParen
+         <* colon <*> resultType <* lBrace <* semi <*> expr <* semi <* rBrace
+
 expr :: Parser A.Expr
 expr = (((P.try $ A.EApp <$> ((lParen *> expr <* rParen)
                               P.<|> (A.EVar <$> namePath <*> getPos))
                          <* lParen <*> (P.sepBy expr comma) <* rParen)
+          P.<|> ((\(pos, args, (effT, resT), e) -> A.ELam args effT resT e)
+                   <$ kFn <*> funcDef)
           P.<|> A.EVar <$> namePath) <*> getPos)
         P.<|> (lParen *> expr <* rParen)
 
 func :: Parser A.FuncDef
-func = f <$ kFunc <*> ident <*> getPos
-         <* lParen <*> funcArgs <* rParen
-         <* colon <*> resultType <* lBrace <* semi <*> expr <* semi <* rBrace
-  where f n pos args (effT, resT) e = A.FuncDef n args effT resT e pos
+func = f <$ kFunc <*> ident <*> funcDef
+  where f n (pos, args, (effT, resT), e) = A.FuncDef n args effT resT e pos
 
 topStmt :: Parser A.TopStmt
 topStmt = ((A.FDef <$> func)) <* semi

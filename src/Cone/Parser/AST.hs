@@ -93,7 +93,8 @@ instance Plated Pattern where
   plate = uniplate
 
 data Expr = EVar{_evarName :: NamePath, _eloc :: Location}
-          | ELam{_elamArgs :: [(String, Maybe Type)], _elamBody :: Expr,
+          | ELam{_elamArgs :: [(String, Type)], _elamEffType :: Maybe EffectType,
+                 _elamResultType :: Type, _elamExpr :: Expr,
                  _eloc :: Location}
           | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
           | EApp{_eappFunc :: Expr, _eappArgs :: [Expr], _eloc :: Location}
