@@ -199,6 +199,20 @@ typeDefSpec = hspec $ do
        ((parse "" source)
            ^._Right.topStmts ^? ix 0 ^._Just._TDef.typeName) `shouldBe` "tt"
 
+effectDefSpec = hspec $ do
+  describe "effect definition syntax" $ do
+    it "effect def with one construct" $ do
+       let source = unpack [text|
+           module foo
+
+	   effect ee <b> {
+           func a(b)
+       }
+       |]
+       --(show $ parse "" source) `shouldBe` "a"
+       ((parse "" source)
+           ^._Right.topStmts ^? ix 0 ^._Just._EDef.effectName) `shouldBe` "ee"
+
 parserSpec = do
     moduleSpec
     typeSpec
