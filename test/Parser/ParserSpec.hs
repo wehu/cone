@@ -173,6 +173,19 @@ exprSpec = hspec $ do
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcExpr
            .eappFunc.evarName) `shouldBe` ["foo"]
 
+    it "expr lambda" $ do
+       let source = unpack [text|
+           module foo
+
+	   fun a(a : a<b>) : c {
+		   fn(arg : b) : d {}
+	   }
+       |]
+       --(show $ parse "" source) `shouldBe` "a"
+       ((parse "" source)
+           ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcExpr.elamArgs
+           ^? ix 0 ^._Just._1) `shouldBe` "arg"
+
 parserSpec = do
     moduleSpec
     typeSpec

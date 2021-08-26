@@ -77,7 +77,7 @@ getPos
 
 parens e = lParen *> e <* rParen
 
-braces e = lBrace *> semi *> e <* semi <* rBrace
+braces e = lBrace *> (P.optional semi) *> e <* (P.optional semi) <* rBrace
 
 brackets e = lBracket *> e <* rBracket
 
@@ -135,12 +135,12 @@ effKind = (A.EKStar <$ star
        P.<|> parens effKind
 
 effType :: Parser A.EffectType
-effType = (ekann <$>
+effType = parens effType
+          P.<|> (ekann <$>
            (((P.try $ A.EffApp <$> namePath <* less <*> (P.many1 type_) <* greater)
            P.<|> (A.EffList <$ less <*> (P.sepBy effType comma) <* greater)
            P.<|> (A.EffVar <$> ident)) <*> getPos)
              <*> (P.optionMaybe $ colon *> effKind) <*> getPos)
-           P.<|> parens effType
   where ekann t ek pos = case ek of
           Just ek' -> A.EffAnn t ek' pos
           _ -> t
@@ -155,10 +155,10 @@ funcProto = (,,) <$> getPos
 funcDef = (,) <$> funcProto <*> braces expr
 
 expr :: Parser A.Expr
-expr = eapp <$> (((((\((pos, args, (effT, resT)), e) -> A.ELam args effT resT e)
+expr = eapp <$> (parens expr
+         P.<|> ((((\((pos, args, (effT, resT)), e) -> A.ELam args effT resT e)
                    <$ kFn <*> funcDef)
-          P.<|> A.EVar <$> namePath) <*> getPos)
-        P.<|> parens expr) 
+                  P.<|> A.EVar <$> namePath) <*> getPos)) 
         <*> (P.optionMaybe $ parens $ P.sepBy expr comma) <*> getPos
   where eapp e args pos = case args of
                        Just args' -> A.EApp e args' pos
