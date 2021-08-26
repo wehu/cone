@@ -12,13 +12,16 @@ import Data.List.Split
 type Parser a = P.ParsecT [L.Token] () Identity a
 
 token :: (L.Tok -> Bool) -> (L.Tok -> a) -> Parser a
-token test getVal = P.tokenPrim showTok nextPos testTok
+token test getVal = do
+  pos <- P.getPosition
+  P.tokenPrim (showTok pos) nextPos testTok
   where nextPos :: P.SourcePos -> L.Token -> [L.Token] -> P.SourcePos
         nextPos pos _ ((L.AlexPn _ l c, _) : _)
           = P.setSourceColumn (P.setSourceLine pos l) c
         nextPos pos _ [] = pos
         testTok (_, t) = if (test t) then Just (getVal t) else Nothing
-        showTok (L.AlexPn _ l c, t) = show t
+        showTok pos (L.AlexPn _ l c, t) = 
+          (show t) ++ "@" ++ (P.sourceName pos) ++ "[" ++ (show l) ++ ":" ++ (show c) ++ "]"
 
 keyword :: L.Tok -> Parser L.Tok
 keyword t = token (== t) (\ _ -> t)
