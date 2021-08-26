@@ -186,7 +186,21 @@ exprSpec = hspec $ do
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcExpr.elamArgs
            ^? ix 0 ^._Just._1) `shouldBe` "arg"
 
+typeDefSpec = hspec $ do
+  describe "type definition syntax" $ do
+    it "type def with one construct" $ do
+       let source = unpack [text|
+           module foo
+
+	   type tt <b> {a(b)
+       }
+       |]
+       --(show $ parse "" source) `shouldBe` "a"
+       ((parse "" source)
+           ^._Right.topStmts ^? ix 0 ^._Just._TDef.typeName) `shouldBe` "tt"
+
 parserSpec = do
     moduleSpec
     typeSpec
     exprSpec
+    typeDefSpec

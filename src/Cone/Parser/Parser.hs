@@ -32,6 +32,8 @@ kImport = keyword L.Import
 kAs     = keyword L.As
 kFunc   = keyword L.Func
 kFn     = keyword L.Fn
+kType   = keyword L.Type
+kEffect = keyword L.Effect
 
 semi = symbol L.Semi
 lParen = symbol L.LParen
@@ -167,12 +169,25 @@ expr = eapp <$> (parens expr
                        Just args' -> A.EApp e args' pos
                        _ -> e
 
+typeArgs :: Parser [(String, Maybe A.Kind)]
+typeArgs = less *>
+            (P.sepBy ((,) <$> ident <*> (P.optionMaybe $ colon *> kind)) comma) 
+            <* greater
+
+typeCon :: Parser A.TypeCon
+typeCon = A.TypeCon <$> ident <*> parens (P.sepBy type_ comma) <*> getPos
+
+typeDef :: Parser A.TypeDef
+typeDef = A.TypeDef <$ kType <*> ident <*> typeArgs
+    <*> braces (P.sepBy1 typeCon $ P.try $ semi <* P.notFollowedBy rBrace) <*> getPos
+
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> funcDef
   where f n ((pos, args, (effT, resT)), e) = A.FuncDef n args effT resT e pos
 
 topStmt :: Parser A.TopStmt
-topStmt = ((A.FDef <$> func)) <* semi
+topStmt = ((A.FDef <$> func)
+           P.<|> A.TDef <$> typeDef) <* semi
 
 module_ :: Parser A.Module
 module_ = f <$ kModule <*> namePath <*> getPos <* semi

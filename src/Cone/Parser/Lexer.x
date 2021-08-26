@@ -44,6 +44,8 @@ tokens :-
   "f64"                                 { \p s -> (p, F64) }
   "bf16"                                { \p s -> (p, BF16) }
   "bool"                                { \p s -> (p, Pred) }
+  "type"                                { \p s -> (p, Type) }
+  "effect"                              { \p s -> (p, Effect) }
   $digit+                               { \p s -> (p, Int (read s)) }
   $alpha [$alpha $digit \_]*            { \p s -> (p, Ident s) }
 
@@ -87,7 +89,9 @@ data Tok =
     F32             |
     F64             |
     BF16            |
-    Pred
+    Pred            |
+    Type            |
+    Effect
     deriving (Eq,Show)
 
 type Token = (AlexPosn, Tok)
