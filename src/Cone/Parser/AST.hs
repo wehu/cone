@@ -1,9 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Cone.Parser.AST where
 
 import Control.Lens
-
+import Control.Lens.Plated
+import Data.Data.Lens (uniplate)
+import Data.Data
 import Data.Maybe
 
 type NamePath = [String]
@@ -11,106 +14,162 @@ type NamePath = [String]
 data Attr = String
           | Int
           | Bool
-              deriving (Eq, Show)
+              deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated Attr where
+  plate = uniplate
 
 data Location = Location{_fileName :: String, _lineNo :: !Int, _colNo :: !Int}
-                  deriving (Eq, Show)
+                  deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated Location where
+  plate = uniplate
 
 type NamedAttr = (String, Attr)
 
-data Type = I8
-          | I16
-          | I32
-          | I64
-          | U8
-          | U16
-          | U32
-          | U64
-          | F16
-          | F32
-          | F64
-          | BF16
-          | Pred
-          | TVar{_tvar :: String}
+data PrimType = I8
+              | I16
+              | I32
+              | I64
+              | U8
+              | U16
+              | U32
+              | U64
+              | F16
+              | F32
+              | F64
+              | BF16
+              | Pred
+                  deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated PrimType where
+  plate = uniplate
+
+data Type = TPrim{_tprim :: PrimType, _tloc :: Location}
+          | TVar{_tvar :: String, _tloc :: Location}
           | TFunc{_tfuncArgs :: [Type], _tfuncEff :: EffectType,
-                  _tfuncResult :: Type}
-          | TApp{_tappName :: NamePath, _tappArgs :: [Type]}
-          | TAnn{_tannType :: Type, _tannKind :: Kind}
-          | TLoc{_tlocType :: Type, _tloc :: Location}
-              deriving (Eq, Show)
+                  _tfuncResult :: Type, _tloc :: Location}
+          | TApp{_tappName :: NamePath, _tappArgs :: [Type], _tloc :: Location}
+          | TAnn{_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
+              deriving (Eq,Ord,Show,Read,Data,Typeable)
 
-data Kind = KStar
-          | KFunc{_kfuncArgs :: [Kind], _kfuncResult :: Kind}
-          | KLoc{_klocKind :: Kind, _kloc :: Location}
-              deriving (Eq, Show)
+instance Plated Type where
+  plate = uniplate
 
-data EffKind = EKStar
-             | EKFunc{_ekfuncArgs :: [Kind], _ekfuncResult :: EffKind}
-             | EKLoc{_eklocKind :: EffKind, _ekloc :: Location}
-                 deriving (Eq, Show)
+data Kind = KStar{_kloc :: Location}
+          | KFunc{_kfuncArgs :: [Kind], _kfuncResult :: Kind, _kloc :: Location}
+              deriving (Eq,Ord,Show,Read,Data,Typeable)
 
-data EffectType = EffVar{_effVarName :: String}
-                | EffApp{_effAppName :: String, _effAppArgs :: [Type]}
-                | EffList{_effList :: [EffectType]}
-                | EffAnn{_effAnnType :: EffectType, _effAnnKind :: EffKind}
-                | EffLoc{_effLocType :: EffectType, _effLoc :: Location}
-                    deriving (Eq, Show)
+instance Plated Kind where
+  plate = uniplate
 
-data Pattern = PVar{_pvarName :: String}
-             | PApp{_pappName :: NamePath, _pappArgs :: [Pattern]}
-             | PAnn{_pannPattern :: Pattern, _pannType :: Type}
-             | PLoc{_plocPattern :: Pattern, _ploc :: Location}
-                 deriving (Eq, Show)
+data EffKind = EKStar{_ekloc :: Location}
+             | EKFunc{_ekfuncArgs :: [Kind], _ekfuncResult :: EffKind,
+                      _ekloc :: Location}
+                 deriving (Eq,Ord,Show,Read,Data,Typeable)
 
-data Expr = EVar{_evarName :: NamePath}
-          | ELam{_elamArgs :: [(String, Maybe Type)], _elamBody :: Expr}
-          | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case]}
-          | EApp{_eappFunc :: Expr, _eappArgs :: [Expr]}
-          | ELet{_eletVars :: [(String, Expr)], _eletBody :: Expr}
-          | EHandle{_ehandleExpr :: Expr, _ehandleBindings :: [FuncDef]}
-          | ESeq{_eseq :: [Expr]}
-          | EAnn{_eannExpr :: Expr, _eannType :: Type}
-          | ELoc{_elocExpr :: Expr, _eloc :: Location}
-              deriving (Eq, Show)
+instance Plated EffKind where
+  plate = uniplate
+
+data EffectType = EffVar{_effVarName :: String, _effLoc :: Location}
+                | EffApp{_effAppName :: String, _effAppArgs :: [Type],
+                         _effLoc :: Location}
+                | EffList{_effList :: [EffectType], _effLoc :: Location}
+                | EffAnn{_effAnnType :: EffectType, _effAnnKind :: EffKind,
+                         _effLoc :: Location}
+                    deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated EffectType where
+  plate = uniplate
+
+data Pattern = PVar{_pvarName :: String, _ploc :: Location}
+             | PApp{_pappName :: NamePath, _pappArgs :: [Pattern],
+                    _ploc :: Location}
+             | PAnn{_pannPattern :: Pattern, _pannType :: Type,
+                    _ploc :: Location}
+                 deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated Pattern where
+  plate = uniplate
+
+data Expr = EVar{_evarName :: NamePath, _eloc :: Location}
+          | ELam{_elamArgs :: [(String, Maybe Type)], _elamBody :: Expr,
+                 _eloc :: Location}
+          | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
+          | EApp{_eappFunc :: Expr, _eappArgs :: [Expr], _eloc :: Location}
+          | ELet{_eletVars :: [(String, Expr)], _eletBody :: Expr,
+                 _eloc :: Location}
+          | EHandle{_ehandleExpr :: Expr, _ehandleBindings :: [FuncDef],
+                    _eloc :: Location}
+          | ESeq{_eseq :: [Expr], _eloc :: Location}
+          | EAnn{_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
+              deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated Expr where
+  plate = uniplate
 
 data Case = Case{_casePattern :: Maybe Pattern, _caseGuard :: Maybe Expr,
                  _caseExpr :: Expr, _caseLoc :: Location}
-              deriving (Eq, Show)
+              deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated Case where
+  plate = uniplate
 
 data TypeDef = TypeDef{_typeName :: String, _typeArgs :: [(String, Maybe Kind)],
                        _typeCons :: [TypeCon], _typeLoc :: Location}
-                 deriving (Eq, Show)
+                 deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated TypeDef where
+  plate = uniplate
 
 data TypeCon = TypeCon{_typeConName :: String, _typeConArgs :: [Type],
                        _typeConLoc :: Location}
-                 deriving (Eq, Show)
+                 deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated TypeCon where
+  plate = uniplate
 
 data EffectDef = EffectDef{_effectName :: String,
                            _effectArgs :: [(String, Maybe Kind)],
                            _effectIntfs :: [FuncDef], _effectLoc :: Location}
-                   deriving (Eq, Show)
+                   deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated EffectDef where
+  plate = uniplate
 
 data ImportStmt = ImportStmt{_importPath :: NamePath,
                              _importAlias :: Maybe String,
                              _importAttrs :: [NamedAttr],
                              _importLoc :: Location}
-                    deriving (Eq, Show)
+                    deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated ImportStmt where
+  plate = uniplate
 
 data FuncDef = FuncDef{_funcName :: String, _funcArgs :: [(String, Type)],
                        _funcEffectType :: EffectType, _funcResultType :: Type,
                        _funcExpr :: Expr, _funcLoc :: Location}
-                 deriving (Eq, Show)
+                 deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated FuncDef where
+  plate = uniplate
 
 data TopStmt = FDef{_fdef :: FuncDef}
              | TDef{_tdef :: TypeDef}
              | EDef{_edef :: EffectDef}
-             | Import{_importStmt :: ImportStmt}
-                 deriving (Eq, Show)
+                 deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated TopStmt where
+  plate = uniplate
 
 data Module = Module{_moduleName :: NamePath, _moduleAttrs :: [NamedAttr],
-                     _moduleExports :: [String], _topStmts :: [TopStmt],
+                     _moduleExports :: [String],
+                     _imports :: [ImportStmt], _topStmts :: [TopStmt],
                      _moduleLoc :: Location}
-                deriving (Eq, Show)
+                deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Plated Module where
+  plate = uniplate
 
 makeLenses ''Attr
 
