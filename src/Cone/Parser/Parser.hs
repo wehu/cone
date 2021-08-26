@@ -43,17 +43,15 @@ getPos
        return $
          A.Location (P.sourceName pos) (P.sourceLine pos) (P.sourceColumn pos)
 
-sep = P.many1 semi
-
 namePath :: String -> [String]
 namePath = splitOn "\\"
 
 imports :: Parser [A.ImportStmt]
-imports = P.many $ f <$ kimport <*> ident <*> getPos <* sep
+imports = P.many $ f <$ kimport <*> ident <*> getPos <* semi 
   where f n pos = A.ImportStmt (namePath n) Nothing [] pos
 
 m :: Parser A.Module
-m = f <$ kmodule <*> ident <*> getPos <* sep <*> imports <* P.eof
+m = f <$ kmodule <*> ident <*> getPos <* semi <*> imports <* P.eof
   where f n pos ims = A.Module (namePath n) [] [] ims [] pos
 
 parse :: String -> String -> Either P.ParseError A.Module

@@ -10,7 +10,7 @@ $alpha = [a-zA-Z]		-- alphabetic characters
 tokens :-
   ($white # [\n])+				;
   "--".*				          ;
-  [\; \n]                               { \p s -> (p, Semi) }
+  [\; \n]+                              { \p s -> (p, Semi) }
   module                                { \p s -> (p, Module) }
   import                                { \p s -> (p, Import) }
   func                                  { \p s -> (p, Func) }

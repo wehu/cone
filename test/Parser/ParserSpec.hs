@@ -7,7 +7,7 @@ import Data.Either
 import Control.Lens
 
 moduleSpec = hspec $ do
-  describe "module" $ do
+  describe "module syntax" $ do
     it "empty module" $ do
        ((parse "" "module foo\\bar")^._Right.moduleName) `shouldBe` ["foo", "bar"]
     
