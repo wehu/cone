@@ -148,12 +148,14 @@ effType = (ekann <$>
 funcArgs :: Parser [(String, A.Type)]
 funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
 
-funcDef = (,,,) <$> getPos
+funcProto = (,,) <$> getPos
          <*> parens funcArgs
-         <* colon <*> resultType <*> braces expr
+         <* colon <*> resultType
+
+funcDef = (,) <$> funcProto <*> braces expr
 
 expr :: Parser A.Expr
-expr = eapp <$> (((((\(pos, args, (effT, resT), e) -> A.ELam args effT resT e)
+expr = eapp <$> (((((\((pos, args, (effT, resT)), e) -> A.ELam args effT resT e)
                    <$ kFn <*> funcDef)
           P.<|> A.EVar <$> namePath) <*> getPos)
         P.<|> parens expr) 
@@ -164,7 +166,7 @@ expr = eapp <$> (((((\(pos, args, (effT, resT), e) -> A.ELam args effT resT e)
 
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> funcDef
-  where f n (pos, args, (effT, resT), e) = A.FuncDef n args effT resT e pos
+  where f n ((pos, args, (effT, resT)), e) = A.FuncDef n args effT resT e pos
 
 topStmt :: Parser A.TopStmt
 topStmt = ((A.FDef <$> func)) <* semi
