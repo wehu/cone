@@ -143,6 +143,21 @@ typeSpec = hspec $ do
            ^? ix 1 ^._Just.effAppArgs
            ^? ix 0 ^._Just.tvar) `shouldBe` "c"
 
+    it "eff kind" $ do
+       let source = unpack [text|
+           module foo
+
+	   fun a(a : (c) -> <e1<d>, e<c> : *> d) : c {
+		   a
+	   }
+       |]
+       --(show $ parse "" source) `shouldBe` "a"
+       ((parse "xxx" source)
+           ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
+           ^? ix 0 ^._Just._2.tfuncEff._Just.effList
+           ^? ix 1 ^._Just.effAnnType.effAppArgs
+           ^? ix 0 ^._Just.tvar) `shouldBe` "c"
+
 parserSpec = do
     moduleSpec
     typeSpec
