@@ -102,7 +102,7 @@ data Expr = EVar{_evarName :: NamePath, _eloc :: Location}
                  _eloc :: Location}
           | EHandle{_ehandleExpr :: Expr, _ehandleBindings :: [FuncDef],
                     _eloc :: Location}
-          | ESeq{_eseq :: [Expr], _eloc :: Location}
+          -- | ESeq{_eseq :: [Expr], _eloc :: Location}
           | EAnn{_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
               deriving (Eq,Ord,Show,Read,Data,Typeable)
 
