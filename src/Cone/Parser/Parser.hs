@@ -124,7 +124,8 @@ resultType = (,) <$> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_) <*> 
 
 effKind :: Parser A.EffKind
 effKind = (A.EKStar <$ star
-        P.<|> P.try (A.EKFunc <$ lParen <*> (P.sepBy kind comma) <* rParen <* arrow <*> effKind))
+        P.<|> P.try (A.EKFunc <$ 
+           lParen <*> (P.sepBy kind comma) <* rParen <* arrow <*> effKind))
         <*> getPos
        P.<|> (lParen *> effKind <* rParen)
 
@@ -143,14 +144,16 @@ funcArgs :: Parser [(String, A.Type)]
 funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
 
 expr :: Parser A.Expr
-expr = ((A.EVar <$> namePath <*> getPos)
-        P.<|> (lParen *> expr <* rParen))
-       <* semi
+expr = (((P.try $ A.EApp <$> ((lParen *> expr <* rParen)
+                              P.<|> (A.EVar <$> namePath <*> getPos))
+                         <* lParen <*> (P.sepBy expr comma) <* rParen)
+          P.<|> A.EVar <$> namePath) <*> getPos)
+        P.<|> (lParen *> expr <* rParen)
 
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> getPos
          <* lParen <*> funcArgs <* rParen
-         <* colon <*> resultType <* lBrace <* semi <*> expr <* rBrace
+         <* colon <*> resultType <* lBrace <* semi <*> expr <* semi <* rBrace
   where f n pos args (effT, resT) e = A.FuncDef n args effT resT e pos
 
 topStmt :: Parser A.TopStmt

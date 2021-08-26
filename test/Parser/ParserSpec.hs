@@ -118,7 +118,7 @@ typeSpec = hspec $ do
        let source = unpack [text|
            module foo
 
-	   fun a(a : (c) -> e<c> d) : c {
+	   fun a(a : (c) -> e<c> d, b : f32) : c {
 		   a
 	   }
        |]
@@ -158,6 +158,22 @@ typeSpec = hspec $ do
            ^? ix 1 ^._Just.effAnnType.effAppArgs
            ^? ix 0 ^._Just.tvar) `shouldBe` "c"
 
+exprSpec = hspec $ do
+  describe "expr syntax" $ do
+    it "expr app" $ do
+       let source = unpack [text|
+           module foo
+
+	   fun a(a : a<b>) : c {
+		   foo(a, a)
+	   }
+       |]
+       --(show $ parse "" source) `shouldBe` "a"
+       ((parse "" source)
+           ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcExpr
+           .eappFunc.evarName) `shouldBe` ["foo"]
+
 parserSpec = do
     moduleSpec
     typeSpec
+    exprSpec
