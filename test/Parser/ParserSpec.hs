@@ -132,7 +132,7 @@ typeSpec = hspec $ do
        let source = unpack [text|
            module foo
 
-	   fun a(a : (c) -> <e1<d>, e<c>> d) : c {
+	   fun a(a : (c) -> <e1<d>, e<c>> d) : f16 {
 		   a
 	   }
        |]
@@ -147,7 +147,7 @@ typeSpec = hspec $ do
        let source = unpack [text|
            module foo
 
-	   fun a(a : (c) -> <e1<d>, e<c> : *> d) : c {
+	   fun a(a : (i8) -> <e1<d>, e<c> : *> d) : i32 {
 		   a
 	   }
        |]

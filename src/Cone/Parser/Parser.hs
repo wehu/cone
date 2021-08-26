@@ -47,6 +47,20 @@ backSlash = symbol L.Backslash
 arrow = symbol L.Arrow
 star = symbol L.Star
 
+i8   = keyword L.I8
+i16  = keyword L.I16
+i32  = keyword L.I32
+i64  = keyword L.I64
+u8   = keyword L.U8
+u16  = keyword L.U16
+u32  = keyword L.U32
+u64  = keyword L.U64
+f16  = keyword L.F16
+f32  = keyword L.F32
+f64  = keyword L.F64
+bf16 = keyword L.BF16
+bool = keyword L.Pred
+
 ident
   = token
       (\case
@@ -76,12 +90,28 @@ kind = (A.KStar <$ star
         <*> getPos
        P.<|> (lParen *> kind <* rParen)
 
+primType :: Parser A.PrimType
+primType = A.I8 <$ i8
+           P.<|> (A.I16 <$ i16)
+           P.<|> (A.I32 <$ i32)
+           P.<|> (A.I64 <$ i64)
+           P.<|> (A.U8 <$ u8)
+           P.<|> (A.U16 <$ u16)
+           P.<|> (A.U32 <$ u32)
+           P.<|> (A.U64 <$ u64)
+           P.<|> (A.F16 <$ f16)
+           P.<|> (A.F32 <$ f32)
+           P.<|> (A.F64 <$ f64)
+           P.<|> (A.BF16 <$ bf16)
+           P.<|> (A.Pred <$ bool)
+
 type_ :: Parser A.Type
 type_ = (tann <$> 
          ((P.try (A.TApp <$> namePath <* less <*> (P.many1 type_) <* greater)
            P.<|> P.try (tfunc <$ lParen <*>
                            (P.sepBy type_ comma) <* rParen <* arrow <*> resultType)
-           P.<|> (A.TVar <$> ident))
+           P.<|> (A.TVar <$> ident)
+           P.<|> (A.TPrim <$> primType))
           <*> getPos)) <*> (P.optionMaybe $ colon *> kind) <*> getPos
         P.<|> (lParen *> type_ <* rParen)
   where tfunc args (effT, resultT) pos = A.TFunc args effT resultT pos
