@@ -178,7 +178,7 @@ exprSpec = hspec $ do
            module foo
 
 	   fun a(a : a<b>) : c {
-		   fn(arg : b) : d {}
+		   fn(arg : b) : d {a}
 	   }
        |]
        --(show $ parse "" source) `shouldBe` "a"

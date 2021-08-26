@@ -82,7 +82,7 @@ braces e = lBrace *> (P.optional semi) *> e <* (P.optional semi) <* rBrace
 brackets e = lBracket *> e <* rBracket
 
 namePath :: Parser [String]
-namePath = P.sepBy ident backSlash
+namePath = P.sepBy1 ident backSlash
 
 imports :: Parser [A.ImportStmt]
 imports = P.many $ 
@@ -119,7 +119,7 @@ type_ = (tann <$>
            P.<|> (A.TVar <$> ident)
            P.<|> (A.TPrim <$> primType))
           <*> getPos)) <*> (P.optionMaybe $ colon *> kind) <*> getPos
-        P.<|> (lParen *> type_ <* rParen)
+        P.<|> parens type_
   where tfunc args (effT, resultT) pos = A.TFunc args effT resultT pos
         tann t k pos = case k of
           Just k' -> A.TAnn t k' pos
