@@ -7,6 +7,7 @@ import Data.Functor.Identity
 
 import qualified Text.Parsec as P
 import Text.Parsec.Pos (newPos)
+import Data.List.Split
 
 newtype Env = Env{sourceFile :: String}
 
@@ -40,10 +41,10 @@ getPos
          A.Location (P.sourceName pos) (P.sourceLine pos) (P.sourceColumn pos)
 
 m :: Parser A.Module
-m = f <$ kmodule <*> ident <*> getPos <* semi
-  where f n pos = A.Module [n] [] [] [] [] pos
+m = f <$ kmodule <*> ident <*> getPos <* (P.many semi) <* P.eof
+  where f n pos = A.Module (splitOn "\\" n) [] [] [] [] pos
 
 parse :: String -> String -> Either P.ParseError A.Module
 parse fn input
-  = P.runParser m Env{sourceFile = fn} fn (L.tokenize input)
+  = P.runParser m Env{sourceFile = fn} fn (L.tokenize $ input ++ "\n")
 

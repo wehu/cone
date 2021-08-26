@@ -24,6 +24,7 @@ dependencies:
 - parsec
 - array
 - lens
+- split
 
 library:
   source-dirs: src
@@ -49,3 +50,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - cone
+    - hspec
