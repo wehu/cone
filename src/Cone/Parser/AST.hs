@@ -93,8 +93,8 @@ instance Plated Pattern where
   plate = uniplate
 
 data Expr = EVar{_evarName :: NamePath, _eloc :: Location}
-          | ELam{_elamArgs :: [(String, Type)], _elamEffType :: Maybe EffectType,
-                 _elamResultType :: Type, _elamExpr :: Expr,
+          | ELam{_elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
+                 _elamResultType :: Maybe Type, _elamExpr :: Expr,
                  _eloc :: Location}
           | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
           | EApp{_eappFunc :: Expr, _eappArgs :: [Expr], _eloc :: Location}
@@ -147,8 +147,8 @@ data ImportStmt = ImportStmt{_importPath :: NamePath,
 instance Plated ImportStmt where
   plate = uniplate
 
-data FuncDef = FuncDef{_funcName :: String, _funcArgs :: [(String, Type)],
-                       _funcEffectType :: Maybe EffectType, _funcResultType :: Type,
+data FuncDef = FuncDef{_funcName :: String, _funcArgs :: [(String, Maybe Type)],
+                       _funcEffectType :: Maybe EffectType, _funcResultType :: Maybe Type,
                        _funcExpr :: Expr, _funcLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable)
 

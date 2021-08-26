@@ -70,7 +70,7 @@ typeSpec = hspec $ do
        --(show $ parse "" source) `shouldBe` "a"
        ((parse "" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
-           ^? ix 0 ^._Just._2.tappArgs
+           ^? ix 0 ^._Just._2._Just.tappArgs
            ^? ix 0 ^._Just.tvar) `shouldBe` "b"
 
     it "func type" $ do
@@ -84,7 +84,7 @@ typeSpec = hspec $ do
        --(show $ parse "" source) `shouldBe` "a"
        ((parse "" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
-           ^? ix 0 ^._Just._2.tfuncResult.tvar) `shouldBe` "c"
+           ^? ix 0 ^._Just._2._Just.tfuncResult.tvar) `shouldBe` "c"
 
     it "type annotation" $ do
        let source = unpack [text|
@@ -97,7 +97,7 @@ typeSpec = hspec $ do
        --(show $ parse "" source) `shouldBe` "a"
        ((parse "" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
-           ^? ix 0 ^._Just._2.tannType.tvar) `shouldBe` "c"
+           ^? ix 0 ^._Just._2._Just.tannType.tvar) `shouldBe` "c"
 
 
     it "func kind" $ do
@@ -111,7 +111,7 @@ typeSpec = hspec $ do
        --(show $ parse "" source) `shouldBe` "a"
        ((parse "xxx" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
-           ^? ix 0 ^._Just._2
+           ^? ix 0 ^._Just._2._Just
            .tannKind.kfuncResult.kloc.fileName) `shouldBe` "xxx"
 
     it "eff app" $ do
@@ -125,7 +125,7 @@ typeSpec = hspec $ do
        --(show $ parse "" source) `shouldBe` "a"
        ((parse "xxx" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
-           ^? ix 0 ^._Just._2.tfuncEff._Just.effAppArgs
+           ^? ix 0 ^._Just._2._Just.tfuncEff._Just.effAppArgs
            ^? ix 0 ^._Just.tvar) `shouldBe` "c"
 
     it "eff list" $ do
@@ -139,7 +139,7 @@ typeSpec = hspec $ do
        --(show $ parse "" source) `shouldBe` "a"
        ((parse "xxx" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
-           ^? ix 0 ^._Just._2.tfuncEff._Just.effList
+           ^? ix 0 ^._Just._2._Just.tfuncEff._Just.effList
            ^? ix 1 ^._Just.effAppArgs
            ^? ix 0 ^._Just.tvar) `shouldBe` "c"
 
@@ -154,7 +154,7 @@ typeSpec = hspec $ do
        --(show $ parse "" source) `shouldBe` "a"
        ((parse "xxx" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
-           ^? ix 0 ^._Just._2.tfuncEff._Just.effList
+           ^? ix 0 ^._Just._2._Just.tfuncEff._Just.effList
            ^? ix 1 ^._Just.effAnnType.effAppArgs
            ^? ix 0 ^._Just.tvar) `shouldBe` "c"
 

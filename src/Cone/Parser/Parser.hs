@@ -145,12 +145,15 @@ effType = parens effType
           Just ek' -> A.EffAnn t ek' pos
           _ -> t
 
-funcArgs :: Parser [(String, A.Type)]
-funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
+funcArgs :: Parser [(String, Maybe A.Type)]
+funcArgs = P.sepBy ((,) <$> ident <*> (P.optionMaybe $ colon *> type_)) comma
 
-funcProto = (,,) <$> getPos
+funcProto = f <$> getPos
          <*> parens funcArgs
-         <* colon <*> resultType
+         <*> (P.optionMaybe $ colon *> resultType)
+  where f pos args resultT = case resultT of
+           Just (effT, resT) -> (pos, args, (effT, Just resT))
+           _ -> (pos, args, (Nothing, Nothing))
 
 funcDef = (,) <$> funcProto <*> braces expr
 
