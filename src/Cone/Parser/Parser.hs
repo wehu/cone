@@ -31,8 +31,17 @@ symbol = keyword
 kModule = keyword L.Module
 kImport = keyword L.Import
 kAs     = keyword L.As
+kFunc   = keyword L.Func
 
 semi = symbol L.Semi
+lParen = symbol L.LParen
+rParen = symbol L.RParen
+lBrace = symbol L.LBrace
+rBrace = symbol L.RBrace
+lBracket = symbol L.LBracket
+rBracket = symbol L.RBracket
+colon = symbol L.Colon
+comma = symbol L.Comma
 
 ident
   = token
@@ -57,11 +66,36 @@ imports = P.many $
       <* semi 
   where f n pos alias = A.ImportStmt (namePath n) alias [] pos
 
-m :: Parser A.Module
-m = f <$ kModule <*> ident <*> getPos <* semi <*> imports <* P.eof
-  where f n pos ims = A.Module (namePath n) [] [] ims [] pos
+type_ :: Parser A.Type
+type_ = A.TVar <$> ident <*> getPos
+
+effType :: Parser A.EffectType
+effType = A.EffVar <$> ident <*> getPos
+
+funcArgs :: Parser [(String, A.Type)]
+funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
+
+expr :: Parser A.Expr
+expr = (\n p -> A.EVar (namePath n) p) <$> ident <*> getPos <* semi
+
+func :: Parser A.FuncDef
+func = f <$ kFunc <*> ident <*> getPos
+         <* lParen <*> funcArgs <* rParen
+         <* colon <*> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_)
+         <*> type_ <* lBrace <* semi <*> expr <* rBrace
+  where f n pos args effT resT e = A.FuncDef n args effT resT e pos
+
+topStmt :: Parser A.TopStmt
+topStmt = ((A.FDef <$> func)) <* semi
+
+module_ :: Parser A.Module
+module_ = f <$ kModule <*> ident <*> getPos <* semi
+            <*> imports
+            <*> (P.many topStmt)
+            <* P.eof
+  where f n pos ims stmts = A.Module (namePath n) [] [] ims stmts pos
 
 parse :: String -> String -> Either P.ParseError A.Module
 parse fn input
-  = P.runParser m () fn (L.tokenize $ input ++ "\n")
+  = P.runParser module_ () fn (L.tokenize $ input ++ "\n")
 

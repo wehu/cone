@@ -147,7 +147,7 @@ instance Plated ImportStmt where
   plate = uniplate
 
 data FuncDef = FuncDef{_funcName :: String, _funcArgs :: [(String, Type)],
-                       _funcEffectType :: EffectType, _funcResultType :: Type,
+                       _funcEffectType :: Maybe EffectType, _funcResultType :: Type,
                        _funcExpr :: Expr, _funcLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable)
 

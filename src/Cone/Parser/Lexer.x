@@ -13,10 +13,18 @@ tokens :-
   [\; \n]+                              { \p s -> (p, Semi) }
   module                                { \p s -> (p, Module) }
   import                                { \p s -> (p, Import) }
-  func                                  { \p s -> (p, Func) }
+  fun                                   { \p s -> (p, Func) }
   as                                    { \p s -> (p, As) }
   let                                   { \p s -> (p, Let) }
   in                                    { \p s -> (p, In) }
+  \(                                    { \p s -> (p, LParen) }
+  \)                                    { \p s -> (p, RParen) }
+  \{                                    { \p s -> (p, LBrace) }
+  \}                                    { \p s -> (p, RBrace) }
+  \[                                    { \p s -> (p, LBracket) }
+  \]                                    { \p s -> (p, RBracket) }
+  \:                                    { \p s -> (p, Colon) }
+  \,                                    { \p s -> (p, Comma) }
   $digit+                               { \p s -> (p, Int (read s)) }
   $alpha [$alpha $digit \_ \\ \']*      { \p s -> (p, Ident s) }
 
@@ -33,7 +41,15 @@ data Tok =
     In              |
     Ident String    |
     Int Int         |
-    Semi
+    Semi            |
+    LParen          |
+    RParen          |
+    LBrace          |
+    RBrace          |
+    LBracket        |
+    RBracket        |
+    Colon           |
+    Comma
     deriving (Eq,Show)
 
 type Token = (AlexPosn, Tok)

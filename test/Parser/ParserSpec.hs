@@ -44,5 +44,18 @@ moduleSpec = hspec $ do
        ((parse "" source)
           ^._Right.imports ^? ix 0 ^._Just.importAlias) `shouldBe` (Just "f")
 
+    it "module with fun definition" $ do
+       let source = unpack [text|
+           module foo\bar
+	   import foo
+
+	   fun aaa(a : b) : c {
+		   a
+	   }
+       |]
+       --(show $ parse "" source) `shouldBe` ""
+       ((parse "" source)
+          ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcName) `shouldBe` "aaa"
+
 parserSpec = do
     moduleSpec
