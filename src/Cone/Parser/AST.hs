@@ -47,7 +47,7 @@ instance Plated PrimType where
 
 data Type = TPrim{_tprim :: PrimType, _tloc :: Location}
           | TVar{_tvar :: String, _tloc :: Location}
-          | TFunc{_tfuncArgs :: [Type], _tfuncEff :: EffectType,
+          | TFunc{_tfuncArgs :: [Type], _tfuncEff :: Maybe EffectType,
                   _tfuncResult :: Type, _tloc :: Location}
           | TApp{_tappName :: NamePath, _tappArgs :: [Type], _tloc :: Location}
           | TAnn{_tannType :: Type, _tannKind :: Kind, _tloc :: Location}

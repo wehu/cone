@@ -57,5 +57,35 @@ moduleSpec = hspec $ do
        ((parse "" source)
           ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcName) `shouldBe` "aaa"
 
+typeSpec = hspec $ do
+  describe "type syntax" $ do
+    it "app type" $ do
+       let source = unpack [text|
+           module foo
+
+	   fun a(a : a<b>) : c {
+		   a
+	   }
+       |]
+       --(show $ parse "" source) `shouldBe` "a"
+       ((parse "" source)
+           ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
+           ^? ix 0 ^._Just._2.tappArgs
+           ^? ix 0 ^._Just.tvar) `shouldBe` "b"
+
+    it "func type" $ do
+       let source = unpack [text|
+           module foo
+
+	   fun a(a : (a<b>) -> e c) : c {
+		   a
+	   }
+       |]
+       --(show $ parse "" source) `shouldBe` "a"
+       ((parse "" source)
+           ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
+           ^? ix 0 ^._Just._2.tfuncResult.tvar) `shouldBe` "c"
+
 parserSpec = do
     moduleSpec
+    typeSpec

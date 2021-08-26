@@ -28,8 +28,9 @@ tokens :-
   \<                                    { \p s -> (p, Less) }
   \>                                    { \p s -> (p, Greater) }
   \\                                    { \p s -> (p, Backslash) }
+  "->"                                  { \p s -> (p, Arrow) }
   $digit+                               { \p s -> (p, Int (read s)) }
-  $alpha [$alpha $digit \_ \']*         { \p s -> (p, Ident s) }
+  $alpha [$alpha $digit \_ \- \']*      { \p s -> (p, Ident s) }
 
 {
 -- Each action has type :: String -> Token
@@ -55,7 +56,8 @@ data Tok =
     Comma           |
     Less            |
     Greater         |
-    Backslash
+    Backslash       |
+    Arrow
     deriving (Eq,Show)
 
 type Token = (AlexPosn, Tok)

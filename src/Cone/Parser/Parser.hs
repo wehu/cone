@@ -44,6 +44,7 @@ comma = symbol L.Comma
 less = symbol L.Less
 greater = symbol L.Greater
 backSlash = symbol L.Backslash
+arrow = symbol L.Arrow
 
 ident
   = token
@@ -69,8 +70,15 @@ imports = P.many $
   where f n pos alias = A.ImportStmt n alias [] pos
 
 type_ :: Parser A.Type
-type_ = A.TVar <$> ident <*> getPos
-        -- P.<|> (A.TApp <$> namePath <*> (P.many1 type_))) getPos
+type_ = (P.try (A.TApp <$> namePath <* less <*> (P.many1 type_) <* greater)
+         P.<|> P.try (tfunc <$ lParen <*>
+                         (P.sepBy type_ comma) <* rParen <* arrow <*> resultType)
+         P.<|> (A.TVar <$> ident))
+        <*> getPos
+  where tfunc args (effT, resultT) pos = A.TFunc args effT resultT pos
+
+resultType :: Parser (Maybe A.EffectType, A.Type)
+resultType = (,) <$> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_) <*> type_ 
 
 effType :: Parser A.EffectType
 effType = A.EffVar <$> ident <*> getPos
@@ -84,9 +92,8 @@ expr = A.EVar <$> namePath <*> getPos <* semi
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> getPos
          <* lParen <*> funcArgs <* rParen
-         <* colon <*> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_)
-         <*> type_ <* lBrace <* semi <*> expr <* rBrace
-  where f n pos args effT resT e = A.FuncDef n args effT resT e pos
+         <* colon <*> resultType <* lBrace <* semi <*> expr <* rBrace
+  where f n pos args (effT, resT) e = A.FuncDef n args effT resT e pos
 
 topStmt :: Parser A.TopStmt
 topStmt = ((A.FDef <$> func)) <* semi
