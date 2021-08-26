@@ -173,32 +173,64 @@ instance Plated Module where
 
 makeLenses ''Attr
 
+makePrisms ''Attr
+
 makeLenses ''Location
+
+makePrisms ''Location
 
 makeLenses ''Type
 
+makePrisms ''Type
+
 makeLenses ''Kind
+
+makePrisms ''Kind
 
 makeLenses ''EffKind
 
+makePrisms ''EffKind
+
 makeLenses ''EffectType
+
+makePrisms ''EffectType
 
 makeLenses ''Pattern
 
+makePrisms ''Pattern
+
 makeLenses ''Expr
+
+makePrisms ''Expr
 
 makeLenses ''Case
 
+makePrisms ''Case
+
 makeLenses ''TypeDef
+
+makePrisms ''TypeDef
 
 makeLenses ''TypeCon
 
+makePrisms ''TypeCon
+
 makeLenses ''EffectDef
+
+makePrisms ''EffectDef
 
 makeLenses ''ImportStmt
 
+makePrisms ''ImportStmt
+
 makeLenses ''FuncDef
+
+makePrisms ''FuncDef
 
 makeLenses ''TopStmt
 
+makePrisms ''TopStmt
+
 makeLenses ''Module
+
+makePrisms ''Module

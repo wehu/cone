@@ -24,6 +24,7 @@ keyword :: L.Tok -> Parser L.Tok
 keyword t = token (== t) (\ _ -> t)
 
 kmodule = keyword L.Module
+semi = keyword L.Semi
 
 ident
   = token
@@ -39,7 +40,7 @@ getPos
          A.Location (P.sourceName pos) (P.sourceLine pos) (P.sourceColumn pos)
 
 m :: Parser A.Module
-m = f <$ kmodule <*> ident <*> getPos
+m = f <$ kmodule <*> ident <*> getPos <* semi
   where f n pos = A.Module [n] [] [] [] [] pos
 
 parse :: String -> String -> Either P.ParseError A.Module
