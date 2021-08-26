@@ -77,6 +77,10 @@ getPos
 
 parens e = lParen *> e <* rParen
 
+braces e = lBrace *> semi *> e <* semi <* rBrace
+
+brackets e = lBracket *> e <* rBracket
+
 namePath :: Parser [String]
 namePath = P.sepBy ident backSlash
 
@@ -91,7 +95,7 @@ kind :: Parser A.Kind
 kind = (A.KStar <$ star
         P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind))
         <*> getPos
-       P.<|> (lParen *> kind <* rParen)
+       P.<|> parens kind
 
 primType :: Parser A.PrimType
 primType = A.I8 <$ i8
@@ -128,7 +132,7 @@ effKind :: Parser A.EffKind
 effKind = (A.EKStar <$ star
         P.<|> P.try (A.EKFunc <$> parens (P.sepBy kind comma) <* arrow <*> effKind))
         <*> getPos
-       P.<|> (lParen *> effKind <* rParen)
+       P.<|> parens effKind
 
 effType :: Parser A.EffectType
 effType = (ekann <$>
@@ -136,7 +140,7 @@ effType = (ekann <$>
            P.<|> (A.EffList <$ less <*> (P.sepBy effType comma) <* greater)
            P.<|> (A.EffVar <$> ident)) <*> getPos)
              <*> (P.optionMaybe $ colon *> effKind) <*> getPos)
-           P.<|> (lParen *> effType <* rParen)
+           P.<|> parens effType
   where ekann t ek pos = case ek of
           Just ek' -> A.EffAnn t ek' pos
           _ -> t
@@ -146,13 +150,13 @@ funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
 
 funcDef = (,,,) <$> getPos
          <*> parens funcArgs
-         <* colon <*> resultType <* lBrace <* semi <*> expr <* semi <* rBrace
+         <* colon <*> resultType <*> braces expr
 
 expr :: Parser A.Expr
 expr = eapp <$> (((((\(pos, args, (effT, resT), e) -> A.ELam args effT resT e)
                    <$ kFn <*> funcDef)
           P.<|> A.EVar <$> namePath) <*> getPos)
-        P.<|> (lParen *> expr <* rParen)) 
+        P.<|> parens expr) 
         <*> (P.optionMaybe $ parens $ P.sepBy expr comma) <*> getPos
   where eapp e args pos = case args of
                        Just args' -> A.EApp e args' pos
