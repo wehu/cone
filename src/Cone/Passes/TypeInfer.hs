@@ -9,6 +9,7 @@ import Cone.Parser.AST
 import Control.Lens.Plated
 import Control.Lens
 import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Bind
 import Cone.Passes.BindTypeVars
 import Control.Effect.State
 import Control.Effect.Error
@@ -23,6 +24,7 @@ type Eff s e = State s -- :+: Error e
 data Env = Env{_types:: M.Map String Kind,
                _funcs:: M.Map String Type,
                _effs :: M.Map String EffectType}
+            deriving (Show)
 
 makeLenses ''Env
 
@@ -36,16 +38,18 @@ inferTypeDef m = do
   put $ set types (ts env) env
   return m
   where tdefs = universeOn (topStmts.traverse._TDef) m
-        ts env = L.foldl' (\s e -> s) (env ^. types) tdefs
-        insertType ts t = M.insert (t ^. typeName) (k t) ts 
+        ts env = L.foldl' insertType (env ^. types) tdefs
+        insertType ts (BoundTypeDef (B _ t)) = M.insert (t ^. typeName) (k t) ts 
+        insertType ts _ = ts
         k t = 
            let loc = _typeLoc t
                args = t ^. typeArgs
                star = KStar loc
-            in if (L.length args) == 0 then star
+            in if args == [] then star
                 else KFunc (fmap (\(_, kk) -> case kk of
                                      Nothing -> star
                                      Just kkk -> kkk) args) star loc 
 
 infer :: Module -> Either String (Env, Module)
-infer m = run . runError . runState initialEnv $ inferTypeDef m
+infer m = run . runError . runState initialEnv $ 
+           inferTypeDef $ bindTVars m

@@ -68,6 +68,7 @@ test-suite cone-test
   main-is: Spec.hs
   other-modules:
       Parser.ParserSpec
+      Passes.TypeInferSpec
       Paths_cone
   hs-source-dirs:
       test
