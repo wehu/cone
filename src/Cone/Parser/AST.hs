@@ -86,7 +86,7 @@ data Pattern = PVar{_pvarName :: String, _ploc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data Expr = EVar{_evarName :: NamePath, _eloc :: Location}
-          | ELam{_elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
+          | ELam{_elamBoundVars :: [TVar], _elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
                  _elamResultType :: Maybe Type, _elamExpr :: Maybe Expr,
                  _eloc :: Location}
           | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
@@ -111,11 +111,12 @@ data TypeCon = TypeCon{_typeConName :: String, _typeConArgs :: [Type],
                        _typeConLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-data FuncIntf = FuncIntf{_intfName :: String, _intfArgs :: [Type],
+data FuncIntf = FuncIntf{_intfName :: String, _intfBoundVars :: [TVar], _intfArgs :: [Type],
                          _intfResultType :: Type, _intfLoc :: Location}
                   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data EffectDef = EffectDef{_effectName :: String,
+                           _effectBoundVars :: [TVar],
                            _effectArgs :: [(TVar, Maybe Kind)],
                            _effectIntfs :: [FuncIntf], _effectLoc :: Location}
                    deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
@@ -126,7 +127,7 @@ data ImportStmt = ImportStmt{_importPath :: NamePath,
                              _importLoc :: Location}
                     deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-data FuncDef = FuncDef{_funcName :: String, _funcArgs :: [(String, Maybe Type)],
+data FuncDef = FuncDef{_funcName :: String, _funcBoundVars :: [TVar], _funcArgs :: [(String, Maybe Type)],
                        _funcEffectType :: Maybe EffectType, _funcResultType :: Maybe Type,
                        _funcExpr :: Maybe Expr, _funcLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)

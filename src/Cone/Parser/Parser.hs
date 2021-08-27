@@ -156,18 +156,18 @@ effType = parens effType
 funcArgs :: Parser [(String, Maybe A.Type)]
 funcArgs = P.sepBy ((,) <$> ident <*> (P.optionMaybe $ colon *> type_)) comma
 
-funcProto = f <$> getPos
+funcProto = f <$> getPos <*> boundTVars
          <*> parens funcArgs
          <*> (P.optionMaybe $ colon *> resultType)
-  where f pos args resultT = case resultT of
-           Just (effT, resT) -> (pos, args, (effT, Just resT))
-           _ -> (pos, args, (Nothing, Nothing))
+  where f pos bound args resultT = case resultT of
+           Just (effT, resT) -> (pos, bound, args, (effT, Just resT))
+           _ -> (pos, bound, args, (Nothing, Nothing))
 
 funcDef = (\f e -> (f, Just e)) <$> funcProto <*> braces expr
 
 expr :: Parser A.Expr
 expr = eapp <$> (parens expr
-         P.<|> ((((\((pos, args, (effT, resT)), e) -> A.ELam args effT resT e)
+         P.<|> ((((\((pos, bound, args, (effT, resT)), e) -> A.ELam bound args effT resT e)
                    <$ kFn <*> funcDef)
                   P.<|> A.EVar <$> namePath) <*> getPos)) 
         <*> (P.optionMaybe $ parens $ P.sepBy expr comma) <*> getPos
@@ -190,17 +190,17 @@ typeDef = A.TypeDef <$ kType <*> ident <*> boundTVars <*> typeArgs
     <*> braces (P.sepBy1 typeCon $ P.try $ semi <* P.notFollowedBy rBrace) <*> getPos
 
 funcIntf :: Parser A.FuncIntf
-funcIntf = A.FuncIntf <$ kFunc <*> ident <*>
+funcIntf = A.FuncIntf <$ kFunc <*> ident <*> boundTVars <*>
       parens (P.sepBy type_ comma) <* colon <*> type_ <*> getPos
 
 effectDef :: Parser A.EffectDef
-effectDef = A.EffectDef <$ kEffect <*> ident <*> typeArgs
+effectDef = A.EffectDef <$ kEffect <*> ident <*> boundTVars <*> typeArgs
     <*> braces (P.sepBy1 funcIntf $ 
                 P.try $ semi <* P.notFollowedBy rBrace) <*> getPos
 
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> funcDef
-  where f n ((pos, args, (effT, resT)), e) = A.FuncDef n args effT resT e pos
+  where f n ((pos, bound, args, (effT, resT)), e) = A.FuncDef n bound args effT resT e pos
 
 topStmt :: Parser A.TopStmt
 topStmt = ((A.FDef <$> func)
