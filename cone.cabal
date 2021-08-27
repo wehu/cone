@@ -29,6 +29,7 @@ library
       Cone.Parser.AST
       Cone.Parser.Lexer
       Cone.Parser.Parser
+      Cone.Passes.TypeInfer
   other-modules:
       Paths_cone
   hs-source-dirs:
