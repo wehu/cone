@@ -103,7 +103,7 @@ data Case = Case{_casePattern :: Maybe Pattern, _caseGuard :: Maybe Expr,
                  _caseExpr :: Expr, _caseLoc :: Location}
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-data TypeDef = TypeDef{_typeName :: String, _typeArgs :: [(String, Maybe Kind)],
+data TypeDef = TypeDef{_typeName :: String, _typeArgs :: [(TVar, Maybe Kind)],
                        _typeCons :: [TypeCon], _typeLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
@@ -116,7 +116,7 @@ data FuncIntf = FuncIntf{_intfName :: String, _intfArgs :: [Type],
                   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data EffectDef = EffectDef{_effectName :: String,
-                           _effectArgs :: [(String, Maybe Kind)],
+                           _effectArgs :: [(TVar, Maybe Kind)],
                            _effectIntfs :: [FuncIntf], _effectLoc :: Location}
                    deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
