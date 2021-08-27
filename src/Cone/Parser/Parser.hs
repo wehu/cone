@@ -128,6 +128,11 @@ type_ = (tann <$>
           Just k' -> A.TAnn t k' pos
           _ -> t
   
+
+boundTVars :: Parser [A.TVar]
+boundTVars = (brackets $ P.sepBy1 (s2n <$> ident) comma)
+              P.<|> return []
+
 resultType :: Parser (Maybe A.EffectType, A.Type)
 resultType = (,) <$> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_) <*> type_ 
 
@@ -181,7 +186,7 @@ typeCon = A.TypeCon <$> ident <*>
              P.<|> return []) <*> getPos
 
 typeDef :: Parser A.TypeDef
-typeDef = A.TypeDef <$ kType <*> ident <*> typeArgs
+typeDef = A.TypeDef <$ kType <*> ident <*> boundTVars <*> typeArgs
     <*> braces (P.sepBy1 typeCon $ P.try $ semi <* P.notFollowedBy rBrace) <*> getPos
 
 funcIntf :: Parser A.FuncIntf

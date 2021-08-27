@@ -103,7 +103,7 @@ data Case = Case{_casePattern :: Maybe Pattern, _caseGuard :: Maybe Expr,
                  _caseExpr :: Expr, _caseLoc :: Location}
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-data TypeDef = TypeDef{_typeName :: String, _typeArgs :: [(TVar, Maybe Kind)],
+data TypeDef = TypeDef{_typeName :: String, _typeBoundVars :: [TVar], _typeArgs :: [(TVar, Maybe Kind)],
                        _typeCons :: [TypeCon], _typeLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 

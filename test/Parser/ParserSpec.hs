@@ -194,7 +194,7 @@ typeDefSpec = hspec $ do
        let source = unpack [text|
            module foo
 
-	   type tt <b> {a(b)
+	   type tt[b] <b> {a(b)
        }
        |]
        --(show $ parse "" source) `shouldBe` "a"
