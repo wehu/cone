@@ -10,6 +10,7 @@ import Control.Lens
 import Control.Lens.Plated
 import Data.Data.Lens (uniplate)
 import Unbound.Generics.LocallyNameless.Name
+import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless
 import GHC.Generics (Generic)
 import Data.Data
@@ -17,6 +18,11 @@ import Data.Maybe
 
 deriving instance Data a => Data (Name a)
 deriving instance Read a => Read (Name a)
+
+deriving instance (Data a, Data b) => Data (Bind a b)
+deriving instance (Read a, Read b) => Read (Bind a b)
+deriving instance (Eq a, Eq b) => Eq (Bind a b)
+deriving instance (Ord a, Ord b) => Ord (Bind a b)
 
 instance Semigroup (Name a) where
   (<>) a b = s2n $ name2String a ++ name2String b
@@ -97,6 +103,7 @@ data Expr = EVar{_evarName :: NamePath, _eloc :: Location}
                     _eloc :: Location}
           -- | ESeq{_eseq :: [Expr], _eloc :: Location}
           | EAnn{_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
+          | BoundExpr{_exprBound :: Bind [TVar] Expr}
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data Case = Case{_casePattern :: Maybe Pattern, _caseGuard :: Maybe Expr,
@@ -105,6 +112,7 @@ data Case = Case{_casePattern :: Maybe Pattern, _caseGuard :: Maybe Expr,
 
 data TypeDef = TypeDef{_typeName :: String, _typeBoundVars :: [TVar], _typeArgs :: [(TVar, Maybe Kind)],
                        _typeCons :: [TypeCon], _typeLoc :: Location}
+             | BoundTypeDef{_typeBound :: Bind [TVar] TypeDef}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data TypeCon = TypeCon{_typeConName :: String, _typeConArgs :: [Type],
@@ -113,12 +121,14 @@ data TypeCon = TypeCon{_typeConName :: String, _typeConArgs :: [Type],
 
 data FuncIntf = FuncIntf{_intfName :: String, _intfBoundVars :: [TVar], _intfArgs :: [Type],
                          _intfResultType :: Type, _intfLoc :: Location}
+              | BoundFuncIntf{_intfBound :: Bind [TVar] FuncIntf}
                   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data EffectDef = EffectDef{_effectName :: String,
                            _effectBoundVars :: [TVar],
                            _effectArgs :: [(TVar, Maybe Kind)],
                            _effectIntfs :: [FuncIntf], _effectLoc :: Location}
+               | BoundEffectDef{_effectBound :: Bind [TVar] EffectDef}
                    deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data ImportStmt = ImportStmt{_importPath :: NamePath,
@@ -130,6 +140,7 @@ data ImportStmt = ImportStmt{_importPath :: NamePath,
 data FuncDef = FuncDef{_funcName :: String, _funcBoundVars :: [TVar], _funcArgs :: [(String, Maybe Type)],
                        _funcEffectType :: Maybe EffectType, _funcResultType :: Maybe Type,
                        _funcExpr :: Maybe Expr, _funcLoc :: Location}
+             | BoundFuncDef{_funcBound :: Bind [TVar] FuncDef}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data TopStmt = FDef{_fdef :: FuncDef}
