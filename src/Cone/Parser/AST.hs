@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Cone.Parser.AST where
 
@@ -30,14 +31,8 @@ data Attr = String
           | Bool
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-instance Plated Attr where
-  plate = uniplate
-
 data Location = Location{_fileName :: String, _lineNo :: !Int, _colNo :: !Int}
                   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-instance Plated Location where
-  plate = uniplate
 
 type NamedAttr = (String, Attr)
 
@@ -56,9 +51,6 @@ data PrimType = I8
               | Pred
                   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-instance Plated PrimType where
-  plate = uniplate
-
 type TVar = Name Type
 
 data Type = TPrim{_tprim :: PrimType, _tloc :: Location}
@@ -69,23 +61,14 @@ data Type = TPrim{_tprim :: PrimType, _tloc :: Location}
           | TAnn{_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-instance Plated Type where
-  plate = uniplate
-
 data Kind = KStar{_kloc :: Location}
           | KFunc{_kfuncArgs :: [Kind], _kfuncResult :: Kind, _kloc :: Location}
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-instance Plated Kind where
-  plate = uniplate
 
 data EffKind = EKStar{_ekloc :: Location}
              | EKFunc{_ekfuncArgs :: [Kind], _ekfuncResult :: EffKind,
                       _ekloc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-instance Plated EffKind where
-  plate = uniplate
 
 data EffectType = EffVar{_effVarName :: String, _effLoc :: Location}
                 | EffApp{_effAppName :: NamePath, _effAppArgs :: [Type],
@@ -95,18 +78,12 @@ data EffectType = EffVar{_effVarName :: String, _effLoc :: Location}
                          _effLoc :: Location}
                     deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-instance Plated EffectType where
-  plate = uniplate
-
 data Pattern = PVar{_pvarName :: String, _ploc :: Location}
              | PApp{_pappName :: NamePath, _pappArgs :: [Pattern],
                     _ploc :: Location}
              | PAnn{_pannPattern :: Pattern, _pannType :: Type,
                     _ploc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-instance Plated Pattern where
-  plate = uniplate
 
 data Expr = EVar{_evarName :: NamePath, _eloc :: Location}
           | ELam{_elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
@@ -122,44 +99,26 @@ data Expr = EVar{_evarName :: NamePath, _eloc :: Location}
           | EAnn{_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-instance Plated Expr where
-  plate = uniplate
-
 data Case = Case{_casePattern :: Maybe Pattern, _caseGuard :: Maybe Expr,
                  _caseExpr :: Expr, _caseLoc :: Location}
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-instance Plated Case where
-  plate = uniplate
 
 data TypeDef = TypeDef{_typeName :: String, _typeArgs :: [(String, Maybe Kind)],
                        _typeCons :: [TypeCon], _typeLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-instance Plated TypeDef where
-  plate = uniplate
-
 data TypeCon = TypeCon{_typeConName :: String, _typeConArgs :: [Type],
                        _typeConLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-instance Plated TypeCon where
-  plate = uniplate
 
 data FuncIntf = FuncIntf{_intfName :: String, _intfArgs :: [Type],
                          _intfResultType :: Type, _intfLoc :: Location}
                   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-instance Plated FuncIntf where
-  plate = uniplate
-
 data EffectDef = EffectDef{_effectName :: String,
                            _effectArgs :: [(String, Maybe Kind)],
                            _effectIntfs :: [FuncIntf], _effectLoc :: Location}
                    deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-instance Plated EffectDef where
-  plate = uniplate
 
 data ImportStmt = ImportStmt{_importPath :: NamePath,
                              _importAlias :: Maybe String,
@@ -167,24 +126,15 @@ data ImportStmt = ImportStmt{_importPath :: NamePath,
                              _importLoc :: Location}
                     deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-instance Plated ImportStmt where
-  plate = uniplate
-
 data FuncDef = FuncDef{_funcName :: String, _funcArgs :: [(String, Maybe Type)],
                        _funcEffectType :: Maybe EffectType, _funcResultType :: Maybe Type,
                        _funcExpr :: Maybe Expr, _funcLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-instance Plated FuncDef where
-  plate = uniplate
-
 data TopStmt = FDef{_fdef :: FuncDef}
              | TDef{_tdef :: TypeDef}
              | EDef{_edef :: EffectDef}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-instance Plated TopStmt where
-  plate = uniplate
 
 data Module = Module{_moduleName :: NamePath, _moduleAttrs :: [NamedAttr],
                      _moduleExports :: [String],
@@ -192,73 +142,240 @@ data Module = Module{_moduleName :: NamePath, _moduleAttrs :: [NamedAttr],
                      _moduleLoc :: Location}
                 deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-instance Plated Module where
+-------------------------------
+
+instance Plated Attr where
   plate = uniplate
+
+instance Alpha Attr
+
+instance Subst Type Attr
 
 makeLenses ''Attr
 
 makePrisms ''Attr
 
+-------------------------------
+
+instance Plated Location where
+  plate = uniplate
+
+instance Alpha Location
+
+instance Subst Type Location
+
 makeLenses ''Location
 
 makePrisms ''Location
+
+-------------------------------
+
+instance Plated PrimType where
+  plate = uniplate
+
+instance Alpha PrimType
+
+instance Subst Type PrimType
+
+makeLenses ''PrimType
+
+makePrisms ''PrimType
+
+-------------------------------
+
+instance Plated Type where
+  plate = uniplate
+
+instance Alpha Type
+
+instance Subst Type Type where
+  isvar (TVar x _) = Just (SubstName x)
+  isvar _     = Nothing
 
 makeLenses ''Type
 
 makePrisms ''Type
 
+-------------------------------
+
+instance Plated Kind where
+  plate = uniplate
+
+instance Alpha Kind
+
+instance Subst Type Kind
+
 makeLenses ''Kind
 
 makePrisms ''Kind
+
+-------------------------------
+
+instance Plated EffKind where
+  plate = uniplate
+
+instance Alpha EffKind
+
+instance Subst Type EffKind
 
 makeLenses ''EffKind
 
 makePrisms ''EffKind
 
+-------------------------------
+
+instance Plated EffectType where
+  plate = uniplate
+
+instance Alpha EffectType
+
+instance Subst Type EffectType
+
 makeLenses ''EffectType
 
 makePrisms ''EffectType
+
+-------------------------------
+
+instance Plated Pattern where
+  plate = uniplate
+
+instance Alpha Pattern
+
+instance Subst Type Pattern
 
 makeLenses ''Pattern
 
 makePrisms ''Pattern
 
+-------------------------------
+
+instance Plated Expr where
+  plate = uniplate
+
+instance Alpha Expr
+
+instance Subst Type Expr
+
 makeLenses ''Expr
 
 makePrisms ''Expr
+
+-------------------------------
+
+instance Plated Case where
+  plate = uniplate
+
+instance Alpha Case
+
+instance Subst Type Case
 
 makeLenses ''Case
 
 makePrisms ''Case
 
+-------------------------------
+
+instance Plated TypeDef where
+  plate = uniplate
+
+instance Alpha TypeDef
+
+instance Subst Type TypeDef
+
 makeLenses ''TypeDef
 
 makePrisms ''TypeDef
+
+-------------------------------
+
+instance Plated TypeCon where
+  plate = uniplate
+
+instance Alpha TypeCon
+
+instance Subst Type TypeCon
 
 makeLenses ''TypeCon
 
 makePrisms ''TypeCon
 
+-------------------------------
+
+instance Plated EffectDef where
+  plate = uniplate
+
+instance Alpha EffectDef
+
+instance Subst Type EffectDef
+
 makeLenses ''EffectDef
 
 makePrisms ''EffectDef
+
+-------------------------------
+
+instance Plated ImportStmt where
+  plate = uniplate
+
+instance Alpha ImportStmt
+
+instance Subst Type ImportStmt
 
 makeLenses ''ImportStmt
 
 makePrisms ''ImportStmt
 
+-------------------------------
+
+instance Plated FuncIntf where
+  plate = uniplate
+
+instance Alpha FuncIntf
+
+instance Subst Type FuncIntf
+
 makeLenses ''FuncIntf
 
 makePrisms ''FuncIntf
+
+-------------------------------
+
+instance Plated FuncDef where
+  plate = uniplate
+
+instance Alpha FuncDef
+
+instance Subst Type FuncDef
 
 makeLenses ''FuncDef
 
 makePrisms ''FuncDef
 
+-------------------------------
+
+instance Plated TopStmt where
+  plate = uniplate
+
+instance Alpha TopStmt
+
+instance Subst Type TopStmt
+
 makeLenses ''TopStmt
 
 makePrisms ''TopStmt
 
+-------------------------------
+
+instance Plated Module where
+  plate = uniplate
+
+instance Alpha Module
+
+instance Subst Type Module
+
 makeLenses ''Module
 
 makePrisms ''Module
+
+-------------------------------
