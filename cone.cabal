@@ -29,6 +29,7 @@ library
       Cone.Parser.AST
       Cone.Parser.Lexer
       Cone.Parser.Parser
+      Cone.Passes.BindTypeVars
       Cone.Passes.TypeInfer
   other-modules:
       Paths_cone
@@ -37,6 +38,8 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , containers
+    , fused-effects
     , lens
     , parsec
     , unbound-generics
@@ -53,6 +56,8 @@ executable cone-exe
       array
     , base >=4.7 && <5
     , cone
+    , containers
+    , fused-effects
     , lens
     , parsec
     , unbound-generics
@@ -71,6 +76,8 @@ test-suite cone-test
       array
     , base >=4.7 && <5
     , cone
+    , containers
+    , fused-effects
     , hspec
     , lens
     , neat-interpolation

@@ -1,57 +1,51 @@
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Cone.Passes.TypeInfer(infer) where
 
 import Cone.Parser.AST
 import Control.Lens.Plated
 import Control.Lens
 import Unbound.Generics.LocallyNameless
+import Cone.Passes.BindTypeVars
+import Control.Effect.State
+import Control.Effect.Error
+import Control.Effect.Sum
+import Control.Carrier.State.Strict
+import Control.Carrier.Error.Either
+import qualified Data.Map as M
+import qualified Data.List as L
 
-bindFuncDef :: FuncDef -> FuncDef
-bindFuncDef f@(BoundFuncDef{}) = f
-bindFuncDef f@(FuncDef{}) = 
-           let vars = f ^. funcBoundVars
-            in BoundFuncDef (bind vars 
-               (transformOn (funcExpr.traverse) bindExpr f))
+type Eff s e = State s -- :+: Error e
 
-bindExpr :: Expr -> Expr
-bindExpr e = case e of
-    l@ELam{} -> BoundExpr $ bind (l ^. elamBoundVars) e
-    a@EApp{} ->  (transformOn eappFunc bindExpr) 
-               . (transformOn (eappArgs.traverse) bindExpr) $ a
-    l@ELet{} ->  (transformOn (eletVars.traverse._2) bindExpr)
-               . (transformOn eletBody bindExpr) $ l
-    h@EHandle{} -> (transformOn ehandleExpr bindExpr)
-               . (transformOn (ehandleBindings.traverse) bindFuncDef) $ h
-    c@ECase{} -> (transformOn ecaseExpr bindExpr)
-               . (transformOn (ecaseBody.traverse) bindCase) $ c
-    a@EAnn{} -> transformOn eannExpr bindExpr a
-    _ -> e
+data Env = Env{_types:: M.Map String Kind,
+               _funcs:: M.Map String Type,
+               _effs :: M.Map String EffectType}
 
-bindCase :: Case -> Case
-bindCase = (transformOn (casePattern.traverse) bindPattern)
-         . (transformOn (caseGuard.traverse) bindExpr)
-         . (transformOn caseExpr bindExpr)
+makeLenses ''Env
 
-bindPattern :: Pattern -> Pattern
-bindPattern p = case p of
-    a@PAnn{} -> transformOn pannPattern bindPattern $ a
-    a@PApp{} -> transformOn (pappArgs.traverse) bindPattern $ a
+initialEnv = Env{_types=M.empty, _funcs=M.empty, _effs=M.empty}
 
-bindTypeDef :: TypeDef -> TypeDef
-bindTypeDef f@(BoundTypeDef{}) = f
-bindTypeDef f@(TypeDef{}) = 
-           let vars = f ^. typeBoundVars
-            in BoundTypeDef (bind vars f) 
+type EnvEff = Eff Env String
 
-bindEffectDef :: EffectDef -> EffectDef
-bindEffectDef f@(BoundEffectDef{}) = f
-bindEffectDef f@(EffectDef{}) = 
-           let vars = f ^. effectBoundVars
-            in BoundEffectDef (bind vars f) 
+inferTypeDef :: (Has EnvEff sig m) => Module -> m Module
+inferTypeDef m = do
+  env::Env <- get
+  put $ set types (ts env) env
+  return m
+  where tdefs = universeOn (topStmts.traverse._TDef) m
+        ts env = L.foldl' (\s e -> s) (env ^. types) tdefs
+        insertType ts t = M.insert (t ^. typeName) (k t) ts 
+        k t = 
+           let loc = _typeLoc t
+               args = t ^. typeArgs
+               star = KStar loc
+            in if (L.length args) == 0 then star
+                else KFunc (fmap (\(_, kk) -> case kk of
+                                     Nothing -> star
+                                     Just kkk -> kkk) args) star loc 
 
-bindVars :: Module -> Module
-bindVars = (transformOn (topStmts.traverse._FDef) bindFuncDef)
-         . (transformOn (topStmts.traverse._TDef) bindTypeDef)
-         . (transformOn (topStmts.traverse._EDef) bindEffectDef)
-
-infer :: Module -> Module
-infer = bindVars
+infer :: Module -> Either String (Env, Module)
+infer m = run . runError . runState initialEnv $ inferTypeDef m

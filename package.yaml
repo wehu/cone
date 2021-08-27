@@ -25,6 +25,8 @@ dependencies:
 - array
 - lens
 - unbound-generics
+- fused-effects
+- containers
 
 library:
   source-dirs: src
