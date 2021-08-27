@@ -24,6 +24,7 @@ dependencies:
 - parsec
 - array
 - lens
+- unbound-generics
 
 library:
   source-dirs: src

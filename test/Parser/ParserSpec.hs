@@ -9,6 +9,7 @@ import Data.Either
 import Data.Text
 import Control.Lens
 import NeatInterpolation (text)
+import Unbound.Generics.LocallyNameless
 
 moduleSpec = hspec $ do
   describe "module syntax" $ do
@@ -68,7 +69,7 @@ typeSpec = hspec $ do
 	   }
        |]
        --(show $ parse "" source) `shouldBe` "a"
-       ((parse "" source)
+       (name2String $ (parse "" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
            ^? ix 0 ^._Just._2._Just.tappArgs
            ^? ix 0 ^._Just.tvar) `shouldBe` "b"
@@ -82,7 +83,7 @@ typeSpec = hspec $ do
 	   }
        |]
        --(show $ parse "" source) `shouldBe` "a"
-       ((parse "" source)
+       (name2String $ (parse "" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
            ^? ix 0 ^._Just._2._Just.tfuncResult.tvar) `shouldBe` "c"
 
@@ -95,7 +96,7 @@ typeSpec = hspec $ do
 	   }
        |]
        --(show $ parse "" source) `shouldBe` "a"
-       ((parse "" source)
+       (name2String $ (parse "" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
            ^? ix 0 ^._Just._2._Just.tannType.tvar) `shouldBe` "c"
 
@@ -123,7 +124,7 @@ typeSpec = hspec $ do
 	   }
        |]
        --(show $ parse "" source) `shouldBe` "a"
-       ((parse "xxx" source)
+       (name2String $ (parse "xxx" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
            ^? ix 0 ^._Just._2._Just.tfuncEff._Just.effAppArgs
            ^? ix 0 ^._Just.tvar) `shouldBe` "c"
@@ -137,7 +138,7 @@ typeSpec = hspec $ do
 	   }
        |]
        --(show $ parse "" source) `shouldBe` "a"
-       ((parse "xxx" source)
+       (name2String $ (parse "xxx" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
            ^? ix 0 ^._Just._2._Just.tfuncEff._Just.effList
            ^? ix 1 ^._Just.effAppArgs
@@ -152,7 +153,7 @@ typeSpec = hspec $ do
 	   }
        |]
        --(show $ parse "" source) `shouldBe` "a"
-       ((parse "xxx" source)
+       (name2String $ (parse "xxx" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcArgs
            ^? ix 0 ^._Just._2._Just.tfuncEff._Just.effList
            ^? ix 1 ^._Just.effAnnType.effAppArgs

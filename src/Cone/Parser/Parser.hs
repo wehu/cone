@@ -4,7 +4,7 @@ module Cone.Parser.Parser (parse) where
 import qualified Cone.Parser.AST as A
 import qualified Cone.Parser.Lexer as L
 import Data.Functor.Identity
-
+import Unbound.Generics.LocallyNameless
 import qualified Text.Parsec as P
 import Text.Parsec.Pos (newPos)
 
@@ -118,7 +118,7 @@ type_ :: Parser A.Type
 type_ = (tann <$> 
          ((P.try (A.TApp <$> namePath <* less <*> (P.many1 type_) <* greater)
            P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType)
-           P.<|> (A.TVar <$> ident)
+           P.<|> (A.TVar <$> (s2n <$> ident))
            P.<|> (A.TPrim <$> primType))
           <*> getPos)) <*> (P.optionMaybe $ colon *> kind) <*> getPos
         P.<|> parens type_

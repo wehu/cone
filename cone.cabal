@@ -38,6 +38,7 @@ library
     , base >=4.7 && <5
     , lens
     , parsec
+    , unbound-generics
   default-language: Haskell2010
 
 executable cone-exe
@@ -53,6 +54,7 @@ executable cone-exe
     , cone
     , lens
     , parsec
+    , unbound-generics
   default-language: Haskell2010
 
 test-suite cone-test
@@ -73,4 +75,5 @@ test-suite cone-test
     , neat-interpolation
     , parsec
     , text
+    , unbound-generics
   default-language: Haskell2010
