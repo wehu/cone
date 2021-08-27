@@ -6,6 +6,7 @@ import qualified Cone.Parser.Lexer as L
 import Data.Functor.Identity
 import Unbound.Generics.LocallyNameless
 import qualified Text.Parsec as P
+import Data.List
 import Text.Parsec.Pos (newPos)
 
 type Parser a = P.ParsecT [L.Token] () Identity a
@@ -83,8 +84,8 @@ braces e = lBrace *> (P.optional semi) *> e <* (P.optional semi) <* rBrace
 
 brackets e = lBracket *> e <* rBracket
 
-namePath :: Parser [String]
-namePath = P.sepBy1 ident backSlash
+namePath :: Parser A.NamePath
+namePath = intercalate "\\" <$> P.sepBy1 ident backSlash
 
 imports :: Parser [A.ImportStmt]
 imports = P.many $ 
@@ -116,7 +117,7 @@ primType = A.I8 <$ i8
 
 type_ :: Parser A.Type
 type_ = (tann <$> 
-         ((P.try (A.TApp <$> namePath <* less <*> (P.many1 type_) <* greater)
+         ((P.try (A.TApp <$> (s2n <$> namePath) <* less <*> (P.many1 type_) <* greater)
            P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType)
            P.<|> (A.TVar <$> (s2n <$> ident))
            P.<|> (A.TPrim <$> primType))

@@ -17,7 +17,7 @@ moduleSpec = hspec $ do
        let source = unpack [text|
            module foo\bar
        |]
-       ((parse "" source)^._Right.moduleName) `shouldBe` ["foo", "bar"]
+       ((parse "" source)^._Right.moduleName) `shouldBe` "foo\\bar"
     
     it "module with one import" $ do
        let source = unpack [text|
@@ -25,7 +25,7 @@ moduleSpec = hspec $ do
 	   import foo
        |]
        ((parse "" source)
-          ^._Right.imports ^? ix 0 ^._Just.importPath) `shouldBe` ["foo"]
+          ^._Right.imports ^? ix 0 ^._Just.importPath) `shouldBe` "foo"
 
     it "module with two imports" $ do
        let source = unpack [text|
@@ -34,7 +34,7 @@ moduleSpec = hspec $ do
 	   import bar;
        |]
        ((parse "" source)
-          ^._Right.imports ^? ix 1 ^._Just.importPath) `shouldBe` ["bar"]
+          ^._Right.imports ^? ix 1 ^._Just.importPath) `shouldBe` "bar"
 
     it "module with import alias" $ do
        let source = unpack [text|
@@ -172,7 +172,7 @@ exprSpec = hspec $ do
        --(show $ parse "" source) `shouldBe` "a"
        ((parse "" source)
            ^._Right.topStmts ^? ix 0 ^._Just._FDef.funcExpr
-           ._Just.eappFunc.evarName) `shouldBe` ["foo"]
+           ._Just.eappFunc.evarName) `shouldBe` "foo"
 
     it "expr lambda" $ do
        let source = unpack [text|

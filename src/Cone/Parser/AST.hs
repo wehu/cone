@@ -24,7 +24,7 @@ instance Semigroup (Name a) where
 instance Monoid (Name a) where
   mempty = s2n ""
 
-type NamePath = [String]
+type NamePath = String
 
 data Attr = String
           | Int
@@ -57,7 +57,7 @@ data Type = TPrim{_tprim :: PrimType, _tloc :: Location}
           | TVar{_tvar :: TVar, _tloc :: Location}
           | TFunc{_tfuncArgs :: [Type], _tfuncEff :: Maybe EffectType,
                   _tfuncResult :: Type, _tloc :: Location}
-          | TApp{_tappName :: NamePath, _tappArgs :: [Type], _tloc :: Location}
+          | TApp{_tappName :: TVar, _tappArgs :: [Type], _tloc :: Location}
           | TAnn{_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
