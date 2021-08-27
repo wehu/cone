@@ -177,7 +177,8 @@ exprSpec = hspec $ do
        let source = unpack [text|
            module foo
 
-	   fun a(a : a<b>) : c {
+	   fun a(a : \
+        a<b>) : c {
 		   fn(arg) {a} \
 	   }
        |]
@@ -206,7 +207,7 @@ effectDefSpec = hspec $ do
            module foo
 
 	   effect ee <b> {
-           func a(b)
+           fun a(b) : b
        }
        |]
        --(show $ parse "" source) `shouldBe` "a"
@@ -218,3 +219,4 @@ parserSpec = do
     typeSpec
     exprSpec
     typeDefSpec
+    effectDefSpec

@@ -175,7 +175,9 @@ typeArgs = less *>
             <* greater
 
 typeCon :: Parser A.TypeCon
-typeCon = A.TypeCon <$> ident <*> parens (P.sepBy type_ comma) <*> getPos
+typeCon = A.TypeCon <$> ident <*> 
+            (parens (P.sepBy1 type_ comma)
+             P.<|> return []) <*> getPos
 
 typeDef :: Parser A.TypeDef
 typeDef = A.TypeDef <$ kType <*> ident <*> typeArgs
@@ -183,8 +185,7 @@ typeDef = A.TypeDef <$ kType <*> ident <*> typeArgs
 
 funcIntf :: Parser A.FuncIntf
 funcIntf = A.FuncIntf <$ kFunc <*> ident <*>
-      (parens (P.sepBy1 type_ comma)
-       P.<|> (return [])) <*> getPos
+      parens (P.sepBy type_ comma) <* colon <*> type_ <*> getPos
 
 effectDef :: Parser A.EffectDef
 effectDef = A.EffectDef <$ kEffect <*> ident <*> typeArgs

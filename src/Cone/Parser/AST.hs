@@ -131,7 +131,7 @@ instance Plated TypeCon where
   plate = uniplate
 
 data FuncIntf = FuncIntf{_intfName :: String, _intfArgs :: [Type],
-                         _intfLoc :: Location}
+                         _intfResultType :: Type, _intfLoc :: Location}
                   deriving (Eq,Ord,Show,Read,Data,Typeable)
 
 instance Plated FuncIntf where
