@@ -173,7 +173,25 @@ makePrisms ''Attr
 instance Plated Location where
   plate = uniplate
 
-instance Alpha Location
+instance Alpha Location where
+  aeq' _ctx i j = True
+
+  fvAny' _ctx _nfn i = pure i
+
+  close _ctx _b i = i
+  open _ctx _b i = i
+
+  isPat _ = mempty
+  isTerm _ = mempty
+
+  nthPatFind _ = mempty
+  namePatFind _ = mempty
+
+  swaps' _ctx _p i = i
+  freshen' _ctx i = return (i, mempty)
+  lfreshen' _ctx i cont = cont i mempty
+
+  acompare' _ctx i j = EQ
 
 instance Subst Type Location
 
