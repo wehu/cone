@@ -61,9 +61,12 @@ initTypeDef m = do
         insertTconType fs t = 
            let cons = t ^. typeCons
                f = \fs c -> do
+                 env <- get @Env
                  let cn = c ^. typeConName
                      cargs = c ^. typeConArgs
-                     targs = t ^.. typeArgs.traverse._1
+                     pos = c ^.typeConLoc
+                     targs = (t ^.. typeArgs.traverse._1) ++
+                         (fmap (\n -> s2n n) $ M.keys (env ^.types))
                      b = bind targs cargs
                      fvars = (b ^..fv):: [TVar]
                   in do
