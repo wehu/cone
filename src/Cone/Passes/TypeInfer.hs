@@ -10,7 +10,7 @@ import Cone.Parser.AST
 import Control.Lens.Plated
 import Control.Lens
 import Unbound.Generics.LocallyNameless
-import Unbound.Generics.LocallyNameless.Bind
+import Unbound.Generics.LocallyNameless.Unsafe
 import Cone.Passes.BindTypeVars
 import Control.Effect.State
 import Control.Effect.Error
@@ -37,16 +37,17 @@ type EnvEff = Eff Env String
 inferTypeDef :: (Has EnvEff sig m) => Module -> m Module
 inferTypeDef m = do
   env <- get @Env
-  newTypes <- ts env
-  put $ set types newTypes env
-  newTcons <- tcons env
-  put $ set funcs newTcons env
+  tkinds <- ts env
+  put $ set types tkinds env
+  tconTypes <- tcons env
+  put $ set funcs tconTypes env
   return m
   where tdefs = universeOn (topStmts.traverse._TDef) m
 
         ts env = foldM insertType (env ^. types) tdefs
-        insertType ts (BoundTypeDef (B _ t)) =
-           let tn = t ^. typeName
+        insertType ts (BoundTypeDef bt) =
+           let (_, t) = unsafeUnbind bt
+               tn = t ^. typeName
              in if M.member tn ts 
                  then throwError $ "redefine a type: " ++ tn
                  else return $ M.insert tn (k t) ts 
@@ -61,8 +62,9 @@ inferTypeDef m = do
                                      Just kkk -> kkk) args) star loc
         
         tcons env = foldM insertTcon (env ^. funcs) tdefs
-        insertTcon fs (BoundTypeDef (B _ t)) = 
-           let cons = t ^. typeCons
+        insertTcon fs (BoundTypeDef bt) = 
+           let (_, t) = unsafeUnbind bt
+               cons = t ^. typeCons
                f = \fs c -> do
                  let cn = c ^. typeConName
                   in if M.member cn fs
@@ -75,6 +77,9 @@ inferTypeDef m = do
               tn = t ^. typeName
               pos = c ^. typeConLoc
            in TFunc targs Nothing (TApp (s2n tn) targs pos) pos
+
+inferEffTypeDef :: (Has EnvEff sig m) => Module -> m Module
+inferEffTypeDef = return
 
 infer :: Module -> Either String (Env, Module)
 infer m = run . runError . runState initialEnv $ 
