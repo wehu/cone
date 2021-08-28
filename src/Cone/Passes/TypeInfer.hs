@@ -265,7 +265,7 @@ initEffIntfDef m = do
                            in do
                              k <- inferTypeKind (Scope M.empty M.empty) bt
                              checkTypeKind k
-                             return $ M.insert en bt is
+                             return $ M.insert intfn bt is
             in foldM f intfs is
         intfType i e = 
           let iargs = i ^. intfArgs
@@ -279,12 +279,12 @@ initEffIntfDef m = do
 
 -- initFuncDef :: (Has EnvEff sig m) => Module -> m ()
 -- initFuncDef m = do
-  -- env <- get @Env
-  -- fs <- funcTypes env
-  -- put $ set funcs fs env
-  -- where fdefs = universeOn (topStmts.traverse._FDef) m
-        -- funcTypes env = 
-          -- let globalTypes = (fmap (\n -> s2n n) $ M.keys (env ^.types))
+--   env <- get @Env
+--   fs <- funcTypes env
+--   put $ set funcs fs env
+--   where fdefs = universeOn (topStmts.traverse._FDef) m
+--         funcTypes env = 
+--           let globalTypes = (fmap (\n -> s2n n) $ M.keys (env ^.types))
            
 
 infer :: Module -> Either String (Env, Module)
