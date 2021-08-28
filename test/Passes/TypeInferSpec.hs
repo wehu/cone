@@ -1,21 +1,24 @@
-{-# LANGUAGE QuasiQuotes, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Passes.TypeInferSpec where
 
-import Test.Hspec
-import Cone.Parser.Parser
 import Cone.Parser.AST
+import Cone.Parser.Parser
 import Cone.Passes.TypeInfer
+import Control.Lens
 import Data.Either
 import Data.Text
-import Control.Lens
 import NeatInterpolation (text)
+import Test.Hspec
 import Unbound.Generics.LocallyNameless
 
 inferTypeDefSpec = hspec $ do
   describe "infer type def kinds" $ do
     it "infer " $ do
-       let source = unpack [text|
+      let source =
+            unpack
+              [text|
            module foo\bar
 
           type ff {
@@ -41,9 +44,12 @@ inferTypeDefSpec = hspec $ do
      }
 
        |]
-       --(show $ fmap (\m -> infer m) $ parse "" source) `shouldBe` ""
-       (fmap (\m -> do infer m; return ())
-          (parse "" source)) `shouldBe` (Right $ Right ())
+      --(show $ fmap (\m -> infer m) $ parse "" source) `shouldBe` ""
+      ( fmap
+          (\m -> do infer m; return ())
+          (parse "" source)
+        )
+        `shouldBe` (Right $ Right ())
 
 inferTypeSpec = do
   inferTypeDefSpec

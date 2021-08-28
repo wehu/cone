@@ -3,5 +3,5 @@ import Passes.TypeInferSpec
 
 main :: IO ()
 main = do
-    parserSpec
-    inferTypeSpec
+  parserSpec
+  inferTypeSpec

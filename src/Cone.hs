@@ -1,6 +1,7 @@
 module Cone
-    ( coneMain 
-    ) where
+  ( coneMain,
+  )
+where
 
 coneMain :: IO ()
 coneMain = putStrLn "cone"
