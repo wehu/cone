@@ -48,9 +48,10 @@ initTypeDef m = do
         ts env = foldM insertTypeKind (env ^. types) tdefs
         insertTypeKind ts t =
            let tn = t ^. typeName
-             in if M.member tn ts 
-                 then throwError $ "redefine a type: " ++ tn
-                 else return $ M.insert tn (typeKind t) ts 
+             in case M.lookup tn ts of
+                 Just ot -> throwError $
+                    "redefine a type: " ++ tn  ++ " vs " ++ show ot
+                 Nothing -> return $ M.insert tn (typeKind t) ts 
         typeKind t = 
           let loc = _typeLoc t
               args = t ^. typeArgs
@@ -78,12 +79,13 @@ initTypeDef m = do
                         "type constructor's type variables should " ++ 
                         "only exists in type arguments: " ++ show fvars
                       else return ()
-                      if M.member cn fs
-                      then throwError $ "type construct has conflict name: " ++ cn
-                      else do
-                        mapM checkTypeKind $ c ^.typeConArgs
-                        let bt = (tconType c t)
-                         in return $ M.insert cn bt fs
+                      case M.lookup cn fs of
+                        Just t -> throwError $ 
+                          "type construct has conflict name: " ++ cn ++ " vs " ++ show t
+                        Nothing -> do
+                          mapM checkTypeKind $ c ^.typeConArgs
+                          let bt = (tconType c t)
+                           in return $ M.insert cn bt fs
             in foldM f fs cons
         tconType c t = 
           let targs = c ^. typeConArgs
