@@ -67,7 +67,16 @@ inferTypeDef m = do
                cons = t ^. typeCons
                f = \fs c -> do
                  let cn = c ^. typeConName
-                  in if M.member cn fs
+                     cargs = c ^. typeConArgs
+                     targs = t ^. typeArgs
+                     b = bind targs cargs
+                     fvars = (b ^..fv):: [Name Expr]
+                  in do
+                      if fvars /= [] then throwError $ 
+                        "type constructor's type variables should " ++ 
+                        "only exists in type arguments"
+                      else return ()
+                      if M.member cn fs
                       then throwError $ "type construct has conflict name: " ++ cn
                       else return $ M.insert cn (tconType c t) fs
             in foldM f fs cons

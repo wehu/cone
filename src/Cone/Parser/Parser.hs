@@ -117,7 +117,7 @@ primType = A.I8 <$ i8
 
 type_ :: Parser A.Type
 type_ = (tann <$> 
-         ((P.try (A.TApp <$> (s2n <$> namePath) <* less <*> (P.many1 type_) <* greater)
+         ((P.try (A.TApp <$> (s2n <$> namePath) <* less <*> (P.sepBy1 type_ comma) <* greater)
            P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType)
            P.<|> (A.TVar <$> (s2n <$> ident))
            P.<|> (A.TPrim <$> primType))
@@ -145,7 +145,7 @@ effKind = (A.EKStar <$ star
 effType :: Parser A.EffectType
 effType = parens effType
           P.<|> (ekann <$>
-           (((P.try $ A.EffApp <$> (s2n <$> namePath) <* less <*> (P.many1 type_) <* greater)
+           (((P.try $ A.EffApp <$> (s2n <$> namePath) <* less <*> (P.sepBy1 type_ comma) <* greater)
            P.<|> (A.EffList <$ less <*> (P.sepBy effType comma) <* greater)
            P.<|> (A.EffVar <$> (s2n <$> ident))) <*> getPos)
              <*> (P.optionMaybe $ colon *> effKind) <*> getPos)
