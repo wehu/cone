@@ -108,15 +108,21 @@ initTypeConDef m = do
               tn = t ^. typeName
               pos = c ^. typeConLoc
               tvars = t ^..typeArgs.traverse._1
-              bt = bind tvars $ TFunc targs Nothing (TApp (s2n tn) 
-                  (fmap (\t -> TVar t pos) tvars) pos) pos
+              rt = TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
+              bt = bind tvars $ 
+                if targs == []
+                  then rt
+                  else TFunc targs Nothing rt pos
            in BoundType bt
            
 inferTypeKind :: (Has EnvEff sig m) => Scope -> Type -> m Kind
 inferTypeKind scope a@TApp{..} = do
   ak <- inferTypeKind scope $ TVar _tappName _tloc
   case ak of
-    KStar{} -> throwError $ "expected a func kind, but got " ++ show ak
+    KStar{} -> 
+      if _tappArgs == []
+        then return ak
+        else throwError $ "expected a func kind, but got " ++ show ak
     KFunc{..} -> if L.length _tappArgs /= L.length _kfuncArgs
       then throwError $ "kind arguments mismatch: " ++ show _tappArgs ++ " vs " ++ show _kfuncArgs
       else do

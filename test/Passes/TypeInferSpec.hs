@@ -18,8 +18,12 @@ inferTypeDefSpec = hspec $ do
        let source = unpack [text|
            module foo\bar
 
+          type ff {
+            fff
+          }
+
 	   type a<b> {
-		   c(b, a<b>)
+		   c(b, ff)
        c1(b)
      }
 
