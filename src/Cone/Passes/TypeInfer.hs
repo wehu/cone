@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Cone.Passes.TypeInfer(infer) where
 
@@ -18,8 +19,9 @@ import Control.Carrier.State.Strict
 import Control.Carrier.Error.Either
 import qualified Data.Map as M
 import qualified Data.List as L
+import Control.Monad
 
-type Eff s e = State s -- :+: Error e
+type Eff s e = State s :+: Error e
 
 data Env = Env{_types:: M.Map String Kind,
                _funcs:: M.Map String Type,
@@ -34,17 +36,22 @@ type EnvEff = Eff Env String
 
 inferTypeDef :: (Has EnvEff sig m) => Module -> m Module
 inferTypeDef m = do
-  env::Env <- get
-  put $ set types (ts env) env
+  env <- get @Env
+  newTypes <- ts env
+  put $ set types newTypes env
   return m
   where tdefs = universeOn (topStmts.traverse._TDef) m
-        ts env = L.foldl' insertType (env ^. types) tdefs
-        insertType ts (BoundTypeDef (B _ t)) = M.insert (t ^. typeName) (k t) ts 
-        insertType ts _ = ts
+        ts env = foldM insertType (env ^. types) tdefs
+        insertType ts (BoundTypeDef (B _ t)) =
+           let tn = t ^. typeName
+             in if M.member tn ts 
+                 then throwError $ "redefine a type: " ++ tn
+                 else return $ M.insert tn (k t) ts 
+        insertType ts _ = return ts
         k t = 
-           let loc = _typeLoc t
-               args = t ^. typeArgs
-               star = KStar loc
+          let loc = _typeLoc t
+              args = t ^. typeArgs
+              star = KStar loc
             in if args == [] then star
                 else KFunc (fmap (\(_, kk) -> case kk of
                                      Nothing -> star
