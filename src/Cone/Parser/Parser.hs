@@ -176,9 +176,10 @@ expr = eapp <$> (parens expr
                        _ -> e
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
-typeArgs = less *>
+typeArgs = (less *>
             (P.sepBy ((,) <$> (s2n <$> ident) <*> (P.optionMaybe $ colon *> kind)) comma) 
-            <* greater
+            <* greater)
+            P.<|> return []
 
 typeCon :: Parser A.TypeCon
 typeCon = A.TypeCon <$> ident <*> 

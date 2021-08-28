@@ -26,6 +26,7 @@ type Eff s e = State s :+: Error e
 
 type TypeKinds = M.Map String Kind
 type EffKinds  = M.Map String EffKind
+type EffIntfTypes  = M.Map String (M.Map String Type)
 
 data Scope = Scope{_typeKinds::TypeKinds, _effKinds::EffKinds}
 
@@ -33,12 +34,14 @@ makeLenses ''Scope
 
 data Env = Env{_types:: TypeKinds,
                _funcs:: M.Map String Type,
-               _effs :: EffKinds}
+               _effs :: EffKinds,
+               _effIntfs :: EffIntfTypes}
             deriving (Show)
 
 makeLenses ''Env
 
-initialEnv = Env{_types=M.empty, _funcs=M.empty, _effs=M.empty}
+initialEnv = Env{_types=M.empty, _funcs=M.empty,
+                 _effs=M.empty, _effIntfs=M.empty}
 
 type EnvEff = Eff Env String
 
@@ -76,7 +79,6 @@ initTypeConDef m = do
         insertTconType globalTypes fs t = 
            let cons = t ^. typeCons
                f = \fs c -> do
-                 env <- get @Env
                  let cn = c ^. typeConName
                      cargs = c ^. typeConArgs
                      pos = c ^.typeConLoc
@@ -142,8 +144,8 @@ inferTypeKind scope v@TVar{..} = do
       Just k -> return k
       Nothing -> throwError $ "cannot find type: " ++ show v
 inferTypeKind scope f@TFunc{..} = do
-  mapM (inferTypeKind scope) _tfuncArgs
-  mapM (inferEffKind scope) _tfuncEff
+  mapM_ (inferTypeKind scope) _tfuncArgs
+  mapM_ (inferEffKind scope) _tfuncEff
   inferTypeKind scope _tfuncResult
   return $ KStar _tloc
 inferTypeKind _ t = return $ KStar $ _tloc t
@@ -224,9 +226,58 @@ checkEffKind k = do
     EKList{..} -> mapM_ checkEffKind _ekList 
     _ -> throwError $ "expected a star eff kind, but got " ++ show k
 
+initEffIntfDef :: (Has EnvEff sig m) => Module -> m ()
+initEffIntfDef m = do
+  env <- get @Env
+  eintfs <- effIntfTypes env
+  put $ set effIntfs eintfs env
+  where edefs = universeOn (topStmts.traverse._EDef) m
+        effIntfTypes env = 
+          let globalTypes = (fmap (\n -> s2n n) $ M.keys (env ^.types))
+           in foldM (insertEffIntfType globalTypes) (env ^. effIntfs) edefs
+        insertEffIntfType globalTypes intfs e = 
+           let is = e ^. effectIntfs
+               en = e ^. effectName
+               f = \is i -> do
+                 let intfn = i ^. intfName
+                     iargs = i ^. intfArgs
+                     iresult = i ^. intfResultType
+                     pos = i ^.intfLoc
+                     targs = (e ^.. effectArgs.traverse._1) ++ globalTypes
+                     b = bind targs $ iresult : iargs
+                     fvars = (b ^..fv):: [TVar]
+                  in do
+                      if fvars /= [] then throwError $ 
+                        "eff interfaces's type variables should " ++ 
+                        "only exists in eff type arguments: " ++ show fvars
+                      else return ()
+                      case M.lookup intfn is of
+                        Just t -> throwError $ 
+                          "eff interface has conflict name: " ++ intfn ++ " vs " ++ show t
+                        Nothing -> do
+                          let bt = (intfType i e)
+                           in do
+                             inferTypeKind (Scope M.empty M.empty) bt
+                             return $ M.insert en bt is
+            in case M.lookup en intfs of
+                 Just e -> throwError $ "effect refined : " ++ en
+                 Nothing -> do 
+                   nis <- foldM f M.empty is
+                   return $ M.insert en nis intfs
+        intfType i e = 
+          let iargs = i ^. intfArgs
+              iresult = i ^. intfResultType
+              intfn = i ^. intfName
+              bvars = i ^. intfBoundVars
+              pos = i ^. intfLoc
+              tvars = e ^..effectArgs.traverse._1
+              bt = bind (tvars ++ bvars) $ TFunc iargs Nothing iresult pos
+           in BoundType bt
+
 infer :: Module -> Either String (Env, Module)
 infer m = run . runError . runState initialEnv $ do
            initTypeDef m
            initEffTypeDef m
            initTypeConDef m
+           initEffIntfDef m
            return m
