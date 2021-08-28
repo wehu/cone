@@ -11,18 +11,20 @@ module Cone.Passes.TypeInfer(infer) where
 import Cone.Parser.AST
 import Control.Lens.Plated
 import Control.Lens
-import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless hiding (fresh, Fresh(..))
 import Unbound.Generics.LocallyNameless.Unsafe
 import Control.Effect.State
 import Control.Effect.Error
+import Control.Effect.Fresh
 import Control.Effect.Sum
 import Control.Carrier.State.Strict
 import Control.Carrier.Error.Either
+import Control.Carrier.Fresh.Strict
 import qualified Data.Map as M
 import qualified Data.List as L
 import Control.Monad
 
-type Eff s e = State s :+: Error e
+type Eff s e = Fresh :+: State s :+: Error e
 
 type TypeKinds = M.Map String Kind
 type EffKinds  = M.Map String EffKind
@@ -223,6 +225,7 @@ inferEffKind scope l@EffList{..} = do
   ls <- mapM (inferEffKind scope) _effList
   mapM_ checkEffKind ls
   return $ EKList ls _effLoc
+inferEffKind scope EffTotal{..} = return $ EKStar _effLoc
 
 checkEffKind :: (Has EnvEff sig m) => EffKind -> m ()
 checkEffKind k = do
@@ -277,20 +280,50 @@ initEffIntfDef m = do
            in BoundType $ bind tvars $ BoundType $ 
                  bind bvars $ TFunc iargs Nothing iresult pos
 
--- initFuncDef :: (Has EnvEff sig m) => Module -> m ()
--- initFuncDef m = do
---   env <- get @Env
---   fs <- funcTypes env
---   put $ set funcs fs env
---   where fdefs = universeOn (topStmts.traverse._FDef) m
---         funcTypes env = 
---           let globalTypes = (fmap (\n -> s2n n) $ M.keys (env ^.types))
-           
+initFuncDef :: (Has EnvEff sig m) => Module -> m ()
+initFuncDef m = do
+  env <- get @Env
+  fs <- funcTypes env
+  put $ set funcs fs env
+  where fdefs = universeOn (topStmts.traverse._FDef) m
+        funcTypes env = 
+          foldM (\fs f ->
+            let pos = f ^. funcLoc
+                fn = f ^. funcName
+                bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^.funcBoundVars
+                scope = Scope (M.fromList bvars) M.empty
+             in do argTypes <- (mapM (\(_, a) -> 
+                                  case a of
+                                    Just t -> do
+                                      inferTypeKind scope t
+                                      return t
+                                    Nothing -> do
+                                      v <- fresh
+                                      return $ TVar (s2n $ "__" ++ show v) pos)
+                                (f ^.funcArgs))
+                   effType <- (case (f ^.funcEffectType) of
+                                Just t -> do
+                                  inferEffKind scope t
+                                  return t
+                                Nothing -> return $ EffTotal pos)
+                   resultType <- (case (f ^.funcResultType) of
+                                   Just t -> do
+                                     inferTypeKind scope t
+                                     return t
+                                   Nothing -> do
+                                     v <- fresh
+                                     return $ TVar (s2n $ "__" ++ show v) pos)
+                   let ft = BoundType $ bind (f ^.funcBoundVars) $
+                             TFunc argTypes (Just effType) resultType pos
+                    in do inferTypeKind scope ft
+                          return $ M.insert fn ft fs)
+            (env ^.funcs) fdefs
 
-infer :: Module -> Either String (Env, Module)
-infer m = run . runError . runState initialEnv $ do
+infer :: Module -> Either String (Env, (Int, Module))
+infer m = run . runError . (runState initialEnv) . runFresh 0 $ do
            initTypeDef m
            initEffTypeDef m
            initTypeConDef m
            initEffIntfDef m
+           initFuncDef m
            return m

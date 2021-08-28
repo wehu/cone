@@ -23,13 +23,13 @@ inferTypeDefSpec = hspec $ do
        c1(b)
      }
 
-     effect a<b> {
+     effect a<b,c> {
        fun test(a<b>) : a<b>
-       fun test1(b) : b
+       fun test1(b,c) : b
      }
 
-     fun foo[a](a: a) {
-       a
+     fun foo[a](a: a) : a{
+       c(a)
      }
 
        |]
