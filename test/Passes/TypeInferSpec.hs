@@ -39,7 +39,7 @@ inferTypeDefSpec = hspec $ do
        foo(a)
      }
 
-     fun foo[a](a: a) : i8 {
+     fun foo[a](a: a) : a {
         foo(a)
      }
 
