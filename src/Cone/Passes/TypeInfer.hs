@@ -280,6 +280,9 @@ initEffIntfDef m = do
            in BoundType $ bind tvars $ BoundType $ 
                  bind bvars $ TFunc iargs Nothing iresult pos
 
+magicVarName :: Int -> TVar
+magicVarName i = s2n $ "__" ++ show i
+
 initFuncDef :: (Has EnvEff sig m) => Module -> m ()
 initFuncDef m = do
   env <- get @Env
@@ -299,7 +302,7 @@ initFuncDef m = do
                                       return t
                                     Nothing -> do
                                       v <- fresh
-                                      return $ TVar (s2n $ "__" ++ show v) pos)
+                                      return $ TVar (magicVarName v) pos)
                                 (f ^.funcArgs))
                    effType <- (case (f ^.funcEffectType) of
                                 Just t -> do
@@ -312,7 +315,7 @@ initFuncDef m = do
                                      return t
                                    Nothing -> do
                                      v <- fresh
-                                     return $ TVar (s2n $ "__" ++ show v) pos)
+                                     return $ TVar (magicVarName v) pos)
                    let ft = BoundType $ bind (f ^.funcBoundVars) $
                              TFunc argTypes (Just effType) resultType pos
                     in do inferTypeKind scope ft
