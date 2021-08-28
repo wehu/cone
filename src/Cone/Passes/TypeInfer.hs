@@ -25,10 +25,11 @@ import Control.Monad
 type Eff s e = State s :+: Error e
 
 type TypeKinds = M.Map String Kind
+type EffKinds  = M.Map String EffKind
 
 data Env = Env{_types:: TypeKinds,
                _funcs:: M.Map String Type,
-               _effs :: M.Map String EffectType}
+               _effs :: EffKinds}
             deriving (Show)
 
 makeLenses ''Env
@@ -42,11 +43,7 @@ initTypeDef m = do
   env <- get @Env
   tkinds <- ts env
   put $ set types tkinds env
-  env <- get @Env
-  tconTypes <- tcons env
-  put $ set funcs tconTypes env
   where tdefs = universeOn (topStmts.traverse._TDef) m
-
         ts env = foldM insertTypeKind (env ^. types) tdefs
         insertTypeKind ts t =
            let tn = t ^. typeName
@@ -62,7 +59,13 @@ initTypeDef m = do
                 else KFunc (fmap (\(_, kk) -> case kk of
                                      Nothing -> star
                                      Just kkk -> kkk) args) star loc
-        
+
+initTypeConDef :: (Has EnvEff sig m) => Module -> m ()
+initTypeConDef m = do
+  env <- get @Env
+  tconTypes <- tcons env
+  put $ set funcs tconTypes env
+  where tdefs = universeOn (topStmts.traverse._TDef) m
         tcons env = 
           let globalTypes = (fmap (\n -> s2n n) $ M.keys (env ^.types))
            in foldM (insertTconType globalTypes) (env ^. funcs) tdefs
@@ -146,10 +149,34 @@ checkTypeKind k = do
     KStar{} -> return ()
     _ -> throwError $ "expected a star kind, but got " ++ show k
 
-inferEffTypeDef :: (Has EnvEff sig m) => Module -> m Module
-inferEffTypeDef = return
+initEffTypeDef :: (Has EnvEff sig m) => Module -> m () 
+initEffTypeDef m = do
+  env <- get @Env
+  ekinds <- eff env
+  put $ set effs ekinds env
+  where edefs = universeOn (topStmts.traverse._EDef) m
+
+        eff env = foldM insertEffKind (env ^. effs) edefs
+        insertEffKind es e =
+           let en = e ^. effectName
+             in case M.lookup en es of
+                 Just oe -> throwError $
+                    "redefine an effect: " ++ en  ++ " vs " ++ show oe
+                 Nothing -> return $ M.insert en (effKind e) es 
+        effKind e = 
+          let loc = _effectLoc e
+              args = e ^. effectArgs
+              star = KStar loc
+              estar = EKStar loc
+            in if args == [] then estar
+                else EKFunc (fmap (\(_, kk) -> case kk of
+                                     Nothing -> star
+                                     Just kkk -> kkk) args) estar loc
+
 
 infer :: Module -> Either String (Env, Module)
 infer m = run . runError . runState initialEnv $ do
            initTypeDef m
+           initEffTypeDef m
+           initTypeConDef m
            return m
