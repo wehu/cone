@@ -75,6 +75,7 @@ data Kind = KStar{_kloc :: Location}
 data EffKind = EKStar{_ekloc :: Location}
              | EKFunc{_ekfuncArgs :: [Kind], _ekfuncResult :: EffKind,
                       _ekloc :: Location}
+             | EKList{_ekList :: [EffKind], _ekLoc :: Location}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data EffectType = EffVar{_effVarName :: TVar, _effLoc :: Location}
@@ -83,7 +84,7 @@ data EffectType = EffVar{_effVarName :: TVar, _effLoc :: Location}
                 | EffList{_effList :: [EffectType], _effLoc :: Location}
                 | EffAnn{_effAnnType :: EffectType, _effAnnKind :: EffKind,
                          _effLoc :: Location}
-                | BoundEffType{_boundEffType :: Bind [TVar] Type}
+                | BoundEffType{_boundEffType :: Bind [TVar] EffectType}
                     deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data Pattern = PVar{_pvarName :: String, _ploc :: Location}

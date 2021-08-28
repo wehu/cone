@@ -27,6 +27,10 @@ type Eff s e = State s :+: Error e
 type TypeKinds = M.Map String Kind
 type EffKinds  = M.Map String EffKind
 
+data Scope = Scope{_typeKinds::TypeKinds, _effKinds::EffKinds}
+
+makeLenses ''Scope
+
 data Env = Env{_types:: TypeKinds,
                _funcs:: M.Map String Type,
                _effs :: EffKinds}
@@ -90,7 +94,7 @@ initTypeConDef m = do
                         Nothing -> do
                           let bt = (tconType c t)
                            in do
-                             inferTypeKind M.empty bt
+                             inferTypeKind (Scope M.empty M.empty) bt
                              return $ M.insert cn bt fs
             in foldM f fs cons
         tconType c t = 
@@ -102,7 +106,7 @@ initTypeConDef m = do
                   (fmap (\t -> TVar t pos) tvars) pos) pos
            in BoundType bt
            
-inferTypeKind :: (Has EnvEff sig m) => TypeKinds -> Type -> m Kind
+inferTypeKind :: (Has EnvEff sig m) => Scope -> Type -> m Kind
 inferTypeKind scope a@TApp{..} = do
   ak <- inferTypeKind scope $ TVar _tappName _tloc
   case ak of
@@ -128,17 +132,18 @@ inferTypeKind scope b@BoundType{..} =
   let (bvs, t) = unsafeUnbind $ _boundType
       newScope = L.foldl' (
         \s e ->
-          M.insert (name2String e) (KStar $ _tloc t) s) scope bvs
-   in inferTypeKind newScope t
+          M.insert (name2String e) (KStar $ _tloc t) s) (scope^.typeKinds) bvs
+   in inferTypeKind scope{_typeKinds=newScope} t
 inferTypeKind scope v@TVar{..} = do
   kinds <- _types <$> get @Env
-  case M.lookup (name2String _tvar) scope of
+  case M.lookup (name2String _tvar) (scope^.typeKinds) of
     Just k -> return k
     Nothing -> case M.lookup (name2String _tvar) kinds of
       Just k -> return k
       Nothing -> throwError $ "cannot find type: " ++ show v
 inferTypeKind scope f@TFunc{..} = do
   mapM (inferTypeKind scope) _tfuncArgs
+  mapM (inferEffKind scope) _tfuncEff
   inferTypeKind scope _tfuncResult
   return $ KStar _tloc
 inferTypeKind _ t = return $ KStar $ _tloc t
@@ -173,6 +178,51 @@ initEffTypeDef m = do
                                      Nothing -> star
                                      Just kkk -> kkk) args) estar loc
 
+inferEffKind :: (Has EnvEff sig m) => Scope -> EffectType -> m EffKind
+inferEffKind scope a@EffApp{..} = do 
+  ak <- inferEffKind scope $ EffVar _effAppName _effLoc
+  case ak of
+    EKFunc{..} -> if L.length _effAppArgs /= L.length _ekfuncArgs
+      then throwError $ "eff kind arguments mismatch: " ++ show _effAppArgs ++ " vs " ++ show _ekfuncArgs
+      else do
+        mapM (\(a, b) -> do
+          e <- inferTypeKind scope a
+          checkTypeKind e
+          checkTypeKind b
+          if aeq e b then return ()
+          else throwError $ "eff kind mismatch: " ++ show e ++ " vs " ++ show b)
+          [(a, b) | a <- _effAppArgs | b <- _ekfuncArgs]
+        checkEffKind _ekfuncResult
+        return _ekfuncResult
+    _ -> throwError $ "expected a func eff kind, but got " ++ show ak
+inferEffKind scope a@EffAnn{..} = do
+  k <- inferEffKind scope _effAnnType
+  checkEffKind k
+  if aeq k _effAnnKind then return k
+  else throwError $ "eff kind mismatch: " ++ show k ++ " vs " ++ show _effAnnKind
+inferEffKind scope b@BoundEffType{..} = 
+  let (bvs, t) = unsafeUnbind $ _boundEffType
+      newScope = L.foldl' (
+        \s e ->
+          M.insert (name2String e) (EKStar $ _effLoc t) s) (scope^.effKinds) bvs
+   in inferEffKind scope{_effKinds=newScope} t
+inferEffKind scope v@EffVar{..} = do
+  kinds <- _effs <$> get @Env
+  case M.lookup (name2String _effVarName) (scope^.effKinds) of
+    Just k -> return k
+    Nothing -> case M.lookup (name2String _effVarName) kinds of
+      Just k -> return k
+      Nothing -> throwError $ "cannot find type: " ++ show v
+inferEffKind scope l@EffList{..} = do
+  ls <- mapM (inferEffKind scope) _effList
+  return $ EKList ls _effLoc
+
+checkEffKind :: (Has EnvEff sig m) => EffKind -> m ()
+checkEffKind k = do
+  case k of
+    EKStar{} -> return ()
+    EKList{..} -> mapM_ checkEffKind _ekList 
+    _ -> throwError $ "expected a star eff kind, but got " ++ show k
 
 infer :: Module -> Either String (Env, Module)
 infer m = run . runError . runState initialEnv $ do
