@@ -38,6 +38,7 @@ initTypeDef m = do
   env <- get @Env
   tkinds <- ts env
   put $ set types tkinds env
+  env <- get @Env
   tconTypes <- tcons env
   put $ set funcs tconTypes env
   where tdefs = universeOn (topStmts.traverse._TDef) m
@@ -57,16 +58,17 @@ initTypeDef m = do
                                      Nothing -> star
                                      Just kkk -> kkk) args) star loc
         
-        tcons env = foldM insertTconType (env ^. funcs) tdefs
-        insertTconType fs t = 
+        tcons env = 
+          let globalTypes = (fmap (\n -> s2n n) $ M.keys (env ^.types))
+           in foldM (insertTconType globalTypes) (env ^. funcs) tdefs
+        insertTconType globalTypes fs t = 
            let cons = t ^. typeCons
                f = \fs c -> do
                  env <- get @Env
                  let cn = c ^. typeConName
                      cargs = c ^. typeConArgs
                      pos = c ^.typeConLoc
-                     targs = (t ^.. typeArgs.traverse._1) ++
-                         (fmap (\n -> s2n n) $ M.keys (env ^.types))
+                     targs = (t ^.. typeArgs.traverse._1) ++ globalTypes
                      b = bind targs cargs
                      fvars = (b ^..fv):: [TVar]
                   in do
