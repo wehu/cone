@@ -24,7 +24,9 @@ import Control.Monad
 
 type Eff s e = State s :+: Error e
 
-data Env = Env{_types:: M.Map String Kind,
+type TypeKinds = M.Map String Kind
+
+data Env = Env{_types:: TypeKinds,
                _funcs:: M.Map String Type,
                _effs :: M.Map String EffectType}
             deriving (Show)
@@ -83,9 +85,10 @@ initTypeDef m = do
                         Just t -> throwError $ 
                           "type construct has conflict name: " ++ cn ++ " vs " ++ show t
                         Nothing -> do
-                          mapM checkTypeKind $ c ^.typeConArgs
                           let bt = (tconType c t)
-                           in return $ M.insert cn bt fs
+                           in do
+                             inferTypeKind M.empty bt
+                             return $ M.insert cn bt fs
             in foldM f fs cons
         tconType c t = 
           let targs = c ^. typeConArgs
@@ -95,37 +98,49 @@ initTypeDef m = do
               bt = bind tvars $ TFunc targs Nothing (TApp (s2n tn) targs pos) pos
            in BoundType bt
            
-inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
-inferTypeKind a@TApp{..} = do
-  ak <- inferTypeKind $ TVar _tappName _tloc
+inferTypeKind :: (Has EnvEff sig m) => TypeKinds -> Type -> m Kind
+inferTypeKind scope a@TApp{..} = do
+  ak <- inferTypeKind scope $ TVar _tappName _tloc
   case ak of
     KStar{} -> throwError $ "expected a func kind, but got " ++ show ak
     KFunc{..} -> if L.length _tappArgs /= L.length _kfuncArgs
       then throwError $ "kind arguments mismatch: " ++ show _tappArgs ++ " vs " ++ show _kfuncArgs
       else do
         mapM (\(a, b) -> do
-          t <- inferTypeKind a
+          t <- inferTypeKind scope a
+          checkTypeKind t
+          checkTypeKind b
           if aeq t b then return ()
           else throwError $ "kind mismatch: " ++ show t ++ " vs " ++ show b)
           [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
+        checkTypeKind _kfuncResult
         return _kfuncResult
-inferTypeKind a@TAnn{..} = do
-  k <- inferTypeKind _tannType
+inferTypeKind scope a@TAnn{..} = do
+  k <- inferTypeKind scope _tannType
+  checkTypeKind k
   if aeq k _tannKind then return k
   else throwError $ "kind mismatch: " ++ show k ++ " vs " ++ show _tannKind
-inferTypeKind b@BoundType{..} = 
-  let (_, t) = unsafeUnbind $ _boundType
-   in inferTypeKind t
-inferTypeKind v@TVar{..} = do
+inferTypeKind scope b@BoundType{..} = 
+  let (bvs, t) = unsafeUnbind $ _boundType
+      newScope = L.foldl' (
+        \s e ->
+          M.insert (name2String e) (KStar $ _tloc t) s) scope bvs
+   in inferTypeKind newScope t
+inferTypeKind scope v@TVar{..} = do
   kinds <- _types <$> get @Env
-  case M.lookup (name2String _tvar) kinds of
+  case M.lookup (name2String _tvar) scope of
     Just k -> return k
-    Nothing -> return $ KStar _tloc
-inferTypeKind t = return $ KStar $ _tloc t
+    Nothing -> case M.lookup (name2String _tvar) kinds of
+      Just k -> return k
+      Nothing -> throwError $ "cannot find type: " ++ show v
+inferTypeKind scope f@TFunc{..} = do
+  mapM (inferTypeKind scope) _tfuncArgs
+  inferTypeKind scope _tfuncResult
+  return $ KStar _tloc
+inferTypeKind _ t = return $ KStar $ _tloc t
 
-checkTypeKind :: (Has EnvEff sig m) => Type -> m ()
-checkTypeKind t = do
-  k <- inferTypeKind t
+checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
+checkTypeKind k = do
   case k of
     KStar{} -> return ()
     _ -> throwError $ "expected a star kind, but got " ++ show k
