@@ -11,7 +11,6 @@ import Control.Lens.Plated
 import Control.Lens
 import Unbound.Generics.LocallyNameless
 import Unbound.Generics.LocallyNameless.Unsafe
-import Cone.Passes.BindTypeVars
 import Control.Effect.State
 import Control.Effect.Error
 import Control.Effect.Sum
@@ -45,13 +44,11 @@ initTypeDef m = do
   where tdefs = universeOn (topStmts.traverse._TDef) m
 
         ts env = foldM insertTypeKind (env ^. types) tdefs
-        insertTypeKind ts (BoundTypeDef bt) =
-           let (_, t) = unsafeUnbind bt
-               tn = t ^. typeName
+        insertTypeKind ts t =
+           let tn = t ^. typeName
              in if M.member tn ts 
                  then throwError $ "redefine a type: " ++ tn
                  else return $ M.insert tn (typeKind t) ts 
-        insertTypeKind ts _ = return ts
         typeKind t = 
           let loc = _typeLoc t
               args = t ^. typeArgs
@@ -62,9 +59,8 @@ initTypeDef m = do
                                      Just kkk -> kkk) args) star loc
         
         tcons env = foldM insertTconType (env ^. funcs) tdefs
-        insertTconType fs (BoundTypeDef bt) = 
-           let (_, t) = unsafeUnbind bt
-               cons = t ^. typeCons
+        insertTconType fs t = 
+           let cons = t ^. typeCons
                f = \fs c -> do
                  let cn = c ^. typeConName
                      cargs = c ^. typeConArgs
@@ -80,7 +76,6 @@ initTypeDef m = do
                       then throwError $ "type construct has conflict name: " ++ cn
                       else return $ M.insert cn (tconType c t) fs
             in foldM f fs cons
-        insertTconType fs _ = return fs
         tconType c t = 
           let targs = c ^. typeConArgs
               tn = t ^. typeName
@@ -94,4 +89,4 @@ inferEffTypeDef = return
 
 infer :: Module -> Either String (Env, Module)
 infer m = run . runError . runState initialEnv $ do
-           initTypeDef $ bindTVars m
+           initTypeDef m
