@@ -65,6 +65,7 @@ data Type = TPrim{_tprim :: PrimType, _tloc :: Location}
                   _tfuncResult :: Type, _tloc :: Location}
           | TApp{_tappName :: TVar, _tappArgs :: [Type], _tloc :: Location}
           | TAnn{_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
+          | BoundType{_boundType :: Bind [TVar] Type}
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data Kind = KStar{_kloc :: Location}
@@ -82,6 +83,7 @@ data EffectType = EffVar{_effVarName :: TVar, _effLoc :: Location}
                 | EffList{_effList :: [EffectType], _effLoc :: Location}
                 | EffAnn{_effAnnType :: EffectType, _effAnnKind :: EffKind,
                          _effLoc :: Location}
+                | BoundEffType{_boundEffType :: Bind [TVar] Type}
                     deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data Pattern = PVar{_pvarName :: String, _ploc :: Location}

@@ -34,8 +34,8 @@ initialEnv = Env{_types=M.empty, _funcs=M.empty, _effs=M.empty}
 
 type EnvEff = Eff Env String
 
-inferTypeDef :: (Has EnvEff sig m) => Module -> m Module
-inferTypeDef m = do
+initTypeDef :: (Has EnvEff sig m) => Module -> m Module
+initTypeDef m = do
   env <- get @Env
   tkinds <- ts env
   put $ set types tkinds env
@@ -85,11 +85,13 @@ inferTypeDef m = do
           let targs = c ^. typeConArgs
               tn = t ^. typeName
               pos = c ^. typeConLoc
-           in TFunc targs Nothing (TApp (s2n tn) targs pos) pos
+              tvars = t ^. typeBoundVars
+              bt = bind tvars $ TFunc targs Nothing (TApp (s2n tn) targs pos) pos
+            in BoundType bt
 
 inferEffTypeDef :: (Has EnvEff sig m) => Module -> m Module
 inferEffTypeDef = return
 
 infer :: Module -> Either String (Env, Module)
-infer m = run . runError . runState initialEnv $ 
-           inferTypeDef $ bindTVars m
+infer m = run . runError . runState initialEnv $ do
+           initTypeDef $ bindTVars m
