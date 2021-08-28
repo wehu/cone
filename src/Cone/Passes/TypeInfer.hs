@@ -95,7 +95,8 @@ initTypeDef m = do
               tn = t ^. typeName
               pos = c ^. typeConLoc
               tvars = t ^..typeArgs.traverse._1
-              bt = bind tvars $ TFunc targs Nothing (TApp (s2n tn) targs pos) pos
+              bt = bind tvars $ TFunc targs Nothing (TApp (s2n tn) 
+                  (fmap (\t -> TVar t pos) tvars) pos) pos
            in BoundType bt
            
 inferTypeKind :: (Has EnvEff sig m) => TypeKinds -> Type -> m Kind
