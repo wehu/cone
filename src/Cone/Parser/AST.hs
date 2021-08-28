@@ -1,27 +1,31 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Cone.Parser.AST where
 
 import Control.Lens
 import Control.Lens.Plated
-import Data.Data.Lens (uniplate)
-import Unbound.Generics.LocallyNameless.Name
-import Unbound.Generics.LocallyNameless.Bind
-import Unbound.Generics.LocallyNameless
-import GHC.Generics (Generic)
 import Data.Data
+import Data.Data.Lens (uniplate)
 import Data.Maybe
+import GHC.Generics (Generic)
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Bind
+import Unbound.Generics.LocallyNameless.Name
 
 deriving instance Data a => Data (Name a)
+
 deriving instance Read a => Read (Name a)
 
 deriving instance (Data a, Data b) => Data (Bind a b)
+
 deriving instance (Read a, Read b) => Read (Bind a b)
+
 deriving instance (Eq a, Eq b) => Eq (Bind a b)
+
 deriving instance (Ord a, Ord b) => Ord (Bind a b)
 
 instance Semigroup (Name a) where
@@ -32,130 +36,200 @@ instance Monoid (Name a) where
 
 type NamePath = String
 
-data Attr = String
-          | Int
-          | Bool
-              deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data Attr
+  = String
+  | Int
+  | Bool
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data Location = Location{_fileName :: String, _lineNo :: !Int, _colNo :: !Int}
-                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data Location = Location {_fileName :: String, _lineNo :: !Int, _colNo :: !Int}
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 type NamedAttr = (String, Attr)
 
-data PrimType = I8
-              | I16
-              | I32
-              | I64
-              | U8
-              | U16
-              | U32
-              | U64
-              | F16
-              | F32
-              | F64
-              | BF16
-              | Pred
-                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data PrimType
+  = I8
+  | I16
+  | I32
+  | I64
+  | U8
+  | U16
+  | U32
+  | U64
+  | F16
+  | F32
+  | F64
+  | BF16
+  | Pred
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 type TVar = Name Type
 
-data Type = TPrim{_tprim :: PrimType, _tloc :: Location}
-          | TVar{_tvar :: TVar, _tloc :: Location}
-          | TFunc{_tfuncArgs :: [Type], _tfuncEff :: Maybe EffectType,
-                  _tfuncResult :: Type, _tloc :: Location}
-          | TApp{_tappName :: TVar, _tappArgs :: [Type], _tloc :: Location}
-          | TAnn{_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
-          | BoundType{_boundType :: Bind [TVar] Type}
-              deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data Type
+  = TPrim {_tprim :: PrimType, _tloc :: Location}
+  | TVar {_tvar :: TVar, _tloc :: Location}
+  | TFunc
+      { _tfuncArgs :: [Type],
+        _tfuncEff :: Maybe EffectType,
+        _tfuncResult :: Type,
+        _tloc :: Location
+      }
+  | TApp {_tappName :: TVar, _tappArgs :: [Type], _tloc :: Location}
+  | TAnn {_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
+  | BoundType {_boundType :: Bind [TVar] Type}
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data Kind = KStar{_kloc :: Location}
-          | KFunc{_kfuncArgs :: [Kind], _kfuncResult :: Kind, _kloc :: Location}
-              deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data Kind
+  = KStar {_kloc :: Location}
+  | KFunc {_kfuncArgs :: [Kind], _kfuncResult :: Kind, _kloc :: Location}
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data EffKind = EKStar{_ekloc :: Location}
-             | EKFunc{_ekfuncArgs :: [Kind], _ekfuncResult :: EffKind,
-                      _ekloc :: Location}
-             | EKList{_ekList :: [EffKind], _ekLoc :: Location}
-                 deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data EffKind
+  = EKStar {_ekloc :: Location}
+  | EKFunc
+      { _ekfuncArgs :: [Kind],
+        _ekfuncResult :: EffKind,
+        _ekloc :: Location
+      }
+  | EKList {_ekList :: [EffKind], _ekLoc :: Location}
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data EffectType = EffTotal{_effLoc :: Location}
-                | EffVar{_effVarName :: TVar, _effLoc :: Location}
-                | EffApp{_effAppName :: TVar, _effAppArgs :: [Type],
-                         _effLoc :: Location}
-                | EffList{_effList :: [EffectType], _effLoc :: Location}
-                | EffAnn{_effAnnType :: EffectType, _effAnnKind :: EffKind,
-                         _effLoc :: Location}
-                | BoundEffType{_boundEffType :: Bind [TVar] EffectType}
-                    deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data EffectType
+  = EffTotal {_effLoc :: Location}
+  | EffVar {_effVarName :: TVar, _effLoc :: Location}
+  | EffApp
+      { _effAppName :: TVar,
+        _effAppArgs :: [Type],
+        _effLoc :: Location
+      }
+  | EffList {_effList :: [EffectType], _effLoc :: Location}
+  | EffAnn
+      { _effAnnType :: EffectType,
+        _effAnnKind :: EffKind,
+        _effLoc :: Location
+      }
+  | BoundEffType {_boundEffType :: Bind [TVar] EffectType}
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data Pattern = PVar{_pvarName :: String, _ploc :: Location}
-             | PApp{_pappName :: NamePath, _pappArgs :: [Pattern],
-                    _ploc :: Location}
-             | PAnn{_pannPattern :: Pattern, _pannType :: Type,
-                    _ploc :: Location}
-                 deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data Pattern
+  = PVar {_pvarName :: String, _ploc :: Location}
+  | PApp
+      { _pappName :: NamePath,
+        _pappArgs :: [Pattern],
+        _ploc :: Location
+      }
+  | PAnn
+      { _pannPattern :: Pattern,
+        _pannType :: Type,
+        _ploc :: Location
+      }
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data Expr = EVar{_evarName :: NamePath, _eloc :: Location}
-          | ELam{_elamBoundVars :: [TVar], _elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
-                 _elamResultType :: Maybe Type, _elamExpr :: Maybe Expr,
-                 _eloc :: Location}
-          | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
-          | EApp{_eappFunc :: Expr, _eappArgs :: [Expr], _eloc :: Location}
-          | ELet{_eletVars :: [(String, Expr)], _eletBody :: Expr,
-                 _eloc :: Location}
-          | EHandle{_ehandleExpr :: Expr, _ehandleBindings :: [FuncDef],
-                    _eloc :: Location}
-          -- | ESeq{_eseq :: [Expr], _eloc :: Location}
-          | EAnn{_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
-          -- | BoundExpr{_exprBound :: Bind [TVar] Expr}
-              deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data Expr
+  = EVar {_evarName :: NamePath, _eloc :: Location}
+  | ELam
+      { _elamBoundVars :: [TVar],
+        _elamArgs :: [(String, Maybe Type)],
+        _elamEffType :: Maybe EffectType,
+        _elamResultType :: Maybe Type,
+        _elamExpr :: Maybe Expr,
+        _eloc :: Location
+      }
+  | ECase {_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
+  | EApp {_eappFunc :: Expr, _eappArgs :: [Expr], _eloc :: Location}
+  | ELet
+      { _eletVars :: [(String, Expr)],
+        _eletBody :: Expr,
+        _eloc :: Location
+      }
+  | EHandle
+      { _ehandleExpr :: Expr,
+        _ehandleBindings :: [FuncDef],
+        _eloc :: Location
+      }
+  | -- | ESeq{_eseq :: [Expr], _eloc :: Location}
+    EAnn {_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
+  deriving (-- | BoundExpr{_exprBound :: Bind [TVar] Expr}
+            Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data Case = Case{_casePattern :: Maybe Pattern, _caseGuard :: Maybe Expr,
-                 _caseExpr :: Expr, _caseLoc :: Location}
-              deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data Case = Case
+  { _casePattern :: Maybe Pattern,
+    _caseGuard :: Maybe Expr,
+    _caseExpr :: Expr,
+    _caseLoc :: Location
+  }
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data TypeDef = TypeDef{_typeName :: String, _typeArgs :: [(TVar, Maybe Kind)],
-                       _typeCons :: [TypeCon], _typeLoc :: Location}
-             -- | BoundTypeDef{_typeBound :: Bind [TVar] TypeDef}
-                 deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data TypeDef = TypeDef
+  { _typeName :: String,
+    _typeArgs :: [(TVar, Maybe Kind)],
+    _typeCons :: [TypeCon],
+    _typeLoc :: Location
+  }
+  deriving (-- | BoundTypeDef{_typeBound :: Bind [TVar] TypeDef}
+            Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data TypeCon = TypeCon{_typeConName :: String, _typeConArgs :: [Type],
-                       _typeConLoc :: Location}
-                 deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data TypeCon = TypeCon
+  { _typeConName :: String,
+    _typeConArgs :: [Type],
+    _typeConLoc :: Location
+  }
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data FuncIntf = FuncIntf{_intfName :: String, _intfBoundVars :: [TVar], _intfArgs :: [Type],
-                         _intfResultType :: Type, _intfLoc :: Location}
-              -- | BoundFuncIntf{_intfBound :: Bind [TVar] FuncIntf}
-                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data FuncIntf = FuncIntf
+  { _intfName :: String,
+    _intfBoundVars :: [TVar],
+    _intfArgs :: [Type],
+    _intfResultType :: Type,
+    _intfLoc :: Location
+  }
+  deriving (-- | BoundFuncIntf{_intfBound :: Bind [TVar] FuncIntf}
+            Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data EffectDef = EffectDef{_effectName :: String,
-                           _effectArgs :: [(TVar, Maybe Kind)],
-                           _effectIntfs :: [FuncIntf], _effectLoc :: Location}
-               -- | BoundEffectDef{_effectBound :: Bind [TVar] EffectDef}
-                   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data EffectDef = EffectDef
+  { _effectName :: String,
+    _effectArgs :: [(TVar, Maybe Kind)],
+    _effectIntfs :: [FuncIntf],
+    _effectLoc :: Location
+  }
+  deriving (-- | BoundEffectDef{_effectBound :: Bind [TVar] EffectDef}
+            Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data ImportStmt = ImportStmt{_importPath :: NamePath,
-                             _importAlias :: Maybe String,
-                             _importAttrs :: [NamedAttr],
-                             _importLoc :: Location}
-                    deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data ImportStmt = ImportStmt
+  { _importPath :: NamePath,
+    _importAlias :: Maybe String,
+    _importAttrs :: [NamedAttr],
+    _importLoc :: Location
+  }
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data FuncDef = FuncDef{_funcName :: String, _funcBoundVars :: [TVar], _funcArgs :: [(String, Maybe Type)],
-                       _funcEffectType :: Maybe EffectType, _funcResultType :: Maybe Type,
-                       _funcExpr :: Maybe Expr, _funcLoc :: Location}
-             -- | BoundFuncDef{_funcBound :: Bind [TVar] FuncDef}
-                 deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data FuncDef = FuncDef
+  { _funcName :: String,
+    _funcBoundVars :: [TVar],
+    _funcArgs :: [(String, Maybe Type)],
+    _funcEffectType :: Maybe EffectType,
+    _funcResultType :: Maybe Type,
+    _funcExpr :: Maybe Expr,
+    _funcLoc :: Location
+  }
+  deriving (-- | BoundFuncDef{_funcBound :: Bind [TVar] FuncDef}
+            Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data TopStmt = FDef{_fdef :: FuncDef}
-             | TDef{_tdef :: TypeDef}
-             | EDef{_edef :: EffectDef}
-                 deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data TopStmt
+  = FDef {_fdef :: FuncDef}
+  | TDef {_tdef :: TypeDef}
+  | EDef {_edef :: EffectDef}
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data Module = Module{_moduleName :: NamePath, _moduleAttrs :: [NamedAttr],
-                     _moduleExports :: [String],
-                     _imports :: [ImportStmt], _topStmts :: [TopStmt],
-                     _moduleLoc :: Location}
-                deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+data Module = Module
+  { _moduleName :: NamePath,
+    _moduleAttrs :: [NamedAttr],
+    _moduleExports :: [String],
+    _imports :: [ImportStmt],
+    _topStmts :: [TopStmt],
+    _moduleLoc :: Location
+  }
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 -------------------------------
 
@@ -223,7 +297,7 @@ instance Alpha Type
 
 instance Subst Type Type where
   isvar (TVar x _) = Just (SubstName x)
-  isvar _     = Nothing
+  isvar _ = Nothing
 
 makeLenses ''Type
 
