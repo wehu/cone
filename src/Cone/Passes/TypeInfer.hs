@@ -273,8 +273,18 @@ initEffIntfDef m = do
               bvars = i ^. intfBoundVars
               pos = i ^. intfLoc
               tvars = e ^..effectArgs.traverse._1
-              bt = bind (tvars ++ bvars) $ TFunc iargs Nothing iresult pos
-           in BoundType bt
+           in BoundType $ bind tvars $ BoundType $ 
+                 bind bvars $ TFunc iargs Nothing iresult pos
+
+-- initFuncDef :: (Has EnvEff sig m) => Module -> m ()
+-- initFuncDef m = do
+  -- env <- get @Env
+  -- fs <- funcTypes env
+  -- put $ set funcs fs env
+  -- where fdefs = universeOn (topStmts.traverse._FDef) m
+        -- funcTypes env = 
+          -- let globalTypes = (fmap (\n -> s2n n) $ M.keys (env ^.types))
+           
 
 infer :: Module -> Either String (Env, Module)
 infer m = run . runError . runState initialEnv $ do
