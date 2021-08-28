@@ -341,22 +341,12 @@ inferFuncDef m =
                 fs = env ^.funcs
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^.funcBoundVars
                 scope = Scope (M.fromList bvars) M.empty fs
-             in do argTypes <- (mapM (\(_, a) -> 
-                                  case a of
-                                    Just t -> do
-                                      inferTypeKind scope t
-                                      return t
-                                    Nothing -> do
-                                      v <- fresh
-                                      return $ TVar (magicVarName v) pos)
-                                (f ^.funcArgs))
-                   resultType <- (case (f ^.funcResultType) of
-                                   Just t -> do
-                                     inferTypeKind scope t
-                                     return t
-                                   Nothing -> do
-                                     v <- fresh
-                                     return $ TVar (magicVarName v) pos)
+             in do ftype <- unboundType $ fromJust $ M.lookup fn fs
+                   ft <- case ftype of
+                      ft@TFunc{} -> return ft
+                      _ -> throwError $ "expected function type, but got: " ++ show ftype
+                   let argTypes = _tfuncArgs ft
+                   let resultType = _tfuncResult ft
                    newScope <- (foldM (\s ((n, _), t) -> 
                                        let ts = M.insert n t $ s ^.exprTypes
                                         in return $ scope{_exprTypes=ts})
