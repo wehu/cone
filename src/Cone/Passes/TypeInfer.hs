@@ -26,7 +26,7 @@ type Eff s e = State s :+: Error e
 
 type TypeKinds = M.Map String Kind
 type EffKinds  = M.Map String EffKind
-type EffIntfTypes  = M.Map String (M.Map String Type)
+type EffIntfTypes  = M.Map String Type
 
 data Scope = Scope{_typeKinds::TypeKinds, _effKinds::EffKinds}
 
@@ -265,11 +265,7 @@ initEffIntfDef m = do
                              k <- inferTypeKind (Scope M.empty M.empty) bt
                              checkTypeKind k
                              return $ M.insert en bt is
-            in case M.lookup en intfs of
-                 Just e -> throwError $ "effect refined : " ++ en
-                 Nothing -> do 
-                   nis <- foldM f M.empty is
-                   return $ M.insert en nis intfs
+            in foldM f intfs is
         intfType i e = 
           let iargs = i ^. intfArgs
               iresult = i ^. intfResultType
