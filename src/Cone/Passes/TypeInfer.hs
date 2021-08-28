@@ -33,14 +33,13 @@ initialEnv = Env{_types=M.empty, _funcs=M.empty, _effs=M.empty}
 
 type EnvEff = Eff Env String
 
-initTypeDef :: (Has EnvEff sig m) => Module -> m Module
+initTypeDef :: (Has EnvEff sig m) => Module -> m ()
 initTypeDef m = do
   env <- get @Env
   tkinds <- ts env
   put $ set types tkinds env
   tconTypes <- tcons env
   put $ set funcs tconTypes env
-  return m
   where tdefs = universeOn (topStmts.traverse._TDef) m
 
         ts env = foldM insertTypeKind (env ^. types) tdefs
@@ -64,13 +63,13 @@ initTypeDef m = do
                f = \fs c -> do
                  let cn = c ^. typeConName
                      cargs = c ^. typeConArgs
-                     targs = t ^. typeArgs
+                     targs = t ^.. typeArgs.traverse._1
                      b = bind targs cargs
-                     fvars = (b ^..fv):: [Name Expr]
+                     fvars = (b ^..fv):: [TVar]
                   in do
                       if fvars /= [] then throwError $ 
                         "type constructor's type variables should " ++ 
-                        "only exists in type arguments"
+                        "only exists in type arguments: " ++ show fvars
                       else return ()
                       if M.member cn fs
                       then throwError $ "type construct has conflict name: " ++ cn
@@ -80,7 +79,7 @@ initTypeDef m = do
           let targs = c ^. typeConArgs
               tn = t ^. typeName
               pos = c ^. typeConLoc
-              tvars = t ^. typeBoundVars
+              tvars = t ^..typeArgs.traverse._1
               bt = bind tvars $ TFunc targs Nothing (TApp (s2n tn) targs pos) pos
             in BoundType bt
 
@@ -90,3 +89,4 @@ inferEffTypeDef = return
 infer :: Module -> Either String (Env, Module)
 infer m = run . runError . runState initialEnv $ do
            initTypeDef m
+           return m

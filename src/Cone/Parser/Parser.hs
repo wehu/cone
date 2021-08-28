@@ -186,7 +186,7 @@ typeCon = A.TypeCon <$> ident <*>
              P.<|> return []) <*> getPos
 
 typeDef :: Parser A.TypeDef
-typeDef = A.TypeDef <$ kType <*> ident <*> boundTVars <*> typeArgs
+typeDef = A.TypeDef <$ kType <*> ident <*> typeArgs
     <*> braces (P.sepBy1 typeCon $ P.try $ semi <* P.notFollowedBy rBrace) <*> getPos
 
 funcIntf :: Parser A.FuncIntf
@@ -194,7 +194,7 @@ funcIntf = A.FuncIntf <$ kFunc <*> ident <*> boundTVars <*>
       parens (P.sepBy type_ comma) <* colon <*> type_ <*> getPos
 
 effectDef :: Parser A.EffectDef
-effectDef = A.EffectDef <$ kEffect <*> ident <*> boundTVars <*> typeArgs
+effectDef = A.EffectDef <$ kEffect <*> ident <*> typeArgs
     <*> braces (P.sepBy1 funcIntf $ 
                 P.try $ semi <* P.notFollowedBy rBrace) <*> getPos
 

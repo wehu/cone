@@ -112,7 +112,7 @@ data Case = Case{_casePattern :: Maybe Pattern, _caseGuard :: Maybe Expr,
                  _caseExpr :: Expr, _caseLoc :: Location}
               deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
-data TypeDef = TypeDef{_typeName :: String, _typeBoundVars :: [TVar], _typeArgs :: [(TVar, Maybe Kind)],
+data TypeDef = TypeDef{_typeName :: String, _typeArgs :: [(TVar, Maybe Kind)],
                        _typeCons :: [TypeCon], _typeLoc :: Location}
              -- | BoundTypeDef{_typeBound :: Bind [TVar] TypeDef}
                  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
@@ -127,7 +127,6 @@ data FuncIntf = FuncIntf{_intfName :: String, _intfBoundVars :: [TVar], _intfArg
                   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data EffectDef = EffectDef{_effectName :: String,
-                           _effectBoundVars :: [TVar],
                            _effectArgs :: [(TVar, Maybe Kind)],
                            _effectIntfs :: [FuncIntf], _effectLoc :: Location}
                -- | BoundEffectDef{_effectBound :: Bind [TVar] EffectDef}
