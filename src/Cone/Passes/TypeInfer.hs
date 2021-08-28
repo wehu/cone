@@ -292,53 +292,78 @@ magicVarName :: Int -> TVar
 magicVarName i = s2n $ "__" ++ show i
 
 initFuncDef :: (Has EnvEff sig m) => Module -> m ()
-initFuncDef m = 
+initFuncDef m = do
+  env <- get @Env
+  fs <- funcTypes env
+  put $ set funcs fs env
+  where fdefs = universeOn (topStmts.traverse._FDef) m
+        funcTypes env = 
+          foldM (\fs f ->
+            let pos = f ^. funcLoc
+                fn = f ^. funcName
+                bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^.funcBoundVars
+                scope = Scope (M.fromList bvars) M.empty (env ^.funcs)
+             in do argTypes <- (mapM (\(_, a) -> 
+                                  case a of
+                                    Just t -> do
+                                      inferTypeKind scope t
+                                      return t
+                                    Nothing -> do
+                                      v <- fresh
+                                      return $ TVar (magicVarName v) pos)
+                                (f ^.funcArgs))
+                   effType <- (case (f ^.funcEffectType) of
+                                Just t -> do
+                                  inferEffKind scope t
+                                  return t
+                                Nothing -> return $ EffTotal pos)
+                   resultType <- (case (f ^.funcResultType) of
+                                   Just t -> do
+                                     inferTypeKind scope t
+                                     return t
+                                   Nothing -> do
+                                     v <- fresh
+                                     return $ TVar (magicVarName v) pos)
+                   let ft = BoundType $ bind (f ^.funcBoundVars) $
+                             TFunc argTypes (Just effType) resultType pos
+                    in case M.lookup fn fs of
+                        Just _ -> throwError $ "function redefine: " ++ fn
+                        Nothing -> return $ M.insert fn ft fs)
+            (env ^.funcs) fdefs
+
+inferFuncDef :: (Has EnvEff sig m) => Module -> m ()
+inferFuncDef m =
   let fdefs = universeOn (topStmts.traverse._FDef) m
    in mapM_ (\f -> do
-       env <- get @Env
-       let pos = f ^. funcLoc
-           fn = f ^. funcName
-           fs = env ^.funcs
-           bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^.funcBoundVars
-           scope = Scope (M.fromList bvars) M.empty fs
-        in do argTypes <- (mapM (\(_, a) -> 
-                             case a of
-                               Just t -> do
-                                 inferTypeKind scope t
-                                 return t
-                               Nothing -> do
-                                 v <- fresh
-                                 return $ TVar (magicVarName v) pos)
-                           (f ^.funcArgs))
-              effType <- (case (f ^.funcEffectType) of
-                           Just t -> do
-                             inferEffKind scope t
-                             return t
-                           Nothing -> return $ EffTotal pos)
-              resultType <- (case (f ^.funcResultType) of
-                              Just t -> do
-                                inferTypeKind scope t
-                                return t
-                              Nothing -> do
-                                v <- fresh
-                                return $ TVar (magicVarName v) pos)
-              let ft = BoundType $ bind (f ^.funcBoundVars) $
-                        TFunc argTypes (Just effType) resultType pos
-               in do 
-                     newScope <- (foldM (\s ((n, _), t) -> 
-                                         let ts = M.insert n t $ s ^.exprTypes
-                                          in return $ scope{_exprTypes=ts})
-                                   scope
-                                   $ ((fn, Just ft), ft) : 
-                                        [(n, t) | t <- argTypes | n <- (f ^.funcArgs)])
-                     eType <- inferExprType newScope $ fromJust $ f ^.funcExpr
-                     if aeq (closeType eType) (closeType resultType)
-                       then return ()
-                       else throwError $ "function result type mismatch: " ++
-                              show eType ++ " vs " ++ show resultType
-                     inferTypeKind scope ft
-                     env <- get @Env
-                     put $ set funcs (M.insert fn ft fs) env)
+            env <- get @Env
+            let pos = f ^. funcLoc
+                fn = f ^. funcName
+                fs = env ^.funcs
+                bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^.funcBoundVars
+                scope = Scope (M.fromList bvars) M.empty fs
+             in do argTypes <- (mapM (\(_, a) -> 
+                                  case a of
+                                    Just t -> do
+                                      inferTypeKind scope t
+                                      return t
+                                    Nothing -> do
+                                      v <- fresh
+                                      return $ TVar (magicVarName v) pos)
+                                (f ^.funcArgs))
+                   resultType <- (case (f ^.funcResultType) of
+                                   Just t -> do
+                                     inferTypeKind scope t
+                                     return t
+                                   Nothing -> do
+                                     v <- fresh
+                                     return $ TVar (magicVarName v) pos)
+                   newScope <- (foldM (\s ((n, _), t) -> 
+                                       let ts = M.insert n t $ s ^.exprTypes
+                                        in return $ scope{_exprTypes=ts})
+                                 scope
+                                 [(n, t) | t <- argTypes | n <- (f ^.funcArgs)])
+                   eType <- inferExprType newScope $ fromJust $ f ^.funcExpr
+                   return fs)
             fdefs
 
 inferExprType :: (Has EnvEff sig m) => Scope -> Expr -> m Type
