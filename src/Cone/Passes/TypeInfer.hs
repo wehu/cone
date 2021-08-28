@@ -96,7 +96,8 @@ initTypeConDef m = do
                         Nothing -> do
                           let bt = (tconType c t)
                            in do
-                             inferTypeKind (Scope M.empty M.empty) bt
+                             k <- inferTypeKind (Scope M.empty M.empty) bt
+                             checkTypeKind k
                              return $ M.insert cn bt fs
             in foldM f fs cons
         tconType c t = 
@@ -144,9 +145,12 @@ inferTypeKind scope v@TVar{..} = do
       Just k -> return k
       Nothing -> throwError $ "cannot find type: " ++ show v
 inferTypeKind scope f@TFunc{..} = do
-  mapM_ (inferTypeKind scope) _tfuncArgs
-  mapM_ (inferEffKind scope) _tfuncEff
-  inferTypeKind scope _tfuncResult
+  ks <- mapM (inferTypeKind scope) _tfuncArgs
+  mapM_ checkTypeKind ks
+  ek <- mapM (inferEffKind scope) _tfuncEff
+  mapM_ checkEffKind ek
+  rk <- inferTypeKind scope _tfuncResult
+  checkTypeKind rk
   return $ KStar _tloc
 inferTypeKind _ t = return $ KStar $ _tloc t
 
@@ -217,6 +221,7 @@ inferEffKind scope v@EffVar{..} = do
       Nothing -> throwError $ "cannot find type: " ++ show v
 inferEffKind scope l@EffList{..} = do
   ls <- mapM (inferEffKind scope) _effList
+  mapM_ checkEffKind ls
   return $ EKList ls _effLoc
 
 checkEffKind :: (Has EnvEff sig m) => EffKind -> m ()
@@ -257,7 +262,8 @@ initEffIntfDef m = do
                         Nothing -> do
                           let bt = (intfType i e)
                            in do
-                             inferTypeKind (Scope M.empty M.empty) bt
+                             k <- inferTypeKind (Scope M.empty M.empty) bt
+                             checkTypeKind k
                              return $ M.insert en bt is
             in case M.lookup en intfs of
                  Just e -> throwError $ "effect refined : " ++ en
