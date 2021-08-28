@@ -28,14 +28,15 @@ type Eff s e = Fresh :+: State s :+: Error e
 
 type TypeKinds = M.Map String Kind
 type EffKinds  = M.Map String EffKind
-type EffIntfTypes  = M.Map String Type
+type EffIntfTypes = M.Map String Type
+type ExprTypes = M.Map String Type
 
-data Scope = Scope{_typeKinds::TypeKinds, _effKinds::EffKinds}
+data Scope = Scope{_typeKinds::TypeKinds, _effKinds::EffKinds, _exprTypes:: ExprTypes}
 
 makeLenses ''Scope
 
 data Env = Env{_types:: TypeKinds,
-               _funcs:: M.Map String Type,
+               _funcs:: ExprTypes,
                _effs :: EffKinds,
                _effIntfs :: EffIntfTypes}
             deriving (Show)
@@ -98,7 +99,7 @@ initTypeConDef m = do
                         Nothing -> do
                           let bt = (tconType c t)
                            in do
-                             k <- inferTypeKind (Scope M.empty M.empty) bt
+                             k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
                              checkTypeKind k
                              return $ M.insert cn bt fs
             in foldM f fs cons
@@ -266,7 +267,7 @@ initEffIntfDef m = do
                         Nothing -> do
                           let bt = (intfType i e)
                            in do
-                             k <- inferTypeKind (Scope M.empty M.empty) bt
+                             k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
                              checkTypeKind k
                              return $ M.insert intfn bt is
             in foldM f intfs is
@@ -294,7 +295,7 @@ initFuncDef m = do
             let pos = f ^. funcLoc
                 fn = f ^. funcName
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^.funcBoundVars
-                scope = Scope (M.fromList bvars) M.empty
+                scope = Scope (M.fromList bvars) M.empty M.empty
              in do argTypes <- (mapM (\(_, a) -> 
                                   case a of
                                     Just t -> do
@@ -321,6 +322,9 @@ initFuncDef m = do
                     in do inferTypeKind scope ft
                           return $ M.insert fn ft fs)
             (env ^.funcs) fdefs
+
+--inferExprType :: (Has EffEnv sig m) => Expr -> m Type
+--inferExprType f = return 
 
 infer :: Module -> Either String (Env, (Int, Module))
 infer m = run . runError . (runState initialEnv) . runFresh 0 $ do
