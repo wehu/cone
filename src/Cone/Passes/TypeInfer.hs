@@ -22,6 +22,7 @@ import Control.Carrier.Error.Either
 import Control.Carrier.Fresh.Strict
 import qualified Data.Map as M
 import qualified Data.List as L
+import Data.Maybe
 import Control.Monad
 
 type Eff s e = Fresh :+: State s :+: Error e
@@ -291,46 +292,101 @@ magicVarName :: Int -> TVar
 magicVarName i = s2n $ "__" ++ show i
 
 initFuncDef :: (Has EnvEff sig m) => Module -> m ()
-initFuncDef m = do
-  env <- get @Env
-  fs <- funcTypes env
-  put $ set funcs fs env
-  where fdefs = universeOn (topStmts.traverse._FDef) m
-        funcTypes env = 
-          foldM (\fs f ->
-            let pos = f ^. funcLoc
-                fn = f ^. funcName
-                bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^.funcBoundVars
-                scope = Scope (M.fromList bvars) M.empty M.empty
-             in do argTypes <- (mapM (\(_, a) -> 
-                                  case a of
-                                    Just t -> do
-                                      inferTypeKind scope t
-                                      return t
-                                    Nothing -> do
-                                      v <- fresh
-                                      return $ TVar (magicVarName v) pos)
-                                (f ^.funcArgs))
-                   effType <- (case (f ^.funcEffectType) of
-                                Just t -> do
-                                  inferEffKind scope t
-                                  return t
-                                Nothing -> return $ EffTotal pos)
-                   resultType <- (case (f ^.funcResultType) of
-                                   Just t -> do
-                                     inferTypeKind scope t
-                                     return t
-                                   Nothing -> do
-                                     v <- fresh
-                                     return $ TVar (magicVarName v) pos)
-                   let ft = BoundType $ bind (f ^.funcBoundVars) $
-                             TFunc argTypes (Just effType) resultType pos
-                    in do inferTypeKind scope ft
-                          return $ M.insert fn ft fs)
-            (env ^.funcs) fdefs
+initFuncDef m = 
+  let fdefs = universeOn (topStmts.traverse._FDef) m
+   in mapM_ (\f -> do
+       env <- get @Env
+       let pos = f ^. funcLoc
+           fn = f ^. funcName
+           fs = env ^.funcs
+           bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^.funcBoundVars
+           scope = Scope (M.fromList bvars) M.empty fs
+        in do argTypes <- (mapM (\(_, a) -> 
+                             case a of
+                               Just t -> do
+                                 inferTypeKind scope t
+                                 return t
+                               Nothing -> do
+                                 v <- fresh
+                                 return $ TVar (magicVarName v) pos)
+                           (f ^.funcArgs))
+              effType <- (case (f ^.funcEffectType) of
+                           Just t -> do
+                             inferEffKind scope t
+                             return t
+                           Nothing -> return $ EffTotal pos)
+              resultType <- (case (f ^.funcResultType) of
+                              Just t -> do
+                                inferTypeKind scope t
+                                return t
+                              Nothing -> do
+                                v <- fresh
+                                return $ TVar (magicVarName v) pos)
+              let ft = BoundType $ bind (f ^.funcBoundVars) $
+                        TFunc argTypes (Just effType) resultType pos
+               in do 
+                     newScope <- (foldM (\s ((n, _), t) -> 
+                                         let ts = M.insert n t $ s ^.exprTypes
+                                          in return $ scope{_exprTypes=ts})
+                                   scope
+                                   $ ((fn, Just ft), ft) : 
+                                        [(n, t) | t <- argTypes | n <- (f ^.funcArgs)])
+                     eType <- inferExprType newScope $ fromJust $ f ^.funcExpr
+                     if aeq (closeType eType) (closeType resultType)
+                       then return ()
+                       else throwError $ "function result type mismatch: " ++
+                              show eType ++ " vs " ++ show resultType
+                     inferTypeKind scope ft
+                     env <- get @Env
+                     put $ set funcs (M.insert fn ft fs) env)
+            fdefs
 
---inferExprType :: (Has EffEnv sig m) => Expr -> m Type
---inferExprType f = return 
+inferExprType :: (Has EnvEff sig m) => Scope -> Expr -> m Type
+inferExprType scope e@EVar{..} =
+  case M.lookup _evarName (scope ^.exprTypes) of
+    Just t -> return t
+    Nothing -> throwError $ "cannot find expr var: " ++ _evarName
+inferExprType scope a@EApp{..} = do
+  app <- inferExprType scope _eappFunc
+  argTypes <- mapM (inferExprType scope) _eappArgs
+  appType <- (unboundType $ app)
+  let appArgTypes = appType ^. tfuncArgs
+   in if aeq (fmap closeType appArgTypes) (fmap closeType argTypes)
+    then case appType of
+      TFunc{..} -> return _tfuncResult
+      _ -> throwError $ "expect a function type: " ++ show appType
+    else throwError $ "application type checking failed: " ++
+           show appArgTypes ++ " vs " ++ show argTypes
+inferExprType scope _ = throwError $ "xxx"
+
+closeType :: Type -> Bind [TVar] Type
+closeType t = 
+  let fvars = t ^..fv
+   in bind fvars t
+
+unboundType :: (Has EnvEff sig m) => Type -> m Type
+unboundType b@BoundType{..} = 
+  let (ps, t) = unsafeUnbind _boundType
+      pos = _tloc t
+   in do foldM (\t p -> do
+           np <- magicVarName <$> fresh
+           unboundType $ subst p (TVar np pos) t)
+           t
+           ps
+unboundType t = return t
+
+-- EVar{_evarName :: NamePath, _eloc :: Location}
+--           | ELam{_elamBoundVars :: [TVar], _elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
+--                  _elamResultType :: Maybe Type, _elamExpr :: Maybe Expr,
+--                  _eloc :: Location}
+--           | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
+--           | EApp{_eappFunc :: Expr, _eappArgs :: [Expr], _eloc :: Location}
+--           | ELet{_eletVars :: [(String, Expr)], _eletBody :: Expr,
+--                  _eloc :: Location}
+--           | EHandle{_ehandleExpr :: Expr, _ehandleBindings :: [FuncDef],
+--                     _eloc :: Location}
+--           -- | ESeq{_eseq :: [Expr], _eloc :: Location}
+--           | EAnn{_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
 
 infer :: Module -> Either String (Env, (Int, Module))
 infer m = run . runError . (runState initialEnv) . runFresh 0 $ do
