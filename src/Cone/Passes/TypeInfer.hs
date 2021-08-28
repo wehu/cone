@@ -347,13 +347,17 @@ inferFuncDef m =
                       _ -> throwError $ "expected function type, but got: " ++ show ftype
                    let argTypes = _tfuncArgs ft
                    let resultType = _tfuncResult ft
+                   let effType = _tfuncEff ft
                    newScope <- (foldM (\s ((n, _), t) -> 
                                        let ts = M.insert n t $ s ^.exprTypes
                                         in return $ scope{_exprTypes=ts})
                                  scope
                                  [(n, t) | t <- argTypes | n <- (f ^.funcArgs)])
                    eType <- inferExprType newScope $ fromJust $ f ^.funcExpr
-                   return fs)
+                   if aeq (closeType eType) (closeType resultType)
+                     then return ()
+                     else throwError $ "function result type mismatch: " ++
+                            show eType ++ " vs " ++ show resultType)
             fdefs
 
 inferExprType :: (Has EnvEff sig m) => Scope -> Expr -> m Type
@@ -410,4 +414,5 @@ infer m = run . runError . (runState initialEnv) . runFresh 0 $ do
            initTypeConDef m
            initEffIntfDef m
            initFuncDef m
+           inferFuncDef m
            return m
