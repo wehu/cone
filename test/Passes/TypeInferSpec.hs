@@ -25,8 +25,9 @@ inferTypeDefSpec = hspec $ do
      effect a<b> {
        fun test(a<b>) : a<b>
      }
-     
+
        |]
+       --(show $ fmap (\m -> infer m) $ parse "" source) `shouldBe` ""
        (fmap (\m -> do infer m; return ())
           (parse "" source)) `shouldBe` (Right $ Right ())
 

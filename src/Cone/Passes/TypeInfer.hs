@@ -248,8 +248,9 @@ initEffIntfDef m = do
                      iargs = i ^. intfArgs
                      iresult = i ^. intfResultType
                      pos = i ^.intfLoc
+                     bvars = (i ^. intfBoundVars)
                      targs = (e ^.. effectArgs.traverse._1) ++ globalTypes
-                     b = bind targs $ iresult : iargs
+                     b = bind (targs++bvars) $ iresult : iargs
                      fvars = (b ^..fv):: [TVar]
                   in do
                       if fvars /= [] then throwError $ 
