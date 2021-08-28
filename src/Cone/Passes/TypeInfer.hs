@@ -438,7 +438,7 @@ inferFuncDef m =
                         [(n, t) | t <- argTypes | n <- (f ^. funcArgs)]
                       )
                   eType <- inferExprType newScope $ fromJust $ f ^. funcExpr
-                  if acompare (closeType eType) (closeType resultType) == GT ||
+                  if acompare (closeType eType) (closeType resultType) == LT ||
                      acompare (closeType eType) (closeType resultType) == EQ 
                     then return ()
                     else
@@ -461,7 +461,7 @@ inferExprType scope a@EApp {..} = do
   appType <- (unboundType $ app)
   let appArgTypes = appType ^. tfuncArgs
    in if acompare (fmap closeType appArgTypes) (fmap closeType argTypes) == EQ ||
-         acompare (fmap closeType appArgTypes) (fmap closeType argTypes) == LT
+         acompare (fmap closeType appArgTypes) (fmap closeType argTypes) == GT
         then case appType of
           TFunc {..} -> return _tfuncResult
           _ -> throwError $ "expect a function type: " ++ show appType
@@ -497,7 +497,6 @@ unboundType t = return t
 --                  _elamResultType :: Maybe Type, _elamExpr :: Maybe Expr,
 --                  _eloc :: Location}
 --           | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
---           | EApp{_eappFunc :: Expr, _eappArgs :: [Expr], _eloc :: Location}
 --           | ELet{_eletVars :: [(String, Expr)], _eletBody :: Expr,
 --                  _eloc :: Location}
 --           | EHandle{_ehandleExpr :: Expr, _ehandleBindings :: [FuncDef],
