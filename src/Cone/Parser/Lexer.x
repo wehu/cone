@@ -113,6 +113,18 @@ data Tok =
     Comma           |
     Less            |
     Greater         |
+    LE              |
+    GE              |
+    EQ              |
+    NE              |
+    And             |
+    Or              |
+    Assign          |
+    Add             |
+    Sub             |
+    Mul             |
+    Div             |
+    Mod             |
     Backslash       |
     Arrow           |
     Star            |
