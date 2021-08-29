@@ -472,10 +472,14 @@ inferExprType scope e@EVar {..} =
   case M.lookup _evarName (scope ^. exprTypes) of
     Just t -> return t
     Nothing -> throwError $ "cannot find expr var: " ++ _evarName
-inferExprType scope a@EApp {..} = do
+
+i
+
+nferExprType scope a@EApp {..} = do
   appFuncType <- inferExprType scope _eappFunc >>= unboundType
   argTypes <- mapM (inferExprType scope) _eappArgs
   inferAppResultType appFuncType argTypes
+
 inferExprType scope l@ELam {..} = do
   newScope <-
     ( foldM
@@ -532,7 +536,7 @@ inferExprType scope a@EAnn {..} = do
 inferExprType scope ELit {..} = do
   inferTypeKind scope _litType
   return _litType
-inferExprType scope _ = throwError $ "xxx"
+inferExprType scope e = throwError $ "unsupported expression: " ++ show e
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
 collectVarBinding a@TPrim {} b@TPrim {} = do
