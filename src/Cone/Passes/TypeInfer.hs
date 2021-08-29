@@ -452,15 +452,18 @@ inferFuncDef m =
                         newScope
                         bts
                       )
-                  eType <- inferExprType newScope' $ fromJust $ f ^. funcExpr
-                  if aeq eType resultType
-                    then return ()
-                    else
-                      throwError $
-                        "function result type mismatch: "
-                          ++ show eType
-                          ++ " vs "
-                          ++ show resultType
+                  case f ^.funcExpr of
+                    Just e -> do
+                         eType <- inferExprType newScope' e
+                         if aeq eType resultType
+                           then return ()
+                           else
+                             throwError $
+                               "function result type mismatch: "
+                                 ++ show eType
+                                 ++ " vs "
+                                 ++ show resultType
+                    Nothing -> return ()
         )
         fdefs
 
