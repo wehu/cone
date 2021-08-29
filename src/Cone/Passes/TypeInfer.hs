@@ -457,10 +457,9 @@ inferExprType scope e@EVar {..} =
     Just t -> return t
     Nothing -> throwError $ "cannot find expr var: " ++ _evarName
 inferExprType scope a@EApp {..} = do
-  appType <- inferExprType scope _eappFunc >>= unboundType
+  appFuncType <- inferExprType scope _eappFunc >>= unboundType
   argTypes <- mapM (inferExprType scope) _eappArgs
-  let appArgTypes = appType ^. tfuncArgs
-   in inferAppResultType appType argTypes
+  inferAppResultType appFuncType argTypes
 inferExprType scope _ = throwError $ "xxx"
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
