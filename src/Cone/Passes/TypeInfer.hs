@@ -474,11 +474,20 @@ inferExprType scope a@EApp {..} = do
   argTypes <- mapM (inferExprType scope) _eappArgs
   inferAppResultType appFuncType argTypes
 inferExprType scope l@ELam {..} = do
+  newScope <-
+    ( foldM
+        ( \s t ->
+            let ks = M.insert (name2String t) (KStar _eloc) $ s ^. typeKinds
+             in return $ s {_typeKinds = ks}
+        )
+        scope
+        _elamBoundVars
+      )
   args <-
     mapM
       ( \(_, t') -> case t' of
           Just t -> do
-            inferTypeKind scope t
+            inferTypeKind newScope t
             return t
           Nothing -> do
             v <- fresh
@@ -487,33 +496,25 @@ inferExprType scope l@ELam {..} = do
       _elamArgs
   eff <- case _elamEffType of
     Just e -> do
-      inferEffKind scope e
+      inferEffKind newScope e
       return e
     Nothing -> return $ EffTotal _eloc
-  newScope <-
+  newScope' <-
     foldM
       ( \s (n, t) ->
           let ts = M.insert n t $ s ^. exprTypes
            in return $ s {_exprTypes = ts}
       )
-      scope
+      newScope
       [(n, t) | (n, _) <- _elamArgs | t <- args]
-  newScope' <-
-    ( foldM
-        ( \s t ->
-            let ks = M.insert (name2String t) (KStar _eloc) $ s ^. typeKinds
-             in return $ s {_typeKinds = ks}
-        )
-        newScope
-        _elamBoundVars
-      )
+
   case _elamExpr of
     Just e -> return ()
     Nothing -> throwError $ "expected an expression for lambda"
   eType <- inferExprType newScope' $ fromJust _elamExpr
   result <- case _elamResultType of
     Just t -> do
-      inferTypeKind scope t
+      inferTypeKind newScope t
       if aeq (closeType eType) (closeType t)
         then return t
         else throwError $ "lambda result type mismatch: " ++ show t ++ " vs " ++ show eType
