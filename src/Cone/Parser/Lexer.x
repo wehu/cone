@@ -4,8 +4,36 @@ module Cone.Parser.Lexer (tokenize, Token(..), Tok(..), AlexPosn(..)) where
 
 %wrapper "posn"
 
-$digit = 0-9			-- digits
 $alpha = [a-zA-Z]		-- alphabetic characters
+$whitechar = [ \t\n\r\f\v]
+
+$special   = [\(\)\,\;\[\]\`\{\}]
+
+$ascdigit  = 0-9
+$unidigit  = [] -- TODO
+$digit     = [$ascdigit $unidigit]
+
+$ascsymbol = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
+$unisymbol = [] -- TODO
+$symbol    = [$ascsymbol $unisymbol] # [$special \_\:\"\']
+$large     = [A-Z \xc0-\xd6 \xd8-\xde]
+$small     = [a-z \xdf-\xf6 \xf8-\xff \_]
+$graphic   = [$small $large $symbol $digit $special \:\"\']
+$octit	   = 0-7
+$hexit     = [0-9 A-F a-f]
+@decimal     = $digit+
+@octal       = $octit+
+@hexadecimal = $hexit+
+@exponent    = [eE] [\-\+] @decimal
+$cntrl   = [$large \@\[\\\]\^\_]
+@ascii   = \^ $cntrl | NUL | SOH | STX | ETX | EOT | ENQ | ACK
+	 | BEL | BS | HT | LF | VT | FF | CR | SO | SI | DLE
+	 | DC1 | DC2 | DC3 | DC4 | NAK | SYN | ETB | CAN | EM
+	 | SUB | ESC | FS | GS | RS | US | SP | DEL
+$charesc = [abfnrtv\\\"\'\&]
+@escape  = \\ ($charesc | @ascii | @decimal | o @octal | x @hexadecimal)
+@gap     = \\ $whitechar+ \\
+@string  = $graphic # [\"\\] | " " | @escape | @gap
 
 tokens :-
   ($white # [\n])+				;
@@ -47,7 +75,14 @@ tokens :-
   "bool"                                { \p s -> (p, Pred) }
   "type"                                { \p s -> (p, Type) }
   "effect"                              { \p s -> (p, Effect) }
-  $digit+                               { \p s -> (p, Int (read s)) }
+  @decimal 
+    | 0[oO] @octal
+    | 0[xX] @hexadecimal		            { \p s -> (p, Int (read s)) }
+  @decimal \. @decimal @exponent?
+    | @decimal @exponent	            	{ \p s -> (p, Float (read s)) }
+  \' ($graphic # [\'\\] | " " | @escape) \'
+				                                { \p s -> (p, Char (read s)) }
+  \" @string* \"	                    	{ \p s -> (p, Str (read s)) }
   $alpha [$alpha $digit \_]*            { \p s -> (p, Ident s) }
 
 {
@@ -63,7 +98,10 @@ data Tok =
     Let             |
     In              |
     Ident String    |
-    Int Int         |
+    Int Integer     |
+    Float Double    | 
+    Str String      |
+    Char Char       |
     Semi            |
     LParen          |
     RParen          |
