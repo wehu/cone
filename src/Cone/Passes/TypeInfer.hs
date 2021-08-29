@@ -453,7 +453,7 @@ inferFuncDef m =
                         bts
                       )
                   eType <- inferExprType newScope' $ fromJust $ f ^. funcExpr
-                  if aeq (closeType eType) (closeType resultType)
+                  if aeq eType resultType
                     then return ()
                     else
                       throwError $
@@ -515,7 +515,7 @@ inferExprType scope l@ELam {..} = do
   result <- case _elamResultType of
     Just t -> do
       inferTypeKind newScope t
-      if aeq (closeType eType) (closeType t)
+      if aeq eType t
         then return t
         else throwError $ "lambda result type mismatch: " ++ show t ++ " vs " ++ show eType
     Nothing -> return eType
@@ -523,7 +523,7 @@ inferExprType scope l@ELam {..} = do
 inferExprType scope a@EAnn{..} = do
   t <- inferExprType scope _eannExpr
   inferTypeKind scope _eannType
-  if aeq (closeType t) (closeType _eannType)
+  if aeq t _eannType
     then return _eannType
     else throwError $ "type mismatch: " ++ show t ++ " vs " ++ show _eannType
 inferExprType scope _ = throwError $ "xxx"

@@ -43,7 +43,10 @@ data Attr
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 data Location = Location {_fileName :: String, _lineNo :: !Int, _colNo :: !Int}
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+  deriving (Eq, Ord, Read, Data, Typeable, Generic)
+
+instance Show Location where
+  show l = "@" ++ (_fileName l) ++ "[" ++ (show $ _lineNo l) ++ ", " ++ (show $ _colNo l) ++ "]"
 
 type NamedAttr = (String, Attr)
 
