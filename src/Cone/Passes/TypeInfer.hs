@@ -522,6 +522,7 @@ inferExprType scope l@ELam {..} = do
   return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) result _eloc
 inferExprType scope a@EAnn{..} = do
   t <- inferExprType scope _eannExpr
+  inferTypeKind scope _eannType
   if aeq (closeType t) (closeType _eannType)
     then return _eannType
     else throwError $ "type mismatch: " ++ show t ++ " vs " ++ show _eannType
