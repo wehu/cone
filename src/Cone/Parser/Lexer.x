@@ -154,7 +154,8 @@ data Tok =
     BF16            |
     Pred            |
     Type            |
-    Effect
+    Effect          |
+    Unknown
     deriving (Eq,Show)
 
 type Token = (AlexPosn, Tok)
