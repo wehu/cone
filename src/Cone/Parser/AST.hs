@@ -155,8 +155,16 @@ data Expr
       }
   | -- | ESeq{_eseq :: [Expr], _eloc :: Location}
     EAnn {_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
-  deriving (-- | BoundExpr{_exprBound :: Bind [TVar] Expr}
-            Eq, Ord, Show, Read, Data, Typeable, Generic)
+  deriving
+    ( -- | BoundExpr{_exprBound :: Bind [TVar] Expr}
+      Eq,
+      Ord,
+      Show,
+      Read,
+      Data,
+      Typeable,
+      Generic
+    )
 
 data Case = Case
   { _casePattern :: Maybe Pattern,
@@ -172,8 +180,16 @@ data TypeDef = TypeDef
     _typeCons :: [TypeCon],
     _typeLoc :: Location
   }
-  deriving (-- | BoundTypeDef{_typeBound :: Bind [TVar] TypeDef}
-            Eq, Ord, Show, Read, Data, Typeable, Generic)
+  deriving
+    ( -- | BoundTypeDef{_typeBound :: Bind [TVar] TypeDef}
+      Eq,
+      Ord,
+      Show,
+      Read,
+      Data,
+      Typeable,
+      Generic
+    )
 
 data TypeCon = TypeCon
   { _typeConName :: String,
@@ -189,8 +205,16 @@ data FuncIntf = FuncIntf
     _intfResultType :: Type,
     _intfLoc :: Location
   }
-  deriving (-- | BoundFuncIntf{_intfBound :: Bind [TVar] FuncIntf}
-            Eq, Ord, Show, Read, Data, Typeable, Generic)
+  deriving
+    ( -- | BoundFuncIntf{_intfBound :: Bind [TVar] FuncIntf}
+      Eq,
+      Ord,
+      Show,
+      Read,
+      Data,
+      Typeable,
+      Generic
+    )
 
 data EffectDef = EffectDef
   { _effectName :: String,
@@ -198,8 +222,16 @@ data EffectDef = EffectDef
     _effectIntfs :: [FuncIntf],
     _effectLoc :: Location
   }
-  deriving (-- | BoundEffectDef{_effectBound :: Bind [TVar] EffectDef}
-            Eq, Ord, Show, Read, Data, Typeable, Generic)
+  deriving
+    ( -- | BoundEffectDef{_effectBound :: Bind [TVar] EffectDef}
+      Eq,
+      Ord,
+      Show,
+      Read,
+      Data,
+      Typeable,
+      Generic
+    )
 
 data ImportStmt = ImportStmt
   { _importPath :: NamePath,
@@ -218,8 +250,16 @@ data FuncDef = FuncDef
     _funcExpr :: Maybe Expr,
     _funcLoc :: Location
   }
-  deriving (-- | BoundFuncDef{_funcBound :: Bind [TVar] FuncDef}
-            Eq, Ord, Show, Read, Data, Typeable, Generic)
+  deriving
+    ( -- | BoundFuncDef{_funcBound :: Bind [TVar] FuncDef}
+      Eq,
+      Ord,
+      Show,
+      Read,
+      Data,
+      Typeable,
+      Generic
+    )
 
 data TopStmt
   = FDef {_fdef :: FuncDef}

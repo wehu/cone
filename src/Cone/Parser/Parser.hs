@@ -258,18 +258,23 @@ funcDef = (\f e -> (f, Just e)) <$> funcProto <*> braces expr
 expr :: Parser A.Expr
 expr =
   eapp
-    <$> (eann <$> ( parens expr
-            P.<|> ( ( ( (\((pos, bound, args, (effT, resT)), e) -> A.ELam bound args effT resT e)
-                          <$ kFn <*> funcDef
-                      )
-                        P.<|> A.EVar <$> namePath
-                        P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
-                        P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
-                        P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
-                        P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos))
-                      <*> getPos
-                  )
-        ) <*> (P.optionMaybe $ colon *> type_) <*> getPos)
+    <$> ( eann
+            <$> ( parens expr
+                    P.<|> ( ( ( (\((pos, bound, args, (effT, resT)), e) -> A.ELam bound args effT resT e)
+                                  <$ kFn <*> funcDef
+                              )
+                                P.<|> A.EVar <$> namePath
+                                P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
+                                P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
+                                P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
+                                P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos)
+                            )
+                              <*> getPos
+                          )
+                )
+            <*> (P.optionMaybe $ colon *> type_)
+            <*> getPos
+        )
     <*> (P.optionMaybe $ parens $ P.sepBy expr comma)
     <*> getPos
   where

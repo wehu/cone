@@ -452,17 +452,17 @@ inferFuncDef m =
                         newScope
                         bts
                       )
-                  case f ^.funcExpr of
+                  case f ^. funcExpr of
                     Just e -> do
-                         eType <- inferExprType newScope' e
-                         if aeq eType resultType
-                           then return ()
-                           else
-                             throwError $
-                               "function result type mismatch: "
-                                 ++ show eType
-                                 ++ " vs "
-                                 ++ show resultType
+                      eType <- inferExprType newScope' e
+                      if aeq eType resultType
+                        then return ()
+                        else
+                          throwError $
+                            "function result type mismatch: "
+                              ++ show eType
+                              ++ " vs "
+                              ++ show resultType
                     Nothing -> return ()
         )
         fdefs
@@ -523,13 +523,13 @@ inferExprType scope l@ELam {..} = do
         else throwError $ "lambda result type mismatch: " ++ show t ++ " vs " ++ show eType
     Nothing -> return eType
   return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) result _eloc
-inferExprType scope a@EAnn{..} = do
+inferExprType scope a@EAnn {..} = do
   t <- inferExprType scope _eannExpr
   inferTypeKind scope _eannType
   if aeq t _eannType
     then return _eannType
     else throwError $ "type mismatch: " ++ show t ++ " vs " ++ show _eannType
-inferExprType scope ELit{..} = do
+inferExprType scope ELit {..} = do
   inferTypeKind scope _litType
   return _litType
 inferExprType scope _ = throwError $ "xxx"
