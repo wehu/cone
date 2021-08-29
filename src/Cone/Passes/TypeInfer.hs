@@ -520,6 +520,11 @@ inferExprType scope l@ELam {..} = do
         else throwError $ "lambda result type mismatch: " ++ show t ++ " vs " ++ show eType
     Nothing -> return eType
   return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) result _eloc
+inferExprType scope a@EAnn{..} = do
+  t <- inferExprType scope _eannExpr
+  if aeq (closeType t) (closeType _eannType)
+    then return _eannType
+    else throwError $ "type mismatch: " ++ show t ++ " vs " ++ show _eannType
 inferExprType scope _ = throwError $ "xxx"
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
@@ -616,9 +621,6 @@ unboundTypeSample b@BoundType {..} = unsafeUnbind _boundType
 unboundTypeSample t = ([], t)
 
 -- EVar{_evarName :: NamePath, _eloc :: Location}
---           | ELam{_elamBoundVars :: [TVar], _elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
---                  _elamResultType :: Maybe Type, _elamExpr :: Maybe Expr,
---                  _eloc :: Location}
 --           | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
 --           | ELet{_eletVars :: [(String, Expr)], _eletBody :: Expr,
 --                  _eloc :: Location}

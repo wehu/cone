@@ -40,8 +40,10 @@ inferTypeDefSpec = hspec $ do
      }
 
      fun foo[b](a: a<b>) : a<b> {
-        fn[c](a:c):c{a}(a)
+        fn[c](a:a<c>):a<c>{a}(a:a<c>)
      }
+
+     // xxxx
 
        |]
       --(show $ fmap (\m -> infer m) $ parse "" source) `shouldBe` ""

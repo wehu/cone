@@ -226,7 +226,7 @@ funcDef = (\f e -> (f, Just e)) <$> funcProto <*> braces expr
 expr :: Parser A.Expr
 expr =
   eapp
-    <$> ( parens expr
+    <$> (eann <$> ( parens expr
             P.<|> ( ( ( (\((pos, bound, args, (effT, resT)), e) -> A.ELam bound args effT resT e)
                           <$ kFn <*> funcDef
                       )
@@ -234,12 +234,15 @@ expr =
                     )
                       <*> getPos
                   )
-        )
+        ) <*> (P.optionMaybe $ colon *> type_) <*> getPos)
     <*> (P.optionMaybe $ parens $ P.sepBy expr comma)
     <*> getPos
   where
     eapp e args pos = case args of
       Just args' -> A.EApp e args' pos
+      _ -> e
+    eann e t pos = case t of
+      Just t' -> A.EAnn e t' pos
       _ -> e
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
