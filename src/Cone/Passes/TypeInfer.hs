@@ -438,8 +438,7 @@ inferFuncDef m =
                         [(n, t) | t <- argTypes | n <- (f ^. funcArgs)]
                       )
                   eType <- inferExprType newScope $ fromJust $ f ^. funcExpr
-                  if acompare (closeType eType) (closeType resultType) == LT ||
-                     acompare (closeType eType) (closeType resultType) == EQ 
+                  if aeq (closeType eType) (closeType resultType)
                     then return ()
                     else
                       throwError $
