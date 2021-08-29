@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Cone.Parser.Parser (parse) where
 
@@ -7,6 +8,7 @@ import qualified Cone.Parser.Lexer as L
 import Data.Functor.Identity
 import Data.List
 import qualified Text.Parsec as P
+import qualified Text.Parsec.Expr as PE
 import Text.Parsec.Pos (newPos)
 import Unbound.Generics.LocallyNameless
 
@@ -65,6 +67,28 @@ comma = symbol L.Comma
 less = symbol L.Less
 
 greater = symbol L.Greater
+
+le = symbol L.Le
+
+ge = symbol L.Ge
+
+eq = symbol L.Eq
+
+ne = symbol L.Ne
+
+not_ = symbol L.Not
+
+and = symbol L.And
+
+or = symbol L.Or
+
+add = symbol L.Add
+
+sub = symbol L.Sub
+
+div_ = symbol L.Div
+
+mod = symbol L.Mod
 
 backSlash = symbol L.Backslash
 
@@ -255,6 +279,24 @@ funcProto =
 
 funcDef = (\f e -> (f, Just e)) <$> funcProto <*> braces expr
 
+table   = [ [prefix sub "negative", prefix not_ "not" ]
+            , [binary star "mul" PE.AssocLeft, binary div_ "div" PE.AssocLeft ]
+            , [binary add "add" PE.AssocLeft,  binary sub "sub"  PE.AssocLeft ]
+           ]
+
+prefix op name = PE.Prefix $ do
+  op
+  pos <- getPos
+  return $ \i -> A.EApp (A.EVar name pos) [i] pos
+
+binary op name assoc = PE.Infix (do
+  op
+  pos <- getPos
+  return $
+    \a b -> 
+      let args = a:b:[]
+       in A.EApp (A.EVar name pos) args pos) assoc
+
 expr :: Parser A.Expr
 expr =
   eapp
@@ -271,6 +313,7 @@ expr =
                             )
                               <*> getPos
                           )
+                    P.<|> PE.buildExpressionParser table expr
                 )
             <*> (P.optionMaybe $ colon *> type_)
             <*> getPos
