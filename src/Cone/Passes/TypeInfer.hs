@@ -402,9 +402,11 @@ initFuncDef m = do
                         BoundType $
                           bind (f ^. funcBoundVars) $
                             TFunc argTypes (Just effType) resultType pos
-                   in case M.lookup fn fs of
-                        Just _ -> throwError $ "function redefine: " ++ fn
-                        Nothing -> return $ M.insert fn ft fs
+                   in do
+                        inferTypeKind scope ft
+                        case M.lookup fn fs of
+                          Just _ -> throwError $ "function redefine: " ++ fn
+                          Nothing -> return $ M.insert fn ft fs
         )
         (env ^. funcs)
         fdefs
