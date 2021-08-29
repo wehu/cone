@@ -463,11 +463,37 @@ inferExprType scope a@EApp {..} = do
   appFuncType <- inferExprType scope _eappFunc >>= unboundType
   argTypes <- mapM (inferExprType scope) _eappArgs
   inferAppResultType appFuncType argTypes
--- inferExprType scope l@ELam{..} = do
-
--- ELam{_elamBoundVars :: [TVar], _elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
---                  _elamResultType :: Maybe Type, _elamExpr :: Maybe Expr,
---                  _eloc :: Location}
+inferExprType scope l@ELam{..} = do
+  args <- mapM (\(_, t') -> case t' of
+                    Just t -> do
+                      inferTypeKind scope t
+                      return t
+                    Nothing -> do
+                      v <- fresh
+                      return $ TVar (magicVarName v) _eloc)
+                _elamArgs
+  eff <- case _elamEffType of
+           Just e -> do
+             inferEffKind scope e
+             return e
+           Nothing -> return $ EffTotal _eloc
+  newScope <- foldM (\s (n, t) -> 
+                      let ts = M.insert n t $ s ^. exprTypes
+                        in return $ scope {_exprTypes = ts})
+              scope
+              [(n, t) | (n, _) <- _elamArgs | t <- args]
+  case _elamExpr of
+    Just e -> return ()
+    Nothing -> throwError $ "expected an expression for lambda"
+  eType <- inferExprType newScope $ fromJust _elamExpr
+  result <- case _elamResultType of
+           Just t -> do
+             inferTypeKind scope t
+             if aeq (closeType eType) (closeType t)
+             then return t
+             else throwError $ "lambda result type mismatch: " ++ show t ++ " vs " ++ show eType
+           Nothing -> return eType
+  return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) result _eloc
 inferExprType scope _ = throwError $ "xxx"
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
