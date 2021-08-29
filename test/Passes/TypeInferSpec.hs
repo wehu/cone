@@ -35,7 +35,7 @@ inferTypeDefSpec = hspec $ do
        fun test1(b,c) : b
      }
 
-     fun bar[a](a: a) : a {
+     fun bar(a: i32) : i32 {
        foo(a)
      }
 

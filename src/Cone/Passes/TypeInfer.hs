@@ -352,7 +352,7 @@ initEffIntfDef m = do
                 bind bvars $ TFunc iargs Nothing iresult pos
 
 magicVarName :: Int -> TVar
-magicVarName i = s2n $ "__" ++ show i
+magicVarName i = makeName "__" $ toInteger i
 
 initFuncDef :: (Has EnvEff sig m) => Module -> m ()
 initFuncDef m = do
@@ -455,14 +455,13 @@ inferExprType scope e@EVar {..} =
     Just t -> return t
     Nothing -> throwError $ "cannot find expr var: " ++ _evarName
 inferExprType scope a@EApp {..} = do
-  app <- inferExprType scope _eappFunc
+  appType <- inferExprType scope _eappFunc >>= unboundType
   argTypes <- mapM (inferExprType scope) _eappArgs
-  appType <- (unboundType $ app)
   let appArgTypes = appType ^. tfuncArgs
    in if acompare (fmap closeType appArgTypes) (fmap closeType argTypes) == EQ ||
          acompare (fmap closeType appArgTypes) (fmap closeType argTypes) == GT
         then case appType of
-          TFunc {..} -> return _tfuncResult
+          TFunc {..} -> inferFuncType appType argTypes
           _ -> throwError $ "expect a function type: " ++ show appType
         else
           throwError $
@@ -471,6 +470,37 @@ inferExprType scope a@EApp {..} = do
               ++ " vs "
               ++ show argTypes
 inferExprType scope _ = throwError $ "xxx"
+
+collectVarBinding :: [TVar] -> Type -> Type -> [(TVar, Type)]
+collectVarBinding binds TPrim{} TPrim{} = []
+collectVarBinding binds TVar{..} t = 
+  case L.elemIndex _tvar binds of
+    Just _ -> []
+    Nothing -> [(_tvar, t)]
+collectVarBinding binds a@TFunc{} b@TFunc{} =
+  join [collectVarBinding binds aarg barg | aarg <- a^.tfuncArgs | barg <- b^.tfuncArgs] ++
+  collectVarBinding binds (_tfuncResult a) (_tfuncResult b)
+collectVarBinding binds a@TApp{} b@TApp{} =
+  join [collectVarBinding binds aarg barg | aarg <- a^.tappArgs | barg <- b^.tappArgs]
+collectVarBinding binds a@TAnn{} b@TAnn{} =
+  collectVarBinding binds (_tannType a) (_tannType b)
+collectVarBinding binds a@BoundType{} b@BoundType{} =
+  let (ats, at) = unsafeUnbind $ _boundType a
+      (bts, bt) = unsafeUnbind $ _boundType b
+    in collectVarBinding (binds ++ ats ++ bts) at bt
+
+inferFuncType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
+inferFuncType f@TFunc{} args = do
+  let fArgTypes = _tfuncArgs f
+      bindings = join [collectVarBinding [] a b | a <- fArgTypes | b <- args]
+    in do foldM (\b (n, t) ->
+             case M.lookup n b of
+               Nothing -> return $ M.insert n t b
+               Just ot -> throwError $ "var binding conflict: " ++ show t ++ " vs " ++ show ot)
+           M.empty
+           bindings
+          return $ substs bindings $ _tfuncResult f
+inferFuncType _ _ = throwError "bad"
 
 closeType :: Type -> Bind [TVar] Type
 closeType t =
