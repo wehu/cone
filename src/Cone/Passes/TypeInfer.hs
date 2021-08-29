@@ -458,49 +458,49 @@ inferExprType scope a@EApp {..} = do
   appType <- inferExprType scope _eappFunc >>= unboundType
   argTypes <- mapM (inferExprType scope) _eappArgs
   let appArgTypes = appType ^. tfuncArgs
-   in if acompare (fmap closeType appArgTypes) (fmap closeType argTypes) == EQ ||
-         acompare (fmap closeType appArgTypes) (fmap closeType argTypes) == GT
-        then case appType of
-          TFunc {..} -> inferAppResultType appType argTypes
-          _ -> throwError $ "expect a function type: " ++ show appType
-        else
-          throwError $
-            "application type checking failed: "
-              ++ show appArgTypes
-              ++ " vs "
-              ++ show argTypes
+   in inferAppResultType appType argTypes
 inferExprType scope _ = throwError $ "xxx"
 
-collectVarBinding :: [TVar] -> Type -> Type -> [(TVar, Type)]
-collectVarBinding binds TPrim{} TPrim{} = []
-collectVarBinding binds TVar{..} t = 
-  case L.elemIndex _tvar binds of
-    Just _ -> []
-    Nothing -> [(_tvar, t)]
-collectVarBinding binds a@TFunc{} b@TFunc{} =
-  join [collectVarBinding binds aarg barg | aarg <- a^.tfuncArgs | barg <- b^.tfuncArgs] ++
-  collectVarBinding binds (_tfuncResult a) (_tfuncResult b)
-collectVarBinding binds a@TApp{} b@TApp{} =
+collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
+collectVarBinding TPrim {} TPrim {} = return []
+collectVarBinding TVar {..} t = return [(_tvar, t)]
+collectVarBinding a@TFunc {} b@TFunc {} =
+  (++) <$> (foldM (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
+             []
+             [(a, b) | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs])
+       <*> collectVarBinding (_tfuncResult a) (_tfuncResult b)
+collectVarBinding a@TApp {} b@TApp {} =
   -- not support higher kind so far
-  join [collectVarBinding binds aarg barg | aarg <- a^.tappArgs | barg <- b^.tappArgs]
-collectVarBinding binds a@TAnn{} b@TAnn{} =
-  collectVarBinding binds (_tannType a) (_tannType b)
-collectVarBinding binds a@BoundType{} b@BoundType{} =
-  let (ats, at) = unsafeUnbind $ _boundType a
-      (bts, bt) = unsafeUnbind $ _boundType b
-    in collectVarBinding (binds ++ ats ++ bts) at bt
+  foldM (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
+    []
+    [(a, b) | aarg <- a ^. tappArgs | barg <- b ^. tappArgs]
+collectVarBinding a@TAnn {} b@TAnn {} =
+  collectVarBinding (_tannType a) (_tannType b)
+collectVarBinding a@BoundType {} b@BoundType {} =
+  do at <- unboundType a
+     bt <- unboundType b
+     collectVarBinding at bt
+collectVarBinding a b = throwError $ "type mismatch: " ++ show a ++ show b
 
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
-inferAppResultType f@TFunc{} args = do
+inferAppResultType f@TFunc {} args = do
   let fArgTypes = _tfuncArgs f
-      bindings = join [collectVarBinding [] a b | a <- fArgTypes | b <- args]
-    in do foldM (\b (n, t) ->
-             case M.lookup n b of
-               Nothing -> return $ M.insert n t b
-               Just ot -> throwError $ "type var binding conflict: " ++ show t ++ " vs " ++ show ot)
-           M.empty
-           bindings
-          return $ substs bindings $ _tfuncResult f
+   in do
+        if L.length fArgTypes /= L.length args
+          then throwError $ "function type argument number mismatch"
+          else return ()
+        bindings <- foldM (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
+                      []
+                      [(a, b) | a <- fArgTypes | b <- args]
+        foldM
+          ( \b (n, t) -> do
+              case M.lookup n b of
+                Nothing -> return $ M.insert n t b
+                Just ot -> throwError $ "type var binding conflict: " ++ show t ++ " vs " ++ show ot
+          )
+          M.empty
+          bindings
+        return $ substs bindings $ _tfuncResult f
 inferAppResultType t _ = throwError $ "expected a function type, but got " ++ show t
 
 closeType :: Type -> Bind [TVar] Type
