@@ -44,7 +44,7 @@ kType = keyword L.Type
 
 kEffect = keyword L.Effect
 
-semi = symbol L.Semi
+semi = P.many1 $ symbol L.Semi
 
 lParen = symbol L.LParen
 
@@ -295,7 +295,7 @@ topStmt =
 
 module_ :: Parser A.Module
 module_ =
-  f <$ kModule <*> namePath <*> getPos <* semi
+  f <$ (P.optional semi) <* kModule <*> namePath <*> getPos <* semi
     <*> imports
     <*> (P.many topStmt)
     <* P.eof

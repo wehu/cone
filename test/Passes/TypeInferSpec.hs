@@ -20,7 +20,7 @@ inferTypeDefSpec = hspec $ do
             unpack
               [text|
            module foo\bar
-
+          
           type ff {
             fff
           }
