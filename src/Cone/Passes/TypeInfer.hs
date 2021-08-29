@@ -352,7 +352,7 @@ initEffIntfDef m = do
                 bind bvars $ TFunc iargs Nothing iresult pos
 
 magicVarName :: Int -> TVar
-magicVarName i = makeName "__" $ toInteger i
+magicVarName i = makeName "$" $ toInteger i
 
 initFuncDef :: (Has EnvEff sig m) => Module -> m ()
 initFuncDef m = do
@@ -501,7 +501,11 @@ collectVarBinding a@TPrim {} b@TPrim {} = do
   if aeq a b
     then return []
     else throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
-collectVarBinding TVar {..} t = return [(_tvar, t)]
+collectVarBinding a@TVar {..} t = 
+  let fvars = t ^..fv
+  in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
+      then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show t
+      else return [(_tvar, t)]
 collectVarBinding a@TFunc {} b@TFunc {} =
   if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
     then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
