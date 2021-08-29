@@ -29,7 +29,6 @@ library
       Cone.Parser.AST
       Cone.Parser.Lexer
       Cone.Parser.Parser
-      Cone.Passes.BindTypeVars
       Cone.Passes.TypeInfer
   other-modules:
       Paths_cone

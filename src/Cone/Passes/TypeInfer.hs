@@ -461,7 +461,7 @@ inferExprType scope a@EApp {..} = do
    in if acompare (fmap closeType appArgTypes) (fmap closeType argTypes) == EQ ||
          acompare (fmap closeType appArgTypes) (fmap closeType argTypes) == GT
         then case appType of
-          TFunc {..} -> inferFuncType appType argTypes
+          TFunc {..} -> inferAppResultType appType argTypes
           _ -> throwError $ "expect a function type: " ++ show appType
         else
           throwError $
@@ -481,6 +481,7 @@ collectVarBinding binds a@TFunc{} b@TFunc{} =
   join [collectVarBinding binds aarg barg | aarg <- a^.tfuncArgs | barg <- b^.tfuncArgs] ++
   collectVarBinding binds (_tfuncResult a) (_tfuncResult b)
 collectVarBinding binds a@TApp{} b@TApp{} =
+  -- not support higher kind so far
   join [collectVarBinding binds aarg barg | aarg <- a^.tappArgs | barg <- b^.tappArgs]
 collectVarBinding binds a@TAnn{} b@TAnn{} =
   collectVarBinding binds (_tannType a) (_tannType b)
@@ -489,18 +490,18 @@ collectVarBinding binds a@BoundType{} b@BoundType{} =
       (bts, bt) = unsafeUnbind $ _boundType b
     in collectVarBinding (binds ++ ats ++ bts) at bt
 
-inferFuncType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
-inferFuncType f@TFunc{} args = do
+inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
+inferAppResultType f@TFunc{} args = do
   let fArgTypes = _tfuncArgs f
       bindings = join [collectVarBinding [] a b | a <- fArgTypes | b <- args]
     in do foldM (\b (n, t) ->
              case M.lookup n b of
                Nothing -> return $ M.insert n t b
-               Just ot -> throwError $ "var binding conflict: " ++ show t ++ " vs " ++ show ot)
+               Just ot -> throwError $ "type var binding conflict: " ++ show t ++ " vs " ++ show ot)
            M.empty
            bindings
           return $ substs bindings $ _tfuncResult f
-inferFuncType _ _ = throwError "bad"
+inferAppResultType t _ = throwError $ "expected a function type, but got " ++ show t
 
 closeType :: Type -> Bind [TVar] Type
 closeType t =
