@@ -78,9 +78,9 @@ ne = symbol L.Ne
 
 not_ = symbol L.Not
 
-and = symbol L.And
+and_ = symbol L.And
 
-or = symbol L.Or
+or_ = symbol L.Or
 
 add = symbol L.Add
 
@@ -88,7 +88,7 @@ sub = symbol L.Sub
 
 div_ = symbol L.Div
 
-mod = symbol L.Mod
+mod_ = symbol L.Mod
 
 backSlash = symbol L.Backslash
 
@@ -279,9 +279,21 @@ funcProto =
 
 funcDef = (\f e -> (f, Just e)) <$> funcProto <*> braces expr
 
-table   = [ [prefix sub "negative", prefix not_ "not" ]
-            , [binary star "mul" PE.AssocLeft, binary div_ "div" PE.AssocLeft ]
-            , [binary add "add" PE.AssocLeft,  binary sub "sub"  PE.AssocLeft ]
+table   = [ [prefix sub "negative"]
+            , [binary star "mul" PE.AssocLeft,
+               binary div_ "div" PE.AssocLeft,
+               binary mod_ "mod" PE.AssocLeft]
+            , [binary add "add" PE.AssocLeft, 
+               binary sub "sub"  PE.AssocLeft]
+            , [binary less "lt" PE.AssocLeft, 
+               binary greater "gt"  PE.AssocLeft,
+               binary le "le" PE.AssocLeft, 
+               binary ge "ge"  PE.AssocLeft]
+            , [binary eq "eq" PE.AssocLeft, 
+               binary ne "ne"  PE.AssocLeft]
+            , [prefix not_ "not"]
+            , [binary and_ "and" PE.AssocLeft, 
+               binary or_ "or"  PE.AssocLeft]
            ]
 
 prefix op name = PE.Prefix $ do
