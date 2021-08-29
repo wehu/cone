@@ -22,6 +22,7 @@ import Control.Monad
 import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Maybe
+import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
@@ -422,8 +423,8 @@ inferFuncDef m =
                 fs = env ^. funcs
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
                 scope = Scope (M.fromList bvars) M.empty fs
+                (bts, ftype) = unboundTypeSample $ fromJust $ M.lookup fn fs
              in do
-                  ftype <- unboundType $ fromJust $ M.lookup fn fs
                   ft <- case ftype of
                     ft@TFunc {} -> return ft
                     _ -> throwError $ "expected function type, but got: " ++ show ftype
@@ -437,12 +438,21 @@ inferFuncDef m =
                     ( foldM
                         ( \s ((n, _), t) ->
                             let ts = M.insert n t $ s ^. exprTypes
-                             in return $ scope {_exprTypes = ts}
+                             in return $ s {_exprTypes = ts}
                         )
                         scope
                         [(n, t) | t <- argTypes | n <- (f ^. funcArgs)]
                       )
-                  eType <- inferExprType newScope $ fromJust $ f ^. funcExpr
+                  newScope' <-
+                    ( foldM
+                        ( \s t ->
+                            let ks = M.insert (name2String t) (KStar pos) $ s ^. typeKinds
+                             in return $ s {_typeKinds = ks}
+                        )
+                        newScope
+                        bts
+                      )
+                  eType <- inferExprType newScope' $ fromJust $ f ^. funcExpr
                   if aeq (closeType eType) (closeType resultType)
                     then return ()
                     else
@@ -484,14 +494,23 @@ inferExprType scope l@ELam {..} = do
     foldM
       ( \s (n, t) ->
           let ts = M.insert n t $ s ^. exprTypes
-           in return $ scope {_exprTypes = ts}
+           in return $ s {_exprTypes = ts}
       )
       scope
       [(n, t) | (n, _) <- _elamArgs | t <- args]
+  newScope' <-
+    ( foldM
+        ( \s t ->
+            let ks = M.insert (name2String t) (KStar _eloc) $ s ^. typeKinds
+             in return $ s {_typeKinds = ks}
+        )
+        newScope
+        _elamBoundVars
+      )
   case _elamExpr of
     Just e -> return ()
     Nothing -> throwError $ "expected an expression for lambda"
-  eType <- inferExprType newScope $ fromJust _elamExpr
+  eType <- inferExprType newScope' $ fromJust _elamExpr
   result <- case _elamResultType of
     Just t -> do
       inferTypeKind scope t
@@ -590,6 +609,10 @@ unboundType b@BoundType {..} =
           t
           ps
 unboundType t = return t
+
+unboundTypeSample :: Type -> ([TVar], Type)
+unboundTypeSample b@BoundType {..} = unsafeUnbind _boundType
+unboundTypeSample t = ([], t)
 
 -- EVar{_evarName :: NamePath, _eloc :: Location}
 --           | ELam{_elamBoundVars :: [TVar], _elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,

@@ -40,7 +40,7 @@ inferTypeDefSpec = hspec $ do
      }
 
      fun foo[b](a: a<b>) : a<b> {
-        fn(a:b):b{a}(a)
+        fn[b](a:b):b{a}(a)
      }
 
        |]
