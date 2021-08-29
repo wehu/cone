@@ -507,7 +507,7 @@ inferAppResultType f@TFunc {} args = do
   let fArgTypes = _tfuncArgs f
    in do
         if L.length fArgTypes /= L.length args
-          then throwError $ "function type argument number mismatch"
+          then throwError $ "function type argument number mismatch: " ++ show fArgTypes ++ " vs " ++ show args
           else return ()
         bindings <-
           foldM
