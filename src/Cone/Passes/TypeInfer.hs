@@ -460,10 +460,14 @@ inferExprType scope a@EApp {..} = do
   appFuncType <- inferExprType scope _eappFunc >>= unboundType
   argTypes <- mapM (inferExprType scope) _eappArgs
   inferAppResultType appFuncType argTypes
+-- inferExprType scope l@ELam{..} = do
+-- ELam{_elamBoundVars :: [TVar], _elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
+--                  _elamResultType :: Maybe Type, _elamExpr :: Maybe Expr,
+--                  _eloc :: Location}
 inferExprType scope _ = throwError $ "xxx"
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
-collectVarBinding a@TPrim {} b@TPrim {} =
+collectVarBinding a@TPrim {} b@TPrim {} = do
   if aeq a b
     then return []
     else throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
@@ -476,7 +480,7 @@ collectVarBinding a@TFunc {} b@TFunc {} =
         <$> ( foldM
                 (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
                 []
-                [(a, b) | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
+                [(aarg, barg) | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
             )
         <*> collectVarBinding (_tfuncResult a) (_tfuncResult b)
 collectVarBinding a@TApp {} b@TApp {} =
@@ -484,10 +488,11 @@ collectVarBinding a@TApp {} b@TApp {} =
   if L.length (_tappArgs a) == L.length (_tappArgs b)
     && aeq (_tappName a) (_tappName b)
     then
-      foldM
-        (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
-        []
-        [(a, b) | aarg <- a ^. tappArgs | barg <- b ^. tappArgs]
+        foldM
+          (\s (a, b) -> do
+            (++) <$> (return s) <*> collectVarBinding a b)
+          []
+          [(aarg, barg) | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
     else throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
 collectVarBinding a@TAnn {} b@TAnn {} =
   collectVarBinding (_tannType a) (_tannType b)
@@ -539,7 +544,7 @@ unboundType b@BoundType {..} =
         foldM
           ( \t p -> do
               np <- magicVarName <$> fresh
-              unboundType $ subst p (TVar np pos) t
+              return $ subst p (TVar np pos) t
           )
           t
           ps
