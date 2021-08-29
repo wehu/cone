@@ -430,8 +430,8 @@ inferFuncDef m =
                   let argTypes = _tfuncArgs ft
                   let resultType = _tfuncResult ft
                   let effType = _tfuncEff ft
-                  if L.length argTypes /= L.length (f ^.funcArgs)
-                    then throwError $ "type mismatch: " ++ show argTypes ++ " vs " ++ show (f ^.funcArgs)
+                  if L.length argTypes /= L.length (f ^. funcArgs)
+                    then throwError $ "type mismatch: " ++ show argTypes ++ " vs " ++ show (f ^. funcArgs)
                     else return ()
                   newScope <-
                     ( foldM
@@ -463,36 +463,42 @@ inferExprType scope a@EApp {..} = do
   appFuncType <- inferExprType scope _eappFunc >>= unboundType
   argTypes <- mapM (inferExprType scope) _eappArgs
   inferAppResultType appFuncType argTypes
-inferExprType scope l@ELam{..} = do
-  args <- mapM (\(_, t') -> case t' of
-                    Just t -> do
-                      inferTypeKind scope t
-                      return t
-                    Nothing -> do
-                      v <- fresh
-                      return $ TVar (magicVarName v) _eloc)
-                _elamArgs
+inferExprType scope l@ELam {..} = do
+  args <-
+    mapM
+      ( \(_, t') -> case t' of
+          Just t -> do
+            inferTypeKind scope t
+            return t
+          Nothing -> do
+            v <- fresh
+            return $ TVar (magicVarName v) _eloc
+      )
+      _elamArgs
   eff <- case _elamEffType of
-           Just e -> do
-             inferEffKind scope e
-             return e
-           Nothing -> return $ EffTotal _eloc
-  newScope <- foldM (\s (n, t) -> 
-                      let ts = M.insert n t $ s ^. exprTypes
-                        in return $ scope {_exprTypes = ts})
-              scope
-              [(n, t) | (n, _) <- _elamArgs | t <- args]
+    Just e -> do
+      inferEffKind scope e
+      return e
+    Nothing -> return $ EffTotal _eloc
+  newScope <-
+    foldM
+      ( \s (n, t) ->
+          let ts = M.insert n t $ s ^. exprTypes
+           in return $ scope {_exprTypes = ts}
+      )
+      scope
+      [(n, t) | (n, _) <- _elamArgs | t <- args]
   case _elamExpr of
     Just e -> return ()
     Nothing -> throwError $ "expected an expression for lambda"
   eType <- inferExprType newScope $ fromJust _elamExpr
   result <- case _elamResultType of
-           Just t -> do
-             inferTypeKind scope t
-             if aeq (closeType eType) (closeType t)
-             then return t
-             else throwError $ "lambda result type mismatch: " ++ show t ++ " vs " ++ show eType
-           Nothing -> return eType
+    Just t -> do
+      inferTypeKind scope t
+      if aeq (closeType eType) (closeType t)
+        then return t
+        else throwError $ "lambda result type mismatch: " ++ show t ++ " vs " ++ show eType
+    Nothing -> return eType
   return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) result _eloc
 inferExprType scope _ = throwError $ "xxx"
 
@@ -501,11 +507,11 @@ collectVarBinding a@TPrim {} b@TPrim {} = do
   if aeq a b
     then return []
     else throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
-collectVarBinding a@TVar {..} t = 
-  let fvars = t ^..fv
-  in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
-      then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show t
-      else return [(_tvar, t)]
+collectVarBinding a@TVar {..} t =
+  let fvars = t ^.. fv
+   in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
+        then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show t
+        else return [(_tvar, t)]
 collectVarBinding a@TFunc {} b@TFunc {} =
   if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
     then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
@@ -522,11 +528,12 @@ collectVarBinding a@TApp {} b@TApp {} =
   if L.length (_tappArgs a) == L.length (_tappArgs b)
     && aeq (_tappName a) (_tappName b)
     then
-        foldM
-          (\s (a, b) -> do
-            (++) <$> (return s) <*> collectVarBinding a b)
-          []
-          [(aarg, barg) | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
+      foldM
+        ( \s (a, b) -> do
+            (++) <$> (return s) <*> collectVarBinding a b
+        )
+        []
+        [(aarg, barg) | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
     else throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
 collectVarBinding a@TAnn {} b@TAnn {} =
   collectVarBinding (_tannType a) (_tannType b)
