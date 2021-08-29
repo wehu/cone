@@ -64,6 +64,8 @@ data PrimType
   | F64
   | BF16
   | Pred
+  | Str
+  | Ch
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 type TVar = Name Type
@@ -130,6 +132,7 @@ data Pattern
 
 data Expr
   = EVar {_evarName :: NamePath, _eloc :: Location}
+  | ELit {_lit :: String, _litType :: Type, _eloc :: Location}
   | ELam
       { _elamBoundVars :: [TVar],
         _elamArgs :: [(String, Maybe Type)],

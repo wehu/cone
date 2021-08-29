@@ -77,12 +77,12 @@ tokens :-
   "effect"                              { \p s -> (p, Effect) }
   @decimal 
     | 0[oO] @octal
-    | 0[xX] @hexadecimal		            { \p s -> (p, Int (read s)) }
+    | 0[xX] @hexadecimal		            { \p s -> (p, Int s) }
   @decimal \. @decimal @exponent?
-    | @decimal @exponent	            	{ \p s -> (p, Float (read s)) }
+    | @decimal @exponent	            	{ \p s -> (p, Float s) }
   \' ($graphic # [\'\\] | " " | @escape) \'
-				                                { \p s -> (p, Char (read s)) }
-  \" @string* \"	                    	{ \p s -> (p, Str (read s)) }
+				                                { \p s -> (p, Char s) }
+  \" @string* \"	                    	{ \p s -> (p, Str s) }
   $alpha [$alpha $digit \_]*            { \p s -> (p, Ident s) }
 
 {
@@ -98,10 +98,10 @@ data Tok =
     Let             |
     In              |
     Ident String    |
-    Int Integer     |
-    Float Double    | 
+    Int String      |
+    Float String    | 
     Str String      |
-    Char Char       |
+    Char String     |
     Semi            |
     LParen          |
     RParen          |

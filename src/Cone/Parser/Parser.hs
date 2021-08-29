@@ -106,6 +106,38 @@ ident =
     )
     (\(L.Ident n) -> n)
 
+literalInt =
+  token
+    ( \case
+        (L.Int _) -> True
+        _ -> False
+    )
+    (\(L.Int n) -> n)
+
+literalFloat =
+  token
+    ( \case
+        (L.Float _) -> True
+        _ -> False
+    )
+    (\(L.Float n) -> n)
+
+literalStr =
+  token
+    ( \case
+        (L.Str _) -> True
+        _ -> False
+    )
+    (\(L.Str n) -> n)
+
+literalChar =
+  token
+    ( \case
+        (L.Char _) -> True
+        _ -> False
+    )
+    (\(L.Char n) -> n)
+
 getPos :: Parser A.Location
 getPos =
   do
@@ -231,7 +263,10 @@ expr =
                           <$ kFn <*> funcDef
                       )
                         P.<|> A.EVar <$> namePath
-                    )
+                        P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I64) <$> getPos)
+                        P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F64) <$> getPos)
+                        P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
+                        P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos))
                       <*> getPos
                   )
         ) <*> (P.optionMaybe $ colon *> type_) <*> getPos)
