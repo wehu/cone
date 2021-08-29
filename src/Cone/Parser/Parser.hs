@@ -297,8 +297,8 @@ binary op name assoc = PE.Infix (do
       let args = a:b:[]
        in A.EApp (A.EVar name pos) args pos) assoc
 
-expr :: Parser A.Expr
-expr =
+term :: Parser A.Expr
+term =
   eapp
     <$> ( eann
             <$> ( parens expr
@@ -313,7 +313,6 @@ expr =
                             )
                               <*> getPos
                           )
-                    P.<|> PE.buildExpressionParser table expr
                 )
             <*> (P.optionMaybe $ colon *> type_)
             <*> getPos
@@ -327,6 +326,9 @@ expr =
     eann e t pos = case t of
       Just t' -> A.EAnn e t' pos
       _ -> e
+
+expr :: Parser A.Expr
+expr = PE.buildExpressionParser table term
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
 typeArgs =

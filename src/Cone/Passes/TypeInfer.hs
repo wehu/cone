@@ -597,7 +597,10 @@ inferAppResultType f@TFunc {} args = do
           ( \b (n, t) -> do
               case M.lookup n b of
                 Nothing -> return $ M.insert n t b
-                Just ot -> throwError $ "type var binding conflict: " ++ show t ++ " vs " ++ show ot
+                Just ot -> 
+                  if aeq t ot
+                    then return b
+                    else throwError $ "type var binding conflict: " ++ show t ++ " vs " ++ show ot
           )
           M.empty
           bindings
