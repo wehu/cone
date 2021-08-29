@@ -57,6 +57,18 @@ tokens :-
   \,                                    { \p s -> (p, Comma) }
   \<                                    { \p s -> (p, Less) }
   \>                                    { \p s -> (p, Greater) }
+  "<="                                  { \p s -> (p, Le) }
+  ">="                                  { \p s -> (p, Ge) }
+  \!                                    { \p s -> (p, Not) }
+  "=="                                  { \p s -> (p, Eq) }
+  "!="                                  { \p s -> (p, Ne) }
+  "&&"                                  { \p s -> (p, And) }
+  "||"                                  { \p s -> (p, Or) }
+  "="                                   { \p s -> (p, Assign) }
+  "+"                                   { \p s -> (p, Add) }
+  "-"                                   { \p s -> (p, Sub) }
+  "/"                                   { \p s -> (p, Div) }
+  "%"                                   { \p s -> (p, Mod) }
   \\                                    { \p s -> (p, Backslash) }
   "->"                                  { \p s -> (p, Arrow) }
   \*                                    { \p s -> (p, Star) }
@@ -113,16 +125,16 @@ data Tok =
     Comma           |
     Less            |
     Greater         |
-    LE              |
-    GE              |
-    EQ              |
-    NE              |
+    Le              |
+    Ge              |
+    Eq              |
+    Ne              |
+    Not             |
     And             |
     Or              |
     Assign          |
     Add             |
     Sub             |
-    Mul             |
     Div             |
     Mod             |
     Backslash       |
