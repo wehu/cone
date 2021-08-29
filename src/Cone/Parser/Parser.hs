@@ -263,8 +263,8 @@ expr =
                           <$ kFn <*> funcDef
                       )
                         P.<|> A.EVar <$> namePath
-                        P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I64) <$> getPos)
-                        P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F64) <$> getPos)
+                        P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
+                        P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
                         P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
                         P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos))
                       <*> getPos

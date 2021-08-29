@@ -526,6 +526,9 @@ inferExprType scope a@EAnn{..} = do
   if aeq t _eannType
     then return _eannType
     else throwError $ "type mismatch: " ++ show t ++ " vs " ++ show _eannType
+inferExprType scope ELit{..} = do
+  inferTypeKind scope _litType
+  return _litType
 inferExprType scope _ = throwError $ "xxx"
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
