@@ -462,25 +462,39 @@ inferExprType scope a@EApp {..} = do
 inferExprType scope _ = throwError $ "xxx"
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
-collectVarBinding TPrim {} TPrim {} = return []
+collectVarBinding a@TPrim {} b@TPrim {} = 
+  if aeq a b
+  then return []
+  else throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
 collectVarBinding TVar {..} t = return [(_tvar, t)]
 collectVarBinding a@TFunc {} b@TFunc {} =
-  (++) <$> (foldM (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
+  if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
+    then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
+    else (++) <$> (foldM (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
              []
              [(a, b) | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs])
        <*> collectVarBinding (_tfuncResult a) (_tfuncResult b)
 collectVarBinding a@TApp {} b@TApp {} =
   -- not support higher kind so far
-  foldM (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
-    []
-    [(a, b) | aarg <- a ^. tappArgs | barg <- b ^. tappArgs]
+  if L.length (_tappArgs a) == L.length (_tappArgs b) &&
+     aeq (_tappName a) (_tappName b)
+    then foldM (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
+          []
+         [(a, b) | aarg <- a ^. tappArgs | barg <- b ^. tappArgs]
+    else throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
 collectVarBinding a@TAnn {} b@TAnn {} =
   collectVarBinding (_tannType a) (_tannType b)
 collectVarBinding a@BoundType {} b@BoundType {} =
-  do at <- unboundType a
-     bt <- unboundType b
-     collectVarBinding at bt
-collectVarBinding a b = throwError $ "type mismatch: " ++ show a ++ show b
+  let (ats, _) = unsafeUnbind $ _boundType a
+      (bts, _) = unsafeUnbind $ _boundType b
+   in do 
+       if L.length ats /= L.length bts
+        then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
+        else return ()
+       at <- unboundType a
+       bt <- unboundType b
+       collectVarBinding at bt
+collectVarBinding a b = throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
 
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 inferAppResultType f@TFunc {} args = do
