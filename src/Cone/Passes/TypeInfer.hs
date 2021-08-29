@@ -430,6 +430,9 @@ inferFuncDef m =
                   let argTypes = _tfuncArgs ft
                   let resultType = _tfuncResult ft
                   let effType = _tfuncEff ft
+                  if L.length argTypes /= L.length (f ^.funcArgs)
+                    then throwError $ "type mismatch: " ++ show argTypes ++ " vs " ++ show (f ^.funcArgs)
+                    else return ()
                   newScope <-
                     ( foldM
                         ( \s ((n, _), t) ->
@@ -461,6 +464,7 @@ inferExprType scope a@EApp {..} = do
   argTypes <- mapM (inferExprType scope) _eappArgs
   inferAppResultType appFuncType argTypes
 -- inferExprType scope l@ELam{..} = do
+
 -- ELam{_elamBoundVars :: [TVar], _elamArgs :: [(String, Maybe Type)], _elamEffType :: Maybe EffectType,
 --                  _elamResultType :: Maybe Type, _elamExpr :: Maybe Expr,
 --                  _eloc :: Location}
