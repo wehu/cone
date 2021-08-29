@@ -472,14 +472,10 @@ inferExprType scope e@EVar {..} =
   case M.lookup _evarName (scope ^. exprTypes) of
     Just t -> return t
     Nothing -> throwError $ "cannot find expr var: " ++ _evarName
-
-i
-
-nferExprType scope a@EApp {..} = do
+inferExprType scope a@EApp {..} = do
   appFuncType <- inferExprType scope _eappFunc >>= unboundType
   argTypes <- mapM (inferExprType scope) _eappArgs
   inferAppResultType appFuncType argTypes
-
 inferExprType scope l@ELam {..} = do
   newScope <-
     ( foldM
