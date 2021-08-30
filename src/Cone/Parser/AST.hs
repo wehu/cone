@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Cone.Parser.AST where
 
@@ -14,10 +14,10 @@ import Data.Data
 import Data.Data.Lens (uniplate)
 import Data.Maybe
 import GHC.Generics (Generic)
+import Prettyprinter
 import Unbound.Generics.LocallyNameless
 import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Name
-import Prettyprinter
 
 deriving instance Data a => Data (Name a)
 
@@ -92,7 +92,7 @@ instance Pretty PrimType where
   pretty BF16 = "bf16"
   pretty Pred = "bool"
   pretty Str = "str"
-  pretty Ch  = "char"
+  pretty Ch = "char"
 
 type TVar = Name Type
 
@@ -114,11 +114,11 @@ data Type
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Type where
-  pretty TPrim{..} = pretty _tprim <+> pretty _tloc
-  pretty TVar{..} = pretty _tvar <+> pretty _tloc
-  pretty TFunc{..} = (encloseSep lparen rparen comma (map pretty _tfuncArgs)) <+> "->" <+> colon <+> pretty _tfuncEff <+> pretty _tfuncResult <+> pretty _tloc
-  pretty TApp{..} = pretty _tappName <+> (encloseSep lparen rparen comma $ map pretty _tappArgs) <+> pretty _tloc
-  pretty TAnn{..} = pretty _tannType <+> colon <+> pretty _tannKind <+> pretty _tloc
+  pretty TPrim {..} = pretty _tprim <+> pretty _tloc
+  pretty TVar {..} = pretty _tvar <+> pretty _tloc
+  pretty TFunc {..} = (encloseSep lparen rparen comma (map pretty _tfuncArgs)) <+> "->" <+> colon <+> pretty _tfuncEff <+> pretty _tfuncResult <+> pretty _tloc
+  pretty TApp {..} = pretty _tappName <+> (encloseSep lparen rparen comma $ map pretty _tappArgs) <+> pretty _tloc
+  pretty TAnn {..} = pretty _tannType <+> colon <+> pretty _tannKind <+> pretty _tloc
   pretty (BoundType (B tvars t)) = (encloseSep lbracket rbracket comma (map pretty tvars)) <+> colon <+> pretty t
 
 data Kind
@@ -141,9 +141,9 @@ data EffKind
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty EffKind where
-  pretty EKStar{..} = "*" <+> pretty _ekloc
-  pretty EKFunc{..} = (encloseSep lparen rparen comma $ map pretty _ekfuncArgs) <+> "->" <+> pretty _ekfuncResult <+> pretty _ekloc
-  pretty EKList{..} = (encloseSep langle rangle comma $ map pretty _ekList) <+> pretty _ekloc
+  pretty EKStar {..} = "*" <+> pretty _ekloc
+  pretty EKFunc {..} = (encloseSep lparen rparen comma $ map pretty _ekfuncArgs) <+> "->" <+> pretty _ekfuncResult <+> pretty _ekloc
+  pretty EKList {..} = (encloseSep langle rangle comma $ map pretty _ekList) <+> pretty _ekloc
 
 data EffectType
   = EffTotal {_effLoc :: Location}
@@ -163,11 +163,11 @@ data EffectType
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty EffectType where
-  pretty EffTotal{..} = "total" <+> pretty _effLoc
-  pretty EffVar{..} = pretty _effVarName <+> pretty _effLoc
-  pretty EffApp{..} = pretty _effAppName <+> (encloseSep lparen rparen comma $ map pretty _effAppArgs) <+> pretty _effLoc
-  pretty EffList{..} = (encloseSep langle rangle comma $ map pretty _effList) <+> pretty _effLoc
-  pretty EffAnn{..} = pretty _effAnnType <+> colon <+> pretty _effAnnKind <+> pretty _effLoc
+  pretty EffTotal {..} = "total" <+> pretty _effLoc
+  pretty EffVar {..} = pretty _effVarName <+> pretty _effLoc
+  pretty EffApp {..} = pretty _effAppName <+> (encloseSep lparen rparen comma $ map pretty _effAppArgs) <+> pretty _effLoc
+  pretty EffList {..} = (encloseSep langle rangle comma $ map pretty _effList) <+> pretty _effLoc
+  pretty EffAnn {..} = pretty _effAnnType <+> colon <+> pretty _effAnnKind <+> pretty _effLoc
   pretty (BoundEffType (B tvars e)) = (encloseSep lbracket rbracket comma (map pretty tvars)) <+> colon <+> pretty e
 
 data Pattern
