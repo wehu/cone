@@ -251,7 +251,7 @@ inferEffKind scope b@BoundEffType {..} =
       newScope =
         L.foldl'
           ( \s e ->
-              s & at (name2String e) .~ Just star
+              s & at (name2String e) ?~ star
           )
           (scope ^. effKinds)
           bvs
