@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Cone.Parser.Parser (parse) where
 
@@ -10,7 +12,10 @@ import Data.List
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Expr as PE
 import Text.Parsec.Pos (newPos)
+import Control.Lens
 import Unbound.Generics.LocallyNameless
+
+makePrisms ''L.Tok
 
 type Parser a = P.ParsecT [L.Token] () Identity a
 
@@ -126,45 +131,18 @@ str = keyword L.Str
 
 char = keyword L.Char
 
-ident =
-  token
-    ( \case
-        (L.Ident _) -> True
-        _ -> False
-    )
-    (\(L.Ident n) -> n)
+tokenP :: Monoid a => Prism' L.Tok a -> Parser a
+tokenP p = token (not . isn't p) (view p)
 
-literalInt =
-  token
-    ( \case
-        (L.LInt _) -> True
-        _ -> False
-    )
-    (\(L.LInt n) -> n)
+ident = tokenP _Ident
 
-literalFloat =
-  token
-    ( \case
-        (L.LFloat _) -> True
-        _ -> False
-    )
-    (\(L.LFloat n) -> n)
+literalInt = tokenP _LInt
 
-literalStr =
-  token
-    ( \case
-        (L.LStr _) -> True
-        _ -> False
-    )
-    (\(L.LStr n) -> n)
+literalFloat = tokenP _LFloat
 
-literalChar =
-  token
-    ( \case
-        (L.LChar _) -> True
-        _ -> False
-    )
-    (\(L.LChar n) -> n)
+literalStr = tokenP _LStr
+
+literalChar = tokenP _LChar
 
 getPos :: Parser A.Location
 getPos =

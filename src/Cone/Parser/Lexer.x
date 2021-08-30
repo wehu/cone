@@ -1,5 +1,9 @@
 {
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE StandaloneDeriving #-}
+
 module Cone.Parser.Lexer (tokenize, Token(..), Tok(..), AlexPosn(..)) where
+import Data.Data
 }
 
 %wrapper "posn"
@@ -112,10 +116,10 @@ data Tok =
     Let             |
     In              |
     Ident String    |
-    LInt String      |
-    LFloat String    | 
-    LStr String      |
-    LChar String     |
+    LInt String     |
+    LFloat String   | 
+    LStr String     |
+    LChar String    |
     Semi            |
     LParen          |
     RParen          |
@@ -160,7 +164,7 @@ data Tok =
     Type            |
     Effect          |
     Unknown
-    deriving (Eq,Show)
+  deriving (Eq, Ord, Show, Read, Data, Typeable)
 
 type Token = (AlexPosn, Tok)
 
