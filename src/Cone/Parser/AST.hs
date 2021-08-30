@@ -5,6 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Cone.Parser.AST where
 
@@ -99,6 +100,15 @@ type TVar = Name Type
 instance Show a => Pretty (Name a) where
   pretty = pretty . show
 
+parens_ :: Pretty a => forall ann. [a] -> Doc ann
+parens_ ls = encloseSep lparen rparen comma $ map pretty ls
+
+brackets_ :: Pretty a => forall an. [a] -> Doc ann
+brackets_ ls = encloseSep lbracket rbracket comma $ map pretty ls
+
+angles_ :: Pretty a => forall ann. [a] -> Doc ann
+angles_ ls = encloseSep langle rangle comma $ map pretty ls
+
 data Type
   = TPrim {_tprim :: PrimType, _tloc :: Location}
   | TVar {_tvar :: TVar, _tloc :: Location}
@@ -116,10 +126,10 @@ data Type
 instance Pretty Type where
   pretty TPrim {..} = pretty _tprim <+> pretty _tloc
   pretty TVar {..} = pretty _tvar <+> pretty _tloc
-  pretty TFunc {..} = (encloseSep lparen rparen comma (map pretty _tfuncArgs)) <+> "->" <+> colon <+> pretty _tfuncEff <+> pretty _tfuncResult <+> pretty _tloc
-  pretty TApp {..} = pretty _tappName <+> (encloseSep lparen rparen comma $ map pretty _tappArgs) <+> pretty _tloc
+  pretty TFunc {..} = parens_ _tfuncArgs <+> "->" <+> colon <+> pretty _tfuncEff <+> pretty _tfuncResult <+> pretty _tloc
+  pretty TApp {..} = pretty _tappName <+> parens_ _tappArgs <+> pretty _tloc
   pretty TAnn {..} = pretty _tannType <+> colon <+> pretty _tannKind <+> pretty _tloc
-  pretty (BoundType (B tvars t)) = (encloseSep lbracket rbracket comma (map pretty tvars)) <+> colon <+> pretty t
+  pretty (BoundType (B tvars t)) = brackets_ tvars <+> colon <+> pretty t
 
 data Kind
   = KStar {_kloc :: Location}
@@ -128,7 +138,7 @@ data Kind
 
 instance Pretty Kind where
   pretty KStar {..} = "*" <+> pretty _kloc
-  pretty KFunc {..} = (encloseSep lparen rparen comma $ map pretty _kfuncArgs) <+> "->" <+> pretty _kfuncResult <+> pretty _kloc
+  pretty KFunc {..} = parens_ _kfuncArgs <+> "->" <+> pretty _kfuncResult <+> pretty _kloc
 
 data EffKind
   = EKStar {_ekloc :: Location}
@@ -142,8 +152,8 @@ data EffKind
 
 instance Pretty EffKind where
   pretty EKStar {..} = "*" <+> pretty _ekloc
-  pretty EKFunc {..} = (encloseSep lparen rparen comma $ map pretty _ekfuncArgs) <+> "->" <+> pretty _ekfuncResult <+> pretty _ekloc
-  pretty EKList {..} = (encloseSep langle rangle comma $ map pretty _ekList) <+> pretty _ekloc
+  pretty EKFunc {..} = parens_ _ekfuncArgs <+> "->" <+> pretty _ekfuncResult <+> pretty _ekloc
+  pretty EKList {..} = angles_ _ekList <+> pretty _ekloc
 
 data EffectType
   = EffTotal {_effLoc :: Location}
@@ -165,10 +175,10 @@ data EffectType
 instance Pretty EffectType where
   pretty EffTotal {..} = "total" <+> pretty _effLoc
   pretty EffVar {..} = pretty _effVarName <+> pretty _effLoc
-  pretty EffApp {..} = pretty _effAppName <+> (encloseSep lparen rparen comma $ map pretty _effAppArgs) <+> pretty _effLoc
-  pretty EffList {..} = (encloseSep langle rangle comma $ map pretty _effList) <+> pretty _effLoc
+  pretty EffApp {..} = pretty _effAppName <+> parens_ _effAppArgs <+> pretty _effLoc
+  pretty EffList {..} = angles_ _effList <+> pretty _effLoc
   pretty EffAnn {..} = pretty _effAnnType <+> colon <+> pretty _effAnnKind <+> pretty _effLoc
-  pretty (BoundEffType (B tvars e)) = (encloseSep lbracket rbracket comma (map pretty tvars)) <+> colon <+> pretty e
+  pretty (BoundEffType (B tvars e)) = brackets_ tvars <+> colon <+> pretty e
 
 data Pattern
   = PVar {_pvarName :: String, _ploc :: Location}
@@ -183,6 +193,11 @@ data Pattern
         _ploc :: Location
       }
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty Pattern where
+  pretty PVar{..} = pretty _pvarName <+> pretty _ploc
+  pretty PApp{..} = pretty _pappName <+> parens_ _pappArgs <+> pretty _ploc
+  pretty PAnn{..} = pretty _pannPattern <+> colon <+> pretty _pannType <+> pretty _ploc
 
 data Expr
   = EVar {_evarName :: NamePath, _eloc :: Location}
