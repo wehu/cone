@@ -87,12 +87,12 @@ initTypeDef m = do
 initTypeConDef :: (Has EnvEff sig m) => Module -> m ()
 initTypeConDef m = do
   env <- get @Env
-  tconTypes <- tcons env
+  tconTypes <- initTconTypes env
   put $ set funcs tconTypes env
   where
-    tdefs = universeOn (topStmts . traverse . _TDef) m
-    tcons env =
-      let globalTypes = (fmap (\n -> s2n n) $ M.keys (env ^. types))
+    tdefs = m ^.. topStmts . traverse . _TDef
+    initTconTypes env =
+      let globalTypes = fmap (\n -> s2n n) $ M.keys $ env ^. types
        in foldM (insertTconType globalTypes) (env ^. funcs) tdefs
     insertTconType globalTypes fs t =
       let cons = t ^. typeCons
