@@ -63,11 +63,11 @@ type EnvEff = Eff Env String
 initTypeDef :: (Has EnvEff sig m) => Module -> m ()
 initTypeDef m = do
   env <- get @Env
-  tkinds <- ts env
+  tkinds <- typeKinds env
   put $ set types tkinds env
   where
-    tdefs = universeOn (topStmts . traverse . _TDef) m
-    ts env = foldM insertTypeKind (env ^. types) tdefs
+    typeDefs = universeOn (topStmts . traverse . _TDef) m
+    typeKinds env = foldM insertTypeKind (env ^. types) typeDefs
     insertTypeKind ts t =
       let tn = t ^. typeName
        in case M.lookup tn ts of
@@ -352,8 +352,8 @@ initEffIntfDef m = do
               BoundType $
                 bind bvars $ TFunc iargs Nothing iresult pos
 
-magicVarName :: Int -> TVar
-magicVarName i = makeName "$" $ toInteger i
+freeVarName :: Int -> TVar
+freeVarName i = makeName "$" $ toInteger i
 
 initFuncDef :: (Has EnvEff sig m) => Module -> m ()
 initFuncDef m = do
@@ -379,7 +379,7 @@ initFuncDef m = do
                                 return t
                               Nothing -> do
                                 v <- fresh
-                                return $ TVar (magicVarName v) pos
+                                return $ TVar (freeVarName v) pos
                         )
                         (f ^. funcArgs)
                       )
@@ -397,7 +397,7 @@ initFuncDef m = do
                           return t
                         Nothing -> do
                           v <- fresh
-                          return $ TVar (magicVarName v) pos
+                          return $ TVar (freeVarName v) pos
                       )
                   let ft =
                         BoundType $
@@ -494,7 +494,7 @@ inferExprType scope l@ELam {..} = do
             return t
           Nothing -> do
             v <- fresh
-            return $ TVar (magicVarName v) _eloc
+            return $ TVar (freeVarName v) _eloc
       )
       _elamArgs
   eff <- case _elamEffType of
@@ -619,7 +619,7 @@ unbindType b@BoundType {..} =
    in do
         foldM
           ( \t p -> do
-              np <- magicVarName <$> fresh
+              np <- freeVarName <$> fresh
               return $ subst p (TVar np pos) t
           )
           t
