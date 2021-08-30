@@ -520,9 +520,9 @@ collectVarBinding a@TFunc {} b@TFunc {} =
     else
       (++)
         <$> ( foldM
-                (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
+                (\s e -> (++) <$> (return s) <*> e)
                 []
-                [(aarg, barg) | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
+                [collectVarBinding aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
             )
         <*> collectVarBinding (_tfuncResult a) (_tfuncResult b)
 collectVarBinding a@TApp {} b@TApp {} =
@@ -531,11 +531,9 @@ collectVarBinding a@TApp {} b@TApp {} =
     && aeq (_tappName a) (_tappName b)
     then
       foldM
-        ( \s (a, b) -> do
-            (++) <$> (return s) <*> collectVarBinding a b
-        )
+        ( \s e -> (++) <$> (return s) <*> e)
         []
-        [(aarg, barg) | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
+        [collectVarBinding aarg barg | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
     else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 collectVarBinding a@TAnn {} b@TAnn {} =
   collectVarBinding (_tannType a) (_tannType b)
@@ -557,10 +555,9 @@ inferAppResultType f@TFunc {} args = do
     then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args
     else return ()
   bindings <-
-    foldM
-      (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
+    foldM (\s e -> (++) <$> return s <*> e)
       []
-      [(a, b) | a <- fArgTypes | b <- args]
+      [collectVarBinding a b | a <- fArgTypes | b <- args]
   foldM
     ( \b (n, t) -> do
         case b ^. at n of
