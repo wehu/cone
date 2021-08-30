@@ -85,16 +85,18 @@ tokens :-
   "f64"                                 { \p s -> (p, F64) }
   "bf16"                                { \p s -> (p, BF16) }
   "bool"                                { \p s -> (p, Pred) }
+  "str"                                 { \p s -> (p, Str) }
+  "char"                                { \p s -> (p, Char) }
   "type"                                { \p s -> (p, Type) }
   "effect"                              { \p s -> (p, Effect) }
   @decimal 
     | 0[oO] @octal
-    | 0[xX] @hexadecimal		            { \p s -> (p, Int s) }
+    | 0[xX] @hexadecimal		            { \p s -> (p, LInt s) }
   @decimal \. @decimal @exponent?
-    | @decimal @exponent	            	{ \p s -> (p, Float s) }
+    | @decimal @exponent	            	{ \p s -> (p, LFloat s) }
   \' ($graphic # [\'\\] | " " | @escape) \'
-				                                { \p s -> (p, Char s) }
-  \" @string* \"	                    	{ \p s -> (p, Str s) }
+				                                { \p s -> (p, LChar s) }
+  \" @string* \"	                    	{ \p s -> (p, LStr s) }
   $alpha [$alpha $digit \_]*            { \p s -> (p, Ident s) }
 
 {
@@ -110,10 +112,10 @@ data Tok =
     Let             |
     In              |
     Ident String    |
-    Int String      |
-    Float String    | 
-    Str String      |
-    Char String     |
+    LInt String      |
+    LFloat String    | 
+    LStr String      |
+    LChar String     |
     Semi            |
     LParen          |
     RParen          |
@@ -153,6 +155,8 @@ data Tok =
     F64             |
     BF16            |
     Pred            |
+    Str             |
+    Char            |
     Type            |
     Effect          |
     Unknown

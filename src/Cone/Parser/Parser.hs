@@ -122,6 +122,10 @@ bf16 = keyword L.BF16
 
 bool = keyword L.Pred
 
+str = keyword L.Str
+
+char = keyword L.Char
+
 ident =
   token
     ( \case
@@ -133,34 +137,34 @@ ident =
 literalInt =
   token
     ( \case
-        (L.Int _) -> True
+        (L.LInt _) -> True
         _ -> False
     )
-    (\(L.Int n) -> n)
+    (\(L.LInt n) -> n)
 
 literalFloat =
   token
     ( \case
-        (L.Float _) -> True
+        (L.LFloat _) -> True
         _ -> False
     )
-    (\(L.Float n) -> n)
+    (\(L.LFloat n) -> n)
 
 literalStr =
   token
     ( \case
-        (L.Str _) -> True
+        (L.LStr _) -> True
         _ -> False
     )
-    (\(L.Str n) -> n)
+    (\(L.LStr n) -> n)
 
 literalChar =
   token
     ( \case
-        (L.Char _) -> True
+        (L.LChar _) -> True
         _ -> False
     )
-    (\(L.Char n) -> n)
+    (\(L.LChar n) -> n)
 
 getPos :: Parser A.Location
 getPos =
