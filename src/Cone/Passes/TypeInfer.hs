@@ -229,7 +229,7 @@ inferEffKind scope a@EffApp {..} = do
       if L.length _effAppArgs /= L.length _ekfuncArgs
         then throwError $ "eff kind arguments mismatch: " ++ ppr _effAppArgs ++ " vs " ++ ppr _ekfuncArgs
         else do
-          mapM
+          mapM_
             ( \(a, b) -> do
                 e <- inferTypeKind scope a
                 checkTypeKind e
@@ -250,10 +250,11 @@ inferEffKind scope a@EffAnn {..} = do
     else throwError $ "eff kind mismatch: " ++ ppr k ++ " vs " ++ ppr _effAnnKind
 inferEffKind scope b@BoundEffType {..} =
   let (bvs, t) = unsafeUnbind $ _boundEffType
+      star = EKStar $ _effLoc t
       newScope =
         L.foldl'
           ( \s e ->
-              M.insert (name2String e) (EKStar $ _effLoc t) s
+             s & at (name2String e) .~ Just star
           )
           (scope ^. effKinds)
           bvs
@@ -281,12 +282,12 @@ checkEffKind k = do
 initEffIntfDef :: (Has EnvEff sig m) => Module -> m ()
 initEffIntfDef m = do
   env <- get @Env
-  eintfs <- effIntfTypes env
+  eintfs <- initEffIntfTypes env
   put $ set effIntfs eintfs env
   where
-    edefs = universeOn (topStmts . traverse . _EDef) m
-    effIntfTypes env =
-      let globalTypes = (fmap (\n -> s2n n) $ M.keys (env ^. types))
+    edefs = m ^.. topStmts . traverse . _EDef
+    initEffIntfTypes env =
+      let globalTypes = fmap (\n -> s2n n) $ M.keys $ env ^. types
        in foldM (insertEffIntfType globalTypes) (env ^. effIntfs) edefs
     insertEffIntfType globalTypes intfs e =
       let is = e ^. effectIntfs
@@ -308,16 +309,14 @@ initEffIntfDef m = do
                           ++ "only exists in eff type arguments: "
                           ++ ppr fvars
                     else return ()
-                  case M.lookup intfn is of
-                    Just t ->
+                  forMOf _Just (is ^. at intfn) $ \t ->
                       throwError $
                         "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
-                    Nothing -> do
-                      let bt = (intfType i e)
-                       in do
-                            k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
-                            checkTypeKind k
-                            return $ M.insert intfn bt is
+                  let bt = (intfType i e)
+                   in do
+                        k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
+                        checkTypeKind k
+                        return $ is & at intfn ?~ bt
        in foldM f intfs is
     intfType i e =
       let iargs = i ^. intfArgs
