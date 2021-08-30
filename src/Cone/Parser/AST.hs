@@ -109,6 +109,9 @@ bracketsList ls = encloseSep lbracket rbracket comma $ map pretty ls
 anglesList :: Pretty a => forall ann. [a] -> Doc ann
 anglesList ls = encloseSep langle rangle comma $ map pretty ls
 
+bracesList :: Pretty a => forall ann. [a] -> Doc ann
+bracesList ls = encloseSep lbrace rbrace semi $ map pretty ls
+
 data Type
   = TPrim {_tprim :: PrimType, _tloc :: Location}
   | TVar {_tvar :: TVar, _tloc :: Location}
@@ -199,6 +202,18 @@ instance Pretty Pattern where
   pretty PApp{..} = parens $ pretty _pappName <+> parensList _pappArgs <+> pretty _ploc
   pretty PAnn{..} = parens $ pretty _pannPattern <+> colon <+> pretty _pannType <+> pretty _ploc
 
+data Case = Case
+  { _casePattern :: Maybe Pattern,
+    _caseGuard :: Maybe Expr,
+    _caseExpr :: Expr,
+    _caseLoc :: Location
+  }
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty Case where
+  pretty Case{..} = parens $ pretty _casePattern <+> "|" <+>
+     pretty _caseGuard <+> "->" <+> pretty _caseExpr <+> pretty _caseLoc
+
 data Expr
   = EVar {_evarName :: NamePath, _eloc :: Location}
   | ELit {_lit :: String, _litType :: Type, _eloc :: Location}
@@ -235,13 +250,17 @@ data Expr
       Generic
     )
 
-data Case = Case
-  { _casePattern :: Maybe Pattern,
-    _caseGuard :: Maybe Expr,
-    _caseExpr :: Expr,
-    _caseLoc :: Location
-  }
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+instance Pretty Expr where
+  pretty EVar{..} = pretty _evarName <+> pretty _eloc
+  pretty ELit{..} = pretty _lit <+> pretty _eloc
+  pretty ELam{..} = parens $ "fn" <+> bracketsList _elamBoundVars <+> parensList _elamArgs <+> colon
+                    <+> pretty _elamEffType <+> pretty _elamResultType
+                    <+> pretty _elamExpr <+> pretty _eloc
+  pretty ECase{..} = parens $ "case" <+> pretty _ecaseExpr <+> "of" <+> bracesList _ecaseBody <+> pretty _eloc
+  pretty EApp{..} = parens $ pretty _eappFunc <+> parensList _eappArgs <+> pretty _eloc
+  pretty ELet{..} = parens $ "let" <+> bracketsList _eletVars <+> pretty _eletBody <+> pretty _eloc
+  pretty EHandle{..} = parens $ "handle" <+> pretty _ehandleExpr <+> pretty _eloc
+  pretty EAnn{..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType <+> pretty _eloc
 
 data TypeDef = TypeDef
   { _typeName :: String,
