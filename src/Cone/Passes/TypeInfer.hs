@@ -200,19 +200,17 @@ checkTypeKind k = do
 initEffTypeDef :: (Has EnvEff sig m) => Module -> m ()
 initEffTypeDef m = do
   env <- get @Env
-  ekinds <- eff env
+  ekinds <- initEffKinds env
   put $ set effs ekinds env
   where
-    edefs = universeOn (topStmts . traverse . _EDef) m
-
-    eff env = foldM insertEffKind (env ^. effs) edefs
+    edefs = m ^.. topStmts . traverse . _EDef
+    initEffKinds env = foldM insertEffKind (env ^. effs) edefs
     insertEffKind es e =
       let en = e ^. effectName
-       in case M.lookup en es of
-            Just oe ->
-              throwError $
-                "redefine an effect: " ++ en ++ " vs " ++ ppr oe
-            Nothing -> return $ M.insert en (effKind e) es
+       in do forMOf _Just (es ^. at en) $ \oe ->
+                throwError $
+                  "redefine an effect: " ++ en ++ " vs " ++ ppr oe
+             return $ es & at en ?~ effKind e
     effKind e =
       let loc = _effectLoc e
           args = e ^. effectArgs
@@ -221,16 +219,7 @@ initEffTypeDef m = do
        in if args == []
             then estar
             else
-              EKFunc
-                ( fmap
-                    ( \(_, kk) -> case kk of
-                        Nothing -> star
-                        Just kkk -> kkk
-                    )
-                    args
-                )
-                estar
-                loc
+              EKFunc (args ^..traverse._2.non star) estar loc
 
 inferEffKind :: (Has EnvEff sig m) => Scope -> EffectType -> m EffKind
 inferEffKind scope a@EffApp {..} = do
