@@ -78,7 +78,21 @@ data PrimType
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty PrimType where
-  pretty = pretty . show
+  pretty I8 = "i8"
+  pretty I16 = "i16"
+  pretty I32 = "i32"
+  pretty I64 = "i64"
+  pretty U8 = "u8"
+  pretty U16 = "u16"
+  pretty U32 = "u32"
+  pretty U64 = "u64"
+  pretty F16 = "f16"
+  pretty F32 = "f32"
+  pretty F64 = "f64"
+  pretty BF16 = "bf16"
+  pretty Pred = "bool"
+  pretty Str = "str"
+  pretty Ch  = "char"
 
 type TVar = Name Type
 
