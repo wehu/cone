@@ -1,11 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE GADTs #-}
 
 module Cone.Passes.TypeInfer (infer) where
 
@@ -71,18 +71,18 @@ initTypeDef m = do
     initTypeKinds env = foldM insertTypeKind (env ^. types) typeDefs
     insertTypeKind ts t =
       let tn = t ^. typeName
-       in do forMOf _Just (ts ^.at tn) $ \ot ->
-               throwError $
+       in do
+            forMOf _Just (ts ^. at tn) $ \ot ->
+              throwError $
                 "redefine a type: " ++ tn ++ " vs " ++ ppr ot
-             return $ ts & at tn ?~ typeKind t
+            return $ ts & at tn ?~ typeKind t
     typeKind t =
       let loc = _typeLoc t
           args = t ^. typeArgs
           star = KStar loc
        in if args == []
             then star
-            else
-              KFunc (args ^..traverse._2.non star) star loc
+            else KFunc (args ^.. traverse . _2 . non star) star loc
 
 initTypeConDef :: (Has EnvEff sig m) => Module -> m ()
 initTypeConDef m = do
@@ -112,8 +112,8 @@ initTypeConDef m = do
                           ++ ppr fvars
                     else return ()
                   forMOf _Just (fs ^. at cn) $ \t ->
-                     throwError $
-                       "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
+                    throwError $
+                      "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
                   let bt = tconType c t
                    in do
                         k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
@@ -145,7 +145,7 @@ inferTypeKind scope a@TApp {..} = do
       if L.length _tappArgs /= L.length _kfuncArgs
         then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs
         else do
-          mapM
+          mapM_
             ( \(a, b) -> do
                 t <- inferTypeKind scope a
                 checkTypeKind t
@@ -165,19 +165,20 @@ inferTypeKind scope a@TAnn {..} = do
     else throwError $ "kind mismatch: " ++ ppr k ++ " vs " ++ ppr _tannKind
 inferTypeKind scope b@BoundType {..} =
   let (bvs, t) = unsafeUnbind $ _boundType
+      star = KStar $ _tloc t
       newScope =
         L.foldl'
           ( \s e ->
-              M.insert (name2String e) (KStar $ _tloc t) s
+              s & at (name2String e) ?~ star
           )
           (scope ^. typeKinds)
           bvs
    in inferTypeKind scope {_typeKinds = newScope} t
 inferTypeKind scope v@TVar {..} = do
   kinds <- _types <$> get @Env
-  case M.lookup (name2String _tvar) (scope ^. typeKinds) of
+  case scope ^. typeKinds ^. at (name2String _tvar) of
     Just k -> return k
-    Nothing -> case M.lookup (name2String _tvar) kinds of
+    Nothing -> case kinds ^. at (name2String _tvar) of
       Just k -> return k
       Nothing -> throwError $ "cannot find type: " ++ ppr v
 inferTypeKind scope f@TFunc {..} = do
