@@ -111,16 +111,14 @@ initTypeConDef m = do
                           ++ "only exists in type arguments: "
                           ++ ppr fvars
                     else return ()
-                  case M.lookup cn fs of
-                    Just t ->
-                      throwError $
-                        "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
-                    Nothing -> do
-                      let bt = (tconType c t)
-                       in do
-                            k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
-                            checkTypeKind k
-                            return $ M.insert cn bt fs
+                  forMOf _Just (fs ^. at cn) $ \t ->
+                     throwError $
+                       "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
+                  let bt = tconType c t
+                   in do
+                        k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
+                        checkTypeKind k
+                        return $ fs & at cn ?~ bt
        in foldM f fs cons
     tconType c t =
       let targs = c ^. typeConArgs
