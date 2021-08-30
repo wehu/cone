@@ -69,13 +69,12 @@ initTypeDef m = do
   where
     typeDefs = m ^.. topStmts . traverse . _TDef
     initTypeKinds env = foldM insertTypeKind (env ^. types) typeDefs
-    insertTypeKind ts t =
+    insertTypeKind ts t = do
       let tn = t ^. typeName
-       in do
-            forMOf _Just (ts ^. at tn) $ \ot ->
-              throwError $
-                "redefine a type: " ++ tn ++ " vs " ++ ppr ot
-            return $ ts & at tn ?~ typeKind t
+      forMOf _Just (ts ^. at tn) $ \ot ->
+        throwError $
+          "redefine a type: " ++ tn ++ " vs " ++ ppr ot
+      return $ ts & at tn ?~ typeKind t
     typeKind t =
       let loc = _typeLoc t
           args = t ^. typeArgs
@@ -103,22 +102,20 @@ initTypeConDef m = do
                 targs = (t ^.. typeArgs . traverse . _1) ++ globalTypes
                 b = bind targs cargs
                 fvars = (b ^.. fv) :: [TVar]
-             in do
-                  if fvars /= []
-                    then
-                      throwError $
-                        "type constructor's type variables should "
-                          ++ "only exists in type arguments: "
-                          ++ ppr fvars
-                    else return ()
-                  forMOf _Just (fs ^. at cn) $ \t ->
-                    throwError $
-                      "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
-                  let bt = tconType c t
-                   in do
-                        k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
-                        checkTypeKind k
-                        return $ fs & at cn ?~ bt
+            if fvars /= []
+              then
+                throwError $
+                  "type constructor's type variables should "
+                    ++ "only exists in type arguments: "
+                    ++ ppr fvars
+              else return ()
+            forMOf _Just (fs ^. at cn) $ \t ->
+              throwError $
+                "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
+            let bt = tconType c t
+            k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
+            checkTypeKind k
+            return $ fs & at cn ?~ bt
        in foldM f fs cons
     tconType c t =
       let targs = c ^. typeConArgs
