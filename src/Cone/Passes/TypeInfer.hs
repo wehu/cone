@@ -573,8 +573,8 @@ inferAppResultType f@TFunc {} args = do
             [(a, b) | a <- fArgTypes | b <- args]
         foldM
           ( \b (n, t) -> do
-              case M.lookup n b of
-                Nothing -> return $ M.insert n t b
+              case b ^. at n of
+                Nothing -> return $ at n ?~ t $ b
                 Just ot ->
                   if aeq t ot
                     then return b
