@@ -532,7 +532,7 @@ inferExprType scope a@EAnn {..} = do
 inferExprType scope ELit {..} = do
   inferTypeKind scope _litType
   return _litType
-inferExprType scope e = throwError $ "unsupported expression: " ++ show e
+inferExprType scope e = throwError $ "unsupported expression: " ++ ppr e
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
 collectVarBinding a@TPrim {} b@TPrim {} = do
