@@ -355,13 +355,8 @@ initFuncDef m = do
                   )
                   (f ^. funcArgs ^.. traverse ._2)
                 )
-            effType <-
-              ( case (f ^. funcEffectType) of
-                  Just t -> do
-                    inferEffKind scope t
-                    return t
-                  Nothing -> return $ EffTotal pos
-                )
+            effType <- let t = f ^. funcEffectType . (non $ EffTotal pos)
+                        in do inferEffKind scope t; return t
             resultType <-
               ( case (f ^. funcResultType) of
                   Just t -> do
