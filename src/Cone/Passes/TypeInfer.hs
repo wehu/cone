@@ -336,11 +336,11 @@ freeVarName i = makeName "$" $ toInteger i
 initFuncDef :: (Has EnvEff sig m) => Module -> m ()
 initFuncDef m = do
   env <- get @Env
-  fs <- funcTypes env
+  fs <- initFuncTypes env
   put $ set funcs fs env
   where
-    fdefs = universeOn (topStmts . traverse . _FDef) m
-    funcTypes env =
+    fdefs = m ^.. topStmts . traverse . _FDef
+    initFuncTypes env =
       foldM
         ( \fs f ->
             let pos = f ^. funcLoc
@@ -385,14 +385,14 @@ initFuncDef m = do
                         inferTypeKind scope ft
                         case M.lookup fn fs of
                           Just _ -> throwError $ "function redefine: " ++ fn
-                          Nothing -> return $ M.insert fn ft fs
+                          Nothing -> return $ at fn ?~ ft $ fs
         )
         (env ^. funcs)
         fdefs
 
 inferFuncDef :: (Has EnvEff sig m) => Module -> m ()
 inferFuncDef m =
-  let fdefs = universeOn (topStmts . traverse . _FDef) m
+  let fdefs = m ^.. topStmts . traverse . _FDef
    in mapM_
         ( \f -> do
             env <- get @Env
@@ -401,7 +401,7 @@ inferFuncDef m =
                 fs = env ^. funcs
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
                 scope = Scope (M.fromList bvars) M.empty fs
-                (bts, ftype) = unbindTypeSample $ fromJust $ M.lookup fn fs
+                (bts, ftype) = unbindTypeSample $ fromJust $ fs ^. at fn
              in do
                   ft <- case ftype of
                     ft@TFunc {} -> return ft
@@ -415,7 +415,7 @@ inferFuncDef m =
                   newScope <-
                     ( foldM
                         ( \s ((n, _), t) ->
-                            let ts = M.insert n t $ s ^. exprTypes
+                            let ts = at n ?~ t $ s ^. exprTypes
                              in return $ s {_exprTypes = ts}
                         )
                         scope
@@ -424,7 +424,7 @@ inferFuncDef m =
                   newScope' <-
                     ( foldM
                         ( \s t ->
-                            let ks = M.insert (name2String t) (KStar pos) $ s ^. typeKinds
+                            let ks = at (name2String t) ?~ (KStar pos) $ s ^. typeKinds
                              in return $ s {_typeKinds = ks}
                         )
                         newScope
@@ -458,7 +458,7 @@ inferExprType scope l@ELam {..} = do
   newScope <-
     ( foldM
         ( \s t ->
-            let ks = M.insert (name2String t) (KStar _eloc) $ s ^. typeKinds
+            let ks = at (name2String t) ?~ (KStar _eloc) $ s ^. typeKinds
              in return $ s {_typeKinds = ks}
         )
         scope
@@ -483,7 +483,7 @@ inferExprType scope l@ELam {..} = do
   newScope' <-
     foldM
       ( \s (n, t) ->
-          let ts = M.insert n t $ s ^. exprTypes
+          let ts = at n ?~ t $ s ^. exprTypes
            in return $ s {_exprTypes = ts}
       )
       newScope
