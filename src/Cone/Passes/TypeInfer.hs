@@ -5,6 +5,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs #-}
 
 module Cone.Passes.TypeInfer (infer) where
 
@@ -70,11 +71,10 @@ initTypeDef m = do
     initTypeKinds env = foldM insertTypeKind (env ^. types) typeDefs
     insertTypeKind ts t =
       let tn = t ^. typeName
-       in case ts ^.at tn of
-            Just ot ->
-              throwError $
+       in do forMOf _Just (ts ^.at tn) $ \ot ->
+               throwError $
                 "redefine a type: " ++ tn ++ " vs " ++ ppr ot
-            Nothing -> return $ M.insert tn (typeKind t) ts
+             return $ ts & at tn ?~ typeKind t
     typeKind t =
       let loc = _typeLoc t
           args = t ^. typeArgs
