@@ -353,10 +353,11 @@ initFuncDef m = do
                           v <- fresh
                           return $ TVar (freeVarName v) pos
                   )
-                  (f ^. funcArgs ^.. traverse ._2)
+                  (f ^. funcArgs ^.. traverse . _2)
                 )
-            effType <- let t = f ^. funcEffectType . (non $ EffTotal pos)
-                        in do inferEffKind scope t; return t
+            effType <-
+              let t = f ^. funcEffectType . (non $ EffTotal pos)
+               in do inferEffKind scope t; return t
             resultType <-
               ( case (f ^. funcResultType) of
                   Just t -> do
