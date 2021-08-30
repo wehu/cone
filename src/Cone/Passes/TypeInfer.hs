@@ -63,11 +63,11 @@ type EnvEff = Eff Env String
 initTypeDef :: (Has EnvEff sig m) => Module -> m ()
 initTypeDef m = do
   env <- get @Env
-  tkinds <- typeKinds env
+  tkinds <- initTypeKinds env
   put $ set types tkinds env
   where
-    typeDefs = universeOn (topStmts . traverse . _TDef) m
-    typeKinds env = foldM insertTypeKind (env ^. types) typeDefs
+    typeDefs = m ^.. topStmts . traverse . _TDef
+    initTypeKinds env = foldM insertTypeKind (env ^. types) typeDefs
     insertTypeKind ts t =
       let tn = t ^. typeName
        in case ts ^.at tn of
@@ -82,7 +82,7 @@ initTypeDef m = do
        in if args == []
             then star
             else
-              KFunc (universeOn (traverse._2.(non star)) args) star loc
+              KFunc (args ^..traverse._2.non star) star loc
 
 initTypeConDef :: (Has EnvEff sig m) => Module -> m ()
 initTypeConDef m = do
