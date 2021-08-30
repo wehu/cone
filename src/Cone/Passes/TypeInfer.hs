@@ -423,7 +423,7 @@ inferFuncDef m =
                 fs = env ^. funcs
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
                 scope = Scope (M.fromList bvars) M.empty fs
-                (bts, ftype) = unboundTypeSample $ fromJust $ M.lookup fn fs
+                (bts, ftype) = unbindTypeSample $ fromJust $ M.lookup fn fs
              in do
                   ft <- case ftype of
                     ft@TFunc {} -> return ft
@@ -473,7 +473,7 @@ inferExprType scope e@EVar {..} =
     Just t -> return t
     Nothing -> throwError $ "cannot find expr var: " ++ _evarName
 inferExprType scope a@EApp {..} = do
-  appFuncType <- inferExprType scope _eappFunc >>= unboundType
+  appFuncType <- inferExprType scope _eappFunc >>= unbindType
   argTypes <- mapM (inferExprType scope) _eappArgs
   inferAppResultType appFuncType argTypes
 inferExprType scope l@ELam {..} = do
@@ -576,8 +576,8 @@ collectVarBinding a@BoundType {} b@BoundType {} =
         if L.length ats /= L.length bts
           then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
           else return ()
-        at <- unboundType a
-        bt <- unboundType b
+        at <- unbindType a
+        bt <- unbindType b
         collectVarBinding at bt
 collectVarBinding a b = throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
 
@@ -597,7 +597,7 @@ inferAppResultType f@TFunc {} args = do
           ( \b (n, t) -> do
               case M.lookup n b of
                 Nothing -> return $ M.insert n t b
-                Just ot -> 
+                Just ot ->
                   if aeq t ot
                     then return b
                     else throwError $ "type var binding conflict: " ++ show t ++ " vs " ++ show ot
@@ -612,8 +612,8 @@ closeType t =
   let fvars = t ^.. fv
    in bind fvars t
 
-unboundType :: (Has EnvEff sig m) => Type -> m Type
-unboundType b@BoundType {..} =
+unbindType :: (Has EnvEff sig m) => Type -> m Type
+unbindType b@BoundType {..} =
   let (ps, t) = unsafeUnbind _boundType
       pos = _tloc t
    in do
@@ -624,11 +624,11 @@ unboundType b@BoundType {..} =
           )
           t
           ps
-unboundType t = return t
+unbindType t = return t
 
-unboundTypeSample :: Type -> ([TVar], Type)
-unboundTypeSample b@BoundType {..} = unsafeUnbind _boundType
-unboundTypeSample t = ([], t)
+unbindTypeSample :: Type -> ([TVar], Type)
+unbindTypeSample b@BoundType {..} = unsafeUnbind _boundType
+unbindTypeSample t = ([], t)
 
 -- EVar{_evarName :: NamePath, _eloc :: Location}
 --           | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
