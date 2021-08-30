@@ -93,7 +93,7 @@ initTypeConDef m = do
     initTconTypes env =
       let globalTypes = fmap (\n -> s2n n) $ M.keys $ env ^. types
        in foldM (insertTconType globalTypes) (env ^. funcs) tdefs
-    insertTconType globalTypes fs t =
+    insertTconType globalTypes fs t = do
       let cons = t ^. typeCons
           f = \fs c -> do
             let cn = c ^. typeConName
@@ -116,7 +116,7 @@ initTypeConDef m = do
             k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
             checkTypeKind k
             return $ fs & at cn ?~ bt
-       in foldM f fs cons
+      foldM f fs cons
     tconType c t =
       let targs = c ^. typeConArgs
           tn = t ^. typeName
