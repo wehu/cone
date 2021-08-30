@@ -204,10 +204,11 @@ initEffTypeDef m = do
     initEffKinds env = foldM insertEffKind (env ^. effs) edefs
     insertEffKind es e =
       let en = e ^. effectName
-       in do forMOf _Just (es ^. at en) $ \oe ->
-                throwError $
-                  "redefine an effect: " ++ en ++ " vs " ++ ppr oe
-             return $ es & at en ?~ effKind e
+       in do
+            forMOf _Just (es ^. at en) $ \oe ->
+              throwError $
+                "redefine an effect: " ++ en ++ " vs " ++ ppr oe
+            return $ es & at en ?~ effKind e
     effKind e =
       let loc = _effectLoc e
           args = e ^. effectArgs
@@ -215,8 +216,7 @@ initEffTypeDef m = do
           estar = EKStar loc
        in if args == []
             then estar
-            else
-              EKFunc (args ^..traverse._2.non star) estar loc
+            else EKFunc (args ^.. traverse . _2 . non star) estar loc
 
 inferEffKind :: (Has EnvEff sig m) => Scope -> EffectType -> m EffKind
 inferEffKind scope a@EffApp {..} = do
@@ -251,7 +251,7 @@ inferEffKind scope b@BoundEffType {..} =
       newScope =
         L.foldl'
           ( \s e ->
-             s & at (name2String e) .~ Just star
+              s & at (name2String e) .~ Just star
           )
           (scope ^. effKinds)
           bvs
@@ -306,8 +306,8 @@ initEffIntfDef m = do
                     ++ ppr fvars
               else return ()
             forMOf _Just (is ^. at intfn) $ \t ->
-                throwError $
-                  "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
+              throwError $
+                "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
             let bt = (intfType i e)
             k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
             checkTypeKind k
@@ -531,7 +531,7 @@ collectVarBinding a@TApp {} b@TApp {} =
     && aeq (_tappName a) (_tappName b)
     then
       foldM
-        ( \s e -> (++) <$> (return s) <*> e)
+        (\s e -> (++) <$> (return s) <*> e)
         []
         [collectVarBinding aarg barg | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
     else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
@@ -555,7 +555,8 @@ inferAppResultType f@TFunc {} args = do
     then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args
     else return ()
   bindings <-
-    foldM (\s e -> (++) <$> return s <*> e)
+    foldM
+      (\s e -> (++) <$> return s <*> e)
       []
       [collectVarBinding a b | a <- fArgTypes | b <- args]
   foldM
