@@ -27,6 +27,7 @@ dependencies:
 - unbound-generics
 - fused-effects
 - containers
+- prettyprinter
 
 library:
   source-dirs: src

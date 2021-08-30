@@ -73,7 +73,7 @@ initTypeDef m = do
        in case M.lookup tn ts of
             Just ot ->
               throwError $
-                "redefine a type: " ++ tn ++ " vs " ++ show ot
+                "redefine a type: " ++ tn ++ " vs " ++ ppr ot
             Nothing -> return $ M.insert tn (typeKind t) ts
     typeKind t =
       let loc = _typeLoc t
@@ -118,12 +118,12 @@ initTypeConDef m = do
                       throwError $
                         "type constructor's type variables should "
                           ++ "only exists in type arguments: "
-                          ++ show fvars
+                          ++ ppr fvars
                     else return ()
                   case M.lookup cn fs of
                     Just t ->
                       throwError $
-                        "type construct has conflict name: " ++ cn ++ " vs " ++ show t
+                        "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
                     Nothing -> do
                       let bt = (tconType c t)
                        in do
@@ -151,10 +151,10 @@ inferTypeKind scope a@TApp {..} = do
     KStar {} ->
       if _tappArgs == []
         then return ak
-        else throwError $ "expected a func kind, but got " ++ show ak
+        else throwError $ "expected a func kind, but got " ++ ppr ak
     KFunc {..} ->
       if L.length _tappArgs /= L.length _kfuncArgs
-        then throwError $ "kind arguments mismatch: " ++ show _tappArgs ++ " vs " ++ show _kfuncArgs
+        then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs
         else do
           mapM
             ( \(a, b) -> do
@@ -163,7 +163,7 @@ inferTypeKind scope a@TApp {..} = do
                 checkTypeKind b
                 if aeq t b
                   then return ()
-                  else throwError $ "kind mismatch: " ++ show t ++ " vs " ++ show b
+                  else throwError $ "kind mismatch: " ++ ppr t ++ " vs " ++ ppr b
             )
             [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
           checkTypeKind _kfuncResult
@@ -173,7 +173,7 @@ inferTypeKind scope a@TAnn {..} = do
   checkTypeKind k
   if aeq k _tannKind
     then return k
-    else throwError $ "kind mismatch: " ++ show k ++ " vs " ++ show _tannKind
+    else throwError $ "kind mismatch: " ++ ppr k ++ " vs " ++ ppr _tannKind
 inferTypeKind scope b@BoundType {..} =
   let (bvs, t) = unsafeUnbind $ _boundType
       newScope =
@@ -190,7 +190,7 @@ inferTypeKind scope v@TVar {..} = do
     Just k -> return k
     Nothing -> case M.lookup (name2String _tvar) kinds of
       Just k -> return k
-      Nothing -> throwError $ "cannot find type: " ++ show v
+      Nothing -> throwError $ "cannot find type: " ++ ppr v
 inferTypeKind scope f@TFunc {..} = do
   ks <- mapM (inferTypeKind scope) _tfuncArgs
   mapM_ checkTypeKind ks
@@ -205,7 +205,7 @@ checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
 checkTypeKind k = do
   case k of
     KStar {} -> return ()
-    _ -> throwError $ "expected a star kind, but got " ++ show k
+    _ -> throwError $ "expected a star kind, but got " ++ ppr k
 
 initEffTypeDef :: (Has EnvEff sig m) => Module -> m ()
 initEffTypeDef m = do
@@ -221,7 +221,7 @@ initEffTypeDef m = do
        in case M.lookup en es of
             Just oe ->
               throwError $
-                "redefine an effect: " ++ en ++ " vs " ++ show oe
+                "redefine an effect: " ++ en ++ " vs " ++ ppr oe
             Nothing -> return $ M.insert en (effKind e) es
     effKind e =
       let loc = _effectLoc e
@@ -248,7 +248,7 @@ inferEffKind scope a@EffApp {..} = do
   case ak of
     EKFunc {..} ->
       if L.length _effAppArgs /= L.length _ekfuncArgs
-        then throwError $ "eff kind arguments mismatch: " ++ show _effAppArgs ++ " vs " ++ show _ekfuncArgs
+        then throwError $ "eff kind arguments mismatch: " ++ ppr _effAppArgs ++ " vs " ++ ppr _ekfuncArgs
         else do
           mapM
             ( \(a, b) -> do
@@ -257,18 +257,18 @@ inferEffKind scope a@EffApp {..} = do
                 checkTypeKind b
                 if aeq e b
                   then return ()
-                  else throwError $ "eff kind mismatch: " ++ show e ++ " vs " ++ show b
+                  else throwError $ "eff kind mismatch: " ++ ppr e ++ " vs " ++ ppr b
             )
             [(a, b) | a <- _effAppArgs | b <- _ekfuncArgs]
           checkEffKind _ekfuncResult
           return _ekfuncResult
-    _ -> throwError $ "expected a func eff kind, but got " ++ show ak
+    _ -> throwError $ "expected a func eff kind, but got " ++ ppr ak
 inferEffKind scope a@EffAnn {..} = do
   k <- inferEffKind scope _effAnnType
   checkEffKind k
   if aeq k _effAnnKind
     then return k
-    else throwError $ "eff kind mismatch: " ++ show k ++ " vs " ++ show _effAnnKind
+    else throwError $ "eff kind mismatch: " ++ ppr k ++ " vs " ++ ppr _effAnnKind
 inferEffKind scope b@BoundEffType {..} =
   let (bvs, t) = unsafeUnbind $ _boundEffType
       newScope =
@@ -285,7 +285,7 @@ inferEffKind scope v@EffVar {..} = do
     Just k -> return k
     Nothing -> case M.lookup (name2String _effVarName) kinds of
       Just k -> return k
-      Nothing -> throwError $ "cannot find type: " ++ show v
+      Nothing -> throwError $ "cannot find type: " ++ ppr v
 inferEffKind scope l@EffList {..} = do
   ls <- mapM (inferEffKind scope) _effList
   mapM_ checkEffKind ls
@@ -297,7 +297,7 @@ checkEffKind k = do
   case k of
     EKStar {} -> return ()
     EKList {..} -> mapM_ checkEffKind _ekList
-    _ -> throwError $ "expected a star eff kind, but got " ++ show k
+    _ -> throwError $ "expected a star eff kind, but got " ++ ppr k
 
 initEffIntfDef :: (Has EnvEff sig m) => Module -> m ()
 initEffIntfDef m = do
@@ -327,12 +327,12 @@ initEffIntfDef m = do
                       throwError $
                         "eff interfaces's type variables should "
                           ++ "only exists in eff type arguments: "
-                          ++ show fvars
+                          ++ ppr fvars
                     else return ()
                   case M.lookup intfn is of
                     Just t ->
                       throwError $
-                        "eff interface has conflict name: " ++ intfn ++ " vs " ++ show t
+                        "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
                     Nothing -> do
                       let bt = (intfType i e)
                        in do
@@ -427,12 +427,12 @@ inferFuncDef m =
              in do
                   ft <- case ftype of
                     ft@TFunc {} -> return ft
-                    _ -> throwError $ "expected function type, but got: " ++ show ftype
+                    _ -> throwError $ "expected function type, but got: " ++ ppr ftype
                   let argTypes = _tfuncArgs ft
                   let resultType = _tfuncResult ft
                   let effType = _tfuncEff ft
                   if L.length argTypes /= L.length (f ^. funcArgs)
-                    then throwError $ "type mismatch: " ++ show argTypes ++ " vs " ++ show (f ^. funcArgs)
+                    then throwError $ "type mismatch: " ++ ppr argTypes ++ " vs " ++ ppr (f ^. funcArgs)
                     else return ()
                   newScope <-
                     ( foldM
@@ -460,9 +460,9 @@ inferFuncDef m =
                         else
                           throwError $
                             "function result type mismatch: "
-                              ++ show eType
+                              ++ ppr eType
                               ++ " vs "
-                              ++ show resultType
+                              ++ ppr resultType
                     Nothing -> return ()
         )
         fdefs
@@ -520,7 +520,7 @@ inferExprType scope l@ELam {..} = do
       inferTypeKind newScope t
       if aeq eType t
         then return t
-        else throwError $ "lambda result type mismatch: " ++ show t ++ " vs " ++ show eType
+        else throwError $ "lambda result type mismatch: " ++ ppr t ++ " vs " ++ ppr eType
     Nothing -> return eType
   return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) result _eloc
 inferExprType scope a@EAnn {..} = do
@@ -528,7 +528,7 @@ inferExprType scope a@EAnn {..} = do
   inferTypeKind scope _eannType
   if aeq t _eannType
     then return _eannType
-    else throwError $ "type mismatch: " ++ show t ++ " vs " ++ show _eannType
+    else throwError $ "type mismatch: " ++ ppr t ++ " vs " ++ ppr _eannType
 inferExprType scope ELit {..} = do
   inferTypeKind scope _litType
   return _litType
@@ -538,15 +538,15 @@ collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
 collectVarBinding a@TPrim {} b@TPrim {} = do
   if aeq a b
     then return []
-    else throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
+    else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 collectVarBinding a@TVar {..} t =
   let fvars = t ^.. fv
    in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
-        then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show t
+        then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t
         else return [(_tvar, t)]
 collectVarBinding a@TFunc {} b@TFunc {} =
   if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
-    then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
+    then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
     else
       (++)
         <$> ( foldM
@@ -566,7 +566,7 @@ collectVarBinding a@TApp {} b@TApp {} =
         )
         []
         [(aarg, barg) | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
-    else throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
+    else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 collectVarBinding a@TAnn {} b@TAnn {} =
   collectVarBinding (_tannType a) (_tannType b)
 collectVarBinding a@BoundType {} b@BoundType {} =
@@ -574,19 +574,19 @@ collectVarBinding a@BoundType {} b@BoundType {} =
       (bts, _) = unsafeUnbind $ _boundType b
    in do
         if L.length ats /= L.length bts
-          then throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
+          then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
           else return ()
         at <- unbindType a
         bt <- unbindType b
         collectVarBinding at bt
-collectVarBinding a b = throwError $ "type mismatch: " ++ show a ++ " vs " ++ show b
+collectVarBinding a b = throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 inferAppResultType f@TFunc {} args = do
   let fArgTypes = _tfuncArgs f
    in do
         if L.length fArgTypes /= L.length args
-          then throwError $ "function type argument number mismatch: " ++ show fArgTypes ++ " vs " ++ show args
+          then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args
           else return ()
         bindings <-
           foldM
@@ -600,12 +600,12 @@ inferAppResultType f@TFunc {} args = do
                 Just ot ->
                   if aeq t ot
                     then return b
-                    else throwError $ "type var binding conflict: " ++ show t ++ " vs " ++ show ot
+                    else throwError $ "type var binding conflict: " ++ ppr t ++ " vs " ++ ppr ot
           )
           M.empty
           bindings
         return $ substs bindings $ _tfuncResult f
-inferAppResultType t _ = throwError $ "expected a function type, but got " ++ show t
+inferAppResultType t _ = throwError $ "expected a function type, but got " ++ ppr t
 
 closeType :: Type -> Bind [TVar] Type
 closeType t =
@@ -630,7 +630,6 @@ unbindTypeSample :: Type -> ([TVar], Type)
 unbindTypeSample b@BoundType {..} = unsafeUnbind _boundType
 unbindTypeSample t = ([], t)
 
--- EVar{_evarName :: NamePath, _eloc :: Location}
 --           | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
 --           | ELet{_eletVars :: [(String, Expr)], _eletBody :: Expr,
 --                  _eloc :: Location}
