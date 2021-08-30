@@ -344,7 +344,7 @@ initFuncDef m = do
                 scope = Scope (M.fromList bvars) M.empty (env ^. funcs)
             argTypes <-
               ( mapM
-                  ( \(_, a) ->
+                  ( \a ->
                       case a of
                         Just t -> do
                           inferTypeKind scope t
@@ -353,7 +353,7 @@ initFuncDef m = do
                           v <- fresh
                           return $ TVar (freeVarName v) pos
                   )
-                  (f ^. funcArgs)
+                  (f ^. funcArgs ^.. traverse ._2)
                 )
             effType <-
               ( case (f ^. funcEffectType) of
