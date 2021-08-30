@@ -286,7 +286,7 @@ initEffIntfDef m = do
     initEffIntfTypes env =
       let globalTypes = fmap (\n -> s2n n) $ M.keys $ env ^. types
        in foldM (insertEffIntfType globalTypes) (env ^. effIntfs) edefs
-    insertEffIntfType globalTypes intfs e =
+    insertEffIntfType globalTypes intfs e = do
       let is = e ^. effectIntfs
           en = e ^. effectName
           f = \is i -> do
@@ -298,23 +298,21 @@ initEffIntfDef m = do
                 targs = (e ^.. effectArgs . traverse . _1) ++ globalTypes
                 b = bind (targs ++ bvars) $ iresult : iargs
                 fvars = (b ^.. fv) :: [TVar]
-             in do
-                  if fvars /= []
-                    then
-                      throwError $
-                        "eff interfaces's type variables should "
-                          ++ "only exists in eff type arguments: "
-                          ++ ppr fvars
-                    else return ()
-                  forMOf _Just (is ^. at intfn) $ \t ->
-                      throwError $
-                        "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
-                  let bt = (intfType i e)
-                   in do
-                        k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
-                        checkTypeKind k
-                        return $ is & at intfn ?~ bt
-       in foldM f intfs is
+            if fvars /= []
+              then
+                throwError $
+                  "eff interfaces's type variables should "
+                    ++ "only exists in eff type arguments: "
+                    ++ ppr fvars
+              else return ()
+            forMOf _Just (is ^. at intfn) $ \t ->
+                throwError $
+                  "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
+            let bt = (intfType i e)
+            k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
+            checkTypeKind k
+            return $ is & at intfn ?~ bt
+      foldM f intfs is
     intfType i e =
       let iargs = i ^. intfArgs
           iresult = i ^. intfResultType
@@ -339,50 +337,48 @@ initFuncDef m = do
     fdefs = m ^.. topStmts . traverse . _FDef
     initFuncTypes env =
       foldM
-        ( \fs f ->
+        ( \fs f -> do
             let pos = f ^. funcLoc
                 fn = f ^. funcName
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
                 scope = Scope (M.fromList bvars) M.empty (env ^. funcs)
-             in do
-                  argTypes <-
-                    ( mapM
-                        ( \(_, a) ->
-                            case a of
-                              Just t -> do
-                                inferTypeKind scope t
-                                return t
-                              Nothing -> do
-                                v <- fresh
-                                return $ TVar (freeVarName v) pos
-                        )
-                        (f ^. funcArgs)
-                      )
-                  effType <-
-                    ( case (f ^. funcEffectType) of
-                        Just t -> do
-                          inferEffKind scope t
-                          return t
-                        Nothing -> return $ EffTotal pos
-                      )
-                  resultType <-
-                    ( case (f ^. funcResultType) of
+            argTypes <-
+              ( mapM
+                  ( \(_, a) ->
+                      case a of
                         Just t -> do
                           inferTypeKind scope t
                           return t
                         Nothing -> do
                           v <- fresh
                           return $ TVar (freeVarName v) pos
-                      )
-                  let ft =
-                        BoundType $
-                          bind (f ^. funcBoundVars) $
-                            TFunc argTypes (Just effType) resultType pos
-                   in do
-                        inferTypeKind scope ft
-                        case M.lookup fn fs of
-                          Just _ -> throwError $ "function redefine: " ++ fn
-                          Nothing -> return $ at fn ?~ ft $ fs
+                  )
+                  (f ^. funcArgs)
+                )
+            effType <-
+              ( case (f ^. funcEffectType) of
+                  Just t -> do
+                    inferEffKind scope t
+                    return t
+                  Nothing -> return $ EffTotal pos
+                )
+            resultType <-
+              ( case (f ^. funcResultType) of
+                  Just t -> do
+                    inferTypeKind scope t
+                    return t
+                  Nothing -> do
+                    v <- fresh
+                    return $ TVar (freeVarName v) pos
+                )
+            let ft =
+                  BoundType $
+                    bind (f ^. funcBoundVars) $
+                      TFunc argTypes (Just effType) resultType pos
+            inferTypeKind scope ft
+            case M.lookup fn fs of
+              Just _ -> throwError $ "function redefine: " ++ fn
+              Nothing -> return $ at fn ?~ ft $ fs
         )
         (env ^. funcs)
         fdefs
@@ -399,46 +395,45 @@ inferFuncDef m =
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
                 scope = Scope (M.fromList bvars) M.empty fs
                 (bts, ftype) = unbindTypeSample $ fromJust $ fs ^. at fn
-             in do
-                  ft <- case ftype of
-                    ft@TFunc {} -> return ft
-                    _ -> throwError $ "expected function type, but got: " ++ ppr ftype
-                  let argTypes = _tfuncArgs ft
-                  let resultType = _tfuncResult ft
-                  let effType = _tfuncEff ft
-                  if L.length argTypes /= L.length (f ^. funcArgs)
-                    then throwError $ "type mismatch: " ++ ppr argTypes ++ " vs " ++ ppr (f ^. funcArgs)
-                    else return ()
-                  newScope <-
-                    ( foldM
-                        ( \s ((n, _), t) ->
-                            let ts = at n ?~ t $ s ^. exprTypes
-                             in return $ s {_exprTypes = ts}
-                        )
-                        scope
-                        [(n, t) | t <- argTypes | n <- (f ^. funcArgs)]
-                      )
-                  newScope' <-
-                    ( foldM
-                        ( \s t ->
-                            let ks = at (name2String t) ?~ (KStar pos) $ s ^. typeKinds
-                             in return $ s {_typeKinds = ks}
-                        )
-                        newScope
-                        bts
-                      )
-                  case f ^. funcExpr of
-                    Just e -> do
-                      eType <- inferExprType newScope' e
-                      if aeq eType resultType
-                        then return ()
-                        else
-                          throwError $
-                            "function result type mismatch: "
-                              ++ ppr eType
-                              ++ " vs "
-                              ++ ppr resultType
-                    Nothing -> return ()
+            ft <- case ftype of
+              ft@TFunc {} -> return ft
+              _ -> throwError $ "expected function type, but got: " ++ ppr ftype
+            let argTypes = _tfuncArgs ft
+            let resultType = _tfuncResult ft
+            let effType = _tfuncEff ft
+            if L.length argTypes /= L.length (f ^. funcArgs)
+              then throwError $ "type mismatch: " ++ ppr argTypes ++ " vs " ++ ppr (f ^. funcArgs)
+              else return ()
+            newScope <-
+              ( foldM
+                  ( \s ((n, _), t) ->
+                      let ts = at n ?~ t $ s ^. exprTypes
+                       in return $ s {_exprTypes = ts}
+                  )
+                  scope
+                  [(n, t) | t <- argTypes | n <- (f ^. funcArgs)]
+                )
+            newScope' <-
+              ( foldM
+                  ( \s t ->
+                      let ks = at (name2String t) ?~ (KStar pos) $ s ^. typeKinds
+                       in return $ s {_typeKinds = ks}
+                  )
+                  newScope
+                  bts
+                )
+            case f ^. funcExpr of
+              Just e -> do
+                eType <- inferExprType newScope' e
+                if aeq eType resultType
+                  then return ()
+                  else
+                    throwError $
+                      "function result type mismatch: "
+                        ++ ppr eType
+                        ++ " vs "
+                        ++ ppr resultType
+              Nothing -> return ()
         )
         fdefs
 
@@ -544,42 +539,40 @@ collectVarBinding a@TApp {} b@TApp {} =
     else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 collectVarBinding a@TAnn {} b@TAnn {} =
   collectVarBinding (_tannType a) (_tannType b)
-collectVarBinding a@BoundType {} b@BoundType {} =
+collectVarBinding a@BoundType {} b@BoundType {} = do
   let (ats, _) = unsafeUnbind $ _boundType a
       (bts, _) = unsafeUnbind $ _boundType b
-   in do
-        if L.length ats /= L.length bts
-          then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
-          else return ()
-        at <- unbindType a
-        bt <- unbindType b
-        collectVarBinding at bt
+  if L.length ats /= L.length bts
+    then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+    else return ()
+  at <- unbindType a
+  bt <- unbindType b
+  collectVarBinding at bt
 collectVarBinding a b = throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 inferAppResultType f@TFunc {} args = do
   let fArgTypes = _tfuncArgs f
-   in do
-        if L.length fArgTypes /= L.length args
-          then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args
-          else return ()
-        bindings <-
-          foldM
-            (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
-            []
-            [(a, b) | a <- fArgTypes | b <- args]
-        foldM
-          ( \b (n, t) -> do
-              case b ^. at n of
-                Nothing -> return $ at n ?~ t $ b
-                Just ot ->
-                  if aeq t ot
-                    then return b
-                    else throwError $ "type var binding conflict: " ++ ppr t ++ " vs " ++ ppr ot
-          )
-          M.empty
-          bindings
-        return $ substs bindings $ _tfuncResult f
+  if L.length fArgTypes /= L.length args
+    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args
+    else return ()
+  bindings <-
+    foldM
+      (\s (a, b) -> (++) <$> (return s) <*> collectVarBinding a b)
+      []
+      [(a, b) | a <- fArgTypes | b <- args]
+  foldM
+    ( \b (n, t) -> do
+        case b ^. at n of
+          Nothing -> return $ at n ?~ t $ b
+          Just ot ->
+            if aeq t ot
+              then return b
+              else throwError $ "type var binding conflict: " ++ ppr t ++ " vs " ++ ppr ot
+    )
+    M.empty
+    bindings
+  return $ substs bindings $ _tfuncResult f
 inferAppResultType t _ = throwError $ "expected a function type, but got " ++ ppr t
 
 closeType :: Type -> Bind [TVar] Type
@@ -588,17 +581,16 @@ closeType t =
    in bind fvars t
 
 unbindType :: (Has EnvEff sig m) => Type -> m Type
-unbindType b@BoundType {..} =
+unbindType b@BoundType {..} = do
   let (ps, t) = unsafeUnbind _boundType
       pos = _tloc t
-   in do
-        foldM
-          ( \t p -> do
-              np <- freeVarName <$> fresh
-              return $ subst p (TVar np pos) t
-          )
-          t
-          ps
+  foldM
+    ( \t p -> do
+        np <- freeVarName <$> fresh
+        return $ subst p (TVar np pos) t
+    )
+    t
+    ps
 unbindType t = return t
 
 unbindTypeSample :: Type -> ([TVar], Type)
