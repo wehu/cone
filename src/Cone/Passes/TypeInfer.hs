@@ -70,7 +70,7 @@ initTypeDef m = do
     typeKinds env = foldM insertTypeKind (env ^. types) typeDefs
     insertTypeKind ts t =
       let tn = t ^. typeName
-       in case M.lookup tn ts of
+       in case ts ^.at tn of
             Just ot ->
               throwError $
                 "redefine a type: " ++ tn ++ " vs " ++ ppr ot
@@ -82,16 +82,7 @@ initTypeDef m = do
        in if args == []
             then star
             else
-              KFunc
-                ( fmap
-                    ( \(_, kk) -> case kk of
-                        Nothing -> star
-                        Just kkk -> kkk
-                    )
-                    args
-                )
-                star
-                loc
+              KFunc (universeOn (traverse._2.(non star)) args) star loc
 
 initTypeConDef :: (Has EnvEff sig m) => Module -> m ()
 initTypeConDef m = do
