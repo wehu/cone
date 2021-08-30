@@ -100,14 +100,14 @@ type TVar = Name Type
 instance Show a => Pretty (Name a) where
   pretty = pretty . show
 
-parens_ :: Pretty a => forall ann. [a] -> Doc ann
-parens_ ls = encloseSep lparen rparen comma $ map pretty ls
+parensList :: Pretty a => forall ann. [a] -> Doc ann
+parensList ls = encloseSep lparen rparen comma $ map pretty ls
 
-brackets_ :: Pretty a => forall an. [a] -> Doc ann
-brackets_ ls = encloseSep lbracket rbracket comma $ map pretty ls
+bracketsList :: Pretty a => forall an. [a] -> Doc ann
+bracketsList ls = encloseSep lbracket rbracket comma $ map pretty ls
 
-angles_ :: Pretty a => forall ann. [a] -> Doc ann
-angles_ ls = encloseSep langle rangle comma $ map pretty ls
+anglesList :: Pretty a => forall ann. [a] -> Doc ann
+anglesList ls = encloseSep langle rangle comma $ map pretty ls
 
 data Type
   = TPrim {_tprim :: PrimType, _tloc :: Location}
@@ -126,10 +126,10 @@ data Type
 instance Pretty Type where
   pretty TPrim {..} = pretty _tprim <+> pretty _tloc
   pretty TVar {..} = pretty _tvar <+> pretty _tloc
-  pretty TFunc {..} = parens_ _tfuncArgs <+> "->" <+> colon <+> pretty _tfuncEff <+> pretty _tfuncResult <+> pretty _tloc
-  pretty TApp {..} = pretty _tappName <+> parens_ _tappArgs <+> pretty _tloc
-  pretty TAnn {..} = pretty _tannType <+> colon <+> pretty _tannKind <+> pretty _tloc
-  pretty (BoundType (B tvars t)) = brackets_ tvars <+> colon <+> pretty t
+  pretty TFunc {..} = parens $ parensList _tfuncArgs <+> "->" <+> colon <+> pretty _tfuncEff <+> pretty _tfuncResult <+> pretty _tloc
+  pretty TApp {..} = parens $ pretty _tappName <+> parensList _tappArgs <+> pretty _tloc
+  pretty TAnn {..} = parens $ pretty _tannType <+> colon <+> pretty _tannKind <+> pretty _tloc
+  pretty (BoundType (B tvars t)) = parens $ bracketsList tvars <+> colon <+> pretty t
 
 data Kind
   = KStar {_kloc :: Location}
@@ -138,7 +138,7 @@ data Kind
 
 instance Pretty Kind where
   pretty KStar {..} = "*" <+> pretty _kloc
-  pretty KFunc {..} = parens_ _kfuncArgs <+> "->" <+> pretty _kfuncResult <+> pretty _kloc
+  pretty KFunc {..} = parens $ parensList _kfuncArgs <+> "->" <+> pretty _kfuncResult <+> pretty _kloc
 
 data EffKind
   = EKStar {_ekloc :: Location}
@@ -152,8 +152,8 @@ data EffKind
 
 instance Pretty EffKind where
   pretty EKStar {..} = "*" <+> pretty _ekloc
-  pretty EKFunc {..} = parens_ _ekfuncArgs <+> "->" <+> pretty _ekfuncResult <+> pretty _ekloc
-  pretty EKList {..} = angles_ _ekList <+> pretty _ekloc
+  pretty EKFunc {..} = parens $ parensList _ekfuncArgs <+> "->" <+> pretty _ekfuncResult <+> pretty _ekloc
+  pretty EKList {..} = anglesList _ekList <+> pretty _ekloc
 
 data EffectType
   = EffTotal {_effLoc :: Location}
@@ -175,10 +175,10 @@ data EffectType
 instance Pretty EffectType where
   pretty EffTotal {..} = "total" <+> pretty _effLoc
   pretty EffVar {..} = pretty _effVarName <+> pretty _effLoc
-  pretty EffApp {..} = pretty _effAppName <+> parens_ _effAppArgs <+> pretty _effLoc
-  pretty EffList {..} = angles_ _effList <+> pretty _effLoc
-  pretty EffAnn {..} = pretty _effAnnType <+> colon <+> pretty _effAnnKind <+> pretty _effLoc
-  pretty (BoundEffType (B tvars e)) = brackets_ tvars <+> colon <+> pretty e
+  pretty EffApp {..} = parens $ pretty _effAppName <+> parensList _effAppArgs <+> pretty _effLoc
+  pretty EffList {..} = anglesList _effList <+> pretty _effLoc
+  pretty EffAnn {..} = parens $ pretty _effAnnType <+> colon <+> pretty _effAnnKind <+> pretty _effLoc
+  pretty (BoundEffType (B tvars e)) = parens $ bracketsList tvars <+> colon <+> pretty e
 
 data Pattern
   = PVar {_pvarName :: String, _ploc :: Location}
@@ -196,8 +196,8 @@ data Pattern
 
 instance Pretty Pattern where
   pretty PVar{..} = pretty _pvarName <+> pretty _ploc
-  pretty PApp{..} = pretty _pappName <+> parens_ _pappArgs <+> pretty _ploc
-  pretty PAnn{..} = pretty _pannPattern <+> colon <+> pretty _pannType <+> pretty _ploc
+  pretty PApp{..} = parens $ pretty _pappName <+> parensList _pappArgs <+> pretty _ploc
+  pretty PAnn{..} = parens $ pretty _pannPattern <+> colon <+> pretty _pannType <+> pretty _ploc
 
 data Expr
   = EVar {_evarName :: NamePath, _eloc :: Location}
