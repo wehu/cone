@@ -38,10 +38,6 @@ type EffIntfTypes = M.Map String Type
 
 type ExprTypes = M.Map String Type
 
-data Scope = Scope {_typeKinds :: TypeKinds, _effKinds :: EffKinds, _exprTypes :: ExprTypes}
-
-makeLenses ''Scope
-
 data Env = Env
   { _types :: TypeKinds,
     _funcs :: ExprTypes,
@@ -129,7 +125,7 @@ initTypeConDef m = initTconTypes
               throwError $
                 "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
             let bt = tconType c t
-            k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
+            k <- underScope $ inferTypeKind bt
             checkTypeKind k
             setEnv (Just bt) $ funcs . at cn
       mapM_ f cons
@@ -146,9 +142,9 @@ initTypeConDef m = initTconTypes
                 else TFunc targs Nothing rt pos
        in BoundType bt
 
-inferTypeKind :: (Has EnvEff sig m) => Scope -> Type -> m Kind
-inferTypeKind scope a@TApp {..} = do
-  ak <- inferTypeKind scope $ TVar _tappName _tloc
+inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
+inferTypeKind a@TApp {..} = do
+  ak <- inferTypeKind $ TVar _tappName _tloc
   case ak of
     KStar {} ->
       if _tappArgs == []
@@ -160,7 +156,7 @@ inferTypeKind scope a@TApp {..} = do
         else do
           mapM_
             ( \(a, b) -> do
-                t <- inferTypeKind scope a
+                t <- inferTypeKind a
                 checkTypeKind t
                 checkTypeKind b
                 if aeq t b
@@ -170,39 +166,32 @@ inferTypeKind scope a@TApp {..} = do
             [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
           checkTypeKind _kfuncResult
           return _kfuncResult
-inferTypeKind scope a@TAnn {..} = do
-  k <- inferTypeKind scope _tannType
+inferTypeKind a@TAnn {..} = do
+  k <- inferTypeKind _tannType
   checkTypeKind k
   if aeq k _tannKind
     then return k
     else throwError $ "kind mismatch: " ++ ppr k ++ " vs " ++ ppr _tannKind
-inferTypeKind scope b@BoundType {..} =
+inferTypeKind b@BoundType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind $ _boundType
       star = KStar $ _tloc t
-      newScope =
-        L.foldl'
-          ( \s e ->
-              s & at (name2String e) ?~ star
-          )
-          (scope ^. typeKinds)
-          bvs
-   in inferTypeKind scope {_typeKinds = newScope} t
-inferTypeKind scope v@TVar {..} = do
-  kinds <- _types <$> get @Env
-  case scope ^. typeKinds ^. at (name2String _tvar) of
-    Just k -> return k
-    Nothing -> case kinds ^. at (name2String _tvar) of
-      Just k -> return k
-      Nothing -> throwError $ "cannot find type: " ++ ppr v
-inferTypeKind scope f@TFunc {..} = do
-  ks <- mapM (inferTypeKind scope) _tfuncArgs
+  mapM_ (\v -> setEnv (Just star) $ types . at (name2String v)) bvs
+  inferTypeKind t
+inferTypeKind v@TVar {..} = do
+  let tvn = name2String _tvar
+  k <- getEnv $ types . at tvn
+  forMOf _Nothing k $ \k -> 
+    throwError $ "cannot find type: " ++ ppr v
+  return $ fromJust k
+inferTypeKind f@TFunc {..} = do
+  ks <- mapM inferTypeKind _tfuncArgs
   mapM_ checkTypeKind ks
-  ek <- mapM (inferEffKind scope) _tfuncEff
+  ek <- mapM inferEffKind _tfuncEff
   mapM_ checkEffKind ek
-  rk <- inferTypeKind scope _tfuncResult
+  rk <- inferTypeKind _tfuncResult
   checkTypeKind rk
   return $ KStar _tloc
-inferTypeKind _ t = return $ KStar $ _tloc t
+inferTypeKind t = return $ KStar $ _tloc t
 
 checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
 checkTypeKind k = do
@@ -211,20 +200,17 @@ checkTypeKind k = do
     _ -> throwError $ "expected a star kind, but got " ++ ppr k
 
 initEffTypeDef :: (Has EnvEff sig m) => Module -> m ()
-initEffTypeDef m = do
-  env <- get @Env
-  ekinds <- initEffKinds env
-  put $ set effs ekinds env
+initEffTypeDef m = initEffKinds
   where
     edefs = m ^.. topStmts . traverse . _EDef
-    initEffKinds env = foldM insertEffKind (env ^. effs) edefs
-    insertEffKind es e =
+    initEffKinds = mapM_ insertEffKind edefs
+    insertEffKind e = do
       let en = e ^. effectName
-       in do
-            forMOf _Just (es ^. at en) $ \oe ->
-              throwError $
-                "redefine an effect: " ++ en ++ " vs " ++ ppr oe
-            return $ es & at en ?~ effKind e
+      oe <- getEnv $ effs . at en
+      forMOf _Just oe $ \oe ->
+        throwError $
+          "redefine an effect: " ++ en ++ " vs " ++ ppr oe
+      setEnv (Just $ effKind e) $ effs . at en
     effKind e =
       let loc = _effectLoc e
           args = e ^. effectArgs
@@ -234,9 +220,9 @@ initEffTypeDef m = do
             then estar
             else EKFunc (args ^.. traverse . _2 . non star) estar loc
 
-inferEffKind :: (Has EnvEff sig m) => Scope -> EffectType -> m EffKind
-inferEffKind scope a@EffApp {..} = do
-  ak <- inferEffKind scope $ EffVar _effAppName _effLoc
+inferEffKind :: (Has EnvEff sig m) => EffectType -> m EffKind
+inferEffKind a@EffApp {..} = do
+  ak <- inferEffKind $ EffVar _effAppName _effLoc
   case ak of
     EKFunc {..} ->
       if L.length _effAppArgs /= L.length _ekfuncArgs
@@ -244,7 +230,7 @@ inferEffKind scope a@EffApp {..} = do
         else do
           mapM_
             ( \(a, b) -> do
-                e <- inferTypeKind scope a
+                e <- inferTypeKind a
                 checkTypeKind e
                 checkTypeKind b
                 if aeq e b
@@ -255,35 +241,28 @@ inferEffKind scope a@EffApp {..} = do
           checkEffKind _ekfuncResult
           return _ekfuncResult
     _ -> throwError $ "expected a func eff kind, but got " ++ ppr ak
-inferEffKind scope a@EffAnn {..} = do
-  k <- inferEffKind scope _effAnnType
+inferEffKind a@EffAnn {..} = do
+  k <- inferEffKind _effAnnType
   checkEffKind k
   if aeq k _effAnnKind
     then return k
     else throwError $ "eff kind mismatch: " ++ ppr k ++ " vs " ++ ppr _effAnnKind
-inferEffKind scope b@BoundEffType {..} =
+inferEffKind b@BoundEffType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind $ _boundEffType
       star = EKStar $ _effLoc t
-      newScope =
-        L.foldl'
-          ( \s e ->
-              s & at (name2String e) ?~ star
-          )
-          (scope ^. effKinds)
-          bvs
-   in inferEffKind scope {_effKinds = newScope} t
-inferEffKind scope v@EffVar {..} = do
-  kinds <- _effs <$> get @Env
-  case M.lookup (name2String _effVarName) (scope ^. effKinds) of
-    Just k -> return k
-    Nothing -> case M.lookup (name2String _effVarName) kinds of
-      Just k -> return k
-      Nothing -> throwError $ "cannot find type: " ++ ppr v
-inferEffKind scope l@EffList {..} = do
-  ls <- mapM (inferEffKind scope) _effList
+  mapM_ (\v -> setEnv (Just star) $ effs . at (name2String v)) bvs
+  inferEffKind t
+inferEffKind v@EffVar {..} = do
+  let evn = name2String _effVarName
+  k <- getEnv $ effs . at evn
+  forMOf _Nothing k $ \k ->
+    throwError $ "cannot find type: " ++ ppr v
+  return $ fromJust k
+inferEffKind l@EffList {..} = do
+  ls <- mapM inferEffKind _effList
   mapM_ checkEffKind ls
   return $ EKList ls _effLoc
-inferEffKind scope EffTotal {..} = return $ EKStar _effLoc
+inferEffKind EffTotal {..} = return $ EKStar _effLoc
 
 checkEffKind :: (Has EnvEff sig m) => EffKind -> m ()
 checkEffKind k = do
@@ -293,19 +272,16 @@ checkEffKind k = do
     _ -> throwError $ "expected a star eff kind, but got " ++ ppr k
 
 initEffIntfDef :: (Has EnvEff sig m) => Module -> m ()
-initEffIntfDef m = do
-  env <- get @Env
-  eintfs <- initEffIntfTypes env
-  put $ set effIntfs eintfs env
+initEffIntfDef m = initEffIntfTypes
   where
     edefs = m ^.. topStmts . traverse . _EDef
-    initEffIntfTypes env =
-      let globalTypes = fmap (\n -> s2n n) $ M.keys $ env ^. types
-       in foldM (insertEffIntfType globalTypes) (env ^. effIntfs) edefs
-    insertEffIntfType globalTypes intfs e = do
+    initEffIntfTypes = do
+      globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+      mapM_ (insertEffIntfType globalTypes) edefs
+    insertEffIntfType globalTypes e = do
       let is = e ^. effectIntfs
           en = e ^. effectName
-          f = \is i -> do
+          f = \i -> do
             let intfn = i ^. intfName
                 iargs = i ^. intfArgs
                 iresult = i ^. intfResultType
@@ -321,14 +297,15 @@ initEffIntfDef m = do
                     ++ "only exists in eff type arguments: "
                     ++ ppr fvars
               else return ()
-            forMOf _Just (is ^. at intfn) $ \t ->
+            ot <- getEnv $ effIntfs . at intfn 
+            forMOf _Just ot $ \t ->
               throwError $
                 "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
-            let bt = (intfType i e)
-            k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
+            let bt = intfType i e
+            k <- underScope $ inferTypeKind bt
             checkTypeKind k
-            return $ is & at intfn ?~ bt
-      foldM f intfs is
+            setEnv (Just bt) $ effIntfs . at intfn
+      mapM_ f is
     intfType i e =
       let iargs = i ^. intfArgs
           iresult = i ^. intfResultType
@@ -345,25 +322,23 @@ freeVarName :: Int -> TVar
 freeVarName i = makeName "$" $ toInteger i
 
 initFuncDef :: (Has EnvEff sig m) => Module -> m ()
-initFuncDef m = do
-  env <- get @Env
-  fs <- initFuncTypes env
-  put $ set funcs fs env
+initFuncDef m = initFuncTypes
   where
     fdefs = m ^.. topStmts . traverse . _FDef
-    initFuncTypes env =
-      foldM
-        ( \fs f -> do
+    initFuncTypes =
+      mapM_
+        ( \f -> do
             let pos = f ^. funcLoc
                 fn = f ^. funcName
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-                scope = Scope (M.fromList bvars) M.empty (env ^. funcs)
+                initLocalScope = mapM_ (\(n, k) -> setEnv (Just k) $ types . at n) bvars
             argTypes <-
               ( mapM
                   ( \a ->
                       case a of
-                        Just t -> do
-                          inferTypeKind scope t
+                        Just t -> underScope $ do
+                          initLocalScope
+                          inferTypeKind t
                           return t
                         Nothing -> do
                           v <- fresh
@@ -373,11 +348,12 @@ initFuncDef m = do
                 )
             effType <-
               let t = f ^. funcEffectType . (non $ EffTotal pos)
-               in do inferEffKind scope t; return t
+               in do initLocalScope; inferEffKind t; return t
             resultType <-
               ( case (f ^. funcResultType) of
-                  Just t -> do
-                    inferTypeKind scope t
+                  Just t -> underScope $ do
+                    initLocalScope
+                    inferTypeKind t
                     return t
                   Nothing -> do
                     v <- fresh
@@ -387,26 +363,26 @@ initFuncDef m = do
                   BoundType $
                     bind (f ^. funcBoundVars) $
                       TFunc argTypes (Just effType) resultType pos
-            inferTypeKind scope ft
-            case M.lookup fn fs of
-              Just _ -> throwError $ "function redefine: " ++ fn
-              Nothing -> return $ at fn ?~ ft $ fs
+            underScope $ do
+              initLocalScope
+              inferTypeKind ft
+            oft <- getEnv $ funcs . at fn
+            forMOf _Just oft $ \oft ->
+              throwError $ "function redefine: " ++ fn
+            setEnv (Just ft) $ funcs . at fn
         )
-        (env ^. funcs)
         fdefs
 
 inferFuncDef :: (Has EnvEff sig m) => Module -> m ()
 inferFuncDef m =
   let fdefs = m ^.. topStmts . traverse . _FDef
    in mapM_
-        ( \f -> do
-            env <- get @Env
+        ( \f -> underScope $ do
             let pos = f ^. funcLoc
                 fn = f ^. funcName
-                fs = env ^. funcs
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-                scope = Scope (M.fromList bvars) M.empty fs
-                (bts, ftype) = unbindTypeSample $ fromJust $ fs ^. at fn
+            mapM_ (\(n, k) -> setEnv (Just k) $ types . at n) bvars
+            (bts, ftype) <- (\f -> unbindTypeSample $ fromJust f) <$> (getEnv $ funcs . at fn)
             ft <- case ftype of
               ft@TFunc {} -> return ft
               _ -> throwError $ "expected function type, but got: " ++ ppr ftype
@@ -416,27 +392,13 @@ inferFuncDef m =
             if L.length argTypes /= L.length (f ^. funcArgs)
               then throwError $ "type mismatch: " ++ ppr argTypes ++ " vs " ++ ppr (f ^. funcArgs)
               else return ()
-            newScope <-
-              ( foldM
-                  ( \s ((n, _), t) ->
-                      let ts = at n ?~ t $ s ^. exprTypes
-                       in return $ s {_exprTypes = ts}
-                  )
-                  scope
+            mapM_ (\((n, _), t) -> setEnv (Just t) $ funcs . at n)
                   [(n, t) | t <- argTypes | n <- (f ^. funcArgs)]
-                )
-            newScope' <-
-              ( foldM
-                  ( \s t ->
-                      let ks = at (name2String t) ?~ (KStar pos) $ s ^. typeKinds
-                       in return $ s {_typeKinds = ks}
-                  )
-                  newScope
+            mapM_ (\t -> setEnv (Just $ KStar pos) $ types . at (name2String t))
                   bts
-                )
             case f ^. funcExpr of
               Just e -> do
-                eType <- inferExprType newScope' e
+                eType <- inferExprType e
                 if aeq eType resultType
                   then return ()
                   else
@@ -449,30 +411,23 @@ inferFuncDef m =
         )
         fdefs
 
-inferExprType :: (Has EnvEff sig m) => Scope -> Expr -> m Type
-inferExprType scope e@EVar {..} =
-  case M.lookup _evarName (scope ^. exprTypes) of
-    Just t -> return t
-    Nothing -> throwError $ "cannot find expr var: " ++ _evarName
-inferExprType scope a@EApp {..} = do
-  appFuncType <- inferExprType scope _eappFunc >>= unbindType
-  argTypes <- mapM (inferExprType scope) _eappArgs
+inferExprType :: (Has EnvEff sig m) => Expr -> m Type
+inferExprType EVar {..} = do
+  v <- getEnv $ funcs .at _evarName
+  forMOf _Nothing v $ \v ->
+    throwError $ "cannot find expr var: " ++ _evarName
+  return $ fromJust v
+inferExprType a@EApp {..} = do
+  appFuncType <- inferExprType _eappFunc >>= unbindType
+  argTypes <- mapM inferExprType _eappArgs
   inferAppResultType appFuncType argTypes
-inferExprType scope l@ELam {..} = do
-  newScope <-
-    ( foldM
-        ( \s t ->
-            let ks = at (name2String t) ?~ (KStar _eloc) $ s ^. typeKinds
-             in return $ s {_typeKinds = ks}
-        )
-        scope
-        _elamBoundVars
-      )
+inferExprType l@ELam {..} = underScope $ do
+  mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) _elamBoundVars
   args <-
     mapM
       ( \(_, t') -> case t' of
           Just t -> do
-            inferTypeKind newScope t
+            inferTypeKind t
             return t
           Nothing -> do
             v <- fresh
@@ -481,40 +436,33 @@ inferExprType scope l@ELam {..} = do
       _elamArgs
   eff <- case _elamEffType of
     Just e -> do
-      inferEffKind newScope e
+      inferEffKind e
       return e
     Nothing -> return $ EffTotal _eloc
-  newScope' <-
-    foldM
-      ( \s (n, t) ->
-          let ts = at n ?~ t $ s ^. exprTypes
-           in return $ s {_exprTypes = ts}
-      )
-      newScope
+  mapM_ (\(n, t) -> setEnv (Just t) $ funcs . at n)
       [(n, t) | (n, _) <- _elamArgs | t <- args]
-
   case _elamExpr of
     Just e -> return ()
     Nothing -> throwError $ "expected an expression for lambda"
-  eType <- inferExprType newScope' $ fromJust _elamExpr
+  eType <- inferExprType $ fromJust _elamExpr
   result <- case _elamResultType of
     Just t -> do
-      inferTypeKind newScope t
+      inferTypeKind t
       if aeq eType t
         then return t
         else throwError $ "lambda result type mismatch: " ++ ppr t ++ " vs " ++ ppr eType
     Nothing -> return eType
   return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) result _eloc
-inferExprType scope a@EAnn {..} = do
-  t <- inferExprType scope _eannExpr
-  inferTypeKind scope _eannType
+inferExprType a@EAnn {..} = do
+  t <- inferExprType _eannExpr
+  inferTypeKind _eannType
   if aeq t _eannType
     then return _eannType
     else throwError $ "type mismatch: " ++ ppr t ++ " vs " ++ ppr _eannType
-inferExprType scope ELit {..} = do
-  inferTypeKind scope _litType
+inferExprType ELit {..} = do
+  inferTypeKind _litType
   return _litType
-inferExprType scope e = throwError $ "unsupported expression: " ++ ppr e
+inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
 collectVarBinding a@TPrim {} b@TPrim {} = do
