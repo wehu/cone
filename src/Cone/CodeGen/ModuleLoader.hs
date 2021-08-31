@@ -13,38 +13,43 @@ import System.Directory
 import System.FilePath
 import System.IO
 
-type Loaded = M.Map String Bool
+type Loaded = M.Map FilePath Bool
 
 type LoadEnv = ExceptT String IO (Env, Int, Module)
 
-loadModule' :: String -> Loaded -> LoadEnv
-loadModule' f loaded = do
-  found <- liftIO $ doesFileExist f
-  if not found
-    then throwError $ "cannot find file: " ++ f
-    else case loaded ^. at f of
-      Just _ -> throwError $ "cyclar loading: " ++ f
-      Nothing -> do
-        let newLoaded = loaded & at f ?~ True
-        handle <- liftIO $ openFile f ReadMode
-        contents <- liftIO $ hGetContents handle
-        let result = parse f contents
-        case result of
-          Left e -> throwError $ show e
-          Right m -> do
-            (env, id, _) <- importModules m newLoaded
-            case initModule m env id of
-              Left e -> throwError e
-              Right (env, (id, m)) -> return (env, id, m)
+searchFile :: [FilePath] -> FilePath -> IO FilePath
+searchFile paths f = do
+  found <- doesFileExist f
+  if found
+  then return $ f
+  else return f
+
+loadModule' :: [FilePath] -> FilePath -> Loaded -> LoadEnv
+loadModule' paths f loaded = do
+  found <- liftIO $ searchFile paths f
+  case loaded ^. at f of
+    Just _ -> throwError $ "cyclar loading: " ++ f
+    Nothing -> do
+      let newLoaded = loaded & at f ?~ True
+      handle <- liftIO $ openFile f ReadMode
+      contents <- liftIO $ hGetContents handle
+      let result = parse f contents
+      case result of
+        Left e -> throwError $ show e
+        Right m -> do
+          (env, id, _) <- importModules paths m newLoaded
+          case initModule m env id of
+            Left e -> throwError e
+            Right (env, (id, m)) -> return (env, id, m)
 
 coneEx = "cone"
 
-importModules :: Module -> Loaded -> LoadEnv
-importModules m loaded = do
+importModules :: [FilePath] -> Module -> Loaded -> LoadEnv
+importModules paths m loaded = do
   let is = m ^.. imports . traverse
   foldM
     ( \(oldEnv, _, _) i -> do
-        (env, id, m) <- loadModule' (addExtension (concat $ splitOn "\\" $ i ^. importPath) coneEx) loaded
+        (env, id, m) <- loadModule' paths (addExtension (concat $ splitOn "\\" $ i ^. importPath) coneEx) loaded
         let g1' = mapMaybeMissing $ \k v -> Nothing
             g2' = mapMaybeMissing $ \k v -> Nothing
             f' = zipWithMaybeMatched $ \k v1 v2 -> Just v1
@@ -81,9 +86,9 @@ importModules m loaded = do
     (initialEnv, 0, m)
     is
 
-loadModule :: String -> LoadEnv
-loadModule f = do
-  (env, id, m) <- loadModule' f M.empty
+loadModule :: [FilePath] -> FilePath -> LoadEnv
+loadModule paths f = do
+  (env, id, m) <- loadModule' paths f M.empty
   case checkType m env id of
     Left e -> throwError e
     Right (env, (id, m)) -> return (env, id, m)

@@ -45,6 +45,7 @@ library
     , fused-effects
     , lens
     , mtl
+    , optparse-applicative
     , parsec
     , prettyprinter
     , split
@@ -68,6 +69,7 @@ executable cone-exe
     , fused-effects
     , lens
     , mtl
+    , optparse-applicative
     , parsec
     , prettyprinter
     , split
@@ -96,6 +98,7 @@ test-suite cone-test
     , lens
     , mtl
     , neat-interpolation
+    , optparse-applicative
     , parsec
     , prettyprinter
     , split
