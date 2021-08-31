@@ -25,11 +25,12 @@ coneMain = play =<< execParser opts
 
 play :: Opts -> IO ()
 play (InputFiles files) = do
-  forM_ files $ \f -> do 
+  forM_ ("prelude.cone":files) $ \f -> do 
     currentPath <- getCurrentDirectory
     execPath <- getExecutablePath
     let libPath = takeDirectory execPath </> "lib"
-    res <- runExceptT $ loadModule (currentPath:execPath:[]) f
+        paths = currentPath:execPath:[]
+    res <- runExceptT $ loadModule paths f
     case res of
       Left e -> putStrLn e
       Right _ -> return ()
