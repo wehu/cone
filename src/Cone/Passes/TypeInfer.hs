@@ -6,6 +6,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Cone.Passes.TypeInfer (infer) where
 
@@ -61,21 +62,30 @@ initialEnv =
 
 type EnvEff = Eff Env String
 
-initTypeDef :: (Has EnvEff sig m) => Module -> m ()
-initTypeDef m = do
+getEnv :: (Has EnvEff sig m) => Getter Env a -> m a
+getEnv l = do
   env <- get @Env
-  tkinds <- initTypeKinds env
-  put $ set types tkinds env
+  return $ view l env
+
+setEnv :: (Has EnvEff sig m) => b -> Setter Env Env a b -> m ()
+setEnv v l = do
+  env <- get @Env
+  put $ set l v env
+
+initTypeDef :: (Has EnvEff sig m) => Module -> m ()
+initTypeDef m = initTypeKinds
   where
     typeDefs = m ^.. topStmts . traverse . _TDef
-    initTypeKinds env = foldM insertTypeKind (env ^. types) typeDefs
-    insertTypeKind ts t = do
+    initTypeKinds = mapM_ insertTypeKind typeDefs
+    insertTypeKind t = do
       let tn = t ^. typeName
-      forMOf _Just (ts ^. at tn) $ \ot ->
+      ot <- getEnv $ types . at tn
+      forMOf _Just ot $ \ot ->
         throwError $
           "redefine a type: " ++ tn ++ " vs " ++ ppr ot
-      return $ ts & at tn ?~ typeKind t
-    typeKind t =
+      let k = Just $ typeKindOf t
+      setEnv k $ types . at tn
+    typeKindOf t =
       let loc = _typeLoc t
           args = t ^. typeArgs
           star = KStar loc
