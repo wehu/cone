@@ -7,6 +7,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.Except
 import Data.List.Split
+import Data.List (elemIndex)
 import qualified Data.Map as M
 import Data.Map.Merge.Strict
 import System.Directory
@@ -51,49 +52,52 @@ loadModule' paths f' loaded = do
 
 coneEx = "cone"
 
+preloadedModules = ["core" </> "prelude"]
+
 importModules :: [FilePath] -> Module -> Loaded -> LoadEnv
 importModules paths m loaded = do
   let is = m ^.. imports . traverse
   foldM
     ( \(oldEnv, oldId, oldM) i ->
-        if m ^. moduleName == "core/prelude" then return (oldEnv, oldId, oldM)
-        else do 
-          (env, id, m) <- loadModule' paths (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx) loaded
-          let g1' = mapMaybeMissing $ \k v -> Nothing
-              g2' = mapMaybeMissing $ \k v -> Nothing
-              f' = zipWithMaybeMatched $ \k v1 v2 -> Just v1
-              typeConflicts = merge g1' g2' f' (oldEnv ^. types) (env ^. types)
-              effConflicts = merge g1' g2' f' (oldEnv ^. effs) (env ^. effs)
-              effIntfConflicts = merge g1' g2' f' (oldEnv ^. effIntfs) (env ^. effIntfs)
-              funcConflicts = merge g1' g2' f' (oldEnv ^. funcs) (env ^. funcs)
-          if typeConflicts /= M.empty
-            then throwError $ "there are type conflicts: " ++ show typeConflicts
-            else return ()
-          if effConflicts /= M.empty
-            then throwError $ "there are eff conflicts: " ++ show effConflicts
-            else return ()
-          if effIntfConflicts /= M.empty
-            then throwError $ "there are eff interface conflicts: " ++ show effIntfConflicts
-            else return ()
-          if funcConflicts /= M.empty
-            then throwError $ "there are function conflicts: " ++ show funcConflicts
-            else return ()
-          let g1 = mapMaybeMissing $ \k v -> Just v
-              g2 = mapMaybeMissing $ \k v -> Just v
-              f = zipWithMaybeMatched $ \k v1 v2 -> Just v1
-          return
-            ( oldEnv
-                { _types = (merge g1 g2 f (oldEnv ^. types) (env ^. types)),
-                  _effs = (merge g1 g2 f (oldEnv ^. effs) (env ^. effs)),
-                  _effIntfs = (merge g1 g2 f (oldEnv ^. effIntfs) (env ^. effIntfs)),
-                  _funcs = (merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs))
-                },
-              id,
-              m
-            )
+        case (m ^. moduleName) `elemIndex` preloadedModules of
+          Just _ -> return (oldEnv, oldId, oldM)
+          Nothing -> do 
+            (env, id, m) <- loadModule' paths (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx) loaded
+            let g1' = mapMaybeMissing $ \k v -> Nothing
+                g2' = mapMaybeMissing $ \k v -> Nothing
+                f' = zipWithMaybeMatched $ \k v1 v2 -> Just v1
+                typeConflicts = merge g1' g2' f' (oldEnv ^. types) (env ^. types)
+                effConflicts = merge g1' g2' f' (oldEnv ^. effs) (env ^. effs)
+                effIntfConflicts = merge g1' g2' f' (oldEnv ^. effIntfs) (env ^. effIntfs)
+                funcConflicts = merge g1' g2' f' (oldEnv ^. funcs) (env ^. funcs)
+            if typeConflicts /= M.empty
+              then throwError $ "there are type conflicts: " ++ show typeConflicts
+              else return ()
+            if effConflicts /= M.empty
+              then throwError $ "there are eff conflicts: " ++ show effConflicts
+              else return ()
+            if effIntfConflicts /= M.empty
+              then throwError $ "there are eff interface conflicts: " ++ show effIntfConflicts
+              else return ()
+            if funcConflicts /= M.empty
+              then throwError $ "there are function conflicts: " ++ show funcConflicts
+              else return ()
+            let g1 = mapMaybeMissing $ \k v -> Just v
+                g2 = mapMaybeMissing $ \k v -> Just v
+                f = zipWithMaybeMatched $ \k v1 v2 -> Just v1
+            return
+              ( oldEnv
+                  { _types = (merge g1 g2 f (oldEnv ^. types) (env ^. types)),
+                    _effs = (merge g1 g2 f (oldEnv ^. effs) (env ^. effs)),
+                    _effIntfs = (merge g1 g2 f (oldEnv ^. effIntfs) (env ^. effIntfs)),
+                    _funcs = (merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs))
+                  },
+                id,
+                m
+              )
     )
     (initialEnv, 0, m)
-    ((ImportStmt "core/prelude" Nothing [] (m ^. moduleLoc)):is)
+    ((map (\f -> ImportStmt f Nothing [] (m ^. moduleLoc)) preloadedModules) ++ is)
 
 loadModule :: [FilePath] -> FilePath -> LoadEnv
 loadModule paths f = do
