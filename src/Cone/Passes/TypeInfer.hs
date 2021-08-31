@@ -373,8 +373,8 @@ initFuncDef m = initFuncTypes
         )
         fdefs
 
-inferFuncDef :: (Has EnvEff sig m) => Module -> m ()
-inferFuncDef m =
+checkFuncDef :: (Has EnvEff sig m) => Module -> m ()
+checkFuncDef m =
   let fdefs = m ^.. topStmts . traverse . _FDef
    in mapM_
         ( \f -> underScope $ do
@@ -572,5 +572,5 @@ infer m = run . runError . (runState initialEnv) . runFresh 0 $ do
   initFuncDef m
   checkTypeConDef m
   checkEffIntfDef m
-  inferFuncDef m
+  checkFuncDef m
   return m
