@@ -29,7 +29,7 @@ library
       Cone.Parser.AST
       Cone.Parser.Lexer
       Cone.Parser.Parser
-      Cone.Passes.TypeInfer
+      Cone.Passes.TypeChecker
   other-modules:
       Paths_cone
   hs-source-dirs:
@@ -69,7 +69,7 @@ test-suite cone-test
   main-is: Spec.hs
   other-modules:
       Parser.ParserSpec
-      Passes.TypeInferSpec
+      Passes.TypeCheckerSpec
       Paths_cone
   hs-source-dirs:
       test

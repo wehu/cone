@@ -1,7 +1,7 @@
 import Parser.ParserSpec
-import Passes.TypeInferSpec
+import Passes.TypeCheckerSpec
 
 main :: IO ()
 main = do
   parserSpec
-  inferTypeSpec
+  typeCheckerSpec
