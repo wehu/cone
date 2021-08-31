@@ -333,7 +333,7 @@ typeArgs =
 typeCon :: Parser A.TypeCon
 typeCon =
   A.TypeCon <$> ident
-    <*> ( parens (P.sepBy1 type_ comma)
+    <*> ( parens (P.sepBy type_ comma)
             P.<|> return []
         )
     <*> getPos
