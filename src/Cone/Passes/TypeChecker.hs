@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Cone.Passes.TypeChecker (Env(..), initialEnv, initModule, checkType) where
+module Cone.Passes.TypeChecker (Env(..), types, funcs, effs, effIntfs, initialEnv, initModule, checkType) where
 
 import Cone.Parser.AST
 import Control.Carrier.Error.Either

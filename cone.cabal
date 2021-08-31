@@ -40,8 +40,10 @@ library
       array
     , base >=4.7 && <5
     , containers
+    , directory
     , fused-effects
     , lens
+    , mtl
     , parsec
     , prettyprinter
     , unbound-generics
@@ -59,8 +61,10 @@ executable cone-exe
     , base >=4.7 && <5
     , cone
     , containers
+    , directory
     , fused-effects
     , lens
+    , mtl
     , parsec
     , prettyprinter
     , unbound-generics
@@ -81,9 +85,11 @@ test-suite cone-test
     , base >=4.7 && <5
     , cone
     , containers
+    , directory
     , fused-effects
     , hspec
     , lens
+    , mtl
     , neat-interpolation
     , parsec
     , prettyprinter

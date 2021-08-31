@@ -28,6 +28,8 @@ dependencies:
 - fused-effects
 - containers
 - prettyprinter
+- mtl
+- directory
 
 library:
   source-dirs: src
