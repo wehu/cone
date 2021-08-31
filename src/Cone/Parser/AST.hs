@@ -56,7 +56,7 @@ data Location = Location {_fileName :: String, _lineNo :: !Int, _colNo :: !Int}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Location where
-  pretty l = pretty $ "@" ++ (_fileName l) ++ "[" ++ (show $ _lineNo l) ++ ", " ++ (show $ _colNo l) ++ "]"
+  pretty l = "" -- pretty $ "@" ++ (_fileName l) ++ "[" ++ (show $ _lineNo l) ++ ", " ++ (show $ _colNo l) ++ "]"
 
 type NamedAttr = (String, Attr)
 
