@@ -18,6 +18,7 @@ build-type:     Simple
 extra-source-files:
     README.md
     ChangeLog.md
+data-files:
     lib/core/prelude.cone
 
 source-repository head

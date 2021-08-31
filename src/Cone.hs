@@ -6,6 +6,7 @@ where
 import Options.Applicative
 import Data.Semigroup ((<>))
 import Cone.CodeGen.ModuleLoader
+import Cone.Parser.AST (ppr)
 import Control.Monad
 import Control.Monad.Except
 import System.Environment
@@ -33,5 +34,5 @@ play (InputFiles files) = do
     res <- runExceptT $ loadModule paths f
     case res of
       Left e -> putStrLn e
-      Right r -> do
-        putStrLn $ show r
+      Right (_, _, m) -> do
+        putStrLn $ ppr m

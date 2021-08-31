@@ -9,6 +9,8 @@ copyright:           "2021 Author name here"
 extra-source-files:
 - README.md
 - ChangeLog.md
+
+data-files:
 - lib/core/prelude.cone
 
 # Metadata used when publishing your package

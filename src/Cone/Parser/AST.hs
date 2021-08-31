@@ -279,12 +279,18 @@ data TypeDef = TypeDef
       Generic
     )
 
+instance Pretty TypeDef where
+  pretty TypeDef{..} = pretty _typeName <+> anglesList _typeArgs <+> bracesList _typeCons <+> pretty _typeLoc
+
 data TypeCon = TypeCon
   { _typeConName :: String,
     _typeConArgs :: [Type],
     _typeConLoc :: Location
   }
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty TypeCon where
+  pretty TypeCon{..} = pretty _typeConName <+> parensList _typeConArgs <+> pretty _typeConLoc
 
 data FuncIntf = FuncIntf
   { _intfName :: String,
@@ -304,6 +310,9 @@ data FuncIntf = FuncIntf
       Generic
     )
 
+instance Pretty FuncIntf where
+  pretty FuncIntf{..} = pretty _intfName <+> bracesList _intfBoundVars <+> parensList _intfArgs <+> colon <+> pretty _intfResultType <+> pretty _intfLoc
+
 data EffectDef = EffectDef
   { _effectName :: String,
     _effectArgs :: [(TVar, Maybe Kind)],
@@ -321,6 +330,9 @@ data EffectDef = EffectDef
       Generic
     )
 
+instance Pretty EffectDef where
+  pretty EffectDef{..} = "effect" <+> pretty _effectName <+> anglesList _effectArgs <+> bracesList _effectIntfs <+> pretty _effectLoc
+
 data ImportStmt = ImportStmt
   { _importPath :: NamePath,
     _importAlias :: Maybe String,
@@ -328,6 +340,9 @@ data ImportStmt = ImportStmt
     _importLoc :: Location
   }
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty ImportStmt where
+  pretty ImportStmt{..} = "import" <+> pretty _importPath <+> pretty _importLoc
 
 data FuncDef = FuncDef
   { _funcName :: String,
@@ -349,11 +364,20 @@ data FuncDef = FuncDef
       Generic
     )
 
+instance Pretty FuncDef where
+  pretty FuncDef{..} = "fun" <+> pretty _funcName <+> bracketsList _funcBoundVars <+> parensList _funcArgs <+> colon <+> pretty _funcEffectType 
+                      <+> pretty _funcResultType <+> bracesList [_funcExpr] <+> pretty _funcLoc
+
 data TopStmt
   = FDef {_fdef :: FuncDef}
   | TDef {_tdef :: TypeDef}
   | EDef {_edef :: EffectDef}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty TopStmt where
+  pretty FDef{..} = pretty _fdef
+  pretty TDef{..} = pretty _tdef
+  pretty EDef{..} = pretty _edef
 
 data Module = Module
   { _moduleName :: NamePath,
@@ -364,6 +388,11 @@ data Module = Module
     _moduleLoc :: Location
   }
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty Module where
+  pretty Module{..} = vsep $ ["module" <+> pretty _moduleName] ++
+                            (map pretty _imports) ++
+                            (map pretty _topStmts) ++ [pretty _moduleLoc]
 
 -------------------------------
 
