@@ -219,9 +219,9 @@ data Expr
   | ELit {_lit :: String, _litType :: Type, _eloc :: Location}
   | ELam
       { _elamBoundVars :: [TVar],
-        _elamArgs :: [(String, Maybe Type)],
+        _elamArgs :: [(String, Type)],
         _elamEffType :: Maybe EffectType,
-        _elamResultType :: Maybe Type,
+        _elamResultType :: Type,
         _elamExpr :: Maybe Expr,
         _eloc :: Location
       }
@@ -332,9 +332,9 @@ data ImportStmt = ImportStmt
 data FuncDef = FuncDef
   { _funcName :: String,
     _funcBoundVars :: [TVar],
-    _funcArgs :: [(String, Maybe Type)],
+    _funcArgs :: [(String, Type)],
     _funcEffectType :: Maybe EffectType,
-    _funcResultType :: Maybe Type,
+    _funcResultType :: Type,
     _funcExpr :: Maybe Expr,
     _funcLoc :: Location
   }

@@ -330,34 +330,24 @@ initFuncDef m = initFuncTypes
             argTypes <-
               ( forM
                   (f ^. funcArgs ^.. traverse . _2)
-                  $ \a ->
-                    case a of
-                      Just t -> underScope $ do
+                  $ \t -> underScope $ do
                         initLocalScope
                         k <- inferTypeKind t
                         checkTypeKind k
                         return t
-                      Nothing -> do
-                        v <- fresh
-                        return $ TVar (freeVarName v) pos
                 )
-            effType <-
-              let t = f ^. funcEffectType . (non $ EffTotal pos)
-               in do initLocalScope
+            effType <- underScope $ do
+                     let t = f ^. funcEffectType . (non $ EffTotal pos)
+                     initLocalScope
                      k <- inferEffKind t
                      checkEffKind k
                      return t
-            resultType <-
-              ( case (f ^. funcResultType) of
-                  Just t -> underScope $ do
+            resultType <- underScope $ do
+                    let t = f ^.funcResultType
                     initLocalScope
                     k <- inferTypeKind t
                     checkTypeKind k
                     return t
-                  Nothing -> do
-                    v <- fresh
-                    return $ TVar (freeVarName v) pos
-                )
             let ft =
                   BoundType $
                     bind (f ^. funcBoundVars) $
@@ -425,14 +415,10 @@ inferExprType l@ELam {..} = underScope $ do
   mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) _elamBoundVars
   args <-
     mapM
-      ( \(_, t') -> case t' of
-          Just t -> do
+      ( \(_, t) -> do
             k <- inferTypeKind t
             checkTypeKind k
             return t
-          Nothing -> do
-            v <- fresh
-            return $ TVar (freeVarName v) _eloc
       )
       _elamArgs
   eff <- case _elamEffType of
@@ -447,15 +433,12 @@ inferExprType l@ELam {..} = underScope $ do
     Just e -> return ()
     Nothing -> throwError $ "expected an expression for lambda"
   eType <- inferExprType $ fromJust _elamExpr
-  result <- case _elamResultType of
-    Just t -> do
-      k <- inferTypeKind t
-      checkTypeKind k
-      if aeq eType t
-        then return t
-        else throwError $ "lambda result type mismatch: " ++ ppr t ++ " vs " ++ ppr eType
-    Nothing -> return eType
-  return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) result _eloc
+  k <- inferTypeKind _elamResultType
+  checkTypeKind k
+  if aeq eType _elamResultType
+    then return ()
+    else throwError $ "lambda result type mismatch: " ++ ppr _elamResultType ++ " vs " ++ ppr eType
+  return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) eType _eloc
 inferExprType a@EAnn {..} = do
   t <- inferExprType _eannExpr
   k <- inferTypeKind _eannType

@@ -100,7 +100,7 @@ typeSpec = hspec $ do
             ^? ix 0
             ^. _Just . _FDef . funcArgs
             ^? ix 0
-            ^. _Just . _2 . _Just . tappArgs
+            ^. _Just . _2 . tappArgs
             ^? ix 0
             ^. _Just . tvar
         )
@@ -123,7 +123,7 @@ typeSpec = hspec $ do
             ^? ix 0
             ^. _Just . _FDef . funcArgs
             ^? ix 0
-            ^. _Just . _2 . _Just . tfuncResult . tvar
+            ^. _Just . _2 . tfuncResult . tvar
         )
         `shouldBe` "c"
 
@@ -144,7 +144,7 @@ typeSpec = hspec $ do
             ^? ix 0
             ^. _Just . _FDef . funcArgs
             ^? ix 0
-            ^. _Just . _2 . _Just . tannType . tvar
+            ^. _Just . _2 . tannType . tvar
         )
         `shouldBe` "c"
 
@@ -164,7 +164,7 @@ typeSpec = hspec $ do
           ^? ix 0
           ^. _Just . _FDef . funcArgs
           ^? ix 0
-          ^. _Just . _2 . _Just
+          ^. _Just . _2 
             . tannKind
             . kfuncResult
             . kloc
@@ -189,7 +189,7 @@ typeSpec = hspec $ do
             ^? ix 0
             ^. _Just . _FDef . funcArgs
             ^? ix 0
-            ^. _Just . _2 . _Just . tfuncEff . _Just . effAppArgs
+            ^. _Just . _2 . tfuncEff . _Just . effAppArgs
             ^? ix 0
             ^. _Just . tvar
         )
@@ -212,7 +212,7 @@ typeSpec = hspec $ do
             ^? ix 0
             ^. _Just . _FDef . funcArgs
             ^? ix 0
-            ^. _Just . _2 . _Just . tfuncEff . _Just . effList
+            ^. _Just . _2 . tfuncEff . _Just . effList
             ^? ix 1
             ^. _Just . effAppArgs
             ^? ix 0
@@ -237,7 +237,7 @@ typeSpec = hspec $ do
             ^? ix 0
             ^. _Just . _FDef . funcArgs
             ^? ix 0
-            ^. _Just . _2 . _Just . tfuncEff . _Just . effList
+            ^. _Just . _2 . tfuncEff . _Just . effList
             ^? ix 1
             ^. _Just . effAnnType . effAppArgs
             ^? ix 0
@@ -275,7 +275,7 @@ exprSpec = hspec $ do
 
 	   fun a(a : \
         a<b>) : c {
-		   fn(arg) {a} \
+		   fn(arg:a):a {a} \
 	   }
        |]
       --(show $ parse "" source) `shouldBe` "a"
