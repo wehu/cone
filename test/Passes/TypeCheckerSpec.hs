@@ -19,7 +19,7 @@ typeCheckerSpec = hspec $ do
       let source =
             unpack
               [text|
-           module foo\bar
+           module foo/bar
           
           type ff {
             fff

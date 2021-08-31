@@ -18,7 +18,7 @@ moduleSpec = hspec $ do
       let source =
             unpack
               [text|
-           module foo\bar
+           module foo/bar
        |]
       ((parse "" source) ^. _Right . moduleName) `shouldBe` "foo\\bar"
 
@@ -26,7 +26,7 @@ moduleSpec = hspec $ do
       let source =
             unpack
               [text|
-           module foo\bar
+           module foo/bar
 	   import foo
        |]
       ( (parse "" source)
@@ -39,7 +39,7 @@ moduleSpec = hspec $ do
       let source =
             unpack
               [text|
-           module foo\bar;
+           module foo/bar;
 	   import foo
 	   import bar;
        |]
@@ -53,9 +53,9 @@ moduleSpec = hspec $ do
       let source =
             unpack
               [text|
-           module foo\bar
+           module foo/bar
 	   import foo as f
-	   import bar\baz
+	   import bar/baz
        |]
       ( (parse "" source)
           ^. _Right . imports ^? ix 0
@@ -67,7 +67,7 @@ moduleSpec = hspec $ do
       let source =
             unpack
               [text|
-           module foo\bar
+           module foo/bar
 	   import foo
 
 	   fun aaa(a : b) : c {
