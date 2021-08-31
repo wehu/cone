@@ -20,7 +20,7 @@ moduleSpec = hspec $ do
               [text|
            module foo/bar
        |]
-      ((parse "" source) ^. _Right . moduleName) `shouldBe` "foo\\bar"
+      ((parse "" source) ^. _Right . moduleName) `shouldBe` "foo/bar"
 
     it "module with one import" $ do
       let source =
