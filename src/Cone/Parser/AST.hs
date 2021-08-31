@@ -110,7 +110,7 @@ anglesList :: Pretty a => forall ann. [a] -> Doc ann
 anglesList ls = encloseSep langle rangle comma $ map pretty ls
 
 bracesList :: Pretty a => forall ann. [a] -> Doc ann
-bracesList ls = encloseSep lbrace rbrace semi $ map pretty ls
+bracesList ls = align $ encloseSep lbrace rbrace semi $ map pretty ls
 
 parensList' :: [Doc ann] -> Doc ann
 parensList' ls = encloseSep lparen rparen comma ls
@@ -122,7 +122,7 @@ anglesList' :: [Doc ann] -> Doc ann
 anglesList' ls = encloseSep langle rangle comma ls
 
 bracesList' :: [Doc ann] -> Doc ann
-bracesList' ls = encloseSep lbrace rbrace semi ls
+bracesList' ls = align $ encloseSep lbrace rbrace semi ls
 
 data Type
   = TPrim {_tprim :: PrimType, _tloc :: Location}
