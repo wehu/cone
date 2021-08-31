@@ -257,7 +257,7 @@ funcProto =
   where
     f pos bound args (effT, resT) = (pos, bound, args, (effT, resT))
 
-funcDef = (\f e -> (f, Just e)) <$> funcProto <*> braces expr
+funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces expr)
 
 table   = [ [prefix sub "negative"]
             , [binary star "mul" PE.AssocLeft,
