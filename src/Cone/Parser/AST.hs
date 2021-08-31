@@ -2,10 +2,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RankNTypes #-}
 
 module Cone.Parser.AST where
 
@@ -210,9 +210,9 @@ data Pattern
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Pattern where
-  pretty PVar{..} = pretty _pvarName <+> pretty _ploc
-  pretty PApp{..} = parens $ pretty _pappName <+> parensList _pappArgs <+> pretty _ploc
-  pretty PAnn{..} = parens $ pretty _pannPattern <+> colon <+> pretty _pannType <+> pretty _ploc
+  pretty PVar {..} = pretty _pvarName <+> pretty _ploc
+  pretty PApp {..} = parens $ pretty _pappName <+> parensList _pappArgs <+> pretty _ploc
+  pretty PAnn {..} = parens $ pretty _pannPattern <+> colon <+> pretty _pannType <+> pretty _ploc
 
 data Case = Case
   { _casePattern :: Maybe Pattern,
@@ -223,8 +223,13 @@ data Case = Case
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Case where
-  pretty Case{..} = parens $ pretty _casePattern <+> "|" <+>
-     pretty _caseGuard <+> "->" <+> pretty _caseExpr <+> pretty _caseLoc
+  pretty Case {..} =
+    parens $
+      pretty _casePattern <+> "|"
+        <+> pretty _caseGuard
+        <+> "->"
+        <+> pretty _caseExpr
+        <+> pretty _caseLoc
 
 data Expr
   = EVar {_evarName :: NamePath, _eloc :: Location}
@@ -263,17 +268,22 @@ data Expr
     )
 
 instance Pretty Expr where
-  pretty EVar{..} = pretty _evarName <+> pretty _eloc
-  pretty ELit{..} = pretty _lit <+> pretty _eloc
-  pretty ELam{..} = parens $ "fn" <+> bracketsList _elamBoundVars
-                    <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _elamArgs) <+> colon
-                    <+> pretty _elamEffType <+> pretty _elamResultType
-                    <+> pretty _elamExpr <+> pretty _eloc
-  pretty ECase{..} = parens $ "case" <+> pretty _ecaseExpr <+> "of" <+> bracesList _ecaseBody <+> pretty _eloc
-  pretty EApp{..} = parens $ pretty _eappFunc <+> parensList _eappArgs <+> pretty _eloc
-  pretty ELet{..} = parens $ "let" <+> bracketsList _eletVars <+> pretty _eletBody <+> pretty _eloc
-  pretty EHandle{..} = parens $ "handle" <+> pretty _ehandleExpr <+> pretty _eloc
-  pretty EAnn{..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType <+> pretty _eloc
+  pretty EVar {..} = pretty _evarName <+> pretty _eloc
+  pretty ELit {..} = pretty _lit <+> pretty _eloc
+  pretty ELam {..} =
+    parens $
+      "fn" <+> bracketsList _elamBoundVars
+        <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _elamArgs)
+        <+> colon
+        <+> pretty _elamEffType
+        <+> pretty _elamResultType
+        <+> pretty _elamExpr
+        <+> pretty _eloc
+  pretty ECase {..} = parens $ "case" <+> pretty _ecaseExpr <+> "of" <+> bracesList _ecaseBody <+> pretty _eloc
+  pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs <+> pretty _eloc
+  pretty ELet {..} = parens $ "let" <+> bracketsList _eletVars <+> pretty _eletBody <+> pretty _eloc
+  pretty EHandle {..} = parens $ "handle" <+> pretty _ehandleExpr <+> pretty _eloc
+  pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType <+> pretty _eloc
 
 data TypeDef = TypeDef
   { _typeName :: String,
@@ -293,7 +303,7 @@ data TypeDef = TypeDef
     )
 
 instance Pretty TypeDef where
-  pretty TypeDef{..} = pretty _typeName <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _typeArgs) <+> bracesList _typeCons <+> pretty _typeLoc
+  pretty TypeDef {..} = pretty _typeName <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _typeArgs) <+> bracesList _typeCons <+> pretty _typeLoc
 
 data TypeCon = TypeCon
   { _typeConName :: String,
@@ -303,7 +313,7 @@ data TypeCon = TypeCon
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty TypeCon where
-  pretty TypeCon{..} = pretty _typeConName <+> parensList _typeConArgs <+> pretty _typeConLoc
+  pretty TypeCon {..} = pretty _typeConName <+> parensList _typeConArgs <+> pretty _typeConLoc
 
 data FuncIntf = FuncIntf
   { _intfName :: String,
@@ -324,7 +334,7 @@ data FuncIntf = FuncIntf
     )
 
 instance Pretty FuncIntf where
-  pretty FuncIntf{..} = pretty _intfName <+> bracesList _intfBoundVars <+> parensList _intfArgs <+> colon <+> pretty _intfResultType <+> pretty _intfLoc
+  pretty FuncIntf {..} = pretty _intfName <+> bracesList _intfBoundVars <+> parensList _intfArgs <+> colon <+> pretty _intfResultType <+> pretty _intfLoc
 
 data EffectDef = EffectDef
   { _effectName :: String,
@@ -344,7 +354,7 @@ data EffectDef = EffectDef
     )
 
 instance Pretty EffectDef where
-  pretty EffectDef{..} = "effect" <+> pretty _effectName <+> anglesList' (fmap (\(t, k)-> pretty t <+> colon <+> pretty k) _effectArgs) <+> bracesList _effectIntfs <+> pretty _effectLoc
+  pretty EffectDef {..} = "effect" <+> pretty _effectName <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _effectArgs) <+> bracesList _effectIntfs <+> pretty _effectLoc
 
 data ImportStmt = ImportStmt
   { _importPath :: NamePath,
@@ -355,7 +365,7 @@ data ImportStmt = ImportStmt
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty ImportStmt where
-  pretty ImportStmt{..} = "import" <+> pretty _importPath <+> pretty _importLoc
+  pretty ImportStmt {..} = "import" <+> pretty _importPath <+> pretty _importLoc
 
 data FuncDef = FuncDef
   { _funcName :: String,
@@ -378,8 +388,11 @@ data FuncDef = FuncDef
     )
 
 instance Pretty FuncDef where
-  pretty FuncDef{..} = "fun" <+> pretty _funcName <+> bracketsList _funcBoundVars <+> parensList' (fmap (\(v, t)->pretty v <+> colon <+> pretty t) _funcArgs) <+> colon <+> pretty _funcEffectType 
-                      <+> pretty _funcResultType <+> bracesList [_funcExpr] <+> pretty _funcLoc
+  pretty FuncDef {..} =
+    "fun" <+> pretty _funcName <+> bracketsList _funcBoundVars <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _funcArgs) <+> colon <+> pretty _funcEffectType
+      <+> pretty _funcResultType
+      <+> bracesList [_funcExpr]
+      <+> pretty _funcLoc
 
 data TopStmt
   = FDef {_fdef :: FuncDef}
@@ -388,9 +401,9 @@ data TopStmt
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty TopStmt where
-  pretty FDef{..} = pretty _fdef
-  pretty TDef{..} = pretty _tdef
-  pretty EDef{..} = pretty _edef
+  pretty FDef {..} = pretty _fdef
+  pretty TDef {..} = pretty _tdef
+  pretty EDef {..} = pretty _edef
 
 data Module = Module
   { _moduleName :: NamePath,
@@ -403,9 +416,12 @@ data Module = Module
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Module where
-  pretty Module{..} = vsep $ ["module" <+> pretty _moduleName] ++
-                            (map pretty _imports) ++
-                            (map pretty _topStmts) ++ [pretty _moduleLoc]
+  pretty Module {..} =
+    vsep $
+      ["module" <+> pretty _moduleName]
+        ++ (map pretty _imports)
+        ++ (map pretty _topStmts)
+        ++ [pretty _moduleLoc]
 
 -------------------------------
 

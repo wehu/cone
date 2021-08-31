@@ -6,8 +6,8 @@ import Cone.Passes.TypeChecker
 import Control.Lens
 import Control.Monad
 import Control.Monad.Except
-import Data.List.Split
 import Data.List (elemIndex)
+import Data.List.Split
 import qualified Data.Map as M
 import Data.Map.Merge.Strict
 import System.Directory
@@ -19,17 +19,19 @@ type Loaded = M.Map FilePath Bool
 type LoadEnv = ExceptT String IO (Env, Int, Module)
 
 searchFile :: [FilePath] -> FilePath -> ExceptT String IO String
-searchFile (p:paths) f = do
-  if isAbsolute f then do
-    found <- liftIO $ doesFileExist f
-    if found then return f
-    else throwError $ "cannot find file: " ++ f 
-  else do
-    let ff = p </> f
-    found <- liftIO $ doesFileExist ff
-    if found
-    then return ff
-    else searchFile paths f
+searchFile (p : paths) f = do
+  if isAbsolute f
+    then do
+      found <- liftIO $ doesFileExist f
+      if found
+        then return f
+        else throwError $ "cannot find file: " ++ f
+    else do
+      let ff = p </> f
+      found <- liftIO $ doesFileExist ff
+      if found
+        then return ff
+        else searchFile paths f
 searchFile [] f = throwError $ "cannot find file: " ++ f
 
 loadModule' :: Bool -> [FilePath] -> FilePath -> Loaded -> LoadEnv
@@ -45,7 +47,7 @@ loadModule' ignoreImports paths f' loaded = do
       case result of
         Left e -> throwError $ show e
         Right m -> do
-          let m' = if ignoreImports then m{_imports=[]} else m
+          let m' = if ignoreImports then m {_imports = []} else m
           (env, id, _) <- importModules paths m' newLoaded
           case initModule m env id of
             Left e -> throwError e
@@ -62,7 +64,7 @@ importModules paths m loaded = do
     ( \(oldEnv, oldId, oldM) i ->
         case (m ^. moduleName) `elemIndex` preloadedModules of
           Just _ -> return (oldEnv, oldId, oldM)
-          Nothing -> do 
+          Nothing -> do
             (env, id, m) <- loadModule' True paths (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx) loaded
             let g1' = mapMaybeMissing $ \k v -> Nothing
                 g2' = mapMaybeMissing $ \k v -> Nothing
