@@ -41,11 +41,13 @@ library
     , base >=4.7 && <5
     , containers
     , directory
+    , filepath
     , fused-effects
     , lens
     , mtl
     , parsec
     , prettyprinter
+    , split
     , unbound-generics
   default-language: Haskell2010
 
@@ -62,11 +64,13 @@ executable cone-exe
     , cone
     , containers
     , directory
+    , filepath
     , fused-effects
     , lens
     , mtl
     , parsec
     , prettyprinter
+    , split
     , unbound-generics
   default-language: Haskell2010
 
@@ -86,6 +90,7 @@ test-suite cone-test
     , cone
     , containers
     , directory
+    , filepath
     , fused-effects
     , hspec
     , lens
@@ -93,6 +98,7 @@ test-suite cone-test
     , neat-interpolation
     , parsec
     , prettyprinter
+    , split
     , text
     , unbound-generics
   default-language: Haskell2010

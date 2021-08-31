@@ -30,6 +30,8 @@ dependencies:
 - prettyprinter
 - mtl
 - directory
+- filepath
+- split
 
 library:
   source-dirs: src
