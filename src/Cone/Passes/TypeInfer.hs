@@ -94,18 +94,15 @@ initTypeDef m = initTypeKinds
             else KFunc (args ^.. traverse . _2 . non star) star loc
 
 initTypeConDef :: (Has EnvEff sig m) => Module -> m ()
-initTypeConDef m = do
-  env <- get @Env
-  tconTypes <- initTconTypes env
-  put $ set funcs tconTypes env
+initTypeConDef m = initTconTypes
   where
     tdefs = m ^.. topStmts . traverse . _TDef
-    initTconTypes env =
-      let globalTypes = fmap (\n -> s2n n) $ M.keys $ env ^. types
-       in foldM (insertTconType globalTypes) (env ^. funcs) tdefs
-    insertTconType globalTypes fs t = do
+    initTconTypes = do
+      globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+      mapM_ (insertTconType globalTypes) tdefs
+    insertTconType globalTypes t = do
       let cons = t ^. typeCons
-          f = \fs c -> do
+          f = \c -> do
             let cn = c ^. typeConName
                 cargs = c ^. typeConArgs
                 pos = c ^. typeConLoc
@@ -119,14 +116,15 @@ initTypeConDef m = do
                     ++ "only exists in type arguments: "
                     ++ ppr fvars
               else return ()
-            forMOf _Just (fs ^. at cn) $ \t ->
+            ot <- getEnv $ funcs . at cn
+            forMOf _Just ot $ \t ->
               throwError $
                 "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
             let bt = tconType c t
             k <- inferTypeKind (Scope M.empty M.empty M.empty) bt
             checkTypeKind k
-            return $ fs & at cn ?~ bt
-      foldM f fs cons
+            setEnv (Just bt) $ funcs . at cn
+      mapM_ f cons
     tconType c t =
       let targs = c ^. typeConArgs
           tn = t ^. typeName
