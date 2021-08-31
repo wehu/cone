@@ -32,8 +32,8 @@ searchFile (p:paths) f = do
     else searchFile paths f
 searchFile [] f = throwError $ "cannot find file: " ++ f
 
-loadModule' :: [FilePath] -> FilePath -> Loaded -> LoadEnv
-loadModule' paths f' loaded = do
+loadModule' :: Bool -> [FilePath] -> FilePath -> Loaded -> LoadEnv
+loadModule' ignoreImports paths f' loaded = do
   f <- searchFile paths f'
   case loaded ^. at f of
     Just _ -> throwError $ "cyclar loading: " ++ f'
@@ -45,7 +45,8 @@ loadModule' paths f' loaded = do
       case result of
         Left e -> throwError $ show e
         Right m -> do
-          (env, id, _) <- importModules paths m newLoaded
+          let m' = if ignoreImports then m{_imports=[]} else m
+          (env, id, _) <- importModules paths m' newLoaded
           case initModule m env id of
             Left e -> throwError e
             Right (env, (id, m)) -> return (env, id, m)
@@ -62,7 +63,7 @@ importModules paths m loaded = do
         case (m ^. moduleName) `elemIndex` preloadedModules of
           Just _ -> return (oldEnv, oldId, oldM)
           Nothing -> do 
-            (env, id, m) <- loadModule' paths (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx) loaded
+            (env, id, m) <- loadModule' True paths (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx) loaded
             let g1' = mapMaybeMissing $ \k v -> Nothing
                 g2' = mapMaybeMissing $ \k v -> Nothing
                 f' = zipWithMaybeMatched $ \k v1 v2 -> Just v1
@@ -101,7 +102,7 @@ importModules paths m loaded = do
 
 loadModule :: [FilePath] -> FilePath -> LoadEnv
 loadModule paths f = do
-  (env, id, m) <- loadModule' paths f M.empty
+  (env, id, m) <- loadModule' False paths f M.empty
   case checkType m env id of
     Left e -> throwError e
     Right (env, (id, m)) -> return (env, id, m)

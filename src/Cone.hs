@@ -33,4 +33,6 @@ play (InputFiles files) = do
     res <- runExceptT $ loadModule paths f
     case res of
       Left e -> putStrLn e
-      Right _ -> return ()
+      Right r -> do
+        putStrLn $ show r
+        return ()
