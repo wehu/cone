@@ -72,6 +72,14 @@ setEnv v l = do
   env <- get @Env
   put $ set l v env
 
+underScope :: (Has EnvEff sig m) => m a -> m a
+underScope f = do
+  env <- get @Env
+  res <- f
+  put env
+  return res
+
+
 initTypeDef :: (Has EnvEff sig m) => Module -> m ()
 initTypeDef m = initTypeKinds
   where
