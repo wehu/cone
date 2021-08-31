@@ -103,7 +103,7 @@ instance Show a => Pretty (Name a) where
 parensList :: Pretty a => forall ann. [a] -> Doc ann
 parensList ls = encloseSep lparen rparen comma $ map pretty ls
 
-bracketsList :: Pretty a => forall an. [a] -> Doc ann
+bracketsList :: Pretty a => forall ann. [a] -> Doc ann
 bracketsList ls = encloseSep lbracket rbracket comma $ map pretty ls
 
 anglesList :: Pretty a => forall ann. [a] -> Doc ann
@@ -111,6 +111,18 @@ anglesList ls = encloseSep langle rangle comma $ map pretty ls
 
 bracesList :: Pretty a => forall ann. [a] -> Doc ann
 bracesList ls = encloseSep lbrace rbrace semi $ map pretty ls
+
+parensList' :: [Doc ann] -> Doc ann
+parensList' ls = encloseSep lparen rparen comma ls
+
+bracketsList' :: [Doc ann] -> Doc ann
+bracketsList' ls = encloseSep lbracket rbracket comma ls
+
+anglesList' :: [Doc ann] -> Doc ann
+anglesList' ls = encloseSep langle rangle comma ls
+
+bracesList' :: [Doc ann] -> Doc ann
+bracesList' ls = encloseSep lbrace rbrace semi ls
 
 data Type
   = TPrim {_tprim :: PrimType, _tloc :: Location}
@@ -253,7 +265,8 @@ data Expr
 instance Pretty Expr where
   pretty EVar{..} = pretty _evarName <+> pretty _eloc
   pretty ELit{..} = pretty _lit <+> pretty _eloc
-  pretty ELam{..} = parens $ "fn" <+> bracketsList _elamBoundVars <+> parensList _elamArgs <+> colon
+  pretty ELam{..} = parens $ "fn" <+> bracketsList _elamBoundVars
+                    <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _elamArgs) <+> colon
                     <+> pretty _elamEffType <+> pretty _elamResultType
                     <+> pretty _elamExpr <+> pretty _eloc
   pretty ECase{..} = parens $ "case" <+> pretty _ecaseExpr <+> "of" <+> bracesList _ecaseBody <+> pretty _eloc
@@ -280,7 +293,7 @@ data TypeDef = TypeDef
     )
 
 instance Pretty TypeDef where
-  pretty TypeDef{..} = pretty _typeName <+> anglesList _typeArgs <+> bracesList _typeCons <+> pretty _typeLoc
+  pretty TypeDef{..} = pretty _typeName <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _typeArgs) <+> bracesList _typeCons <+> pretty _typeLoc
 
 data TypeCon = TypeCon
   { _typeConName :: String,
@@ -331,7 +344,7 @@ data EffectDef = EffectDef
     )
 
 instance Pretty EffectDef where
-  pretty EffectDef{..} = "effect" <+> pretty _effectName <+> anglesList _effectArgs <+> bracesList _effectIntfs <+> pretty _effectLoc
+  pretty EffectDef{..} = "effect" <+> pretty _effectName <+> anglesList' (fmap (\(t, k)-> pretty t <+> colon <+> pretty k) _effectArgs) <+> bracesList _effectIntfs <+> pretty _effectLoc
 
 data ImportStmt = ImportStmt
   { _importPath :: NamePath,
@@ -365,7 +378,7 @@ data FuncDef = FuncDef
     )
 
 instance Pretty FuncDef where
-  pretty FuncDef{..} = "fun" <+> pretty _funcName <+> bracketsList _funcBoundVars <+> parensList _funcArgs <+> colon <+> pretty _funcEffectType 
+  pretty FuncDef{..} = "fun" <+> pretty _funcName <+> bracketsList _funcBoundVars <+> parensList' (fmap (\(v, t)->pretty v <+> colon <+> pretty t) _funcArgs) <+> colon <+> pretty _funcEffectType 
                       <+> pretty _funcResultType <+> bracesList [_funcExpr] <+> pretty _funcLoc
 
 data TopStmt
