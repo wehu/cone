@@ -1,12 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ParallelListComp #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE RankNTypes #-}
 
 module Cone.Passes.TypeInfer (infer) where
 
@@ -75,7 +75,6 @@ underScope f = do
   put env
   return res
 
-
 initTypeDef :: (Has EnvEff sig m) => Module -> m ()
 initTypeDef m = initTypeKinds
   where
@@ -104,31 +103,29 @@ initTypeConDef m = initTconTypes
     initTconTypes = do
       globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
       mapM_ (insertTconType globalTypes) tdefs
-    insertTconType globalTypes t = do
-      let cons = t ^. typeCons
-          f = \c -> do
-            let cn = c ^. typeConName
-                cargs = c ^. typeConArgs
-                pos = c ^. typeConLoc
-                targs = (t ^.. typeArgs . traverse . _1) ++ globalTypes
-                b = bind targs cargs
-                fvars = (b ^.. fv) :: [TVar]
-            if fvars /= []
-              then
-                throwError $
-                  "type constructor's type variables should "
-                    ++ "only exists in type arguments: "
-                    ++ ppr fvars
-              else return ()
-            ot <- getEnv $ funcs . at cn
-            forMOf _Just ot $ \t ->
-              throwError $
-                "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
-            let bt = tconType c t
-            k <- underScope $ inferTypeKind bt
-            checkTypeKind k
-            setEnv (Just bt) $ funcs . at cn
-      mapM_ f cons
+    insertTconType globalTypes t =
+      forM_ (t ^. typeCons) $ \c -> do
+        let cn = c ^. typeConName
+            cargs = c ^. typeConArgs
+            pos = c ^. typeConLoc
+            targs = (t ^.. typeArgs . traverse . _1) ++ globalTypes
+            b = bind targs cargs
+            fvars = (b ^.. fv) :: [TVar]
+        if fvars /= []
+          then
+            throwError $
+              "type constructor's type variables should "
+                ++ "only exists in type arguments: "
+                ++ ppr fvars
+          else return ()
+        ot <- getEnv $ funcs . at cn
+        forMOf _Just ot $ \t ->
+          throwError $
+            "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
+        let bt = tconType c t
+        k <- underScope $ inferTypeKind bt
+        checkTypeKind k
+        setEnv (Just bt) $ funcs . at cn
     tconType c t =
       let targs = c ^. typeConArgs
           tn = t ^. typeName
@@ -154,16 +151,15 @@ inferTypeKind a@TApp {..} = do
       if L.length _tappArgs /= L.length _kfuncArgs
         then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs
         else do
-          mapM_
-            ( \(a, b) -> do
-                t <- inferTypeKind a
-                checkTypeKind t
-                checkTypeKind b
-                if aeq t b
-                  then return ()
-                  else throwError $ "kind mismatch: " ++ ppr t ++ " vs " ++ ppr b
-            )
+          forM_
             [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
+            $ \(a, b) -> do
+              t <- inferTypeKind a
+              checkTypeKind t
+              checkTypeKind b
+              if aeq t b
+                then return ()
+                else throwError $ "kind mismatch: " ++ ppr t ++ " vs " ++ ppr b
           checkTypeKind _kfuncResult
           return _kfuncResult
 inferTypeKind a@TAnn {..} = do
@@ -180,7 +176,7 @@ inferTypeKind b@BoundType {..} = underScope $ do
 inferTypeKind v@TVar {..} = do
   let tvn = name2String _tvar
   k <- getEnv $ types . at tvn
-  forMOf _Nothing k $ \k -> 
+  forMOf _Nothing k $ \k ->
     throwError $ "cannot find type: " ++ ppr v
   return $ fromJust k
 inferTypeKind f@TFunc {..} = do
@@ -228,16 +224,15 @@ inferEffKind a@EffApp {..} = do
       if L.length _effAppArgs /= L.length _ekfuncArgs
         then throwError $ "eff kind arguments mismatch: " ++ ppr _effAppArgs ++ " vs " ++ ppr _ekfuncArgs
         else do
-          mapM_
-            ( \(a, b) -> do
-                e <- inferTypeKind a
-                checkTypeKind e
-                checkTypeKind b
-                if aeq e b
-                  then return ()
-                  else throwError $ "eff kind mismatch: " ++ ppr e ++ " vs " ++ ppr b
-            )
+          forM_
             [(a, b) | a <- _effAppArgs | b <- _ekfuncArgs]
+            $ \(a, b) -> do
+              e <- inferTypeKind a
+              checkTypeKind e
+              checkTypeKind b
+              if aeq e b
+                then return ()
+                else throwError $ "eff kind mismatch: " ++ ppr e ++ " vs " ++ ppr b
           checkEffKind _ekfuncResult
           return _ekfuncResult
     _ -> throwError $ "expected a func eff kind, but got " ++ ppr ak
@@ -250,7 +245,7 @@ inferEffKind a@EffAnn {..} = do
 inferEffKind b@BoundEffType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind $ _boundEffType
       star = EKStar $ _effLoc t
-  mapM_ (\v -> setEnv (Just star) $ effs . at (name2String v)) bvs
+  forM_ bvs $ \v -> setEnv (Just star) $ effs . at (name2String v)
   inferEffKind t
 inferEffKind v@EffVar {..} = do
   let evn = name2String _effVarName
@@ -277,7 +272,7 @@ initEffIntfDef m = initEffIntfTypes
     edefs = m ^.. topStmts . traverse . _EDef
     initEffIntfTypes = do
       globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
-      mapM_ (insertEffIntfType globalTypes) edefs
+      forM_ edefs $ insertEffIntfType globalTypes
     insertEffIntfType globalTypes e = do
       let is = e ^. effectIntfs
           en = e ^. effectName
@@ -297,7 +292,7 @@ initEffIntfDef m = initEffIntfTypes
                     ++ "only exists in eff type arguments: "
                     ++ ppr fvars
               else return ()
-            ot <- getEnv $ effIntfs . at intfn 
+            ot <- getEnv $ effIntfs . at intfn
             forMOf _Just ot $ \t ->
               throwError $
                 "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
@@ -331,20 +326,19 @@ initFuncDef m = initFuncTypes
             let pos = f ^. funcLoc
                 fn = f ^. funcName
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-                initLocalScope = mapM_ (\(n, k) -> setEnv (Just k) $ types . at n) bvars
+                initLocalScope = forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
             argTypes <-
-              ( mapM
-                  ( \a ->
-                      case a of
-                        Just t -> underScope $ do
-                          initLocalScope
-                          inferTypeKind t
-                          return t
-                        Nothing -> do
-                          v <- fresh
-                          return $ TVar (freeVarName v) pos
-                  )
+              ( forM
                   (f ^. funcArgs ^.. traverse . _2)
+                  $ \a ->
+                    case a of
+                      Just t -> underScope $ do
+                        initLocalScope
+                        inferTypeKind t
+                        return t
+                      Nothing -> do
+                        v <- fresh
+                        return $ TVar (freeVarName v) pos
                 )
             effType <-
               let t = f ^. funcEffectType . (non $ EffTotal pos)
@@ -381,7 +375,7 @@ inferFuncDef m =
             let pos = f ^. funcLoc
                 fn = f ^. funcName
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-            mapM_ (\(n, k) -> setEnv (Just k) $ types . at n) bvars
+            forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
             (bts, ftype) <- (\f -> unbindTypeSample $ fromJust f) <$> (getEnv $ funcs . at fn)
             ft <- case ftype of
               ft@TFunc {} -> return ft
@@ -392,10 +386,10 @@ inferFuncDef m =
             if L.length argTypes /= L.length (f ^. funcArgs)
               then throwError $ "type mismatch: " ++ ppr argTypes ++ " vs " ++ ppr (f ^. funcArgs)
               else return ()
-            mapM_ (\((n, _), t) -> setEnv (Just t) $ funcs . at n)
-                  [(n, t) | t <- argTypes | n <- (f ^. funcArgs)]
-            mapM_ (\t -> setEnv (Just $ KStar pos) $ types . at (name2String t))
-                  bts
+            mapM_
+              (\((n, _), t) -> setEnv (Just t) $ funcs . at n)
+              [(n, t) | t <- argTypes | n <- (f ^. funcArgs)]
+            forM_ bts $ \t -> setEnv (Just $ KStar pos) $ types . at (name2String t)
             case f ^. funcExpr of
               Just e -> do
                 eType <- inferExprType e
@@ -413,7 +407,7 @@ inferFuncDef m =
 
 inferExprType :: (Has EnvEff sig m) => Expr -> m Type
 inferExprType EVar {..} = do
-  v <- getEnv $ funcs .at _evarName
+  v <- getEnv $ funcs . at _evarName
   forMOf _Nothing v $ \v ->
     throwError $ "cannot find expr var: " ++ _evarName
   return $ fromJust v
@@ -439,8 +433,9 @@ inferExprType l@ELam {..} = underScope $ do
       inferEffKind e
       return e
     Nothing -> return $ EffTotal _eloc
-  mapM_ (\(n, t) -> setEnv (Just t) $ funcs . at n)
-      [(n, t) | (n, _) <- _elamArgs | t <- args]
+  mapM_
+    (\(n, t) -> setEnv (Just t) $ funcs . at n)
+    [(n, t) | (n, _) <- _elamArgs | t <- args]
   case _elamExpr of
     Just e -> return ()
     Nothing -> throwError $ "expected an expression for lambda"
