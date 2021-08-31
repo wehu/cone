@@ -56,7 +56,7 @@ importModules paths m loaded = do
   let is = m ^.. imports . traverse
   foldM
     ( \(oldEnv, _, _) i -> do
-        (env, id, m) <- loadModule' paths (addExtension (concat $ splitOn "\\" $ i ^. importPath) coneEx) loaded
+        (env, id, m) <- loadModule' paths (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx) loaded
         let g1' = mapMaybeMissing $ \k v -> Nothing
             g2' = mapMaybeMissing $ \k v -> Nothing
             f' = zipWithMaybeMatched $ \k v1 v2 -> Just v1

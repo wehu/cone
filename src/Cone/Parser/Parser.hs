@@ -158,7 +158,7 @@ braces e = lBrace *> (P.optional semi) *> e <* (P.optional semi) <* rBrace
 brackets e = lBracket *> e <* rBracket
 
 namePath :: Parser A.NamePath
-namePath = intercalate "\\" <$> P.sepBy1 ident div_
+namePath = intercalate "/" <$> P.sepBy1 ident div_
 
 imports :: Parser [A.ImportStmt]
 imports =
