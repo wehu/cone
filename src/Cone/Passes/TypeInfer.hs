@@ -334,7 +334,8 @@ initFuncDef m = initFuncTypes
                     case a of
                       Just t -> underScope $ do
                         initLocalScope
-                        inferTypeKind t
+                        k <- inferTypeKind t
+                        checkTypeKind k
                         return t
                       Nothing -> do
                         v <- fresh
@@ -342,12 +343,16 @@ initFuncDef m = initFuncTypes
                 )
             effType <-
               let t = f ^. funcEffectType . (non $ EffTotal pos)
-               in do initLocalScope; inferEffKind t; return t
+               in do initLocalScope
+                     k <- inferEffKind t
+                     checkEffKind k
+                     return t
             resultType <-
               ( case (f ^. funcResultType) of
                   Just t -> underScope $ do
                     initLocalScope
-                    inferTypeKind t
+                    k <- inferTypeKind t
+                    checkTypeKind k
                     return t
                   Nothing -> do
                     v <- fresh
@@ -359,7 +364,8 @@ initFuncDef m = initFuncTypes
                       TFunc argTypes (Just effType) resultType pos
             underScope $ do
               initLocalScope
-              inferTypeKind ft
+              k <- inferTypeKind ft
+              checkTypeKind k
             oft <- getEnv $ funcs . at fn
             forMOf _Just oft $ \oft ->
               throwError $ "function redefine: " ++ fn
@@ -421,7 +427,8 @@ inferExprType l@ELam {..} = underScope $ do
     mapM
       ( \(_, t') -> case t' of
           Just t -> do
-            inferTypeKind t
+            k <- inferTypeKind t
+            checkTypeKind k
             return t
           Nothing -> do
             v <- fresh
@@ -451,12 +458,14 @@ inferExprType l@ELam {..} = underScope $ do
   return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) result _eloc
 inferExprType a@EAnn {..} = do
   t <- inferExprType _eannExpr
-  inferTypeKind _eannType
+  k <- inferTypeKind _eannType
+  checkTypeKind k
   if aeq t _eannType
     then return _eannType
     else throwError $ "type mismatch: " ++ ppr t ++ " vs " ++ ppr _eannType
 inferExprType ELit {..} = do
-  inferTypeKind _litType
+  k <- inferTypeKind _litType
+  checkTypeKind k
   return _litType
 inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
