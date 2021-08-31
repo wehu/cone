@@ -4,7 +4,7 @@ module Cone
 where
 
 import Cone.CodeGen.ModuleLoader
-import Cone.Parser.AST (ppr)
+import Cone.CodeGen.Compiler
 import Control.Monad
 import Control.Monad.Except
 import Data.Semigroup ((<>))
@@ -35,8 +35,5 @@ play (InputFiles files) = do
     execPath <- getExecutablePath
     let libPath = (takeDirectory $ takeDirectory execPath) </> "lib"
         paths = currentPath : libPath : []
-    res <- runExceptT $ loadModule paths f
-    case res of
-      Left e -> putStrLn e
-      Right (_, _, m) -> do
-        putStrLn $ ppr m
+    contents <- compile paths f
+    putStrLn contents

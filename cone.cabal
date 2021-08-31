@@ -29,6 +29,8 @@ library
   exposed-modules:
       Cone
       Cone.CodeGen.Backend
+      Cone.CodeGen.Backend.Cone
+      Cone.CodeGen.Compiler
       Cone.CodeGen.ModuleLoader
       Cone.Parser.AST
       Cone.Parser.Lexer
