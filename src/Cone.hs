@@ -35,4 +35,3 @@ play (InputFiles files) = do
       Left e -> putStrLn e
       Right r -> do
         putStrLn $ show r
-        return ()
