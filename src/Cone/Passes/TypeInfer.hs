@@ -359,36 +359,13 @@ initFuncDef m = initFuncTypes
             let pos = f ^. funcLoc
                 fn = f ^. funcName
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-                initLocalScope = forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
-            argTypes <-
-              ( forM
-                  (f ^. funcArgs ^.. traverse . _2)
-                  $ \t -> underScope $ do
-                        initLocalScope
-                        k <- inferTypeKind t
-                        checkTypeKind k
-                        return t
-                )
-            effType <- underScope $ do
-                     let t = f ^. funcEffectType . (non $ EffTotal pos)
-                     initLocalScope
-                     k <- inferEffKind t
-                     checkEffKind k
-                     return t
-            resultType <- underScope $ do
-                    let t = f ^.funcResultType
-                    initLocalScope
-                    k <- inferTypeKind t
-                    checkTypeKind k
-                    return t
-            let ft =
+                argTypes = f ^. funcArgs ^.. traverse . _2
+                effType = f ^. funcEffectType . (non $ EffTotal pos)
+                resultType = f ^.funcResultType
+                ft =
                   BoundType $
                     bind (f ^. funcBoundVars) $
                       TFunc argTypes (Just effType) resultType pos
-            underScope $ do
-              initLocalScope
-              k <- inferTypeKind ft
-              checkTypeKind k
             oft <- getEnv $ funcs . at fn
             forMOf _Just oft $ \oft ->
               throwError $ "function redefine: " ++ fn
@@ -409,6 +386,8 @@ inferFuncDef m =
             ft <- case ftype of
               ft@TFunc {} -> return ft
               _ -> throwError $ "expected function type, but got: " ++ ppr ftype
+            k <- inferTypeKind ft
+            checkTypeKind k
             let argTypes = _tfuncArgs ft
             let resultType = _tfuncResult ft
             let effType = _tfuncEff ft
