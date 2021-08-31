@@ -9,6 +9,8 @@ import Cone.CodeGen.ModuleLoader
 import Control.Monad
 import Control.Monad.Except
 import System.Environment
+import System.Directory
+import System.FilePath
 
 data Opts = InputFiles {inputFiles :: [String]}
 
@@ -24,8 +26,10 @@ coneMain = play =<< execParser opts
 play :: Opts -> IO ()
 play (InputFiles files) = do
   forM_ files $ \f -> do 
+    currentPath <- getCurrentDirectory
     execPath <- getExecutablePath
-    res <- runExceptT $ loadModule [execPath] f
+    let libPath = takeDirectory execPath </> "lib"
+    res <- runExceptT $ loadModule (currentPath:execPath:[]) f
     case res of
       Left e -> putStrLn e
       Right _ -> return ()

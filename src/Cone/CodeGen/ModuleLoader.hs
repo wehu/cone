@@ -17,16 +17,23 @@ type Loaded = M.Map FilePath Bool
 
 type LoadEnv = ExceptT String IO (Env, Int, Module)
 
-searchFile :: [FilePath] -> FilePath -> IO FilePath
-searchFile paths f = do
-  found <- doesFileExist f
-  if found
-  then return $ f
-  else return f
+searchFile :: [FilePath] -> FilePath -> ExceptT String IO String
+searchFile (p:paths) f = do
+  if isAbsolute f then do
+    found <- liftIO $ doesFileExist f
+    if found then return f
+    else throwError $ "cannot find file: " ++ f 
+  else do
+    let ff = p </> f
+    found <- liftIO $ doesFileExist ff
+    if found
+    then return ff
+    else searchFile paths f
+searchFile [] f = throwError $ "cannot find file: " ++ f
 
 loadModule' :: [FilePath] -> FilePath -> Loaded -> LoadEnv
 loadModule' paths f loaded = do
-  found <- liftIO $ searchFile paths f
+  found <- searchFile paths f
   case loaded ^. at f of
     Just _ -> throwError $ "cyclar loading: " ++ f
     Nothing -> do
