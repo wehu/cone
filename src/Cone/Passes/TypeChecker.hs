@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Cone.Passes.TypeChecker (checkType) where
+module Cone.Passes.TypeChecker (Env(..), initialEnv, initModule, checkType) where
 
 import Cone.Parser.AST
 import Control.Carrier.Error.Either
@@ -563,13 +563,17 @@ unbindTypeSample t = ([], t)
 --           -- | ESeq{_eseq :: [Expr], _eloc :: Location}
 --           | EAnn{_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
 
-checkType :: Module -> Either String (Env, (Int, Module))
-checkType m = run . runError . (runState initialEnv) . runFresh 0 $ do
+initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
+initModule m env id = run . runError . (runState env) . runFresh id $ do
   initTypeDef m
   initEffTypeDef m
   initTypeConDef m
   initEffIntfDef m
   initFuncDef m
+  return m
+
+checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
+checkType m env id = run . runError . (runState env) . runFresh id $ do
   checkTypeConDef m
   checkEffIntfDef m
   checkFuncDef m

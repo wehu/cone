@@ -52,7 +52,9 @@ typeCheckerSpec = hspec $ do
        |]
       --(show $ fmap (\m -> infer m) $ parse "" source) `shouldBe` ""
       ( fmap
-          (\m -> do checkType m; return ())
+          (\m -> do
+            let (Right (env, (id, _))) = initModule m initialEnv 0
+            checkType m env id; return ())
           (parse "" source)
         )
         `shouldBe` (Right $ Right ())
