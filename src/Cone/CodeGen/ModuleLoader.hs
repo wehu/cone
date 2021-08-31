@@ -32,10 +32,10 @@ searchFile (p:paths) f = do
 searchFile [] f = throwError $ "cannot find file: " ++ f
 
 loadModule' :: [FilePath] -> FilePath -> Loaded -> LoadEnv
-loadModule' paths f loaded = do
-  found <- searchFile paths f
+loadModule' paths f' loaded = do
+  f <- searchFile paths f'
   case loaded ^. at f of
-    Just _ -> throwError $ "cyclar loading: " ++ f
+    Just _ -> throwError $ "cyclar loading: " ++ f'
     Nothing -> do
       let newLoaded = loaded & at f ?~ True
       handle <- liftIO $ openFile f ReadMode
