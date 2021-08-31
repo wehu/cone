@@ -123,8 +123,6 @@ initTypeConDef m = initTconTypes
           throwError $
             "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
         let bt = tconType c t
-        k <- underScope $ inferTypeKind bt
-        checkTypeKind k
         setEnv (Just bt) $ funcs . at cn
     tconType c t =
       let targs = c ^. typeConArgs
@@ -138,6 +136,23 @@ initTypeConDef m = initTconTypes
                 then rt
                 else TFunc targs Nothing rt pos
        in BoundType bt
+
+checkTypeConDef :: (Has EnvEff sig m) => Module -> m ()
+checkTypeConDef m = checkTconTypes
+  where
+    tdefs = m ^.. topStmts . traverse . _TDef
+    checkTconTypes = do
+      globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+      mapM_ (checkTconType globalTypes) tdefs
+    checkTconType globalTypes t =
+      forM_ (t ^. typeCons) $ \c -> do
+        let cn = c ^. typeConName
+        t <- getEnv $ funcs . at cn
+        forMOf _Nothing t $ \t ->
+          throwError $
+            "cannot find type constructor : " ++ cn
+        k <- underScope $ inferTypeKind $ fromJust t
+        checkTypeKind k
 
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
 inferTypeKind a@TApp {..} = do
@@ -297,8 +312,6 @@ initEffIntfDef m = initEffIntfTypes
               throwError $
                 "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
             let bt = intfType i e
-            k <- underScope $ inferTypeKind bt
-            checkTypeKind k
             setEnv (Just bt) $ effIntfs . at intfn
       mapM_ f is
     intfType i e =
@@ -312,6 +325,26 @@ initEffIntfDef m = initEffIntfTypes
             bind tvars $
               BoundType $
                 bind bvars $ TFunc iargs Nothing iresult pos
+
+checkEffIntfDef :: (Has EnvEff sig m) => Module -> m ()
+checkEffIntfDef m = checkEffIntfTypes
+  where
+    edefs = m ^.. topStmts . traverse . _EDef
+    checkEffIntfTypes = do
+      globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+      forM_ edefs $ checkEffIntfType globalTypes
+    checkEffIntfType globalTypes e = do
+      let is = e ^. effectIntfs
+          en = e ^. effectName
+          f = \i -> do
+            let intfn = i ^. intfName
+            t <- getEnv $ effIntfs . at intfn
+            forMOf _Nothing t $ \t ->
+              throwError $
+                "cannot find eff interface: " ++ intfn
+            k <- underScope $ inferTypeKind $ fromJust t
+            checkTypeKind k
+      mapM_ f is
 
 freeVarName :: Int -> TVar
 freeVarName i = makeName "$" $ toInteger i
@@ -558,5 +591,7 @@ infer m = run . runError . (runState initialEnv) . runFresh 0 $ do
   initTypeConDef m
   initEffIntfDef m
   initFuncDef m
+  checkTypeConDef m
+  checkEffIntfDef m
   inferFuncDef m
   return m
