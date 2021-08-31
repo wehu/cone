@@ -442,7 +442,8 @@ inferExprType l@ELam {..} = underScope $ do
   eType <- inferExprType $ fromJust _elamExpr
   result <- case _elamResultType of
     Just t -> do
-      inferTypeKind t
+      k <- inferTypeKind t
+      checkTypeKind k
       if aeq eType t
         then return t
         else throwError $ "lambda result type mismatch: " ++ ppr t ++ " vs " ++ ppr eType
