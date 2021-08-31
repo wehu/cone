@@ -35,5 +35,7 @@ play (InputFiles files) = do
     execPath <- getExecutablePath
     let libPath = (takeDirectory $ takeDirectory execPath) </> "lib"
         paths = currentPath : libPath : []
-    contents <- compile paths f
-    putStrLn contents
+    res <- compile paths f
+    case res of
+      Left e -> putStrLn e
+      Right s -> putStrLn s
