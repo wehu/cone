@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Cone
   ( coneMain,
   )
@@ -13,10 +15,10 @@ import System.Directory
 import System.Environment
 import System.FilePath
 
-data Opts = InputFiles {inputFiles :: [String]}
+data Opts = Opts {inputFiles :: [String]}
 
 coneOpts :: Parser Opts
-coneOpts = InputFiles <$> some (argument str (metavar "FILES..."))
+coneOpts = Opts <$> some (argument str (metavar "FILES..."))
 
 coneMain :: IO ()
 coneMain = play =<< execParser opts
@@ -29,8 +31,8 @@ coneMain = play =<< execParser opts
         )
 
 play :: Opts -> IO ()
-play (InputFiles files) = do
-  forM_ files $ \f -> do
+play Opts{..} = do
+  forM_ inputFiles $ \f -> do
     currentPath <- getCurrentDirectory
     execPath <- getExecutablePath
     let libPath = (takeDirectory $ takeDirectory execPath) </> "lib"
