@@ -196,23 +196,17 @@ instance Pretty EffectType where
   pretty (BoundEffType (B tvars e)) = parens $ bracketsList tvars <+> colon <+> pretty e
 
 data Pattern
-  = PVar {_pvarName :: String, _ploc :: Location}
+  = PVar {_pvar :: TVar, _ploc :: Location}
   | PApp
       { _pappName :: NamePath,
         _pappArgs :: [Pattern],
         _ploc :: Location
       }
-  | PAnn
-      { _pannPattern :: Pattern,
-        _pannType :: Type,
-        _ploc :: Location
-      }
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Pattern where
-  pretty PVar {..} = pretty _pvarName <+> pretty _ploc
+  pretty PVar {..} = pretty _pvar <+> pretty _ploc
   pretty PApp {..} = parens $ pretty _pappName <+> parensList _pappArgs <+> pretty _ploc
-  pretty PAnn {..} = parens $ pretty _pannPattern <+> colon <+> pretty _pannType <+> pretty _ploc
 
 data Case = Case
   { _casePattern :: Maybe Pattern,

@@ -51,6 +51,8 @@ kType = keyword L.Type
 
 kEffect = keyword L.Effect
 
+kLet = keyword L.Let
+
 semi = P.many1 $ symbol L.Semi
 
 lParen = symbol L.LParen
@@ -94,6 +96,8 @@ sub = symbol L.Sub
 div_ = symbol L.Div
 
 mod_ = symbol L.Mod
+
+assign_ = symbol L.Assign
 
 backSlash = symbol L.Backslash
 
@@ -257,7 +261,11 @@ funcProto =
   where
     f pos bound args (effT, resT) = (pos, bound, args, (effT, resT))
 
-funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces expr)
+funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces $
+                f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr))
+   where f e es = case es of 
+                    Just es' -> A.ESeq $ e:es'
+                    Nothing -> e
 
 table   = [ [prefix sub "negative"]
             , [binary star "mul" PE.AssocLeft,
@@ -289,6 +297,10 @@ binary op name assoc = PE.Infix (do
       let args = a:b:[]
        in A.EApp (A.EVar name pos) args pos) assoc
 
+pat :: Parser A.Pattern
+pat = A.PVar <$> (s2n <$> ident) <*> getPos
+     P.<|> A.PApp <$> namePath <*> parens (P.sepBy1 pat comma) <*> getPos
+
 term :: Parser A.Expr
 term =
   eapp
@@ -302,6 +314,7 @@ term =
                                 P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
                                 P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
                                 P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos)
+                                P.<|> A.ELet <$ kLet <*> pat <* assign_ <*> expr
                             )
                               <*> getPos
                           )
@@ -320,10 +333,7 @@ term =
       _ -> e
 
 expr :: Parser A.Expr
-expr = f <$> PE.buildExpressionParser table term <*> (P.optionMaybe $ P.many1 $ P.try $ semi *> expr)
-  where f e es = case es of
-                  Just es' -> A.ESeq (e:es')
-                  Nothing -> e
+expr = PE.buildExpressionParser table term
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
 typeArgs =
