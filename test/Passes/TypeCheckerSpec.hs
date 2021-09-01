@@ -40,7 +40,7 @@ typeCheckerSpec = hspec $ do
 
      fun add[a](a: a, b:a) : a
 
-     fun bar(a: i32) : i32 {
+     fun bar(a: i32) : <|e> i32 {
        
       case c1(1) {
         c(b, ff) -> {b}

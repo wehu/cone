@@ -180,7 +180,7 @@ data EffectType
         _effAppArgs :: [Type],
         _effLoc :: Location
       }
-  | EffList {_effList :: [EffectType], _effLoc :: Location}
+  | EffList {_effList :: [EffectType], _effBoundVar:: Maybe TVar, _effLoc :: Location}
   | EffAnn
       { _effAnnType :: EffectType,
         _effAnnKind :: EffKind,
