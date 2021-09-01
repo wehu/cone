@@ -320,6 +320,14 @@ pat :: Parser A.Pattern
 pat = parens pat
      P.<|> P.try (A.PApp <$> namePath <*> parens (P.sepBy1 pat comma) <*> getPos)
      P.<|> A.PVar <$> (s2n <$> ident) <*> getPos
+     P.<|> A.PExpr <$> literal
+
+literal = (A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
+                                P.<|> A.ELit <$ false <*> return "false" <*> ((A.TPrim A.Pred) <$> getPos)
+                                P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
+                                P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
+                                P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
+                                P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos)) <*> getPos
 
 term :: Parser A.Expr
 term =
@@ -335,15 +343,10 @@ term =
                                 P.<|> A.EWhile <$ kWhile <*> term <*> braces exprSeq
                                 P.<|> eif <$ kIf <*> term <*> braces exprSeq <* kElse <*> braces exprSeq
                                 P.<|> A.EVar <$> namePath
-                                P.<|> A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
-                                P.<|> A.ELit <$ false <*> return "false" <*> ((A.TPrim A.Pred) <$> getPos)
-                                P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
-                                P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
-                                P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
-                                P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos)
                             )
                               <*> getPos
                           )
+                      P.<|> literal
                 )
             <*> (P.optionMaybe $ colon *> type_)
             <*> getPos

@@ -50,6 +50,11 @@ typeCheckerSpec = hspec $ do
       foo(1 - 3 + e)
       var c(c2(c1(e1), f1), d1) = c(c2(c1(1), fff), fff)
 
+      case a {
+        2 -> {a}
+        3 -> {a}
+      }
+
       while true {
         1
       }
