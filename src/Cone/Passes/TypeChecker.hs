@@ -502,7 +502,7 @@ inferExprType EWhile {..} = do
 inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
-inferPatternType PVar {..} = inferExprType $ EVar (name2String _pvar) _ploc
+inferPatternType PVar {..} = inferExprType $ EVar _pvar _ploc
 inferPatternType PApp {..} = do
   args <- mapM inferPatternType _pappArgs
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
@@ -527,7 +527,7 @@ bindPatternVarsType p e = do
   return eType
 
 extractPatternType :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
-extractPatternType PVar {..} t = return [(_pvar, t)]
+extractPatternType PVar {..} t = return [(s2n _pvar, t)]
 extractPatternType PExpr {..} t = return []
 extractPatternType a@PApp {..} t = underScope $ do
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType

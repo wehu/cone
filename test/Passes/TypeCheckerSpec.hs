@@ -56,8 +56,7 @@ typeCheckerSpec = hspec $ do
       }
 
       while true {
-        1
-      }
+        1}
 
       if true {1} else {2}
 

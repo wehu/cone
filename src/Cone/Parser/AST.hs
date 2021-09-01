@@ -198,7 +198,7 @@ instance Pretty EffectType where
   pretty (BoundEffType (B tvars e)) = parens $ bracketsList tvars <+> colon <+> pretty e
 
 data Pattern
-  = PVar {_pvar :: TVar, _ploc :: Location}
+  = PVar {_pvar :: NamePath, _ploc :: Location}
   | PApp
       { _pappName :: NamePath,
         _pappArgs :: [Pattern],

@@ -332,7 +332,7 @@ pat :: Parser A.Pattern
 pat =
   parens pat
     P.<|> P.try (A.PApp <$> namePath <*> parens (P.sepBy1 pat comma) <*> getPos)
-    P.<|> A.PVar <$> (s2n <$> ident) <*> getPos
+    P.<|> A.PVar <$> ident <*> getPos
     P.<|> A.PExpr <$> literal
 
 literal =
