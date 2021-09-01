@@ -2,8 +2,8 @@
 
 module Cone.CodeGen.Backend where
 
-import Data.Proxy
 import Cone.Parser.AST
+import Data.Proxy
 import Prettyprinter
 
 data Target

@@ -253,7 +253,7 @@ data Expr
         _ehandleBindings :: [FuncDef],
         _eloc :: Location
       }
-  | ESeq{_eseq :: [Expr]}
+  | ESeq {_eseq :: [Expr]}
   | EAnn {_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
   deriving
     ( -- | BoundExpr{_exprBound :: Bind [TVar] Expr}

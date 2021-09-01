@@ -5,8 +5,8 @@ module Cone
   )
 where
 
-import Cone.CodeGen.ModuleLoader
 import Cone.CodeGen.Compiler
+import Cone.CodeGen.ModuleLoader
 import Control.Monad
 import Control.Monad.Except
 import Data.Semigroup ((<>))
@@ -15,15 +15,18 @@ import System.Directory
 import System.Environment
 import System.FilePath
 
-data Opts = Opts {inputFiles :: [String], target::String}
+data Opts = Opts {inputFiles :: [String], target :: String}
 
 coneOpts :: Parser Opts
-coneOpts = Opts <$> some (argument str (metavar "FILES...")) 
-                <*> strOption (long "target"
-                              <> short 't'
-                              <> metavar "TARGET"
-                              <> value "cone"
-                              <> help "Target for codegen")
+coneOpts =
+  Opts <$> some (argument str (metavar "FILES..."))
+    <*> strOption
+      ( long "target"
+          <> short 't'
+          <> metavar "TARGET"
+          <> value "cone"
+          <> help "Target for codegen"
+      )
 
 coneMain :: IO ()
 coneMain = play =<< execParser opts
@@ -36,7 +39,7 @@ coneMain = play =<< execParser opts
         )
 
 play :: Opts -> IO ()
-play Opts{..} = do
+play Opts {..} = do
   forM_ inputFiles $ \f -> do
     currentPath <- getCurrentDirectory
     execPath <- getExecutablePath

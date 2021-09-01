@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Cone.Passes.TypeChecker (Env(..), types, funcs, effs, effIntfs, initialEnv, initModule, checkType) where
+module Cone.Passes.TypeChecker (Env (..), types, funcs, effs, effIntfs, initialEnv, initModule, checkType) where
 
 import Cone.Parser.AST
 import Control.Carrier.Error.Either
@@ -129,9 +129,10 @@ initTypeConDef m = initTconTypes
           tn = t ^. typeName
           pos = c ^. typeConLoc
           tvars = t ^.. typeArgs . traverse . _1
-          rt = if tvars == []
-                then TVar (s2n tn) pos
-                else TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
+          rt =
+            if tvars == []
+              then TVar (s2n tn) pos
+              else TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
           bt =
             bind tvars $
               if targs == []
@@ -363,7 +364,7 @@ initFuncDef m = initFuncTypes
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
                 argTypes = f ^. funcArgs ^.. traverse . _2
                 effType = f ^. funcEffectType . (non $ EffTotal pos)
-                resultType = f ^.funcResultType
+                resultType = f ^. funcResultType
                 ft =
                   BoundType $
                     bind (f ^. funcBoundVars) $
@@ -432,9 +433,9 @@ inferExprType l@ELam {..} = underScope $ do
   args <-
     mapM
       ( \(_, t) -> do
-            k <- inferTypeKind t
-            checkTypeKind k
-            return t
+          k <- inferTypeKind t
+          checkTypeKind k
+          return t
       )
       _elamArgs
   eff <- case _elamEffType of
@@ -474,18 +475,20 @@ inferExprType ELet {..} =
 inferExprType ECase {..} = do
   ct <- inferExprType _ecaseExpr
   ts <- forM _ecaseBody $ \c -> underScope $ do
-           bindPatternVarsType (c ^.casePattern) _ecaseExpr
-           pt <- inferPatternType $ c ^.casePattern
-           et <- inferExprType $ c ^.caseExpr
-           return (pt, et)
-  let t:rest = ts
-  forM_ (rest ^..traverse._2) $ \e ->
-    if aeq ct (t^._1) then return ()
-    else throwError $ "type mismatch: " ++ ppr (t^._1) ++ " vs " ++ ppr e
-  forM_ (ts ^..traverse._1) $ \e ->
-    if aeq ct e then return ()
-    else throwError $ "type mismatch: " ++ ppr ct ++ " vs " ++ ppr e
-  return $ (last ts) ^._2
+    bindPatternVarsType (c ^. casePattern) _ecaseExpr
+    pt <- inferPatternType $ c ^. casePattern
+    et <- inferExprType $ c ^. caseExpr
+    return (pt, et)
+  let t : rest = ts
+  forM_ (rest ^.. traverse . _2) $ \e ->
+    if aeq ct (t ^. _1)
+      then return ()
+      else throwError $ "type mismatch: " ++ ppr (t ^. _1) ++ " vs " ++ ppr e
+  forM_ (ts ^.. traverse . _1) $ \e ->
+    if aeq ct e
+      then return ()
+      else throwError $ "type mismatch: " ++ ppr ct ++ " vs " ++ ppr e
+  return $ (last ts) ^. _2
 inferExprType EWhile {..} = do
   t <- inferExprType _ewhileCond
   if aeq t (TPrim Pred _eloc)
@@ -499,56 +502,61 @@ inferExprType EWhile {..} = do
 inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
-inferPatternType PVar{..} = inferExprType $ EVar (name2String _pvar) _ploc
-inferPatternType PApp{..} = do
+inferPatternType PVar {..} = inferExprType $ EVar (name2String _pvar) _ploc
+inferPatternType PApp {..} = do
   args <- mapM inferPatternType _pappArgs
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
   inferAppResultType appFuncType args
-inferPatternType PExpr{..} = inferExprType _pExpr
+inferPatternType PExpr {..} = inferExprType _pExpr
 
 bindPatternVarsType :: (Has EnvEff sig m) => Pattern -> Expr -> m Type
 bindPatternVarsType p e = do
   eType <- inferExprType e
   typeBindings <- extractPatternType p eType
-  foldM (\bs (v, t) -> do
-      let n = name2String v
-      case bs ^. at n of
-        Just _ -> throwError $ "pattern rebind a variable: " ++ n
-        Nothing -> do
-          setEnv (Just t) $ funcs . at n
-          return $ bs & at n ?~ True)
+  foldM
+    ( \bs (v, t) -> do
+        let n = name2String v
+        case bs ^. at n of
+          Just _ -> throwError $ "pattern rebind a variable: " ++ n
+          Nothing -> do
+            setEnv (Just t) $ funcs . at n
+            return $ bs & at n ?~ True
+    )
     M.empty
     typeBindings
   return eType
 
 extractPatternType :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
-extractPatternType PVar{..} t = return [(_pvar, t)]
-extractPatternType PExpr{..} t = return []
-extractPatternType a@PApp{..} t = underScope $ do
+extractPatternType PVar {..} t = return [(_pvar, t)]
+extractPatternType PExpr {..} t = return []
+extractPatternType a@PApp {..} t = underScope $ do
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
-  let cntr = (\arg ->
-                 let newTVar = do
-                       fvn <- fresh
-                       let vn = name2String $ freeVarName fvn
-                           t = TVar (s2n vn) _ploc
-                       setEnv (Just t) $ funcs . at vn
-                       return t
-                  in case arg of
-                   TVar{..} -> do
-                     gt <- getEnv $ types . at (name2String _tvar)
-                     case gt of
-                       Just _ -> return arg
-                       Nothing -> newTVar
-                   tp@TApp{..} -> do
-                     as <- mapM cntr _tappArgs
-                     return $ tp{_tappArgs=as}
-                   _ -> newTVar)
+  let cntr =
+        ( \arg ->
+            let newTVar = do
+                  fvn <- fresh
+                  let vn = name2String $ freeVarName fvn
+                      t = TVar (s2n vn) _ploc
+                  setEnv (Just t) $ funcs . at vn
+                  return t
+             in case arg of
+                  TVar {..} -> do
+                    gt <- getEnv $ types . at (name2String _tvar)
+                    case gt of
+                      Just _ -> return arg
+                      Nothing -> newTVar
+                  tp@TApp {..} -> do
+                    as <- mapM cntr _tappArgs
+                    return $ tp {_tappArgs = as}
+                  _ -> newTVar
+        )
   argTypes <- mapM cntr (appFuncType ^. tfuncArgs)
   appT <- inferAppResultType appFuncType argTypes
   bindings <- collectVarBinding appT t
   foldM
-    (\s e ->
-      (++) <$> return s <*> e)
+    ( \s e ->
+        (++) <$> return s <*> e
+    )
     []
     [extractPatternType arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
 
@@ -565,7 +573,7 @@ collectVarBinding a@TVar {..} t = do
       if aeq a ut
         then return []
         else throwError $ "try to rebind type: " ++ ppr a ++ " to " ++ show t
-    Nothing -> 
+    Nothing ->
       let fvars = t ^.. fv
        in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
             then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t

@@ -1,18 +1,18 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RankNTypes #-}
 
 module Cone.Parser.Parser (parse) where
 
 import qualified Cone.Parser.AST as A
 import qualified Cone.Parser.Lexer as L
+import Control.Lens
 import Data.Functor.Identity
 import Data.List
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Expr as PE
 import Text.Parsec.Pos (newPos)
-import Control.Lens
 import Unbound.Generics.LocallyNameless
 
 makePrisms ''L.Tok
@@ -275,59 +275,75 @@ funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
 funcProto =
   f <$> getPos <*> boundTVars
     <*> parens funcArgs
-    <* colon <*> resultType
+    <* colon
+    <*> resultType
   where
     f pos bound args (effT, resT) = (pos, bound, args, (effT, resT))
 
 exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr)
-  where f e es = case es of 
-                    Just es' -> A.ESeq $ e:es'
-                    Nothing -> e
+  where
+    f e es = case es of
+      Just es' -> A.ESeq $ e : es'
+      Nothing -> e
 
 funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
 
-table   = [ [prefix sub "negative"]
-            , [binary star "mul" PE.AssocLeft,
-               binary div_ "div" PE.AssocLeft,
-               binary mod_ "mod" PE.AssocLeft]
-            , [binary add "add" PE.AssocLeft, 
-               binary sub "sub"  PE.AssocLeft]
-            , [binary less "lt" PE.AssocLeft, 
-               binary greater "gt"  PE.AssocLeft,
-               binary le "le" PE.AssocLeft, 
-               binary ge "ge"  PE.AssocLeft]
-            , [binary eq "eq" PE.AssocLeft, 
-               binary ne "ne"  PE.AssocLeft]
-            , [prefix not_ "not"]
-            , [binary and_ "and" PE.AssocLeft, 
-               binary or_ "or"  PE.AssocLeft]
-           ]
+table =
+  [ [prefix sub "negative"],
+    [ binary star "mul" PE.AssocLeft,
+      binary div_ "div" PE.AssocLeft,
+      binary mod_ "mod" PE.AssocLeft
+    ],
+    [ binary add "add" PE.AssocLeft,
+      binary sub "sub" PE.AssocLeft
+    ],
+    [ binary less "lt" PE.AssocLeft,
+      binary greater "gt" PE.AssocLeft,
+      binary le "le" PE.AssocLeft,
+      binary ge "ge" PE.AssocLeft
+    ],
+    [ binary eq "eq" PE.AssocLeft,
+      binary ne "ne" PE.AssocLeft
+    ],
+    [prefix not_ "not"],
+    [ binary and_ "and" PE.AssocLeft,
+      binary or_ "or" PE.AssocLeft
+    ]
+  ]
 
 prefix op name = PE.Prefix $ do
   op
   pos <- getPos
   return $ \i -> A.EApp (A.EVar name pos) [i] pos
 
-binary op name assoc = PE.Infix (do
-  op
-  pos <- getPos
-  return $
-    \a b -> 
-      let args = a:b:[]
-       in A.EApp (A.EVar name pos) args pos) assoc
+binary op name assoc =
+  PE.Infix
+    ( do
+        op
+        pos <- getPos
+        return $
+          \a b ->
+            let args = a : b : []
+             in A.EApp (A.EVar name pos) args pos
+    )
+    assoc
 
 pat :: Parser A.Pattern
-pat = parens pat
-     P.<|> P.try (A.PApp <$> namePath <*> parens (P.sepBy1 pat comma) <*> getPos)
-     P.<|> A.PVar <$> (s2n <$> ident) <*> getPos
-     P.<|> A.PExpr <$> literal
+pat =
+  parens pat
+    P.<|> P.try (A.PApp <$> namePath <*> parens (P.sepBy1 pat comma) <*> getPos)
+    P.<|> A.PVar <$> (s2n <$> ident) <*> getPos
+    P.<|> A.PExpr <$> literal
 
-literal = (A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
-                                P.<|> A.ELit <$ false <*> return "false" <*> ((A.TPrim A.Pred) <$> getPos)
-                                P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
-                                P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
-                                P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
-                                P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos)) <*> getPos
+literal =
+  ( A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
+      P.<|> A.ELit <$ false <*> return "false" <*> ((A.TPrim A.Pred) <$> getPos)
+      P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
+      P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
+      P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
+      P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos)
+  )
+    <*> getPos
 
 term :: Parser A.Expr
 term =
@@ -338,15 +354,16 @@ term =
                                   <$ kFn <*> funcDef
                               )
                                 P.<|> A.ELet <$ kLet <*> pat <* assign_ <*> expr
-                                P.<|> A.ECase <$ kCase <*> term <*> braces
-                                      (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
+                                P.<|> A.ECase <$ kCase <*> term
+                                  <*> braces
+                                    (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
                                 P.<|> A.EWhile <$ kWhile <*> term <*> braces exprSeq
                                 P.<|> eif <$ kIf <*> term <*> braces exprSeq <* kElse <*> braces exprSeq
                                 P.<|> A.EVar <$> namePath
                             )
                               <*> getPos
                           )
-                      P.<|> literal
+                    P.<|> literal
                 )
             <*> (P.optionMaybe $ colon *> type_)
             <*> getPos
@@ -360,8 +377,13 @@ term =
     eann e t pos = case t of
       Just t' -> A.EAnn e t' pos
       _ -> e
-    eif c t f pos = A.ECase c [A.Case (A.PExpr $ A.ELit "true" (A.TPrim A.Pred pos) pos) Nothing t pos,
-                               A.Case (A.PExpr $ A.ELit "false" (A.TPrim A.Pred pos) pos) Nothing f pos] pos
+    eif c t f pos =
+      A.ECase
+        c
+        [ A.Case (A.PExpr $ A.ELit "true" (A.TPrim A.Pred pos) pos) Nothing t pos,
+          A.Case (A.PExpr $ A.ELit "false" (A.TPrim A.Pred pos) pos) Nothing f pos
+        ]
+        pos
 
 expr :: Parser A.Expr
 expr = PE.buildExpressionParser table term

@@ -6,9 +6,9 @@ import Cone.Passes.TypeChecker
 import Control.Lens
 import Control.Monad
 import Control.Monad.Except
+import Data.IORef
 import Data.List (elemIndex)
 import Data.List.Split
-import Data.IORef
 import qualified Data.Map as M
 import Data.Map.Merge.Strict
 import System.Directory
@@ -57,10 +57,10 @@ loadModule' cache paths f' loaded = do
               (env, id, _) <- importModules cache paths m newLoaded
               case initModule m env id of
                 Left e -> throwError e
-                Right (env, (id, m)) -> do 
-                   let res = (env, id, m)
-                   liftIO $ modifyIORef cache $ at f ?~ res
-                   return res
+                Right (env, (id, m)) -> do
+                  let res = (env, id, m)
+                  liftIO $ modifyIORef cache $ at f ?~ res
+                  return res
 
 coneEx = "cone"
 
@@ -114,7 +114,7 @@ importModules cache paths m loaded = do
 
 loadModule :: [FilePath] -> FilePath -> LoadEnv
 loadModule paths f = do
-  cache <- liftIO $ newIORef M.empty 
+  cache <- liftIO $ newIORef M.empty
   (env, id, m) <- loadModule' cache paths f M.empty
   case checkType m env id of
     Left e -> throwError e

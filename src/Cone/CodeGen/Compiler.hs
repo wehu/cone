@@ -15,7 +15,7 @@ compile paths f target = do
   case res of
     Left e -> return $ Left e
     Right (env, id, m) -> do
-            let output = case target of
-                           "cone" -> Right $ show $ gen m (Cone::(Cone Target))
-                           _ -> Left $ "unknown target: " ++ target
-            return output
+      let output = case target of
+            "cone" -> Right $ show $ gen m (Cone :: (Cone Target))
+            _ -> Left $ "unknown target: " ++ target
+      return output
