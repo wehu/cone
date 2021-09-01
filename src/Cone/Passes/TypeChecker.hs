@@ -467,6 +467,16 @@ inferExprType ESeq {..} = do
   return $ last ts
 inferExprType ELet {..} = do
   eType <- inferExprType _eletExpr
+  typeBindings <- inferPatternType _eletPattern eType
+  foldM (\bs (v, t) -> do
+      let n = name2String v
+      case bs ^. at n of
+        Just _ -> throwError $ "pattern rebind a variable: " ++ n
+        Nothing -> do
+          setEnv (Just t) $ funcs . at n
+          return $ bs & at n ?~ True)
+    M.empty
+    typeBindings
   return eType
 inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 

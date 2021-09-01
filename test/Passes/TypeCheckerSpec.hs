@@ -41,7 +41,7 @@ typeCheckerSpec = hspec $ do
 
      fun bar(a: i32) : i32 {
        var b = 1+2
-       foo(1 - 2 + 3)
+       foo(1 - b + 3)
      }
 
      fun foo[a](a: a) : a {
