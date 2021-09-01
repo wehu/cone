@@ -51,6 +51,10 @@ kType = keyword L.Type
 
 kEffect = keyword L.Effect
 
+kHandle = keyword L.Handle
+
+kWith = keyword L.With
+
 kLet = keyword L.Let
 
 kCase = keyword L.Case
@@ -358,6 +362,7 @@ term =
                                   <*> braces
                                     (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
                                 P.<|> A.EWhile <$ kWhile <*> term <*> braces exprSeq
+                                P.<|> A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace)
                                 P.<|> eif <$ kIf <*> term <*> braces exprSeq <* kElse <*> braces exprSeq
                                 P.<|> A.EVar <$> namePath
                             )

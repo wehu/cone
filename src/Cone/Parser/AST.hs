@@ -249,7 +249,8 @@ data Expr
         _eloc :: Location
       }
   | EHandle
-      { _ehandleExpr :: Expr,
+      { _ehandleEff :: EffectType,
+        _ehandleScope :: Expr,
         _ehandleBindings :: [FuncDef],
         _eloc :: Location
       }
@@ -282,7 +283,7 @@ instance Pretty Expr where
   pretty ECase {..} = parens $ "case" <+> pretty _ecaseExpr <+> bracesList _ecaseBody <+> pretty _eloc
   pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs <+> pretty _eloc
   pretty ELet {..} = parens $ "var" <+> pretty _eletPattern <+> "=" <+> pretty _eletExpr <+> pretty _eloc
-  pretty EHandle {..} = parens $ "handle" <+> pretty _ehandleExpr <+> pretty _eloc
+  pretty EHandle {..} = parens $ "handle" <+> pretty _ehandleEff <+> pretty _eloc
   pretty ESeq {..} = vsep $ fmap pretty _eseq
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType <+> pretty _eloc
 
