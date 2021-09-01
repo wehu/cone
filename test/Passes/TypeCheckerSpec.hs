@@ -43,6 +43,10 @@ typeCheckerSpec = hspec $ do
      fun bar(a: i32) : i32 {
        var c(c2(c1(e), f), d) = c(c2(c1(1), fff), fff)
        foo(1 - 3 + e)
+       //case c1(1) {
+        // c(b, ff) -> {b}
+        // c1(b) -> {b}
+       //}
      }
 
      fun foo[a](a: a) : a {

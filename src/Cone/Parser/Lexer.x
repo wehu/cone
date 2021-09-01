@@ -67,6 +67,7 @@ tokens :-
   "!="                                  { \p s -> (p, Ne) }
   "&&"                                  { \p s -> (p, And) }
   "||"                                  { \p s -> (p, Or) }
+  \|                                    { \p s -> (p, Pipe) }
   "="                                   { \p s -> (p, Assign) }
   "+"                                   { \p s -> (p, Add) }
   "-"                                   { \p s -> (p, Sub) }
@@ -92,6 +93,8 @@ tokens :-
   "char"                                { \p s -> (p, Char) }
   "type"                                { \p s -> (p, Type) }
   "effect"                              { \p s -> (p, Effect) }
+  "case"                                { \p s -> (p, Case) }
+  "of"                                  { \p s -> (p, Of) }
   @decimal 
     | 0[oO] @octal
     | 0[xX] @hexadecimal		            { \p s -> (p, LInt s) }
@@ -141,6 +144,7 @@ data Tok =
     Sub             |
     Div             |
     Mod             |
+    Pipe            |
     Backslash       |
     Arrow           |
     Star            |
@@ -161,6 +165,8 @@ data Tok =
     Char            |
     Type            |
     Effect          |
+    Case            |
+    Of              |
     Unknown
   deriving (Eq, Ord, Show, Read, Data, Typeable)
 

@@ -209,7 +209,7 @@ instance Pretty Pattern where
   pretty PApp {..} = parens $ pretty _pappName <+> parensList _pappArgs <+> pretty _ploc
 
 data Case = Case
-  { _casePattern :: Maybe Pattern,
+  { _casePattern :: Pattern,
     _caseGuard :: Maybe Expr,
     _caseExpr :: Expr,
     _caseLoc :: Location

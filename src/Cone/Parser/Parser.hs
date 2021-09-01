@@ -53,6 +53,10 @@ kEffect = keyword L.Effect
 
 kLet = keyword L.Let
 
+kCase = keyword L.Case
+
+kOf = keyword L.Of
+
 semi = P.many1 $ symbol L.Semi
 
 lParen = symbol L.LParen
@@ -96,6 +100,8 @@ sub = symbol L.Sub
 div_ = symbol L.Div
 
 mod_ = symbol L.Mod
+
+pipe_ = symbol L.Pipe
 
 assign_ = symbol L.Assign
 
@@ -309,12 +315,14 @@ term =
                     P.<|> ( ( ( (\((pos, bound, args, (effT, resT)), e) -> A.ELam bound args effT resT e)
                                   <$ kFn <*> funcDef
                               )
+                                P.<|> A.ELet <$ kLet <*> pat <* assign_ <*> expr
+                                P.<|> A.ECase <$ kCase <*> expr <*> braces
+                                      (P.many1 $ braces $ A.Case <$> pat <* arrow <*> return Nothing <*> expr <*> getPos)
                                 P.<|> A.EVar <$> namePath
                                 P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
                                 P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
                                 P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
                                 P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos)
-                                P.<|> A.ELet <$ kLet <*> pat <* assign_ <*> expr
                             )
                               <*> getPos
                           )
