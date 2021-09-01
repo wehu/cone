@@ -28,6 +28,7 @@ typeCheckerSpec = hspec $ do
 	   type a<b> {
 		   c(b, ff)
        c1(b)
+       c2(a<b>, ff)
      }
 
      effect a<b,c> {
@@ -40,7 +41,7 @@ typeCheckerSpec = hspec $ do
      fun add[a](a: a, b:a) : a
 
      fun bar(a: i32) : i32 {
-       var c(e, d) = c(1, fff)
+       var c(c2(c1(e), f), d) = c(c2(c1(1), fff), fff)
        foo(1 - 3 + e)
      }
 

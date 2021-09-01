@@ -488,21 +488,24 @@ inferPatternType :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
 inferPatternType PVar{..} t = return [(_pvar, t)]
 inferPatternType a@PApp{..} t = underScope $ do
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
-  argTypes <- mapM (\arg ->
-    let newTVar = do
-          fvn <- fresh
-          let vn = name2String $ freeVarName fvn
-              t = TVar (s2n vn) _ploc
-          setEnv (Just t) $ funcs . at vn
-          return t
-    in case arg of
-      vt@TVar{..} -> do
-        gt <- getEnv $ types . at (name2String _tvar)
-        case gt of
-          Just _ -> return arg
-          Nothing -> newTVar
-      _ -> newTVar)
-    (appFuncType ^. tfuncArgs)
+  let cntr = (\arg ->
+                 let newTVar = do
+                       fvn <- fresh
+                       let vn = name2String $ freeVarName fvn
+                           t = TVar (s2n vn) _ploc
+                       setEnv (Just t) $ funcs . at vn
+                       return t
+                  in case arg of
+                   TVar{..} -> do
+                     gt <- getEnv $ types . at (name2String _tvar)
+                     case gt of
+                       Just _ -> return arg
+                       Nothing -> newTVar
+                   tp@TApp{..} -> do
+                     as <- mapM cntr _tappArgs
+                     return $ tp{_tappArgs=as}
+                   _ -> newTVar)
+  argTypes <- mapM cntr (appFuncType ^. tfuncArgs)
   appT <- inferAppResultType appFuncType argTypes
   bindings <- collectVarBinding appT t
   foldM
