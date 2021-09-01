@@ -320,7 +320,10 @@ term =
       _ -> e
 
 expr :: Parser A.Expr
-expr = PE.buildExpressionParser table term
+expr = f <$> PE.buildExpressionParser table term <*> (P.optionMaybe $ P.many1 $ P.try $ semi *> expr)
+  where f e es = case es of
+                  Just es' -> A.ESeq (e:es')
+                  Nothing -> e
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
 typeArgs =

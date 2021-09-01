@@ -254,8 +254,8 @@ data Expr
         _ehandleBindings :: [FuncDef],
         _eloc :: Location
       }
-  | -- | ESeq{_eseq :: [Expr], _eloc :: Location}
-    EAnn {_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
+  | ESeq{_eseq :: [Expr]}
+  | EAnn {_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
   deriving
     ( -- | BoundExpr{_exprBound :: Bind [TVar] Expr}
       Eq,
@@ -283,6 +283,7 @@ instance Pretty Expr where
   pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs <+> pretty _eloc
   pretty ELet {..} = parens $ "let" <+> bracketsList _eletVars <+> pretty _eletBody <+> pretty _eloc
   pretty EHandle {..} = parens $ "handle" <+> pretty _ehandleExpr <+> pretty _eloc
+  pretty ESeq {..} = vsep $ fmap pretty _eseq
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType <+> pretty _eloc
 
 data TypeDef = TypeDef

@@ -462,6 +462,9 @@ inferExprType ELit {..} = do
   k <- inferTypeKind _litType
   checkTypeKind k
   return _litType
+inferExprType ESeq {..} = do
+  ts <- mapM inferExprType _eseq
+  return $ last ts
 inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
