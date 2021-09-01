@@ -204,11 +204,13 @@ data Pattern
         _pappArgs :: [Pattern],
         _ploc :: Location
       }
+  | PExpr {_pappExpr :: Expr}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Pattern where
   pretty PVar {..} = pretty _pvar <+> pretty _ploc
   pretty PApp {..} = parens $ pretty _pappName <+> parensList _pappArgs <+> pretty _ploc
+  pretty PExpr {..} = parens $ pretty _pappExpr
 
 data Case = Case
   { _casePattern :: Pattern,

@@ -472,13 +472,13 @@ inferExprType ESeq {..} = do
 inferExprType ELet {..} =
   bindPatternVarsType _eletPattern _eletExpr
 inferExprType ECase {..} = do
+  ct <- inferExprType _ecaseExpr
   ts <- forM _ecaseBody $ \c -> underScope $ do
-           bindPatternVarsType (c ^.casePattern)  _ecaseExpr
+           bindPatternVarsType (c ^.casePattern) _ecaseExpr
            inferExprType $ c ^.caseExpr
-  let t:rest = ts
-  forM_ rest $ \e ->
-    if aeq t e then return ()
-    else throwError $ "type mismatch: " ++ ppr t ++ " vs " ++ ppr e
+  forM_ ts $ \e ->
+    if aeq ct e then return ()
+    else throwError $ "type mismatch: " ++ ppr ct ++ " vs " ++ ppr e
   return $ last ts
 inferExprType EWhile {..} = do
   t <- inferExprType _ewhileCond
@@ -509,6 +509,7 @@ bindPatternVarsType p e = do
 
 inferPatternType :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
 inferPatternType PVar{..} t = return [(_pvar, t)]
+inferPatternType PExpr{..} t = return []
 inferPatternType a@PApp{..} t = underScope $ do
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
   let cntr = (\arg ->

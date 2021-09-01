@@ -333,6 +333,7 @@ term =
                                 P.<|> A.ECase <$ kCase <*> term <*> braces
                                       (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
                                 P.<|> A.EWhile <$ kWhile <*> term <*> braces exprSeq
+                                P.<|> eif <$ kIf <*> term <*> braces exprSeq <* kElse <*> braces exprSeq
                                 P.<|> A.EVar <$> namePath
                                 P.<|> A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
                                 P.<|> A.ELit <$ false <*> return "false" <*> ((A.TPrim A.Pred) <$> getPos)
@@ -356,6 +357,8 @@ term =
     eann e t pos = case t of
       Just t' -> A.EAnn e t' pos
       _ -> e
+    eif c t f pos = A.ECase c [A.Case (A.PExpr $ A.ELit "true" (A.TPrim A.Pred pos) pos) Nothing t pos,
+                               A.Case (A.PExpr $ A.ELit "false" (A.TPrim A.Pred pos) pos) Nothing f pos] pos
 
 expr :: Parser A.Expr
 expr = PE.buildExpressionParser table term
