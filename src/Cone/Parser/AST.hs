@@ -76,6 +76,7 @@ data PrimType
   | Pred
   | Str
   | Ch
+  | Unit
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty PrimType where
@@ -94,6 +95,7 @@ instance Pretty PrimType where
   pretty Pred = "bool"
   pretty Str = "str"
   pretty Ch = "char"
+  pretty Unit = "unit"
 
 type TVar = Name Type
 

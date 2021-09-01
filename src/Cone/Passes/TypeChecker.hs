@@ -478,8 +478,14 @@ inferExprType ECase {..} = do
   let t:rest = ts
   forM_ rest $ \e ->
     if aeq t e then return ()
-    else throwError $ "type mismatch: " ++ show t ++ " vs " ++ show e
+    else throwError $ "type mismatch: " ++ ppr t ++ " vs " ++ ppr e
   return $ last ts
+inferExprType EWhile {..} = do
+  t <- inferExprType _ewhileCond
+  if aeq t (TPrim Pred _eloc)
+    then return t
+    else throwError $ "while expected a bool as condition, but got " ++ ppr t
+  return $ TPrim Unit _eloc
 inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
 bindPatternVarsType :: (Has EnvEff sig m) => Pattern -> Expr -> m Type
