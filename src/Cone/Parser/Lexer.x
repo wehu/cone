@@ -95,6 +95,9 @@ tokens :-
   "effect"                              { \p s -> (p, Effect) }
   "case"                                { \p s -> (p, Case) }
   "of"                                  { \p s -> (p, Of) }
+  "if"                                  { \p s -> (p, If) }
+  "else"                                { \p s -> (p, Else) }
+  "while"                               { \p s -> (p, While) }
   @decimal 
     | 0[oO] @octal
     | 0[xX] @hexadecimal		            { \p s -> (p, LInt s) }
@@ -167,6 +170,9 @@ data Tok =
     Effect          |
     Case            |
     Of              |
+    If              |
+    Else            |
+    While           |
     Unknown
   deriving (Eq, Ord, Show, Read, Data, Typeable)
 

@@ -57,6 +57,12 @@ kCase = keyword L.Case
 
 kOf = keyword L.Of
 
+kIf = keyword L.If
+
+kElse = keyword L.Else
+
+kWhile = keyword L.While
+
 semi = P.many1 $ symbol L.Semi
 
 lParen = symbol L.LParen
