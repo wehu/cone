@@ -487,14 +487,22 @@ inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 inferPatternType :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
 inferPatternType PVar{..} t = return [(_pvar, t)]
 inferPatternType a@PApp{..} t = underScope $ do
-  argTypes <- mapM (\_ -> do
-      fvn <- fresh
-      let vn = name2String $ freeVarName fvn
-          t = TVar (s2n vn) _ploc
-      setEnv (Just t) $ funcs . at vn
-      return t)
-    _pappArgs
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
+  argTypes <- mapM (\arg ->
+    let newTVar = do
+          fvn <- fresh
+          let vn = name2String $ freeVarName fvn
+              t = TVar (s2n vn) _ploc
+          setEnv (Just t) $ funcs . at vn
+          return t
+    in case arg of
+      vt@TVar{..} -> do
+        gt <- getEnv $ types . at (name2String _tvar)
+        case gt of
+          Just _ -> return arg
+          Nothing -> newTVar
+      _ -> newTVar)
+    (appFuncType ^. tfuncArgs)
   appT <- inferAppResultType appFuncType argTypes
   bindings <- collectVarBinding appT t
   foldM
