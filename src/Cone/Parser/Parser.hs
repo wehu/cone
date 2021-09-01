@@ -47,6 +47,8 @@ kFunc = keyword L.Func
 
 kFn = keyword L.Fn
 
+kImpl = keyword L.Impl
+
 kType = keyword L.Type
 
 kEffect = keyword L.Effect
@@ -441,6 +443,7 @@ topStmt =
   ( (A.FDef <$> func)
       P.<|> A.TDef <$> typeDef
       P.<|> A.EDef <$> effectDef
+      P.<|> A.ImplFDef <$ kImpl <*> (A.ImplFuncDef <$> func)
   )
     <* semi
 

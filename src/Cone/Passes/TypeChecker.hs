@@ -405,6 +405,42 @@ checkFuncDef m =
         )
         fdefs
 
+checkImplFuncDef :: (Has EnvEff sig m) => Module -> m ()
+checkImplFuncDef m =
+  let fdefs = m ^.. topStmts . traverse . _ImplFDef . implFunDef
+   in mapM_
+        ( \f -> underScope $ do
+            let pos = f ^. funcLoc
+                fn = f ^. funcName
+                bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+                argTypes = f ^. funcArgs ^.. traverse . _2
+                effType = f ^. funcEffectType . (non $ EffTotal pos)
+                resultType = f ^. funcResultType
+                ft =
+                  BoundType $
+                    bind (f ^. funcBoundVars) $
+                      TFunc argTypes (Just effType) resultType pos
+            k <- inferTypeKind ft
+            checkTypeKind k
+            forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
+            mapM_
+              (\(n, t) -> setEnv (Just t) $ funcs . at n)
+              (f ^. funcArgs)
+            case f ^. funcExpr of
+              Just e -> do
+                eType <- inferExprType e
+                if aeq eType (f ^. funcResultType) 
+                  then return ()
+                  else
+                    throwError $
+                      "function result type mismatch: "
+                        ++ ppr eType
+                        ++ " vs "
+                        ++ ppr (f ^. funcResultType)
+              Nothing -> return ()
+        )
+        fdefs
+
 inferExprType :: (Has EnvEff sig m) => Expr -> m Type
 inferExprType EVar {..} = do
   v <- getEnv $ funcs . at _evarName
@@ -665,4 +701,5 @@ checkType m env id = run . runError . (runState env) . runFresh id $ do
   checkTypeConDef m
   checkEffIntfDef m
   checkFuncDef m
+  checkImplFuncDef m
   return m
