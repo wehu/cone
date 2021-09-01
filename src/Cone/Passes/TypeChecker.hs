@@ -369,6 +369,8 @@ initFuncDef m = initFuncTypes
                   BoundType $
                     bind (f ^. funcBoundVars) $
                       TFunc argTypes (Just effType) resultType pos
+            k <- inferTypeKind ft
+            checkTypeKind k
             oft <- getEnv $ funcs . at fn
             forMOf _Just oft $ \oft ->
               throwError $ "function redefine: " ++ fn
@@ -385,33 +387,20 @@ checkFuncDef m =
                 fn = f ^. funcName
                 bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
             forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
-            (bts, ftype) <- (\f -> unbindTypeSample $ fromJust f) <$> (getEnv $ funcs . at fn)
-            ft <- case ftype of
-              ft@TFunc {} -> return ft
-              _ -> throwError $ "expected function type, but got: " ++ ppr ftype
-            k <- inferTypeKind ft
-            checkTypeKind k
-            let argTypes = _tfuncArgs ft
-            let resultType = _tfuncResult ft
-            let effType = _tfuncEff ft
-            if L.length argTypes /= L.length (f ^. funcArgs)
-              then throwError $ "type mismatch: " ++ ppr argTypes ++ " vs " ++ ppr (f ^. funcArgs)
-              else return ()
             mapM_
-              (\((n, _), t) -> setEnv (Just t) $ funcs . at n)
-              [(n, t) | t <- argTypes | n <- (f ^. funcArgs)]
-            forM_ bts $ \t -> setEnv (Just $ KStar pos) $ types . at (name2String t)
+              (\(n, t) -> setEnv (Just t) $ funcs . at n)
+              (f ^. funcArgs)
             case f ^. funcExpr of
               Just e -> do
                 eType <- inferExprType e
-                if aeq eType resultType
+                if aeq eType (f ^. funcResultType) 
                   then return ()
                   else
                     throwError $
                       "function result type mismatch: "
                         ++ ppr eType
                         ++ " vs "
-                        ++ ppr resultType
+                        ++ ppr (f ^. funcResultType)
               Nothing -> return ()
         )
         fdefs
