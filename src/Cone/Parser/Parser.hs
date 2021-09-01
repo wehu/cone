@@ -304,7 +304,8 @@ binary op name assoc = PE.Infix (do
        in A.EApp (A.EVar name pos) args pos) assoc
 
 pat :: Parser A.Pattern
-pat = P.try (A.PApp <$> namePath <*> parens (P.sepBy1 pat comma) <*> getPos)
+pat = parens pat
+     P.<|> P.try (A.PApp <$> namePath <*> parens (P.sepBy1 pat comma) <*> getPos)
      P.<|> A.PVar <$> (s2n <$> ident) <*> getPos
 
 term :: Parser A.Expr
@@ -316,8 +317,8 @@ term =
                                   <$ kFn <*> funcDef
                               )
                                 P.<|> A.ELet <$ kLet <*> pat <* assign_ <*> expr
-                                P.<|> A.ECase <$ kCase <*> expr <*> braces
-                                      (P.many1 $ braces $ A.Case <$> pat <* arrow <*> return Nothing <*> expr <*> getPos)
+                                P.<|> A.ECase <$ kCase <*> term <*> braces
+                                      (P.many1 $ A.Case <$> pat <* arrow <*> return Nothing <*> braces expr <* semi <*> getPos)
                                 P.<|> A.EVar <$> namePath
                                 P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
                                 P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)

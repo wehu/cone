@@ -471,6 +471,11 @@ inferExprType ESeq {..} = do
   return $ last ts
 inferExprType ELet {..} =
   bindPatternVarsType _eletPattern _eletExpr
+inferExprType ECase {..} = do
+  ts <- forM _ecaseBody $ \c -> underScope $ do
+           bindPatternVarsType (c ^.casePattern)  _ecaseExpr
+           inferExprType $ c ^.caseExpr
+  return $ last ts
 inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
 bindPatternVarsType :: (Has EnvEff sig m) => Pattern -> Expr -> m Type
