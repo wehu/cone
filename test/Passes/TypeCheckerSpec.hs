@@ -54,9 +54,8 @@ typeCheckerSpec = hspec $ do
         1
       }
 
-      if 1 {1} else {2}
+      if true {1} else {2}
 
-      1
      }
 
      fun foo[a](a: a) : a {

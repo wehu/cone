@@ -475,11 +475,17 @@ inferExprType ECase {..} = do
   ct <- inferExprType _ecaseExpr
   ts <- forM _ecaseBody $ \c -> underScope $ do
            bindPatternVarsType (c ^.casePattern) _ecaseExpr
-           inferExprType $ c ^.caseExpr
-  forM_ ts $ \e ->
+           pt <- inferPatternType $ c ^.casePattern
+           et <- inferExprType $ c ^.caseExpr
+           return (pt, et)
+  let t:rest = ts
+  forM_ (rest ^..traverse._2) $ \e ->
+    if aeq ct (t^._1) then return ()
+    else throwError $ "type mismatch: " ++ ppr (t^._1) ++ " vs " ++ ppr e
+  forM_ (ts ^..traverse._1) $ \e ->
     if aeq ct e then return ()
     else throwError $ "type mismatch: " ++ ppr ct ++ " vs " ++ ppr e
-  return $ last ts
+  return $ (last ts) ^._2
 inferExprType EWhile {..} = do
   t <- inferExprType _ewhileCond
   if aeq t (TPrim Pred _eloc)
@@ -492,10 +498,18 @@ inferExprType EWhile {..} = do
   return $ TPrim Unit _eloc
 inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
+inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
+inferPatternType PVar{..} = inferExprType $ EVar (name2String _pvar) _ploc
+inferPatternType PApp{..} = do
+  args <- mapM inferPatternType _pappArgs
+  appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
+  inferAppResultType appFuncType args
+inferPatternType PExpr{..} = inferExprType _pExpr
+
 bindPatternVarsType :: (Has EnvEff sig m) => Pattern -> Expr -> m Type
 bindPatternVarsType p e = do
   eType <- inferExprType e
-  typeBindings <- inferPatternType p eType
+  typeBindings <- extractPatternType p eType
   foldM (\bs (v, t) -> do
       let n = name2String v
       case bs ^. at n of
@@ -507,10 +521,10 @@ bindPatternVarsType p e = do
     typeBindings
   return eType
 
-inferPatternType :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
-inferPatternType PVar{..} t = return [(_pvar, t)]
-inferPatternType PExpr{..} t = return []
-inferPatternType a@PApp{..} t = underScope $ do
+extractPatternType :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
+extractPatternType PVar{..} t = return [(_pvar, t)]
+extractPatternType PExpr{..} t = return []
+extractPatternType a@PApp{..} t = underScope $ do
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
   let cntr = (\arg ->
                  let newTVar = do
@@ -536,7 +550,7 @@ inferPatternType a@PApp{..} t = underScope $ do
     (\s e ->
       (++) <$> return s <*> e)
     []
-    [inferPatternType arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
+    [extractPatternType arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
 collectVarBinding a@TPrim {} b@TPrim {} = do
