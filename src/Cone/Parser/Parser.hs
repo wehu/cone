@@ -331,7 +331,7 @@ term =
                               )
                                 P.<|> A.ELet <$ kLet <*> pat <* assign_ <*> expr
                                 P.<|> A.ECase <$ kCase <*> term <*> braces
-                                      (P.many1 $ A.Case <$> pat <* arrow <*> return Nothing <*> braces expr <* semi <*> getPos)
+                                      (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
                                 P.<|> A.EWhile <$ kWhile <*> term <*> braces exprSeq
                                 P.<|> A.EVar <$> namePath
                                 P.<|> A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
