@@ -8,6 +8,7 @@ import Control.Monad
 import Control.Monad.Except
 import Data.List (elemIndex)
 import Data.List.Split
+import Data.IORef
 import qualified Data.Map as M
 import Data.Map.Merge.Strict
 import System.Directory
@@ -36,37 +37,45 @@ searchFile (p : paths) f = do
         else searchFile paths f
 searchFile [] f = throwError $ "cannot find file: " ++ f
 
-loadModule' :: [FilePath] -> FilePath -> Loaded -> LoadEnv
-loadModule' paths f' loaded = do
+loadModule' :: IORef Cache -> [FilePath] -> FilePath -> Loaded -> LoadEnv
+loadModule' cache paths f' loaded = do
   f <- searchFile paths f'
-  case loaded ^. at f of
-    Just _ -> throwError $ "cyclar loading: " ++ f'
-    Nothing -> do
-      let newLoaded = loaded & at f ?~ True
-      handle <- liftIO $ openFile f ReadMode
-      contents <- liftIO $ hGetContents handle
-      let result = parse f contents
-      case result of
-        Left e -> throwError $ show e
-        Right m -> do
-          (env, id, _) <- importModules paths m newLoaded
-          case initModule m env id of
-            Left e -> throwError e
-            Right (env, (id, m)) -> return (env, id, m)
+  cached <- liftIO $ (\c -> c ^. at f) <$> readIORef cache
+  case cached of
+    Just e -> return e
+    Nothing ->
+      case loaded ^. at f of
+        Just _ -> throwError $ "cyclar loading: " ++ f'
+        Nothing -> do
+          let newLoaded = loaded & at f ?~ True
+          handle <- liftIO $ openFile f ReadMode
+          contents <- liftIO $ hGetContents handle
+          let result = parse f contents
+          case result of
+            Left e -> throwError $ show e
+            Right m -> do
+              (env, id, _) <- importModules cache paths m newLoaded
+              case initModule m env id of
+                Left e -> throwError e
+                Right (env, (id, m)) -> do 
+                   let res = (env, id, m)
+                   liftIO $ modifyIORef cache $ at f ?~ res
+                   return res
 
 coneEx = "cone"
 
 preloadedModules = ["core" </> "prelude"]
 
-importModules :: [FilePath] -> Module -> Loaded -> LoadEnv
-importModules paths m loaded = do
+importModules :: IORef Cache -> [FilePath] -> Module -> Loaded -> LoadEnv
+importModules cache paths m loaded = do
   let is = m ^.. imports . traverse
   foldM
     ( \(oldEnv, oldId, oldM) i ->
         case (m ^. moduleName) `elemIndex` preloadedModules of
           Just _ -> return (oldEnv, oldId, oldM)
           Nothing -> do
-            (env, id, m) <- loadModule' paths (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx) loaded
+            let fn = (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx)
+            (env, id, m) <- loadModule' cache paths fn loaded
             let g1' = mapMaybeMissing $ \k v -> Nothing
                 g2' = mapMaybeMissing $ \k v -> Nothing
                 f' = zipWithMaybeMatched $ \k v1 v2 -> Just v1
@@ -105,7 +114,8 @@ importModules paths m loaded = do
 
 loadModule :: [FilePath] -> FilePath -> LoadEnv
 loadModule paths f = do
-  (env, id, m) <- loadModule' paths f M.empty
+  cache <- liftIO $ newIORef M.empty 
+  (env, id, m) <- loadModule' cache paths f M.empty
   case checkType m env id of
     Left e -> throwError e
     Right (env, (id, m)) -> return (env, id, m)
