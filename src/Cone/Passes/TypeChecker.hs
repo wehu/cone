@@ -475,6 +475,10 @@ inferExprType ECase {..} = do
   ts <- forM _ecaseBody $ \c -> underScope $ do
            bindPatternVarsType (c ^.casePattern)  _ecaseExpr
            inferExprType $ c ^.caseExpr
+  let t:rest = ts
+  forM_ rest $ \e ->
+    if aeq t e then return ()
+    else throwError $ "type mismatch: " ++ show t ++ " vs " ++ show e
   return $ last ts
 inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
