@@ -485,6 +485,10 @@ inferExprType EWhile {..} = do
   if aeq t (TPrim Pred _eloc)
     then return t
     else throwError $ "while expected a bool as condition, but got " ++ ppr t
+  underScope $ do
+    t <- inferExprType _ewhileBody
+    k <- inferTypeKind t
+    checkTypeKind k
   return $ TPrim Unit _eloc
 inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
