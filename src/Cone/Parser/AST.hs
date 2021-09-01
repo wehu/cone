@@ -237,7 +237,7 @@ data Expr
         _eloc :: Location
       }
   | ECase {_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
-  | EWhile {_ewhileCond :: Expr, _ewhileBody :: Expr}
+  | EWhile {_ewhileCond :: Expr, _ewhileBody :: Expr, _eloc :: Location}
   | EApp {_eappFunc :: Expr, _eappArgs :: [Expr], _eloc :: Location}
   | ELet
       { _eletPattern :: Pattern,
@@ -274,7 +274,7 @@ instance Pretty Expr where
         <+> pretty _elamResultType
         <+> pretty _elamExpr
         <+> pretty _eloc
-  pretty EWhile {..} = parens $ "while" <+> pretty _ewhileCond <+> braces (pretty _ewhileBody)
+  pretty EWhile {..} = parens $ "while" <+> pretty _ewhileCond <+> braces (pretty _ewhileBody) <+> pretty _eloc
   pretty ECase {..} = parens $ "case" <+> pretty _ecaseExpr <+> bracesList _ecaseBody <+> pretty _eloc
   pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs <+> pretty _eloc
   pretty ELet {..} = parens $ "var" <+> pretty _eletPattern <+> "=" <+> pretty _eletExpr <+> pretty _eloc

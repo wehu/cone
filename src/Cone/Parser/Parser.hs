@@ -147,6 +147,12 @@ str = keyword L.Str
 
 char = keyword L.Char
 
+true = keyword L.True_
+
+false = keyword L.False_
+
+unit = keyword L.Unit
+
 tokenP :: Monoid a => Prism' L.Tok a -> Parser a
 tokenP p = token (not . isn't p) (view p)
 
@@ -273,13 +279,12 @@ funcProto =
   where
     f pos bound args (effT, resT) = (pos, bound, args, (effT, resT))
 
-exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr
+exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr)
   where f e es = case es of 
                     Just es' -> A.ESeq $ e:es'
                     Nothing -> e
 
 funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
-   
 
 table   = [ [prefix sub "negative"]
             , [binary star "mul" PE.AssocLeft,
@@ -327,7 +332,10 @@ term =
                                 P.<|> A.ELet <$ kLet <*> pat <* assign_ <*> expr
                                 P.<|> A.ECase <$ kCase <*> term <*> braces
                                       (P.many1 $ A.Case <$> pat <* arrow <*> return Nothing <*> braces expr <* semi <*> getPos)
+                                P.<|> A.EWhile <$ kWhile <*> term <*> braces exprSeq
                                 P.<|> A.EVar <$> namePath
+                                P.<|> A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
+                                P.<|> A.ELit <$ false <*> return "false" <*> ((A.TPrim A.Pred) <$> getPos)
                                 P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
                                 P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
                                 P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)

@@ -98,6 +98,9 @@ tokens :-
   "if"                                  { \p s -> (p, If) }
   "else"                                { \p s -> (p, Else) }
   "while"                               { \p s -> (p, While) }
+  "unit"                                { \p s -> (p, Unit) }
+  "true"                                { \p s -> (p, True_) }
+  "false"                               { \p s -> (p, False_) }
   @decimal 
     | 0[oO] @octal
     | 0[xX] @hexadecimal		            { \p s -> (p, LInt s) }
@@ -173,6 +176,9 @@ data Tok =
     If              |
     Else            |
     While           |
+    Unit            |
+    True_           |
+    False_          |
     Unknown
   deriving (Eq, Ord, Show, Read, Data, Typeable)
 
