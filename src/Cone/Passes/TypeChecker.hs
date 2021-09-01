@@ -469,9 +469,14 @@ inferExprType ELit {..} = do
 inferExprType ESeq {..} = do
   ts <- mapM inferExprType _eseq
   return $ last ts
-inferExprType ELet {..} = do
-  eType <- inferExprType _eletExpr
-  typeBindings <- inferPatternType _eletPattern eType
+inferExprType ELet {..} =
+  bindPatternVarsType _eletPattern _eletExpr
+inferExprType e = throwError $ "unsupported expression: " ++ ppr e
+
+bindPatternVarsType :: (Has EnvEff sig m) => Pattern -> Expr -> m Type
+bindPatternVarsType p e = do
+  eType <- inferExprType e
+  typeBindings <- inferPatternType p eType
   foldM (\bs (v, t) -> do
       let n = name2String v
       case bs ^. at n of
@@ -482,7 +487,6 @@ inferExprType ELet {..} = do
     M.empty
     typeBindings
   return eType
-inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 
 inferPatternType :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
 inferPatternType PVar{..} t = return [(_pvar, t)]
