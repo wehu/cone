@@ -40,8 +40,8 @@ typeCheckerSpec = hspec $ do
      fun add[a](a: a, b:a) : a
 
      fun bar(a: i32) : i32 {
-       var c1(b) = c1(1)
-       foo(1 - b + 3)
+       c(1.0, fff)
+       foo(1 - 3 + 2)
      }
 
      fun foo[a](a: a) : a {

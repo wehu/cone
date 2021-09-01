@@ -141,7 +141,7 @@ data Type
 instance Pretty Type where
   pretty TPrim {..} = pretty _tprim <+> pretty _tloc
   pretty TVar {..} = pretty _tvar <+> pretty _tloc
-  pretty TFunc {..} = parens $ parensList _tfuncArgs <+> "->" <+> colon <+> pretty _tfuncEff <+> pretty _tfuncResult <+> pretty _tloc
+  pretty TFunc {..} = parens $ parensList _tfuncArgs <+> "->" <+> pretty _tfuncEff <+> pretty _tfuncResult <+> pretty _tloc
   pretty TApp {..} = parens $ pretty _tappName <+> parensList _tappArgs <+> pretty _tloc
   pretty TAnn {..} = parens $ pretty _tannType <+> colon <+> pretty _tannKind <+> pretty _tloc
   pretty (BoundType (B tvars t)) = parens $ bracketsList tvars <+> colon <+> pretty t

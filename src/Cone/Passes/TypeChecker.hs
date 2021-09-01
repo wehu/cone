@@ -129,7 +129,9 @@ initTypeConDef m = initTconTypes
           tn = t ^. typeName
           pos = c ^. typeConLoc
           tvars = t ^.. typeArgs . traverse . _1
-          rt = TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
+          rt = if tvars == []
+                then TVar (s2n tn) pos
+                else TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
           bt =
             bind tvars $
               if targs == []
@@ -422,6 +424,8 @@ inferExprType EVar {..} = do
 inferExprType a@EApp {..} = do
   appFuncType <- inferExprType _eappFunc >>= unbindType
   argTypes <- mapM inferExprType _eappArgs
+  argKinds <- mapM inferTypeKind argTypes
+  mapM_ checkTypeKind argKinds
   inferAppResultType appFuncType argTypes
 inferExprType l@ELam {..} = underScope $ do
   mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) _elamBoundVars
@@ -483,38 +487,40 @@ inferExprType e = throwError $ "unsupported expression: " ++ ppr e
 inferPatternType :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
 inferPatternType PVar{..} t = return [(_pvar, t)]
 inferPatternType a@PApp{..} t = underScope $ do
-  args <- mapM (\_ -> do
+  argTypes <- mapM (\_ -> do
       fvn <- fresh
       let vn = name2String $ freeVarName fvn
           t = TVar (s2n vn) _ploc
-          v = EVar vn _ploc
-          kstar = KStar _ploc
-      setEnv (Just kstar) $ types . at vn
       setEnv (Just t) $ funcs . at vn
-      return (v, t))
+      return t)
     _pappArgs
-  f <- getEnv $ funcs . at _pappName
-  forMOf _Nothing f $ \_ ->
-    throwError $ "cannot find type constructor: " ++ _pappName
-  let app = EApp (EVar _pappName _ploc) (args ^..traverse._1) _ploc
-  appT <- inferExprType app
+  appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
+  appT <- inferAppResultType appFuncType argTypes
   bindings <- collectVarBinding appT t
   foldM
     (\s e ->
       (++) <$> return s <*> e)
     []
-    [inferPatternType arg argt | arg <- _pappArgs | argt <- substs bindings (args ^..traverse._2)]
+    [inferPatternType arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
 
 collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
 collectVarBinding a@TPrim {} b@TPrim {} = do
   if aeq a b
     then return []
     else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
-collectVarBinding a@TVar {..} t =
-  let fvars = t ^.. fv
-   in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
-        then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t
-        else return [(_tvar, t)]
+collectVarBinding a@TVar {..} t = do
+  tk <- getEnv $ types . at (name2String _tvar)
+  case tk of
+    Just _ -> do
+      ut <- unbindType t
+      if aeq a ut
+        then return []
+        else throwError $ "try to rebind type: " ++ ppr a ++ " to " ++ show t
+    Nothing -> 
+      let fvars = t ^.. fv
+       in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
+            then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t
+            else return [(_tvar, t)]
 collectVarBinding a@TFunc {} b@TFunc {} =
   if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
     then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
