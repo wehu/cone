@@ -255,7 +255,7 @@ effType :: Parser A.EffectType
 effType =
   parens effType
     P.<|> ( ekann
-              <$> ( ( (P.try $ A.EffApp <$> (s2n <$> namePath) <* less <*> (P.sepBy1 type_ comma) <* greater)
+              <$> ( ( (P.try $ A.EffApp <$> namePath <* less <*> (P.sepBy1 type_ comma) <* greater)
                         P.<|> (A.EffList <$ less <*> (P.sepBy effType comma) <*> (P.optionMaybe $ pipe_ *> (s2n <$> ident)) <* greater)
                         P.<|> (A.EffVar <$> (s2n <$> ident))
                     )

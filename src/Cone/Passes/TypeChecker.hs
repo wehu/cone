@@ -236,7 +236,7 @@ initEffTypeDef m = initEffKinds
 
 inferEffKind :: (Has EnvEff sig m) => EffectType -> m EffKind
 inferEffKind a@EffApp {..} = do
-  ak <- inferEffKind $ EffVar _effAppName _effLoc
+  ak <- inferEffKind $ EffVar (s2n _effAppName) _effLoc
   case ak of
     EKFunc {..} ->
       if L.length _effAppArgs /= L.length _ekfuncArgs

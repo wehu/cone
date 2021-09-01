@@ -176,7 +176,7 @@ data EffectType
   = EffTotal {_effLoc :: Location}
   | EffVar {_effVarName :: TVar, _effLoc :: Location}
   | EffApp
-      { _effAppName :: TVar,
+      { _effAppName :: NamePath,
         _effAppArgs :: [Type],
         _effLoc :: Location
       }
