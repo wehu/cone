@@ -273,11 +273,13 @@ funcProto =
   where
     f pos bound args (effT, resT) = (pos, bound, args, (effT, resT))
 
-funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces $
-                f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr))
-   where f e es = case es of 
+exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr
+  where f e es = case es of 
                     Just es' -> A.ESeq $ e:es'
                     Nothing -> e
+
+funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
+   
 
 table   = [ [prefix sub "negative"]
             , [binary star "mul" PE.AssocLeft,

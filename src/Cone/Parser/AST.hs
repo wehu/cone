@@ -274,7 +274,7 @@ instance Pretty Expr where
         <+> pretty _elamResultType
         <+> pretty _elamExpr
         <+> pretty _eloc
-  pretty EWhile {..} = parans $ "while" <+> pretty _ewhileCond <+> bracesList _ewhileBody
+  pretty EWhile {..} = parens $ "while" <+> pretty _ewhileCond <+> braces (pretty _ewhileBody)
   pretty ECase {..} = parens $ "case" <+> pretty _ecaseExpr <+> bracesList _ecaseBody <+> pretty _eloc
   pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs <+> pretty _eloc
   pretty ELet {..} = parens $ "var" <+> pretty _eletPattern <+> "=" <+> pretty _eletExpr <+> pretty _eloc
