@@ -659,13 +659,8 @@ unbindTypeSample :: Type -> ([TVar], Type)
 unbindTypeSample b@BoundType {..} = unsafeUnbind _boundType
 unbindTypeSample t = ([], t)
 
---           | ECase{_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
---           | ELet{_eletVars :: [(String, Expr)], _eletBody :: Expr,
---                  _eloc :: Location}
 --           | EHandle{_ehandleExpr :: Expr, _ehandleBindings :: [FuncDef],
 --                     _eloc :: Location}
---           -- | ESeq{_eseq :: [Expr], _eloc :: Location}
---           | EAnn{_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
 
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id = run . runError . (runState env) . runFresh id $ do
