@@ -396,10 +396,17 @@ instance Pretty FuncDef where
       <+> bracesList [_funcExpr]
       <+> pretty _funcLoc
 
+data ImplFuncDef = ImplFuncDef {_implFunDef :: FuncDef}
+     deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty ImplFuncDef where
+  pretty ImplFuncDef {..} = "impl" <+> pretty _implFunDef
+
 data TopStmt
   = FDef {_fdef :: FuncDef}
   | TDef {_tdef :: TypeDef}
   | EDef {_edef :: EffectDef}
+  | ImplFDef {_implFdef :: ImplFuncDef}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty TopStmt where
@@ -652,6 +659,19 @@ instance Subst Type FuncDef
 makeLenses ''FuncDef
 
 makePrisms ''FuncDef
+
+-------------------------------
+
+instance Plated ImplFuncDef where
+  plate = uniplate
+
+instance Alpha ImplFuncDef
+
+instance Subst Type ImplFuncDef
+
+makeLenses ''ImplFuncDef
+
+makePrisms ''ImplFuncDef
 
 -------------------------------
 

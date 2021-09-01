@@ -103,6 +103,7 @@ tokens :-
   "false"                               { \p s -> (p, False_) }
   "handle"                              { \p s -> (p, Handle) }
   "with"                                { \p s -> (p, With) }
+  "impl"                                { \p s -> (p, Impl) }
   @decimal 
     | 0[oO] @octal
     | 0[xX] @hexadecimal		            { \p s -> (p, LInt s) }
@@ -183,6 +184,7 @@ data Tok =
     False_          |
     Handle          |
     With            |
+    Impl            |
     Unknown
   deriving (Eq, Ord, Show, Read, Data, Typeable)
 
