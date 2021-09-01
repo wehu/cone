@@ -298,8 +298,8 @@ binary op name assoc = PE.Infix (do
        in A.EApp (A.EVar name pos) args pos) assoc
 
 pat :: Parser A.Pattern
-pat = A.PVar <$> (s2n <$> ident) <*> getPos
-     P.<|> A.PApp <$> namePath <*> parens (P.sepBy1 pat comma) <*> getPos
+pat = P.try (A.PApp <$> namePath <*> parens (P.sepBy1 pat comma) <*> getPos)
+     P.<|> A.PVar <$> (s2n <$> ident) <*> getPos
 
 term :: Parser A.Expr
 term =
