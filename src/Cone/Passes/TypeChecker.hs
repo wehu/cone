@@ -268,6 +268,7 @@ checkEffKind k = do
     EKList {..} -> mapM_ checkEffKind _ekList
     _ -> throwError $ "expected a star eff kind, but got " ++ ppr k
 
+
 initEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
 initEffIntfDef e = do
   globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
@@ -666,12 +667,12 @@ inferExprEffType ESeq {..} =
   foldM (\s e -> do
     et <- inferExprEffType e
     mergeEffs s et) (EffTotal $ _eloc $ last _eseq) _eseq
-inferExprEffType EHandle {..} = do
-  et <- inferExprEffType _ehandleScope
+inferExprEffType EHandle {..} = underScope $ do
   forM_ _ehandleBindings $ \intf -> do
+    let fn = (intf ^. funcName)
     checkFuncDef intf 
     ft <- unbindType $ funcDefType intf
-    intfT' <- getEnv $ funcs . at (intf ^. funcName)
+    intfT' <- getEnv $ funcs . at fn
     forMOf _Nothing intfT' $ \_ ->
       throwError $ "cannot find eff interface defintion for " ++ ppr intf
     intfT <- unbindType $ fromJust intfT'
@@ -690,6 +691,11 @@ inferExprEffType EHandle {..} = do
     effs <- mergeEffs eff _ehandleEff
     if aeq (closeEffType effs) (closeEffType intfEff) then return ()
     else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff
+    fs <- getEnv funcs
+    setEnv (M.delete fn fs) $ funcs
+    let (bts, ft) = unbindTypeSample $ funcDefType intf
+    setEnv (Just $ BoundType $ bind bts $ ft{_tfuncEff=Just effs}) $ funcs . at fn
+  et <- inferExprEffType _ehandleScope
   -- TODO check intefaces
   removeEff et _ehandleEff
 
