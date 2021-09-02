@@ -345,11 +345,9 @@ checkEffIntfDefs m = mapM_ checkEffIntfDef $ m ^.. topStmts . traverse . _EDef
 freeVarName :: Int -> TVar
 freeVarName i = makeName "$" $ toInteger i
 
-initFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
-initFuncDef f = do
+funcDefType :: FuncDef -> Type
+funcDefType f =
   let pos = f ^. funcLoc
-      fn = f ^. funcName
-      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
       argTypes = f ^. funcArgs ^.. traverse . _2
       effType = f ^. funcEffectType . (non $ EffTotal pos)
       resultType = f ^. funcResultType
@@ -357,6 +355,14 @@ initFuncDef f = do
         BoundType $
           bind (f ^. funcBoundVars) $
             TFunc argTypes (Just effType) resultType pos
+   in ft 
+
+initFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
+initFuncDef f = do
+  let pos = f ^. funcLoc
+      fn = f ^. funcName
+      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+      ft = funcDefType f 
   k <- inferTypeKind ft
   checkTypeKind k
   oft <- getEnv $ funcs . at fn
@@ -372,13 +378,7 @@ checkFuncDef f = underScope $ do
   let pos = f ^. funcLoc
       fn = f ^. funcName
       bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-      argTypes = f ^. funcArgs ^.. traverse . _2
-      effType = f ^. funcEffectType . (non $ EffTotal pos)
-      resultType = f ^. funcResultType
-      ft =
-        BoundType $
-          bind (f ^. funcBoundVars) $
-            TFunc argTypes (Just effType) resultType pos
+      ft = funcDefType f
   k <- inferTypeKind ft
   checkTypeKind k
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
@@ -406,13 +406,7 @@ checkImplFuncDef f = underScope $ do
   let pos = f ^. funcLoc
       fn = f ^. funcName
       bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-      argTypes = f ^. funcArgs ^.. traverse . _2
-      effType = f ^. funcEffectType . (non $ EffTotal pos)
-      resultType = f ^. funcResultType
-      ft =
-        BoundType $
-          bind (f ^. funcBoundVars) $
-            TFunc argTypes (Just effType) resultType pos
+      ft = funcDefType f
   k <- inferTypeKind ft
   checkTypeKind k
   ift <- getEnv $ funcs . at fn
