@@ -119,6 +119,8 @@ assign_ = symbol L.Assign
 
 backSlash = symbol L.Backslash
 
+question = symbol L.Question
+
 arrow = symbol L.Arrow
 
 star = symbol L.Star
@@ -251,7 +253,8 @@ typeTerm =
                 P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType)
                 P.<|> (A.TVar <$> (s2n <$> ident))
                 P.<|> (A.TPrim <$> primType)
-                P.<|> (A.TNum <$> (read <$> literalInt))
+                P.<|> (A.TNum <$> (Just . read <$> literalInt))
+                P.<|> (A.TNum Nothing <$ question)
                 P.<|> (tList <$> brackets (P.sepBy1 type_ comma))
             )
               <*> getPos

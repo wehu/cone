@@ -76,6 +76,7 @@ tokens :-
   \\                                    { \p s -> (p, Backslash) }
   "->"                                  { \p s -> (p, Arrow) }
   \*                                    { \p s -> (p, Star) }
+  \?                                    { \p s -> (p, Question) }
   "i8"                                  { \p s -> (p, I8) }
   "i16"                                 { \p s -> (p, I16) }
   "i32"                                 { \p s -> (p, I32) }
@@ -186,6 +187,7 @@ data Tok =
     With            |
     Impl            |
     Num             |
+    Question        |
     Unknown
   deriving (Eq, Ord, Show, Read, Data, Typeable)
 

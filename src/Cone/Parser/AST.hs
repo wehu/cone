@@ -135,7 +135,7 @@ data Type
         _tfuncResult :: Type,
         _tloc :: Location
       }
-  | TNum {_tnum :: Int, _tloc :: Location}
+  | TNum {_tnum :: Maybe Int, _tloc :: Location}
   | TApp {_tappName :: TVar, _tappArgs :: [Type], _tloc :: Location}
   | TAnn {_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
   | BoundType {_boundType :: Bind [TVar] Type}

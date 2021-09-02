@@ -199,7 +199,7 @@ evalType :: Type -> [Type] -> (Int -> Int -> Int) -> Type
 evalType t args f =
   if all (not . isn't _TNum) args
   then let arg:rest = fmap _tnum args
-         in TNum (L.foldl' f arg rest) (_tloc t)
+         in TNum (L.foldl' (\a b -> f <$> a <*> b) arg rest) (_tloc t)
   else t 
 
 inferType :: (Has EnvEff sig m) => Type -> m Type
