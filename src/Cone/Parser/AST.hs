@@ -135,6 +135,7 @@ data Type
         _tfuncResult :: Type,
         _tloc :: Location
       }
+  | TNum {_tnum :: Int, _tloc :: Location}
   | TApp {_tappName :: TVar, _tappArgs :: [Type], _tloc :: Location}
   | TAnn {_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
   | BoundType {_boundType :: Bind [TVar] Type}
@@ -143,6 +144,7 @@ data Type
 instance Pretty Type where
   pretty TPrim {..} = pretty _tprim <+> pretty _tloc
   pretty TVar {..} = pretty _tvar <+> pretty _tloc
+  pretty TNum {..} = pretty _tnum <+> pretty _tloc
   pretty TFunc {..} = parens $ parensList _tfuncArgs <+> "->" <+> pretty _tfuncEff <+> pretty _tfuncResult <+> pretty _tloc
   pretty TApp {..} = parens $ pretty _tappName <+> parensList _tappArgs <+> pretty _tloc
   pretty TAnn {..} = parens $ pretty _tannType <+> colon <+> pretty _tannKind <+> pretty _tloc
@@ -150,11 +152,13 @@ instance Pretty Type where
 
 data Kind
   = KStar {_kloc :: Location}
+  | KNum {_kloc :: Location}
   | KFunc {_kfuncArgs :: [Kind], _kfuncResult :: Kind, _kloc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Kind where
   pretty KStar {..} = "*" <+> pretty _kloc
+  pretty KNum {..} = "num" <+> pretty _kloc
   pretty KFunc {..} = parens $ parensList _kfuncArgs <+> "->" <+> pretty _kfuncResult <+> pretty _kloc
 
 data EffKind

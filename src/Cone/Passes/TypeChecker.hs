@@ -193,7 +193,26 @@ inferTypeKind f@TFunc {..} = do
   rk <- inferTypeKind _tfuncResult
   checkTypeKind rk
   return $ KStar _tloc
+inferTypeKind n@TNum {..} = return $ KNum _tloc
 inferTypeKind t = return $ KStar $ _tloc t
+
+inferType :: (Has EnvEff sig m) => Type -> m Type
+inferType a@TApp {..} = do
+  args <- mapM inferType _tappArgs
+  return a{_tappArgs=args}
+inferType a@TAnn {..} = do
+  t <- inferType _tannType
+  return a{_tannType=t}
+inferType b@BoundType {..} = do
+  let (bts, t) = unbindTypeSample b
+  t <- inferType t
+  return b{_boundType=bind bts t}
+inferType f@TFunc {..} = do
+  args <- mapM inferType _tfuncArgs
+  eff <- mapM inferEffectType _tfuncEff
+  res <- inferType _tfuncResult
+  return f{_tfuncArgs=args, _tfuncEff=eff, _tfuncResult=res}
+inferType t = return t
 
 checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
 checkTypeKind k = do
@@ -260,6 +279,22 @@ inferEffKind l@EffList {..} = do
   mapM_ checkEffKind ls
   return $ EKList ls _effLoc
 inferEffKind EffTotal {..} = return $ EKStar _effLoc
+
+inferEffectType :: (Has EnvEff sig m) => EffectType -> m EffectType
+inferEffectType a@EffApp {..} = do
+  args <- mapM inferType _effAppArgs
+  return a{_effAppArgs=args}
+inferEffectType a@EffAnn {..} = do
+  e <- inferEffectType _effAnnType
+  return a{_effAnnType=e}
+inferEffectType b@BoundEffType {..} = do
+  let (bts, t) = unbindEffTypeSample b
+  t <- inferEffectType t
+  return b{_boundEffType=bind bts t}
+inferEffectType l@EffList {..} = do
+  ls <- mapM inferEffectType _effList
+  return l{_effList=ls}
+inferEffectType e = return e
 
 checkEffKind :: (Has EnvEff sig m) => EffKind -> m ()
 checkEffKind k = do
@@ -629,7 +664,7 @@ inferAppResultType f@TFunc {} args = do
       []
       [collectVarBindings a b | a <- fArgTypes | b <- args]
   checkVarBindings bindings
-  return $ substs bindings $ _tfuncResult f
+  inferType $ substs bindings $ _tfuncResult f
 inferAppResultType t _ = throwError $ "expected a function type, but got " ++ ppr t
 
 inferExprEffType :: (Has EnvEff sig m) => Expr -> m EffectType
@@ -836,6 +871,10 @@ unbindEffType t = return t
 unbindTypeSample :: Type -> ([TVar], Type)
 unbindTypeSample b@BoundType {..} = unsafeUnbind _boundType
 unbindTypeSample t = ([], t)
+
+unbindEffTypeSample :: EffectType -> ([TVar], EffectType)
+unbindEffTypeSample b@BoundEffType {..} = unsafeUnbind _boundEffType
+unbindEffTypeSample t = ([], t)
 
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id = run . runError . (runState env) . runFresh id $ do
