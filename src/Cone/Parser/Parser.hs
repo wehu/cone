@@ -252,6 +252,7 @@ typeTerm =
                 P.<|> (A.TVar <$> (s2n <$> ident))
                 P.<|> (A.TPrim <$> primType)
                 P.<|> (A.TNum <$> (read <$> literalInt))
+                P.<|> (tList <$> brackets (P.sepBy1 type_ comma))
             )
               <*> getPos
           )
@@ -264,6 +265,8 @@ typeTerm =
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
+    tList (t:[]) pos = t
+    tList (t:ts) pos = A.TApp (s2n "____list") [t,(tList ts pos)] pos
 
 type_ :: Parser A.Type
 type_ = PE.buildExpressionParser typeTable typeTerm

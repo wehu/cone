@@ -157,7 +157,7 @@ inferTypeKind a@TApp {..} = do
         else throwError $ "expected a func kind, but got " ++ ppr ak
     KFunc {..} ->
       if L.length _tappArgs /= L.length _kfuncArgs
-        then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs
+        then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs ++ ppr a
         else do
           forM_
             [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
