@@ -687,15 +687,16 @@ inferExprEffType ESeq {..} =
   foldM (\s e -> do
     et <- inferExprEffType e
     return $ mergeEffs s et) (EffTotal $ _eloc $ last _eseq) _eseq
---  | EHandle
---      { _ehandleEff :: EffectType,
---        _ehandleScope :: Expr,
---        _ehandleBindings :: [FuncDef],
---        _eloc :: Location
---      }
+inferExprEffType EHandle {..} = do
+  et <- inferExprEffType _ehandleScope
+  -- TODO check intefaces
+  return $ removeEff et _ehandleEff
 
 mergeEffs :: EffectType -> EffectType -> EffectType
 mergeEffs a b = a
+
+removeEff :: EffectType -> EffectType -> EffectType
+removeEff f e = f
 
 closeType :: Type -> Bind [TVar] Type
 closeType t =
