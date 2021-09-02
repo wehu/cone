@@ -195,14 +195,24 @@ inferTypeKind f@TFunc {..} = do
 inferTypeKind n@TNum {..} = return $ KStar _tloc
 inferTypeKind t = return $ KStar $ _tloc t
 
+evalType :: Type -> [Type] -> (Int -> Int -> Int) -> Type
+evalType t args f =
+  if all (not . isn't _TNum) args
+  then let arg:rest = fmap _tnum args
+         in TNum (L.foldl' f arg rest) (_tloc t)
+  else t 
+
 inferType :: (Has EnvEff sig m) => Type -> m Type
 inferType a@TApp {..} = do
   args <- mapM inferType _tappArgs
+  let t = a{_tappArgs=args}
   case name2String _tappName of
-    "add" -> if all (\e -> case e of; TNum{} -> True; _ -> False) args
-             then return $ TNum (sum $ fmap _tnum args) _tloc
-             else return a{_tappArgs=args}
-    _ -> return a{_tappArgs=args}
+    "add" -> return $ evalType t args (+)
+    "sub" -> return $ evalType t args (-)
+    "mul" -> return $ evalType t args (*)
+    "div" -> return $ evalType t args div
+    "mod" -> return $ evalType t args mod
+    _ -> return t
 inferType a@TAnn {..} = do
   t <- inferType _tannType
   return a{_tannType=t}
