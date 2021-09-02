@@ -80,20 +80,21 @@ initTypeDef t = do
       "redefine a type: " ++ tn ++ " vs " ++ ppr ot
   let k = Just $ typeKindOf t
   setEnv k $ types . at tn
-  where typeKindOf t =
-          let loc = _typeLoc t
-              args = t ^. typeArgs
-              star = KStar loc
-           in if args == []
-                then star
-                else KFunc (args ^.. traverse . _2 . non star) star loc
+  where
+    typeKindOf t =
+      let loc = _typeLoc t
+          args = t ^. typeArgs
+          star = KStar loc
+       in if args == []
+            then star
+            else KFunc (args ^.. traverse . _2 . non star) star loc
 
 initTypeDefs :: (Has EnvEff sig m) => Module -> m ()
 initTypeDefs m = mapM_ initTypeDef $ m ^.. topStmts . traverse . _TDef
 
 initTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
 initTypeConDef t = do
-  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types 
+  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
   forM_ (t ^. typeCons) $ \c -> do
     let cn = c ^. typeConName
         cargs = c ^. typeConArgs
@@ -114,27 +115,28 @@ initTypeConDef t = do
         "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
     let bt = tconType c t
     setEnv (Just bt) $ funcs . at cn
-  where tconType c t =
-          let targs = c ^. typeConArgs
-              tn = t ^. typeName
-              pos = c ^. typeConLoc
-              tvars = t ^.. typeArgs . traverse . _1
-              rt =
-                if tvars == []
-                  then TVar (s2n tn) pos
-                  else TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
-              bt =
-                bind tvars $
-                  if targs == []
-                    then rt
-                    else TFunc targs Nothing rt pos
-           in BoundType bt
+  where
+    tconType c t =
+      let targs = c ^. typeConArgs
+          tn = t ^. typeName
+          pos = c ^. typeConLoc
+          tvars = t ^.. typeArgs . traverse . _1
+          rt =
+            if tvars == []
+              then TVar (s2n tn) pos
+              else TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
+          bt =
+            bind tvars $
+              if targs == []
+                then rt
+                else TFunc targs Nothing rt pos
+       in BoundType bt
 
 initTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
 initTypeConDefs m = mapM_ initTypeConDef $ m ^.. topStmts . traverse . _TDef
 
 checkTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
-checkTypeConDef t = 
+checkTypeConDef t =
   forM_ (t ^. typeCons) $ \c -> do
     let cn = c ^. typeConName
     t <- getEnv $ funcs . at cn
@@ -162,7 +164,7 @@ inferTypeKind a@TApp {..} = do
           forM_
             [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
             $ \(a, b) -> do
-              t<- inferTypeKind a
+              t <- inferTypeKind a
               checkTypeKind t
               checkTypeKind b
               checkKindMatch t b
@@ -198,14 +200,15 @@ inferTypeKind t = return $ KStar $ _tloc t
 evalType :: Type -> [Type] -> (Int -> Int -> Int) -> Type
 evalType t args f =
   if all (not . isn't _TNum) args
-  then let arg:rest = fmap _tnum args
-         in TNum (L.foldl' (\a b -> f <$> a <*> b) arg rest) (_tloc t)
-  else t 
+    then
+      let arg : rest = fmap _tnum args
+       in TNum (L.foldl' (\a b -> f <$> a <*> b) arg rest) (_tloc t)
+    else t
 
 inferType :: (Has EnvEff sig m) => Type -> m Type
 inferType a@TApp {..} = do
   args <- mapM inferType _tappArgs
-  let t = a{_tappArgs=args}
+  let t = a {_tappArgs = args}
   case name2String _tappName of
     "____add" -> return $ evalType t args (+)
     "____sub" -> return $ evalType t args (-)
@@ -215,16 +218,16 @@ inferType a@TApp {..} = do
     _ -> return t
 inferType a@TAnn {..} = do
   t <- inferType _tannType
-  return a{_tannType=t}
+  return a {_tannType = t}
 inferType b@BoundType {..} = do
   let (bts, t) = unbindTypeSample b
   t <- inferType t
-  return b{_boundType=bind bts t}
+  return b {_boundType = bind bts t}
 inferType f@TFunc {..} = do
   args <- mapM inferType _tfuncArgs
   eff <- mapM inferEffectType _tfuncEff
   res <- inferType _tfuncResult
-  return f{_tfuncArgs=args, _tfuncEff=eff, _tfuncResult=res}
+  return f {_tfuncArgs = args, _tfuncEff = eff, _tfuncResult = res}
 inferType t = return t
 
 checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
@@ -241,14 +244,15 @@ initEffTypeDef e = do
     throwError $
       "redefine an effect: " ++ en ++ " vs " ++ ppr oe
   setEnv (Just $ effKind e) $ effs . at en
-  where effKind e =
-          let loc = _effectLoc e
-              args = e ^. effectArgs
-              star = KStar loc
-              estar = EKStar loc
-           in if args == []
-                then estar
-                else EKFunc (args ^.. traverse . _2 . non star) estar loc
+  where
+    effKind e =
+      let loc = _effectLoc e
+          args = e ^. effectArgs
+          star = KStar loc
+          estar = EKStar loc
+       in if args == []
+            then estar
+            else EKFunc (args ^.. traverse . _2 . non star) estar loc
 
 initEffTypeDefs :: (Has EnvEff sig m) => Module -> m ()
 initEffTypeDefs m = mapM_ initEffTypeDef $ m ^.. topStmts . traverse . _EDef
@@ -296,17 +300,17 @@ inferEffKind EffTotal {..} = return $ EKStar _effLoc
 inferEffectType :: (Has EnvEff sig m) => EffectType -> m EffectType
 inferEffectType a@EffApp {..} = do
   args <- mapM inferType _effAppArgs
-  return a{_effAppArgs=args}
+  return a {_effAppArgs = args}
 inferEffectType a@EffAnn {..} = do
   e <- inferEffectType _effAnnType
-  return a{_effAnnType=e}
+  return a {_effAnnType = e}
 inferEffectType b@BoundEffType {..} = do
   let (bts, t) = unbindEffTypeSample b
   t <- inferEffectType t
-  return b{_boundEffType=bind bts t}
+  return b {_boundEffType = bind bts t}
 inferEffectType l@EffList {..} = do
   ls <- mapM inferEffectType _effList
-  return l{_effList=ls}
+  return l {_effList = ls}
 inferEffectType e = return e
 
 checkEffKind :: (Has EnvEff sig m) => EffKind -> m ()
@@ -315,7 +319,6 @@ checkEffKind k = do
     EKStar {} -> return ()
     EKList {..} -> mapM_ checkEffKind _ekList
     _ -> throwError $ "expected a star eff kind, but got " ++ ppr k
-
 
 initEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
 initEffIntfDef e = do
@@ -343,24 +346,29 @@ initEffIntfDef e = do
           throwError $
             "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
         let eff = case i ^. intfEffectType of
-                      Just e -> e
-                      Nothing -> EffTotal pos
-        effs <- mergeEffs eff $ EffApp (e ^. effectName) 
-                 (map (\v->TVar v pos) $ e ^..effectArgs.traverse._1) pos
+              Just e -> e
+              Nothing -> EffTotal pos
+        effs <-
+          mergeEffs eff $
+            EffApp
+              (e ^. effectName)
+              (map (\v -> TVar v pos) $ e ^.. effectArgs . traverse . _1)
+              pos
         let bt = intfType i e effs
         setEnv (Just bt) $ funcs . at intfn
   mapM_ f is
-  where intfType i e eff =
-          let iargs = i ^. intfArgs
-              iresult = i ^. intfResultType
-              intfn = i ^. intfName
-              bvars = i ^. intfBoundVars
-              pos = i ^. intfLoc
-              tvars = e ^.. effectArgs . traverse . _1
-           in BoundType $
-                bind tvars $
-                  BoundType $
-                    bind bvars $ TFunc iargs (Just eff) iresult pos
+  where
+    intfType i e eff =
+      let iargs = i ^. intfArgs
+          iresult = i ^. intfResultType
+          intfn = i ^. intfName
+          bvars = i ^. intfBoundVars
+          pos = i ^. intfLoc
+          tvars = e ^.. effectArgs . traverse . _1
+       in BoundType $
+            bind tvars $
+              BoundType $
+                bind bvars $ TFunc iargs (Just eff) iresult pos
 
 initEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
 initEffIntfDefs m = mapM_ initEffIntfDef $ m ^.. topStmts . traverse . _EDef
@@ -396,14 +404,14 @@ funcDefType f =
         BoundType $
           bind (f ^. funcBoundVars) $
             TFunc argTypes (Just effType) resultType pos
-   in ft 
+   in ft
 
 initFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
 initFuncDef f = do
   let pos = f ^. funcLoc
       fn = f ^. funcName
       bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-      ft = funcDefType f 
+      ft = funcDefType f
   k <- inferTypeKind ft
   checkTypeKind k
   oft <- getEnv $ funcs . at fn
@@ -425,11 +433,11 @@ checkFuncType f = underScope $ do
   case f ^. funcExpr of
     Just e -> do
       eType <- inferExprType e
-      checkTypeMatch eType (f ^. funcResultType) 
+      checkTypeMatch eType (f ^. funcResultType)
       effType <- inferExprEffType e
       let fEff = case f ^. funcEffectType of
-                    Just et -> et
-                    Nothing -> EffTotal pos
+            Just et -> et
+            Nothing -> EffTotal pos
       checkEffTypeMatch effType fEff
     Nothing -> return ()
 
@@ -439,7 +447,7 @@ checkFuncDef f = underScope $ do
       ft = funcDefType f
   k <- inferTypeKind ft
   checkTypeKind k
-  checkFuncType f 
+  checkFuncType f
 
 checkFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 checkFuncDefs m = mapM_ checkFuncDef $ m ^.. topStmts . traverse . _FDef
@@ -456,7 +464,7 @@ checkImplFuncDef f = underScope $ do
     throwError $ "cannot find general function definiton for impl: " ++ fn
   bindings <- collectVarBindings (fromJust ift) ft
   checkVarBindings bindings
-  checkFuncType f 
+  checkFuncType f
 
 checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 checkImplFuncDefs m = mapM_ checkImplFuncDef $ m ^.. topStmts . traverse . _ImplFDef . implFunDef
@@ -649,9 +657,10 @@ collectVarBindings a@BoundType {} b@BoundType {} = do
   at <- unbindType a
   bt <- unbindType b
   collectVarBindings at bt
-collectVarBindings a@TNum{} b@TNum{} =
-  if (_tnum a) == (_tnum b) then return []
-  else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+collectVarBindings a@TNum {} b@TNum {} =
+  if (_tnum a) == (_tnum b)
+    then return []
+    else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 collectVarBindings a b = throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 
 checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
@@ -689,8 +698,8 @@ inferExprEffType ELit {..} = return $ EffTotal _eloc
 inferExprEffType EAnn {..} = inferExprEffType _eannExpr
 inferExprEffType l@ELam {..} = do
   let et = case _elamEffType of
-             Just et -> et
-             Nothing -> EffTotal _eloc
+        Just et -> et
+        Nothing -> EffTotal _eloc
   forMOf _Nothing _elamExpr $ \_ ->
     throwError $ "expected an expression for lambda"
   resultEffType <- inferExprEffType $ fromJust _elamExpr
@@ -699,8 +708,8 @@ inferExprEffType l@ELam {..} = do
 inferExprEffType ELet {..} = inferExprEffType _eletExpr
 inferExprEffType ECase {..} = do
   ce <- inferExprEffType _ecaseExpr
-  cse <- mapM inferExprEffType $ _ecaseBody ^..traverse.caseExpr
-  let le:_ = cse
+  cse <- mapM inferExprEffType $ _ecaseBody ^.. traverse . caseExpr
+  let le : _ = cse
   forM_ cse $ checkEffTypeMatch le
   mergeEffs ce le
 inferExprEffType EWhile {..} = do
@@ -715,13 +724,17 @@ inferExprEffType EApp {..} = do
   mapM_ checkTypeKind argKinds
   inferAppResultEffType ft argTypes
 inferExprEffType ESeq {..} =
-  foldM (\s e -> do
-    et <- inferExprEffType e
-    mergeEffs s et) (EffTotal $ _eloc $ last _eseq) _eseq
+  foldM
+    ( \s e -> do
+        et <- inferExprEffType e
+        mergeEffs s et
+    )
+    (EffTotal $ _eloc $ last _eseq)
+    _eseq
 inferExprEffType EHandle {..} = underScope $ do
   forM_ _ehandleBindings $ \intf -> do
     let fn = (intf ^. funcName)
-    checkFuncDef intf 
+    checkFuncDef intf
     ft <- unbindType $ funcDefType intf
     intfT' <- getEnv $ funcs . at fn
     forMOf _Nothing intfT' $ \_ ->
@@ -730,22 +743,23 @@ inferExprEffType EHandle {..} = underScope $ do
     binds <- collectVarBindings intfT ft
     checkVarBindings binds
     eff <- case ft of
-                ft@TFunc{..} -> case _tfuncEff of
-                                  Just et -> return et
-                                  Nothing -> return $ EffTotal _eloc
-                t -> throwError $ "expected a function type, but got " ++ ppr t
+      ft@TFunc {..} -> case _tfuncEff of
+        Just et -> return et
+        Nothing -> return $ EffTotal _eloc
+      t -> throwError $ "expected a function type, but got " ++ ppr t
     intfEff <- case intfT of
-                ft@TFunc{..} -> case _tfuncEff of
-                                  Just et -> return et
-                                  Nothing -> return $ EffTotal _eloc
-                t -> throwError $ "expected a function type, but got " ++ ppr t
+      ft@TFunc {..} -> case _tfuncEff of
+        Just et -> return et
+        Nothing -> return $ EffTotal _eloc
+      t -> throwError $ "expected a function type, but got " ++ ppr t
     effs <- mergeEffs eff _ehandleEff
-    if aeq (closeEffType effs) (closeEffType intfEff) then return ()
-    else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff
+    if aeq (closeEffType effs) (closeEffType intfEff)
+      then return ()
+      else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff
     fs <- getEnv funcs
     setEnv (M.delete fn fs) $ funcs
     let (bts, ft) = unbindTypeSample $ funcDefType intf
-    setEnv (Just $ BoundType $ bind bts $ ft{_tfuncEff=Just effs}) $ funcs . at fn
+    setEnv (Just $ BoundType $ bind bts $ ft {_tfuncEff = Just effs}) $ funcs . at fn
   et <- inferExprEffType _ehandleScope
   -- TODO check intefaces
   removeEff et _ehandleEff
@@ -763,31 +777,31 @@ inferAppResultEffType f@TFunc {} args = do
       [collectVarBindings a b | a <- fArgTypes | b <- args]
   checkVarBindings bindings
   let resEff = case _tfuncEff f of
-                 Just e -> e
-                 Nothing -> EffTotal $ _tloc f
+        Just e -> e
+        Nothing -> EffTotal $ _tloc f
   return $ substs bindings resEff
 inferAppResultEffType t _ = throwError $ "expected a function type, but got " ++ ppr t
 
 toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
-toEffList a@EffVar{..} = return $ EffList [a] Nothing _effLoc
-toEffList a@EffApp{..} = return $ EffList [a] Nothing _effLoc
-toEffList a@EffTotal{..} = return $ EffList [a] Nothing _effLoc
-toEffList a@EffList{} = return a 
-toEffList EffAnn{..} = toEffList _effAnnType
-toEffList a@BoundEffType{} = do
+toEffList a@EffVar {..} = return $ EffList [a] Nothing _effLoc
+toEffList a@EffApp {..} = return $ EffList [a] Nothing _effLoc
+toEffList a@EffTotal {..} = return $ EffList [a] Nothing _effLoc
+toEffList a@EffList {} = return a
+toEffList EffAnn {..} = toEffList _effAnnType
+toEffList a@BoundEffType {} = do
   ua <- unbindEffType a
-  toEffList ua 
+  toEffList ua
 
 mergeEffs :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
-mergeEffs a@EffList{} b@EffList{} = do
-  let al = a^.effList
-      bl = b^.effList
-      av = a^.effBoundVar
-      bv = a^.effBoundVar
+mergeEffs a@EffList {} b@EffList {} = do
+  let al = a ^. effList
+      bl = b ^. effList
+      av = a ^. effBoundVar
+      bv = a ^. effBoundVar
       pos = _effLoc a
       v = case av of
-           Just _ -> av
-           Nothing -> bv
+        Just _ -> av
+        Nothing -> bv
       l = L.unionBy aeq al bl
   return $ EffList l v pos
 mergeEffs a b = do
@@ -796,26 +810,28 @@ mergeEffs a b = do
   mergeEffs al bl
 
 removeEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
-removeEff f@EffList{} e@EffList{} = do
-  let fl = f^.effList
-      el = e^.effList
-      fv = f^.effBoundVar
-      ev = e^.effBoundVar
+removeEff f@EffList {} e@EffList {} = do
+  let fl = f ^. effList
+      el = e ^. effList
+      fv = f ^. effBoundVar
+      ev = e ^. effBoundVar
       pos = _effLoc f
   v <- case fv of
-         Just _ -> case ev of
-                     Just _ -> return Nothing
-                     Nothing -> return fv
-         Nothing -> case ev of
-                     Just ev -> throwError $ "eff has no variable, cannot be removed"
-                     Nothing -> return Nothing
-  l <- foldM
-           (\l e -> do
-               case L.findIndex (aeq e) l of
-                 Just idx -> return $ L.deleteBy aeq e l
-                 Nothing -> throwError $ "eff " ++ ppr l ++ " has no " ++ ppr e ++ ", cannot be removed")
-          fl
-          el
+    Just _ -> case ev of
+      Just _ -> return Nothing
+      Nothing -> return fv
+    Nothing -> case ev of
+      Just ev -> throwError $ "eff has no variable, cannot be removed"
+      Nothing -> return Nothing
+  l <-
+    foldM
+      ( \l e -> do
+          case L.findIndex (aeq e) l of
+            Just idx -> return $ L.deleteBy aeq e l
+            Nothing -> throwError $ "eff " ++ ppr l ++ " has no " ++ ppr e ++ ", cannot be removed"
+      )
+      fl
+      el
   return $ EffList l v pos
 removeEff f e = do
   fl <- toEffList f
@@ -824,29 +840,33 @@ removeEff f e = do
 
 checkTypeMatch :: (Has EnvEff sig m) => Type -> Type -> m ()
 checkTypeMatch a b = do
-  if aeq a b then return ()
-  else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+  if aeq a b
+    then return ()
+    else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 
 checkKindMatch :: (Has EnvEff sig m) => Kind -> Kind -> m ()
 checkKindMatch a b = do
-  if aeq a b then return ()
-  else throwError $ "type kind mismatch: " ++ ppr a ++ " vs " ++ ppr b
+  if aeq a b
+    then return ()
+    else throwError $ "type kind mismatch: " ++ ppr a ++ " vs " ++ ppr b
 
 checkEffTypeMatch :: (Has EnvEff sig m) => EffectType -> EffectType -> m ()
 checkEffTypeMatch a b = do
   al <- toEffList a
   bl <- toEffList b
   let pos = _effLoc al
-  if aeq (al ^. effList) (bl ^. effList) &&
-     aeq (fmap closeEffType $ fmap (\e -> EffVar e pos) $ al ^.effBoundVar)
-         (fmap closeEffType $ fmap (\e -> EffVar e pos) $ bl ^.effBoundVar)
-  then return ()
-  else throwError $ "eff type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+  if aeq (al ^. effList) (bl ^. effList)
+    && aeq
+      (fmap closeEffType $ fmap (\e -> EffVar e pos) $ al ^. effBoundVar)
+      (fmap closeEffType $ fmap (\e -> EffVar e pos) $ bl ^. effBoundVar)
+    then return ()
+    else throwError $ "eff type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 
 checkEffKindMatch :: (Has EnvEff sig m) => EffKind -> EffKind -> m ()
 checkEffKindMatch a b = do
-  if aeq a b then return ()
-  else throwError $ "eff type kind mismatch: " ++ ppr a ++ " vs " ++ ppr b
+  if aeq a b
+    then return ()
+    else throwError $ "eff type kind mismatch: " ++ ppr a ++ " vs " ++ ppr b
 
 closeType :: Type -> Bind [TVar] Type
 closeType t =

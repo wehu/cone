@@ -224,8 +224,7 @@ primType =
     P.<|> (A.Pred <$ bool)
 
 typeTable =
-  [ 
-   [ typeBinary star "____mul" PE.AssocLeft,
+  [ [ typeBinary star "____mul" PE.AssocLeft,
       typeBinary div_ "____div" PE.AssocLeft,
       typeBinary mod_ "____mod" PE.AssocLeft
     ],
@@ -268,8 +267,8 @@ typeTerm =
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
-    tList (t:[]) pos = t
-    tList (t:ts) pos = A.TApp (s2n "____pair") [t,(tList ts pos)] pos
+    tList (t : []) pos = t
+    tList (t : ts) pos = A.TApp (s2n "____pair") [t, (tList ts pos)] pos
 
 type_ :: Parser A.Type
 type_ = PE.buildExpressionParser typeTable typeTerm
@@ -425,8 +424,8 @@ term =
         ]
         pos
     varOrAssign v e pos = case e of
-                            Nothing -> A.EVar v pos
-                            Just e -> A.EApp (A.EVar "____assign" pos) [A.EVar v pos, e] pos
+      Nothing -> A.EVar v pos
+      Just e -> A.EApp (A.EVar "____assign" pos) [A.EVar v pos, e] pos
 
 expr :: Parser A.Expr
 expr = PE.buildExpressionParser exprTable term
@@ -457,9 +456,10 @@ funcIntf :: Parser A.FuncIntf
 funcIntf =
   f <$ kFunc <*> ident <*> boundTVars
     <*> parens (P.sepBy type_ comma) <* colon
-    <*> resultType 
+    <*> resultType
     <*> getPos
-  where f n bs args (e, r) pos = A.FuncIntf n bs args e r pos
+  where
+    f n bs args (e, r) pos = A.FuncIntf n bs args e r pos
 
 effectDef :: Parser A.EffectDef
 effectDef =
