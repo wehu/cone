@@ -36,6 +36,9 @@ library
       Cone.Parser.Lexer
       Cone.Parser.Parser
       Cone.Passes.TypeChecker
+      Cone.Passes.TypeChecker.Env
+      Cone.Passes.TypeChecker.Expr
+      Cone.Passes.TypeChecker.Type
   other-modules:
       Paths_cone
   hs-source-dirs:
