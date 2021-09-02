@@ -321,6 +321,7 @@ data FuncIntf = FuncIntf
   { _intfName :: String,
     _intfBoundVars :: [TVar],
     _intfArgs :: [Type],
+    _intfEffectType :: Maybe EffectType,
     _intfResultType :: Type,
     _intfLoc :: Location
   }
@@ -336,7 +337,7 @@ data FuncIntf = FuncIntf
     )
 
 instance Pretty FuncIntf where
-  pretty FuncIntf {..} = pretty _intfName <+> bracesList _intfBoundVars <+> parensList _intfArgs <+> colon <+> pretty _intfResultType <+> pretty _intfLoc
+  pretty FuncIntf {..} = pretty _intfName <+> bracesList _intfBoundVars <+> parensList _intfArgs <+> colon <+> pretty _intfEffectType <+> pretty _intfResultType <+> pretty _intfLoc
 
 data EffectDef = EffectDef
   { _effectName :: String,
