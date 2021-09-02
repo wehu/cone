@@ -373,14 +373,10 @@ initFuncDef f = do
 initFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 initFuncDefs m = mapM_ initFuncDef $ m ^.. topStmts . traverse . _FDef
 
-checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
-checkFuncDef f = underScope $ do
+checkFuncType :: (Has EnvEff sig m) => FuncDef -> m ()
+checkFuncType f = underScope $ do
   let pos = f ^. funcLoc
-      fn = f ^. funcName
       bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-      ft = funcDefType f
-  k <- inferTypeKind ft
-  checkTypeKind k
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   mapM_
     (\(n, t) -> setEnv (Just t) $ funcs . at n)
@@ -397,6 +393,14 @@ checkFuncDef f = underScope $ do
               ++ " vs "
               ++ ppr (f ^. funcResultType)
     Nothing -> return ()
+
+checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
+checkFuncDef f = underScope $ do
+  let pos = f ^. funcLoc
+      ft = funcDefType f
+  k <- inferTypeKind ft
+  checkTypeKind k
+  checkFuncType f 
 
 checkFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 checkFuncDefs m = mapM_ checkFuncDef $ m ^.. topStmts . traverse . _FDef
@@ -405,7 +409,6 @@ checkImplFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
 checkImplFuncDef f = underScope $ do
   let pos = f ^. funcLoc
       fn = f ^. funcName
-      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
       ft = funcDefType f
   k <- inferTypeKind ft
   checkTypeKind k
@@ -414,22 +417,7 @@ checkImplFuncDef f = underScope $ do
     throwError $ "cannot find general function definiton for impl: " ++ fn
   bindings <- collectVarBindings (fromJust ift) ft
   checkVarBindings bindings
-  forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
-  mapM_
-    (\(n, t) -> setEnv (Just t) $ funcs . at n)
-    (f ^. funcArgs)
-  case f ^. funcExpr of
-    Just e -> do
-      eType <- inferExprType e
-      if aeq eType (f ^. funcResultType) 
-        then return ()
-        else
-          throwError $
-            "function result type mismatch: "
-              ++ ppr eType
-              ++ " vs "
-              ++ ppr (f ^. funcResultType)
-    Nothing -> return ()
+  checkFuncType f 
 
 checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 checkImplFuncDefs m = mapM_ checkImplFuncDef $ m ^.. topStmts . traverse . _ImplFDef . implFunDef
