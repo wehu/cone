@@ -670,12 +670,25 @@ inferExprEffType EHandle {..} = do
   et <- inferExprEffType _ehandleScope
   forM_ _ehandleBindings $ \intf -> do
     checkFuncDef intf 
-    let ft = funcDefType intf
-    intfT <- getEnv $ funcs . at (intf ^. funcName)
-    forMOf _Nothing intfT $ \_ ->
+    ft <- unbindType $ funcDefType intf
+    intfT' <- getEnv $ funcs . at (intf ^. funcName)
+    forMOf _Nothing intfT' $ \_ ->
       throwError $ "cannot find eff interface defintion for " ++ ppr intf
-    binds <- collectVarBindings (fromJust intfT) ft
+    intfT <- unbindType $ fromJust intfT'
+    binds <- collectVarBindings intfT ft
     checkVarBindings binds
+    eff <- case ft of
+                ft@TFunc{..} -> case _tfuncEff of
+                                  Just et -> return et
+                                  Nothing -> return $ EffTotal _eloc
+                t -> throwError $ "expected a function type, but got " ++ ppr t
+    intfEff <- case intfT of
+                ft@TFunc{..} -> case _tfuncEff of
+                                  Just et -> return et
+                                  Nothing -> return $ EffTotal _eloc
+                t -> throwError $ "expected a function type, but got " ++ ppr t
+    effs <- mergeEffs eff _ehandleEff
+    checkEffTypeMatch effs intfEff
   -- TODO check intefaces
   removeEff et _ehandleEff
 
