@@ -69,8 +69,6 @@ kElse = keyword L.Else
 
 kWhile = keyword L.While
 
-kNum = keyword L.Num
-
 semi = P.many1 $ symbol L.Semi
 
 lParen = symbol L.LParen
@@ -202,7 +200,6 @@ imports =
 kind :: Parser A.Kind
 kind =
   ( A.KStar <$ star
-      P.<|> A.KNum <$ kNum
       P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind)
   )
     <*> getPos
@@ -224,8 +221,31 @@ primType =
     P.<|> (A.BF16 <$ bf16)
     P.<|> (A.Pred <$ bool)
 
-type_ :: Parser A.Type
-type_ =
+typeTable =
+  [ 
+   [ typeBinary star "mul" PE.AssocLeft,
+      typeBinary div_ "div" PE.AssocLeft,
+      typeBinary mod_ "mod" PE.AssocLeft
+    ],
+    [ typeBinary add "add" PE.AssocLeft,
+      typeBinary sub "sub" PE.AssocLeft
+    ]
+  ]
+
+typeBinary op name assoc =
+  PE.Infix
+    ( do
+        op
+        pos <- getPos
+        return $
+          \a b ->
+            let args = a : b : []
+             in A.TApp (s2n name) args pos
+    )
+    assoc
+
+typeTerm :: Parser A.Type
+typeTerm =
   ( tann
       <$> ( ( P.try (A.TApp <$> (s2n <$> namePath) <* less <*> (P.sepBy1 type_ comma) <* greater)
                 P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType)
@@ -244,6 +264,9 @@ type_ =
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
+
+type_ :: Parser A.Type
+type_ = PE.buildExpressionParser typeTable typeTerm
 
 boundTVars :: Parser [A.TVar]
 boundTVars =

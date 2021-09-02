@@ -198,7 +198,11 @@ inferTypeKind t = return $ KStar $ _tloc t
 inferType :: (Has EnvEff sig m) => Type -> m Type
 inferType a@TApp {..} = do
   args <- mapM inferType _tappArgs
-  return a{_tappArgs=args}
+  case name2String _tappName of
+    "add" -> if all (\e -> case e of; TNum{} -> True; _ -> False) args
+             then return $ TNum (sum $ fmap _tnum args) _tloc
+             else return a{_tappArgs=args}
+    _ -> return a{_tappArgs=args}
 inferType a@TAnn {..} = do
   t <- inferType _tannType
   return a{_tannType=t}

@@ -104,7 +104,6 @@ tokens :-
   "handle"                              { \p s -> (p, Handle) }
   "with"                                { \p s -> (p, With) }
   "impl"                                { \p s -> (p, Impl) }
-  "number"                              { \p s -> (p, Num) }
   @decimal 
     | 0[oO] @octal
     | 0[xX] @hexadecimal		            { \p s -> (p, LInt s) }
