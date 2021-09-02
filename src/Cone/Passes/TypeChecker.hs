@@ -702,7 +702,27 @@ mergeEffs a b = do
   mergeEffs al bl
 
 removeEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
-removeEff f@EffList{} e@EffList{} = return f
+removeEff f@EffList{} e@EffList{} = do
+  let fl = f^.effList
+      el = e^.effList
+      fv = f^.effBoundVar
+      ev = e^.effBoundVar
+      pos = _effLoc f
+  v <- case fv of
+         Just _ -> case ev of
+                     Just _ -> return Nothing
+                     Nothing -> return fv
+         Nothing -> case ev of
+                     Just ev -> throwError $ "eff has no variable, cannot be removed"
+                     Nothing -> return Nothing
+  l <- foldM
+           (\l e -> do
+               case L.findIndex (aeq e) l of
+                 Just idx -> return $ L.deleteBy aeq e l
+                 Nothing -> throwError $ "eff " ++ ppr l ++ " has no " ++ ppr e ++ ", cannot be remove")
+          fl
+          el
+  return $ EffList l v pos
 removeEff f e = do
   fl <- toEffList f
   el <- toEffList e
