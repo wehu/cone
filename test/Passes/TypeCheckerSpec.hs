@@ -39,7 +39,7 @@ typeCheckerSpec = hspec $ do
      
      type tensor<a> {}
 
-     type ____list<a, b> {}
+     type ____pair<a, b> {}
 
      fun typeTest[i,j, k](a:tensor<[i, j, k]>) : tensor<[i+1, j+2, k+3]>
 

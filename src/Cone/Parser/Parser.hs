@@ -266,7 +266,7 @@ typeTerm =
       Just k' -> A.TAnn t k' pos
       _ -> t
     tList (t:[]) pos = t
-    tList (t:ts) pos = A.TApp (s2n "____list") [t,(tList ts pos)] pos
+    tList (t:ts) pos = A.TApp (s2n "____pair") [t,(tList ts pos)] pos
 
 type_ :: Parser A.Type
 type_ = PE.buildExpressionParser typeTable typeTerm

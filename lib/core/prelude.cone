@@ -25,3 +25,9 @@ type ____mul<a, a> {}
 type ____div<a, a> {}
 
 type ____mod<a, a> {}
+
+type ____pair<a, b> {}
+
+// tensor types
+
+type tensor<a> {}
