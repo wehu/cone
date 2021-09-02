@@ -311,7 +311,9 @@ data TypeDef = TypeDef
     )
 
 instance Pretty TypeDef where
-  pretty TypeDef {..} = pretty _typeName <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _typeArgs) <+> bracesList _typeCons <+> pretty _typeLoc
+  pretty TypeDef {..} = "type" <+> pretty _typeName <+> 
+       anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _typeArgs) <+> 
+       bracesList _typeCons <+> pretty _typeLoc
 
 data TypeCon = TypeCon
   { _typeConName :: String,
@@ -343,7 +345,9 @@ data FuncIntf = FuncIntf
     )
 
 instance Pretty FuncIntf where
-  pretty FuncIntf {..} = pretty _intfName <+> bracesList _intfBoundVars <+> parensList _intfArgs <+> colon <+> pretty _intfEffectType <+> pretty _intfResultType <+> pretty _intfLoc
+  pretty FuncIntf {..} = pretty _intfName <+> bracesList _intfBoundVars <+> 
+            parensList _intfArgs <+> colon <+> pretty _intfEffectType <+>
+            pretty _intfResultType <+> pretty _intfLoc
 
 data EffectDef = EffectDef
   { _effectName :: String,
@@ -363,7 +367,9 @@ data EffectDef = EffectDef
     )
 
 instance Pretty EffectDef where
-  pretty EffectDef {..} = "effect" <+> pretty _effectName <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _effectArgs) <+> bracesList _effectIntfs <+> pretty _effectLoc
+  pretty EffectDef {..} = "effect" <+> pretty _effectName <+> 
+           anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _effectArgs) <+> 
+           bracesList _effectIntfs <+> pretty _effectLoc
 
 data ImportStmt = ImportStmt
   { _importPath :: NamePath,
