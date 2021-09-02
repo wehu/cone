@@ -47,6 +47,8 @@ typeCheckerSpec = hspec $ do
        a + b
      }
 
+     fun assign[a](a:a, a:a) : a
+
      fun bar(a: i32) : i32 {
        
       case c1(1) {
@@ -56,6 +58,8 @@ typeCheckerSpec = hspec $ do
       var c(c2(c1(e), f), d) = c(c2(c1(1), fff), fff)
       foo(1 - 3 + e)
       var c(c2(c1(e1), f1), d1) = c(c2(c1(1), fff), fff)
+
+      e1 = e1 + 1
 
       case a {
         2 -> {a}

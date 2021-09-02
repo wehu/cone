@@ -370,7 +370,7 @@ term =
                                 P.<|> A.EWhile <$ kWhile <*> term <*> braces exprSeq
                                 P.<|> A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace)
                                 P.<|> eif <$ kIf <*> term <*> braces exprSeq <* kElse <*> braces exprSeq
-                                P.<|> A.EVar <$> namePath
+                                P.<|> varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr)
                             )
                               <*> getPos
                           )
@@ -395,6 +395,9 @@ term =
           A.Case (A.PExpr $ A.ELit "false" (A.TPrim A.Pred pos) pos) Nothing f pos
         ]
         pos
+    varOrAssign v e pos = case e of
+                            Nothing -> A.EVar v pos
+                            Just e -> A.EApp (A.EVar "assign" pos) [A.EVar v pos, e] pos
 
 expr :: Parser A.Expr
 expr = PE.buildExpressionParser table term
