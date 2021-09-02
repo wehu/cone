@@ -688,7 +688,8 @@ inferExprEffType EHandle {..} = do
                                   Nothing -> return $ EffTotal _eloc
                 t -> throwError $ "expected a function type, but got " ++ ppr t
     effs <- mergeEffs eff _ehandleEff
-    checkEffTypeMatch effs intfEff
+    if aeq (closeEffType effs) (closeEffType intfEff) then return ()
+    else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff
   -- TODO check intefaces
   removeEff et _ehandleEff
 
@@ -778,7 +779,11 @@ checkEffTypeMatch :: (Has EnvEff sig m) => EffectType -> EffectType -> m ()
 checkEffTypeMatch a b = do
   al <- toEffList a
   bl <- toEffList b
-  if aeq (closeEffType al) (closeEffType bl) then return ()
+  let pos = _effLoc al
+  if aeq (al ^. effList) (bl ^. effList) &&
+     aeq (fmap closeEffType $ fmap (\e -> EffVar e pos) $ al ^.effBoundVar)
+         (fmap closeEffType $ fmap (\e -> EffVar e pos) $ bl ^.effBoundVar)
+  then return ()
   else throwError $ "eff type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 
 checkEffKindMatch :: (Has EnvEff sig m) => EffKind -> EffKind -> m ()

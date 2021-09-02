@@ -74,7 +74,7 @@ typeCheckerSpec = hspec $ do
           test(a)
           3
         } with {
-          fun test[b](a: a<b>) : a<b> {
+          fun test(a: a<a1>) : a<a1> {
             a
           }
         }
