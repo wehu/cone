@@ -381,32 +381,30 @@ initFuncDef m = initFuncTypes
         )
         fdefs
 
-checkFuncDef :: (Has EnvEff sig m) => Module -> m ()
-checkFuncDef m =
-  let fdefs = m ^.. topStmts . traverse . _FDef
-   in mapM_
-        ( \f -> underScope $ do
-            let pos = f ^. funcLoc
-                fn = f ^. funcName
-                bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-            forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
-            mapM_
-              (\(n, t) -> setEnv (Just t) $ funcs . at n)
-              (f ^. funcArgs)
-            case f ^. funcExpr of
-              Just e -> do
-                eType <- inferExprType e
-                if aeq eType (f ^. funcResultType) 
-                  then return ()
-                  else
-                    throwError $
-                      "function result type mismatch: "
-                        ++ ppr eType
-                        ++ " vs "
-                        ++ ppr (f ^. funcResultType)
-              Nothing -> return ()
-        )
-        fdefs
+checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
+checkFuncDef f = underScope $ do
+  let pos = f ^. funcLoc
+      fn = f ^. funcName
+      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+  forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
+  mapM_
+    (\(n, t) -> setEnv (Just t) $ funcs . at n)
+    (f ^. funcArgs)
+  case f ^. funcExpr of
+    Just e -> do
+      eType <- inferExprType e
+      if aeq eType (f ^. funcResultType) 
+        then return ()
+        else
+          throwError $
+            "function result type mismatch: "
+              ++ ppr eType
+              ++ " vs "
+              ++ ppr (f ^. funcResultType)
+    Nothing -> return ()
+
+checkFuncDefs :: (Has EnvEff sig m) => Module -> m ()
+checkFuncDefs m = mapM_ checkFuncDef $ m ^.. topStmts . traverse . _FDef
 
 checkImplFuncDef :: (Has EnvEff sig m) => Module -> m ()
 checkImplFuncDef m =
@@ -532,7 +530,14 @@ inferExprType EWhile {..} = do
     k <- inferTypeKind t
     checkTypeKind k
   return $ TPrim Unit _eloc
-inferExprType e = throwError $ "unsupported expression: " ++ ppr e
+inferExprType EHandle {..} = do
+  ek <- inferEffKind _ehandleEff
+  checkEffKind ek
+  bodyType <- inferExprType _ehandleScope
+  btk <- inferTypeKind bodyType
+  checkTypeKind btk
+  underScope $ forM_ _ehandleBindings checkFuncDef
+  return bodyType
 
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
 inferPatternType PVar {..} = inferExprType $ EVar _pvar _ploc
@@ -707,6 +712,6 @@ checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 checkType m env id = run . runError . (runState env) . runFresh id $ do
   checkTypeConDef m
   checkEffIntfDef m
-  checkFuncDef m
+  checkFuncDefs m
   checkImplFuncDef m
   return m
