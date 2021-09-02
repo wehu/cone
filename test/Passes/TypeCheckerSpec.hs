@@ -57,7 +57,7 @@ typeCheckerSpec = hspec $ do
        a + b
      }
 
-     fun assign[a](a:a, a:a) : a
+     fun ____assign[a](a:a, a:a) : a
 
      fun bar(a: i32) : i32 {
        
