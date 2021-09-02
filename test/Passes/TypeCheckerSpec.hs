@@ -71,10 +71,10 @@ typeCheckerSpec = hspec $ do
 
       fun zzz[a1](a:a<a1>) : i32 {
         handle a<a1> {
-          test(a)
+          test(c1(1))
           3
         } with {
-          fun test(a: a<a1>) : a<a1> {
+          fun test(a: a<i32>) : a<i32> {
             a
           }
         }
