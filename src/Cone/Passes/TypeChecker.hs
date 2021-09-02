@@ -372,6 +372,15 @@ checkFuncDef f = underScope $ do
   let pos = f ^. funcLoc
       fn = f ^. funcName
       bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+      argTypes = f ^. funcArgs ^.. traverse . _2
+      effType = f ^. funcEffectType . (non $ EffTotal pos)
+      resultType = f ^. funcResultType
+      ft =
+        BoundType $
+          bind (f ^. funcBoundVars) $
+            TFunc argTypes (Just effType) resultType pos
+  k <- inferTypeKind ft
+  checkTypeKind k
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   mapM_
     (\(n, t) -> setEnv (Just t) $ funcs . at n)
