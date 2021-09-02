@@ -694,7 +694,7 @@ mergeEffs a@EffList{} b@EffList{} = do
       v = case av of
            Just _ -> av
            Nothing -> bv
-      l = al
+      l = L.unionBy aeq al bl
   return $ EffList l v pos
 mergeEffs a b = do
   al <- toEffList a
