@@ -409,8 +409,8 @@ checkImplFuncDef f = underScope $ do
   ift <- getEnv $ funcs . at fn
   forMOf _Nothing ift $ \_ ->
     throwError $ "cannot find general function definiton for impl: " ++ fn
-  bindings <- collectVarBinding (fromJust ift) ft
-  checkVarBinding bindings
+  bindings <- collectVarBindings (fromJust ift) ft
+  checkVarBindings bindings
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   mapM_
     (\(n, t) -> setEnv (Just t) $ funcs . at n)
@@ -574,7 +574,7 @@ extractPatternType a@PApp {..} t = underScope $ do
         )
   argTypes <- mapM cntr (appFuncType ^. tfuncArgs)
   appT <- inferAppResultType appFuncType argTypes
-  bindings <- collectVarBinding appT t
+  bindings <- collectVarBindings appT t
   foldM
     ( \s e ->
         (++) <$> return s <*> e
@@ -582,12 +582,12 @@ extractPatternType a@PApp {..} t = underScope $ do
     []
     [extractPatternType arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
 
-collectVarBinding :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
-collectVarBinding a@TPrim {} b@TPrim {} = do
+collectVarBindings :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
+collectVarBindings a@TPrim {} b@TPrim {} = do
   if aeq a b
     then return []
     else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
-collectVarBinding a@TVar {..} t = do
+collectVarBindings a@TVar {..} t = do
   tk <- getEnv $ types . at (name2String _tvar)
   case tk of
     Just _ -> do
@@ -600,7 +600,7 @@ collectVarBinding a@TVar {..} t = do
        in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
             then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t
             else return [(_tvar, t)]
-collectVarBinding a@TFunc {} b@TFunc {} =
+collectVarBindings a@TFunc {} b@TFunc {} =
   if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
     then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
     else
@@ -608,10 +608,10 @@ collectVarBinding a@TFunc {} b@TFunc {} =
         <$> ( foldM
                 (\s e -> (++) <$> (return s) <*> e)
                 []
-                [collectVarBinding aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
+                [collectVarBindings aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
             )
-        <*> collectVarBinding (_tfuncResult a) (_tfuncResult b)
-collectVarBinding a@TApp {} b@TApp {} =
+        <*> collectVarBindings (_tfuncResult a) (_tfuncResult b)
+collectVarBindings a@TApp {} b@TApp {} =
   -- not support higher kind so far
   if L.length (_tappArgs a) == L.length (_tappArgs b)
     && aeq (_tappName a) (_tappName b)
@@ -619,18 +619,18 @@ collectVarBinding a@TApp {} b@TApp {} =
       foldM
         (\s e -> (++) <$> (return s) <*> e)
         []
-        [collectVarBinding aarg barg | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
+        [collectVarBindings aarg barg | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
     else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
-collectVarBinding a@TAnn {} b@TAnn {} =
-  collectVarBinding (_tannType a) (_tannType b)
-collectVarBinding a@BoundType {} b@BoundType {} = do
+collectVarBindings a@TAnn {} b@TAnn {} =
+  collectVarBindings (_tannType a) (_tannType b)
+collectVarBindings a@BoundType {} b@BoundType {} = do
   at <- unbindType a
   bt <- unbindType b
-  collectVarBinding at bt
-collectVarBinding a b = throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+  collectVarBindings at bt
+collectVarBindings a b = throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 
-checkVarBinding :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
-checkVarBinding bindings = do
+checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
+checkVarBindings bindings = do
   foldM_
     ( \b (n, t) -> do
         case b ^. at n of
@@ -653,8 +653,8 @@ inferAppResultType f@TFunc {} args = do
     foldM
       (\s e -> (++) <$> return s <*> e)
       []
-      [collectVarBinding a b | a <- fArgTypes | b <- args]
-  checkVarBinding bindings
+      [collectVarBindings a b | a <- fArgTypes | b <- args]
+  checkVarBindings bindings
   return $ substs bindings $ _tfuncResult f
 inferAppResultType t _ = throwError $ "expected a function type, but got " ++ ppr t
 
