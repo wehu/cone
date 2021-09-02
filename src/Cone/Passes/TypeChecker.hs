@@ -162,10 +162,10 @@ inferTypeKind a@TApp {..} = do
           forM_
             [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
             $ \(a, b) -> do
-              inferTypeKind a
-          --     checkTypeKind t
-          --     checkTypeKind b
-          --     checkKindMatch t b
+              t<- inferTypeKind a
+              checkTypeKind t
+              checkTypeKind b
+              checkKindMatch t b
           checkTypeKind _kfuncResult
           return _kfuncResult
 inferTypeKind a@TAnn {..} = do

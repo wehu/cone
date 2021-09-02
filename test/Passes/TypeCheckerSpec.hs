@@ -35,13 +35,9 @@ typeCheckerSpec = hspec $ do
        fun test(a<b>) : a<b>
      }
      
-     type ccc<a:number> {
-       ccc(a)
-     }
-
-     fun ttt(a : ccc<1>) : ccc<1> {
-       a
-     }
+     //type ccc<a:number> {
+     //  ccc
+     //}
 
      fun sub[a](a: a, b:a) : a
 
