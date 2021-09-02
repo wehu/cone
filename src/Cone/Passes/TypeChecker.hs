@@ -668,6 +668,7 @@ inferExprEffType ESeq {..} =
     mergeEffs s et) (EffTotal $ _eloc $ last _eseq) _eseq
 inferExprEffType EHandle {..} = do
   et <- inferExprEffType _ehandleScope
+  mapM_ checkFuncDef _ehandleBindings
   -- TODO check intefaces
   removeEff et _ehandleEff
 
