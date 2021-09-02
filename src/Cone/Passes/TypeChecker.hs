@@ -649,6 +649,54 @@ inferAppResultType f@TFunc {} args = do
   return $ substs bindings $ _tfuncResult f
 inferAppResultType t _ = throwError $ "expected a function type, but got " ++ ppr t
 
+inferExprEffType :: (Has EnvEff sig m) => Expr -> m EffectType
+inferExprEffType EVar {..} = return $ EffTotal _eloc
+inferExprEffType ELit {..} = return $ EffTotal _eloc
+inferExprEffType EAnn {..} = inferExprEffType _eannExpr
+inferExprEffType l@ELam {..} = do
+  let et = case _elamEffType of
+             Just et -> et
+             Nothing -> EffTotal _eloc
+  forMOf _Nothing _elamExpr $ \_ ->
+    throwError $ "expected an expression for lambda"
+  resultEffType <- inferExprEffType $ fromJust _elamExpr
+  if aeq et resultEffType then return $ EffTotal _eloc
+  else throwError $ "lambda eff type mismatch: " ++ ppr et ++ " vs " ++ ppr resultEffType
+inferExprEffType ELet {..} = inferExprEffType _eletExpr
+inferExprEffType ECase {..} = do
+  ce <- inferExprEffType _ecaseExpr
+  cse <- mapM inferExprEffType $ _ecaseBody ^..traverse.caseExpr
+  let le:_ = cse
+  forM_ cse $ \e -> do
+    if aeq le e then return ()
+    else throwError $ "eff type mismatch: " ++ ppr le ++ " vs " ++ ppr e
+  return $ mergeEffs ce le
+inferExprEffType EWhile {..} = do
+  ce <- inferExprEffType _ewhileCond
+  be <- inferExprEffType _ewhileBody
+  if aeq ce be then return $ mergeEffs ce be
+  else throwError $ "eff type mismatch: " ++ ppr ce ++ " vs " ++ ppr be
+inferExprEffType EApp {..} = do
+  ft <- inferExprType _eappFunc
+  case ft of
+    TFunc{..} -> case _tfuncEff of
+                   Just et -> return et
+                   Nothing -> return $ EffTotal _eloc
+    _ -> throwError $ "expect a function type for application, but got " ++ ppr ft
+inferExprEffType ESeq {..} =
+  foldM (\s e -> do
+    et <- inferExprEffType e
+    return $ mergeEffs s et) (EffTotal $ _eloc $ last _eseq) _eseq
+--  | EHandle
+--      { _ehandleEff :: EffectType,
+--        _ehandleScope :: Expr,
+--        _ehandleBindings :: [FuncDef],
+--        _eloc :: Location
+--      }
+
+mergeEffs :: EffectType -> EffectType -> EffectType
+mergeEffs a b = a
+
 closeType :: Type -> Bind [TVar] Type
 closeType t =
   let fvars = t ^.. fv
