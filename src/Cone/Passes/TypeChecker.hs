@@ -192,7 +192,7 @@ inferTypeKind f@TFunc {..} = do
   rk <- inferTypeKind _tfuncResult
   checkTypeKind rk
   return $ KStar _tloc
-inferTypeKind n@TNum {..} = return $ KNum _tloc
+inferTypeKind n@TNum {..} = return $ KStar _tloc
 inferTypeKind t = return $ KStar $ _tloc t
 
 inferType :: (Has EnvEff sig m) => Type -> m Type
@@ -635,6 +635,9 @@ collectVarBindings a@BoundType {} b@BoundType {} = do
   at <- unbindType a
   bt <- unbindType b
   collectVarBindings at bt
+collectVarBindings a@TNum{} b@TNum{} =
+  if (_tnum a) == (_tnum b) then return []
+  else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 collectVarBindings a b = throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
 
 checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
