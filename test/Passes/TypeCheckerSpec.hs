@@ -31,9 +31,7 @@ typeCheckerSpec = hspec $ do
        c2(a<b>, ff)
      }
 
-     type ____add<a, a> {
-       add000
-     }
+     type ____add<a, a>{}
 
      effect a<b> {
        fun test(a<b>) : a<b>

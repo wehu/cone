@@ -444,7 +444,7 @@ typeCon =
 typeDef :: Parser A.TypeDef
 typeDef =
   A.TypeDef <$ kType <*> ident <*> typeArgs
-    <*> braces (P.sepBy1 typeCon $ P.try $ semi <* P.notFollowedBy rBrace)
+    <*> braces (P.sepBy typeCon $ P.try $ semi <* P.notFollowedBy rBrace)
     <*> getPos
 
 funcIntf :: Parser A.FuncIntf
