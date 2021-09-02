@@ -298,35 +298,35 @@ exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr)
 
 funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
 
-table =
-  [ [prefix sub "negative"],
-    [ binary star "mul" PE.AssocLeft,
-      binary div_ "div" PE.AssocLeft,
-      binary mod_ "mod" PE.AssocLeft
+exprTable =
+  [ [exprPrefix sub "negative"],
+    [ exprBinary star "mul" PE.AssocLeft,
+      exprBinary div_ "div" PE.AssocLeft,
+      exprBinary mod_ "mod" PE.AssocLeft
     ],
-    [ binary add "add" PE.AssocLeft,
-      binary sub "sub" PE.AssocLeft
+    [ exprBinary add "add" PE.AssocLeft,
+      exprBinary sub "sub" PE.AssocLeft
     ],
-    [ binary less "lt" PE.AssocLeft,
-      binary greater "gt" PE.AssocLeft,
-      binary le "le" PE.AssocLeft,
-      binary ge "ge" PE.AssocLeft
+    [ exprBinary less "lt" PE.AssocLeft,
+      exprBinary greater "gt" PE.AssocLeft,
+      exprBinary le "le" PE.AssocLeft,
+      exprBinary ge "ge" PE.AssocLeft
     ],
-    [ binary eq "eq" PE.AssocLeft,
-      binary ne "ne" PE.AssocLeft
+    [ exprBinary eq "eq" PE.AssocLeft,
+      exprBinary ne "ne" PE.AssocLeft
     ],
-    [prefix not_ "not"],
-    [ binary and_ "and" PE.AssocLeft,
-      binary or_ "or" PE.AssocLeft
+    [exprPrefix not_ "not"],
+    [ exprBinary and_ "and" PE.AssocLeft,
+      exprBinary or_ "or" PE.AssocLeft
     ]
   ]
 
-prefix op name = PE.Prefix $ do
+exprPrefix op name = PE.Prefix $ do
   op
   pos <- getPos
   return $ \i -> A.EApp (A.EVar name pos) [i] pos
 
-binary op name assoc =
+exprBinary op name assoc =
   PE.Infix
     ( do
         op
@@ -400,7 +400,7 @@ term =
                             Just e -> A.EApp (A.EVar "assign" pos) [A.EVar v pos, e] pos
 
 expr :: Parser A.Expr
-expr = PE.buildExpressionParser table term
+expr = PE.buildExpressionParser exprTable term
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
 typeArgs =
