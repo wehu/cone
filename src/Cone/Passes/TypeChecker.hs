@@ -477,11 +477,11 @@ inferExprType ESeq {..} = do
   ts <- mapM inferExprType _eseq
   return $ last ts
 inferExprType ELet {..} =
-  bindPatternVarsType _eletPattern _eletExpr
+  bindPatternVarTypes _eletPattern _eletExpr
 inferExprType ECase {..} = do
   ct <- inferExprType _ecaseExpr
   ts <- forM _ecaseBody $ \c -> underScope $ do
-    bindPatternVarsType (c ^. casePattern) _ecaseExpr
+    bindPatternVarTypes (c ^. casePattern) _ecaseExpr
     pt <- inferPatternType $ c ^. casePattern
     et <- inferExprType $ c ^. caseExpr
     return (pt, et)
@@ -522,10 +522,10 @@ inferPatternType PApp {..} = do
   inferAppResultType appFuncType args
 inferPatternType PExpr {..} = inferExprType _pExpr
 
-bindPatternVarsType :: (Has EnvEff sig m) => Pattern -> Expr -> m Type
-bindPatternVarsType p e = do
+bindPatternVarTypes :: (Has EnvEff sig m) => Pattern -> Expr -> m Type
+bindPatternVarTypes p e = do
   eType <- inferExprType e
-  typeBindings <- extractPatternType p eType
+  typeBindings <- extracePatternVarTypes p eType
   foldM
     ( \bs (v, t) -> do
         let n = name2String v
@@ -539,10 +539,10 @@ bindPatternVarsType p e = do
     typeBindings
   return eType
 
-extractPatternType :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
-extractPatternType PVar {..} t = return [(s2n _pvar, t)]
-extractPatternType PExpr {..} t = return []
-extractPatternType a@PApp {..} t = underScope $ do
+extracePatternVarTypes :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
+extracePatternVarTypes PVar {..} t = return [(s2n _pvar, t)]
+extracePatternVarTypes PExpr {..} t = return []
+extracePatternVarTypes a@PApp {..} t = underScope $ do
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
   let cntr =
         ( \arg ->
@@ -571,7 +571,7 @@ extractPatternType a@PApp {..} t = underScope $ do
         (++) <$> return s <*> e
     )
     []
-    [extractPatternType arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
+    [extracePatternVarTypes arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
 
 collectVarBindings :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
 collectVarBindings a@TPrim {} b@TPrim {} = do
