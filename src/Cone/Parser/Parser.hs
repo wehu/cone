@@ -421,9 +421,9 @@ funcIntf :: Parser A.FuncIntf
 funcIntf =
   f <$ kFunc <*> ident <*> boundTVars
     <*> parens (P.sepBy type_ comma) <* colon
-    <*> type_ 
+    <*> resultType 
     <*> getPos
-  where f n bs args r pos = A.FuncIntf n bs args Nothing r pos
+  where f n bs args (e, r) pos = A.FuncIntf n bs args e r pos
 
 effectDef :: Parser A.EffectDef
 effectDef =

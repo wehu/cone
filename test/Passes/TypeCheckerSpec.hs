@@ -31,9 +31,8 @@ typeCheckerSpec = hspec $ do
        c2(a<b>, ff)
      }
 
-     effect a<b,c> {
+     effect a<b> {
        fun test(a<b>) : a<b>
-       fun test1(b,c) : b
      }
 
      fun sub[a](a: a, b:a) : a
@@ -70,9 +69,9 @@ typeCheckerSpec = hspec $ do
         fn[c](a:c):c{a}(a:a)
      }
 
-      fun zzz[a1, b1]() : i32 {
-        handle a<a1, b1> {
-          test(c1(1))
+      fun zzz[a1](a:a<a1>) : i32 {
+        handle a<a1> {
+          test(a)
           3
         } with {
           fun test[b](a: a<b>) : a<b> {
@@ -85,7 +84,7 @@ typeCheckerSpec = hspec $ do
      // xxxx
 
        |]
-      --(show $ fmap (\m -> infer m) $ parse "" source) `shouldBe` ""
+      -- (show $ fmap (\m -> initModule m initialEnv 0) $ parse "" source) `shouldBe` ""
       ( fmap
           (\m -> do
             let (Right (env, (id, _))) = initModule m initialEnv 0

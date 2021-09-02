@@ -293,18 +293,20 @@ initEffIntfDef e = do
         forMOf _Just ot $ \t ->
           throwError $
             "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
-        let bt = intfType i e
+        let eff = case i ^. intfEffectType of
+                      Just e -> e
+                      Nothing -> EffTotal pos
+        effs <- mergeEffs eff $ EffApp (e ^. effectName) 
+                 (map (\v->TVar v pos) $ e ^..effectArgs.traverse._1) pos
+        let bt = intfType i e effs
         setEnv (Just bt) $ funcs . at intfn
   mapM_ f is
-  where intfType i e =
+  where intfType i e eff =
           let iargs = i ^. intfArgs
               iresult = i ^. intfResultType
               intfn = i ^. intfName
               bvars = i ^. intfBoundVars
               pos = i ^. intfLoc
-              eff = case i ^. intfEffectType of
-                      Just e -> e
-                      Nothing -> EffTotal pos
               tvars = e ^.. effectArgs . traverse . _1
            in BoundType $
                 bind tvars $
@@ -656,11 +658,10 @@ inferExprEffType EWhile {..} = do
   mergeEffs ce be
 inferExprEffType EApp {..} = do
   ft <- inferExprType _eappFunc >>= unbindType
-  case ft of
-    TFunc{..} -> case _tfuncEff of
-                   Just et -> return et
-                   Nothing -> return $ EffTotal _eloc
-    _ -> throwError $ "expect a function type for application, but got " ++ ppr ft
+  argTypes <- mapM inferExprType _eappArgs
+  argKinds <- mapM inferTypeKind argTypes
+  mapM_ checkTypeKind argKinds
+  inferAppResultEffType ft argTypes
 inferExprEffType ESeq {..} =
   foldM (\s e -> do
     et <- inferExprEffType e
@@ -669,6 +670,24 @@ inferExprEffType EHandle {..} = do
   et <- inferExprEffType _ehandleScope
   -- TODO check intefaces
   removeEff et _ehandleEff
+
+inferAppResultEffType :: (Has EnvEff sig m) => Type -> [Type] -> m EffectType
+inferAppResultEffType f@TFunc {} args = do
+  let fArgTypes = _tfuncArgs f
+  if L.length fArgTypes /= L.length args
+    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args
+    else return ()
+  bindings <-
+    foldM
+      (\s e -> (++) <$> return s <*> e)
+      []
+      [collectVarBindings a b | a <- fArgTypes | b <- args]
+  checkVarBindings bindings
+  let resEff = case _tfuncEff f of
+                 Just e -> e
+                 Nothing -> EffTotal $ _tloc f
+  return $ substs bindings resEff
+inferAppResultEffType t _ = throwError $ "expected a function type, but got " ++ ppr t
 
 toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
 toEffList a@EffVar{..} = return $ EffList [a] Nothing _effLoc
@@ -723,8 +742,6 @@ removeEff f e = do
   fl <- toEffList f
   el <- toEffList e
   removeEff fl el
-
---  | EffList {_effList :: [EffectType], _effBoundVar:: Maybe TVar, _effLoc :: Location}
 
 checkTypeMatch :: (Has EnvEff sig m) => Type -> Type -> m ()
 checkTypeMatch a b = do
