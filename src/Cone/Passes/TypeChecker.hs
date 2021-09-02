@@ -668,7 +668,14 @@ inferExprEffType ESeq {..} =
     mergeEffs s et) (EffTotal $ _eloc $ last _eseq) _eseq
 inferExprEffType EHandle {..} = do
   et <- inferExprEffType _ehandleScope
-  mapM_ checkFuncDef _ehandleBindings
+  forM_ _ehandleBindings $ \intf -> do
+    checkFuncDef intf 
+    let ft = funcDefType intf
+    intfT <- getEnv $ funcs . at (intf ^. funcName)
+    forMOf _Nothing intfT $ \_ ->
+      throwError $ "cannot find eff interface defintion for " ++ ppr intf
+    binds <- collectVarBindings (fromJust intfT) ft
+    checkVarBindings binds
   -- TODO check intefaces
   removeEff et _ehandleEff
 
