@@ -2,7 +2,7 @@ module Cone.CodeGen.ModuleLoader (loadModule) where
 
 import Cone.Parser.AST
 import Cone.Parser.Parser
-import Cone.Passes.TypeChecker
+import Cone.TypeChecker
 import Control.Lens
 import Control.Monad
 import Control.Monad.Except

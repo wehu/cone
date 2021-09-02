@@ -1,5 +1,5 @@
 import Parser.ParserSpec
-import Passes.TypeCheckerSpec
+import TypeCheckerSpec
 
 main :: IO ()
 main = do

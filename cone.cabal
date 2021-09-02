@@ -35,10 +35,10 @@ library
       Cone.Parser.AST
       Cone.Parser.Lexer
       Cone.Parser.Parser
-      Cone.Passes.TypeChecker
-      Cone.Passes.TypeChecker.Env
-      Cone.Passes.TypeChecker.Expr
-      Cone.Passes.TypeChecker.Type
+      Cone.TypeChecker
+      Cone.TypeChecker.Env
+      Cone.TypeChecker.Expr
+      Cone.TypeChecker.Type
   other-modules:
       Paths_cone
   hs-source-dirs:
@@ -88,7 +88,7 @@ test-suite cone-test
   main-is: Spec.hs
   other-modules:
       Parser.ParserSpec
-      Passes.TypeCheckerSpec
+      TypeCheckerSpec
       Paths_cone
   hs-source-dirs:
       test
