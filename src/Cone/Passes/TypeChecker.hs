@@ -134,8 +134,7 @@ initTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
 initTypeConDefs m = mapM_ initTypeConDef $ m ^.. topStmts . traverse . _TDef
 
 checkTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
-checkTypeConDef t = do
-  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+checkTypeConDef t = 
   forM_ (t ^. typeCons) $ \c -> do
     let cn = c ^. typeConName
     t <- getEnv $ funcs . at cn
@@ -163,10 +162,10 @@ inferTypeKind a@TApp {..} = do
           forM_
             [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
             $ \(a, b) -> do
-              t <- inferTypeKind a
-              checkTypeKind t
-              checkTypeKind b
-              checkKindMatch t b
+              inferTypeKind a
+          --     checkTypeKind t
+          --     checkTypeKind b
+          --     checkKindMatch t b
           checkTypeKind _kfuncResult
           return _kfuncResult
 inferTypeKind a@TAnn {..} = do

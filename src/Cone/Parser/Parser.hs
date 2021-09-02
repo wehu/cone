@@ -69,6 +69,8 @@ kElse = keyword L.Else
 
 kWhile = keyword L.While
 
+kNum = keyword L.Num
+
 semi = P.many1 $ symbol L.Semi
 
 lParen = symbol L.LParen
@@ -200,6 +202,7 @@ imports =
 kind :: Parser A.Kind
 kind =
   ( A.KStar <$ star
+      P.<|> A.KNum <$ kNum
       P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind)
   )
     <*> getPos
@@ -228,6 +231,7 @@ type_ =
                 P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType)
                 P.<|> (A.TVar <$> (s2n <$> ident))
                 P.<|> (A.TPrim <$> primType)
+                P.<|> (A.TNum <$> (read <$> literalInt))
             )
               <*> getPos
           )
