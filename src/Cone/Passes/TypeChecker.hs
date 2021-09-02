@@ -345,31 +345,27 @@ checkEffIntfDefs m = mapM_ checkEffIntfDef $ m ^.. topStmts . traverse . _EDef
 freeVarName :: Int -> TVar
 freeVarName i = makeName "$" $ toInteger i
 
-initFuncDef :: (Has EnvEff sig m) => Module -> m ()
-initFuncDef m = initFuncTypes
-  where
-    fdefs = m ^.. topStmts . traverse . _FDef
-    initFuncTypes =
-      mapM_
-        ( \f -> do
-            let pos = f ^. funcLoc
-                fn = f ^. funcName
-                bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-                argTypes = f ^. funcArgs ^.. traverse . _2
-                effType = f ^. funcEffectType . (non $ EffTotal pos)
-                resultType = f ^. funcResultType
-                ft =
-                  BoundType $
-                    bind (f ^. funcBoundVars) $
-                      TFunc argTypes (Just effType) resultType pos
-            k <- inferTypeKind ft
-            checkTypeKind k
-            oft <- getEnv $ funcs . at fn
-            forMOf _Just oft $ \oft ->
-              throwError $ "function redefine: " ++ fn
-            setEnv (Just ft) $ funcs . at fn
-        )
-        fdefs
+initFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
+initFuncDef f = do
+  let pos = f ^. funcLoc
+      fn = f ^. funcName
+      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+      argTypes = f ^. funcArgs ^.. traverse . _2
+      effType = f ^. funcEffectType . (non $ EffTotal pos)
+      resultType = f ^. funcResultType
+      ft =
+        BoundType $
+          bind (f ^. funcBoundVars) $
+            TFunc argTypes (Just effType) resultType pos
+  k <- inferTypeKind ft
+  checkTypeKind k
+  oft <- getEnv $ funcs . at fn
+  forMOf _Just oft $ \oft ->
+    throwError $ "function redefine: " ++ fn
+  setEnv (Just ft) $ funcs . at fn
+
+initFuncDefs :: (Has EnvEff sig m) => Module -> m ()
+initFuncDefs m = mapM_ initFuncDef $ m ^.. topStmts . traverse . _FDef
 
 checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
 checkFuncDef f = underScope $ do
@@ -396,46 +392,44 @@ checkFuncDef f = underScope $ do
 checkFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 checkFuncDefs m = mapM_ checkFuncDef $ m ^.. topStmts . traverse . _FDef
 
-checkImplFuncDef :: (Has EnvEff sig m) => Module -> m ()
-checkImplFuncDef m =
-  let fdefs = m ^.. topStmts . traverse . _ImplFDef . implFunDef
-   in mapM_
-        ( \f -> underScope $ do
-            let pos = f ^. funcLoc
-                fn = f ^. funcName
-                bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-                argTypes = f ^. funcArgs ^.. traverse . _2
-                effType = f ^. funcEffectType . (non $ EffTotal pos)
-                resultType = f ^. funcResultType
-                ft =
-                  BoundType $
-                    bind (f ^. funcBoundVars) $
-                      TFunc argTypes (Just effType) resultType pos
-            k <- inferTypeKind ft
-            checkTypeKind k
-            ift <- getEnv $ funcs . at fn
-            forMOf _Nothing ift $ \_ ->
-              throwError $ "cannot find general function definiton for impl: " ++ fn
-            bindings <- collectVarBinding (fromJust ift) ft
-            checkVarBinding bindings
-            forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
-            mapM_
-              (\(n, t) -> setEnv (Just t) $ funcs . at n)
-              (f ^. funcArgs)
-            case f ^. funcExpr of
-              Just e -> do
-                eType <- inferExprType e
-                if aeq eType (f ^. funcResultType) 
-                  then return ()
-                  else
-                    throwError $
-                      "function result type mismatch: "
-                        ++ ppr eType
-                        ++ " vs "
-                        ++ ppr (f ^. funcResultType)
-              Nothing -> return ()
-        )
-        fdefs
+checkImplFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
+checkImplFuncDef f = underScope $ do
+  let pos = f ^. funcLoc
+      fn = f ^. funcName
+      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+      argTypes = f ^. funcArgs ^.. traverse . _2
+      effType = f ^. funcEffectType . (non $ EffTotal pos)
+      resultType = f ^. funcResultType
+      ft =
+        BoundType $
+          bind (f ^. funcBoundVars) $
+            TFunc argTypes (Just effType) resultType pos
+  k <- inferTypeKind ft
+  checkTypeKind k
+  ift <- getEnv $ funcs . at fn
+  forMOf _Nothing ift $ \_ ->
+    throwError $ "cannot find general function definiton for impl: " ++ fn
+  bindings <- collectVarBinding (fromJust ift) ft
+  checkVarBinding bindings
+  forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
+  mapM_
+    (\(n, t) -> setEnv (Just t) $ funcs . at n)
+    (f ^. funcArgs)
+  case f ^. funcExpr of
+    Just e -> do
+      eType <- inferExprType e
+      if aeq eType (f ^. funcResultType) 
+        then return ()
+        else
+          throwError $
+            "function result type mismatch: "
+              ++ ppr eType
+              ++ " vs "
+              ++ ppr (f ^. funcResultType)
+    Nothing -> return ()
+
+checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m ()
+checkImplFuncDefs m = mapM_ checkImplFuncDef $ m ^.. topStmts . traverse . _ImplFDef . implFunDef
 
 inferExprType :: (Has EnvEff sig m) => Expr -> m Type
 inferExprType EVar {..} = do
@@ -695,7 +689,7 @@ initModule m env id = run . runError . (runState env) . runFresh id $ do
   initEffTypeDefs m
   initTypeConDefs m
   initEffIntfDefs m
-  initFuncDef m
+  initFuncDefs m
   return m
 
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
@@ -703,5 +697,5 @@ checkType m env id = run . runError . (runState env) . runFresh id $ do
   checkTypeConDefs m
   checkEffIntfDefs m
   checkFuncDefs m
-  checkImplFuncDef m
+  checkImplFuncDefs m
   return m
