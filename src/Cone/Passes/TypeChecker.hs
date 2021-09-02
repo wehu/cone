@@ -422,6 +422,11 @@ checkImplFuncDef m =
                       TFunc argTypes (Just effType) resultType pos
             k <- inferTypeKind ft
             checkTypeKind k
+            ift <- getEnv $ funcs . at fn
+            forMOf _Nothing ift $ \_ ->
+              throwError $ "cannot find general function definiton for impl: " ++ fn
+            bindings <- collectVarBinding (fromJust ift) ft
+            checkVarBinding bindings
             forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
             mapM_
               (\(n, t) -> setEnv (Just t) $ funcs . at n)
@@ -627,15 +632,24 @@ collectVarBinding a@TApp {} b@TApp {} =
 collectVarBinding a@TAnn {} b@TAnn {} =
   collectVarBinding (_tannType a) (_tannType b)
 collectVarBinding a@BoundType {} b@BoundType {} = do
-  let (ats, _) = unsafeUnbind $ _boundType a
-      (bts, _) = unsafeUnbind $ _boundType b
-  if L.length ats /= L.length bts
-    then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
-    else return ()
   at <- unbindType a
   bt <- unbindType b
   collectVarBinding at bt
 collectVarBinding a b = throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+
+checkVarBinding :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
+checkVarBinding bindings = do
+  foldM_
+    ( \b (n, t) -> do
+        case b ^. at n of
+          Nothing -> return $ at n ?~ t $ b
+          Just ot ->
+            if aeq t ot
+              then return b
+              else throwError $ "type var binding conflict: " ++ ppr t ++ " vs " ++ ppr ot
+    )
+    M.empty
+    bindings
 
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 inferAppResultType f@TFunc {} args = do
@@ -648,17 +662,7 @@ inferAppResultType f@TFunc {} args = do
       (\s e -> (++) <$> return s <*> e)
       []
       [collectVarBinding a b | a <- fArgTypes | b <- args]
-  foldM
-    ( \b (n, t) -> do
-        case b ^. at n of
-          Nothing -> return $ at n ?~ t $ b
-          Just ot ->
-            if aeq t ot
-              then return b
-              else throwError $ "type var binding conflict: " ++ ppr t ++ " vs " ++ ppr ot
-    )
-    M.empty
-    bindings
+  checkVarBinding bindings
   return $ substs bindings $ _tfuncResult f
 inferAppResultType t _ = throwError $ "expected a function type, but got " ++ ppr t
 
