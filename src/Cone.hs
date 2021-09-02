@@ -5,8 +5,8 @@ module Cone
   )
 where
 
-import Cone.CodeGen.Compiler
-import Cone.CodeGen.ModuleLoader
+import Cone.Compiler
+import Cone.ModuleLoader
 import Control.Monad
 import Control.Monad.Except
 import Data.Semigroup ((<>))

@@ -1,4 +1,4 @@
-module Cone.CodeGen.ModuleLoader (loadModule) where
+module Cone.ModuleLoader (loadModule) where
 
 import Cone.Parser.AST
 import Cone.Parser.Parser

@@ -1,10 +1,10 @@
 {-# LANGUAGE TypeApplications #-}
 
-module Cone.CodeGen.Compiler (compile) where
+module Cone.Compiler (compile) where
 
 import Cone.CodeGen.Backend
 import Cone.CodeGen.Backend.Cone
-import Cone.CodeGen.ModuleLoader
+import Cone.ModuleLoader
 import Control.Monad
 import Control.Monad.Except
 import Data.Proxy

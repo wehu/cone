@@ -30,8 +30,8 @@ library
       Cone
       Cone.CodeGen.Backend
       Cone.CodeGen.Backend.Cone
-      Cone.CodeGen.Compiler
-      Cone.CodeGen.ModuleLoader
+      Cone.Compiler
+      Cone.ModuleLoader
       Cone.Parser.AST
       Cone.Parser.Lexer
       Cone.Parser.Parser
