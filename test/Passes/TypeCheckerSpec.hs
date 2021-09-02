@@ -31,15 +31,15 @@ typeCheckerSpec = hspec $ do
        c2(a<b>, ff)
      }
 
-     type ____add<a, a>{}
+     type ____add<a, a>
 
      effect a<b> {
        fun test(a<b>) : a<b>
      }
      
-     type tensor<a> {}
+     type tensor<a>
 
-     type ____pair<a, b> {}
+     type ____pair<a, b>
 
      fun typeTest[i,j, k](a:tensor<[i, j, k]>) : tensor<[i+1, j+2, k+3]>
 

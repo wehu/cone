@@ -16,18 +16,18 @@ fun ____assign[a](a: a, b:a) : a
 
 // builtin types
 
-type ____add<a, a> {}
+type ____add<a, a>
 
-type ____sub<a, a> {}
+type ____sub<a, a>
 
-type ____mul<a, a> {}
+type ____mul<a, a>
 
-type ____div<a, a> {}
+type ____div<a, a>
 
-type ____mod<a, a> {}
+type ____mod<a, a>
 
-type ____pair<a, b> {}
+type ____pair<a, b>
 
 // tensor types
 
-type tensor<a> {}
+type tensor<a>
