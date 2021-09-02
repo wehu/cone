@@ -75,87 +75,82 @@ underScope f = do
   put env
   return res
 
-initTypeDef :: (Has EnvEff sig m) => Module -> m ()
-initTypeDef m = initTypeKinds
-  where
-    typeDefs = m ^.. topStmts . traverse . _TDef
-    initTypeKinds = mapM_ insertTypeKind typeDefs
-    insertTypeKind t = do
-      let tn = t ^. typeName
-      ot <- getEnv $ types . at tn
-      forMOf _Just ot $ \ot ->
+initTypeDef :: (Has EnvEff sig m) => TypeDef -> m ()
+initTypeDef t = do
+  let tn = t ^. typeName
+  ot <- getEnv $ types . at tn
+  forMOf _Just ot $ \ot ->
+    throwError $
+      "redefine a type: " ++ tn ++ " vs " ++ ppr ot
+  let k = Just $ typeKindOf t
+  setEnv k $ types . at tn
+  where typeKindOf t =
+          let loc = _typeLoc t
+              args = t ^. typeArgs
+              star = KStar loc
+           in if args == []
+                then star
+                else KFunc (args ^.. traverse . _2 . non star) star loc
+
+initTypeDefs :: (Has EnvEff sig m) => Module -> m ()
+initTypeDefs m = mapM_ initTypeDef $ m ^.. topStmts . traverse . _TDef
+
+initTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
+initTypeConDef t = do
+  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types 
+  forM_ (t ^. typeCons) $ \c -> do
+    let cn = c ^. typeConName
+        cargs = c ^. typeConArgs
+        pos = c ^. typeConLoc
+        targs = (t ^.. typeArgs . traverse . _1) ++ globalTypes
+        b = bind targs cargs
+        fvars = (b ^.. fv) :: [TVar]
+    if fvars /= []
+      then
         throwError $
-          "redefine a type: " ++ tn ++ " vs " ++ ppr ot
-      let k = Just $ typeKindOf t
-      setEnv k $ types . at tn
-    typeKindOf t =
-      let loc = _typeLoc t
-          args = t ^. typeArgs
-          star = KStar loc
-       in if args == []
-            then star
-            else KFunc (args ^.. traverse . _2 . non star) star loc
+          "type constructor's type variables should "
+            ++ "only exists in type arguments: "
+            ++ ppr fvars
+      else return ()
+    ot <- getEnv $ funcs . at cn
+    forMOf _Just ot $ \t ->
+      throwError $
+        "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
+    let bt = tconType c t
+    setEnv (Just bt) $ funcs . at cn
+  where tconType c t =
+          let targs = c ^. typeConArgs
+              tn = t ^. typeName
+              pos = c ^. typeConLoc
+              tvars = t ^.. typeArgs . traverse . _1
+              rt =
+                if tvars == []
+                  then TVar (s2n tn) pos
+                  else TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
+              bt =
+                bind tvars $
+                  if targs == []
+                    then rt
+                    else TFunc targs Nothing rt pos
+           in BoundType bt
 
-initTypeConDef :: (Has EnvEff sig m) => Module -> m ()
-initTypeConDef m = initTconTypes
-  where
-    tdefs = m ^.. topStmts . traverse . _TDef
-    initTconTypes = do
-      globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
-      mapM_ (insertTconType globalTypes) tdefs
-    insertTconType globalTypes t =
-      forM_ (t ^. typeCons) $ \c -> do
-        let cn = c ^. typeConName
-            cargs = c ^. typeConArgs
-            pos = c ^. typeConLoc
-            targs = (t ^.. typeArgs . traverse . _1) ++ globalTypes
-            b = bind targs cargs
-            fvars = (b ^.. fv) :: [TVar]
-        if fvars /= []
-          then
-            throwError $
-              "type constructor's type variables should "
-                ++ "only exists in type arguments: "
-                ++ ppr fvars
-          else return ()
-        ot <- getEnv $ funcs . at cn
-        forMOf _Just ot $ \t ->
-          throwError $
-            "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
-        let bt = tconType c t
-        setEnv (Just bt) $ funcs . at cn
-    tconType c t =
-      let targs = c ^. typeConArgs
-          tn = t ^. typeName
-          pos = c ^. typeConLoc
-          tvars = t ^.. typeArgs . traverse . _1
-          rt =
-            if tvars == []
-              then TVar (s2n tn) pos
-              else TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
-          bt =
-            bind tvars $
-              if targs == []
-                then rt
-                else TFunc targs Nothing rt pos
-       in BoundType bt
+initTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
+initTypeConDefs m = mapM_ initTypeConDef $ m ^.. topStmts . traverse . _TDef
 
-checkTypeConDef :: (Has EnvEff sig m) => Module -> m ()
-checkTypeConDef m = checkTconTypes
-  where
-    tdefs = m ^.. topStmts . traverse . _TDef
-    checkTconTypes = do
-      globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
-      mapM_ (checkTconType globalTypes) tdefs
-    checkTconType globalTypes t =
-      forM_ (t ^. typeCons) $ \c -> do
-        let cn = c ^. typeConName
-        t <- getEnv $ funcs . at cn
-        forMOf _Nothing t $ \t ->
-          throwError $
-            "cannot find type constructor : " ++ cn
-        k <- underScope $ inferTypeKind $ fromJust t
-        checkTypeKind k
+checkTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
+checkTypeConDef t = do
+  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+  forM_ (t ^. typeCons) $ \c -> do
+    let cn = c ^. typeConName
+    t <- getEnv $ funcs . at cn
+    forMOf _Nothing t $ \t ->
+      throwError $
+        "cannot find type constructor : " ++ cn
+    k <- underScope $ inferTypeKind $ fromJust t
+    checkTypeKind k
+
+checkTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
+checkTypeConDefs m = mapM_ checkTypeConDef $ m ^.. topStmts . traverse . _TDef
 
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
 inferTypeKind a@TApp {..} = do
@@ -701,16 +696,16 @@ unbindTypeSample t = ([], t)
 
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id = run . runError . (runState env) . runFresh id $ do
-  initTypeDef m
+  initTypeDefs m
   initEffTypeDef m
-  initTypeConDef m
+  initTypeConDefs m
   initEffIntfDef m
   initFuncDef m
   return m
 
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 checkType m env id = run . runError . (runState env) . runFresh id $ do
-  checkTypeConDef m
+  checkTypeConDefs m
   checkEffIntfDef m
   checkFuncDefs m
   checkImplFuncDef m
