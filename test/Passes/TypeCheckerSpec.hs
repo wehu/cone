@@ -70,16 +70,16 @@ typeCheckerSpec = hspec $ do
         fn[c](a:c):c{a}(a:a)
      }
 
-    // fun zzz[a1, b1]() : i32 {
-    //   handle a<a1, b1> {
-    //     3
-    //   } with {
-    //     fun test(a: a<b>) : a<b> {
-    //       c1(b)
-    //     }
-    //   }
-    //   1
-    // }
+     fun zzz[a1, b1]() : i32 {
+       handle a<a1, b1> {
+         3
+       } with {
+         fun test[b](a: a<b>) : a<b> {
+           a
+         }
+       }
+       1
+     }
 
      // xxxx
 
