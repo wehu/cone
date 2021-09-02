@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Cone.Passes.TypeChecker (Env (..), types, funcs, effs, effIntfs, initialEnv, initModule, checkType) where
+module Cone.Passes.TypeChecker (Env (..), types, funcs, effs, initialEnv, initModule, checkType) where
 
 import Cone.Parser.AST
 import Control.Carrier.Error.Either
@@ -34,15 +34,12 @@ type TypeKinds = M.Map String Kind
 
 type EffKinds = M.Map String EffKind
 
-type EffIntfTypes = M.Map String Type
-
 type ExprTypes = M.Map String Type
 
 data Env = Env
   { _types :: TypeKinds,
     _funcs :: ExprTypes,
-    _effs :: EffKinds,
-    _effIntfs :: EffIntfTypes
+    _effs :: EffKinds
   }
   deriving (Show)
 
@@ -52,8 +49,7 @@ initialEnv =
   Env
     { _types = M.empty,
       _funcs = M.empty,
-      _effs = M.empty,
-      _effIntfs = M.empty
+      _effs = M.empty
     }
 
 type EnvEff = Eff Env String
@@ -293,12 +289,12 @@ initEffIntfDef e = do
                 ++ "only exists in eff type arguments: "
                 ++ ppr fvars
           else return ()
-        ot <- getEnv $ effIntfs . at intfn
+        ot <- getEnv $ funcs . at intfn
         forMOf _Just ot $ \t ->
           throwError $
             "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
         let bt = intfType i e
-        setEnv (Just bt) $ effIntfs . at intfn
+        setEnv (Just bt) $ funcs . at intfn
   mapM_ f is
   where intfType i e =
           let iargs = i ^. intfArgs
@@ -325,7 +321,7 @@ checkEffIntfDef e = do
       en = e ^. effectName
       f = \i -> do
         let intfn = i ^. intfName
-        t <- getEnv $ effIntfs . at intfn
+        t <- getEnv $ funcs . at intfn
         forMOf _Nothing t $ \t ->
           throwError $
             "cannot find eff interface: " ++ intfn
@@ -719,7 +715,7 @@ removeEff f@EffList{} e@EffList{} = do
            (\l e -> do
                case L.findIndex (aeq e) l of
                  Just idx -> return $ L.deleteBy aeq e l
-                 Nothing -> throwError $ "eff " ++ ppr l ++ " has no " ++ ppr e ++ ", cannot be remove")
+                 Nothing -> throwError $ "eff " ++ ppr l ++ " has no " ++ ppr e ++ ", cannot be removed")
           fl
           el
   return $ EffList l v pos
@@ -769,7 +765,7 @@ unbindType b@BoundType {..} = do
   foldM
     ( \t p -> do
         np <- freeVarName <$> fresh
-        return $ subst p (TVar np pos) t
+        unbindType $ subst p (TVar np pos) t
     )
     t
     ps
@@ -782,7 +778,7 @@ unbindEffType b@BoundEffType {..} = do
   foldM
     ( \t p -> do
         np <- freeVarName <$> fresh
-        return $ subst p (TVar np pos) t
+        unbindEffType $ subst p (TVar np pos) t
     )
     t
     ps

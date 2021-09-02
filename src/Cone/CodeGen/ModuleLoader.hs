@@ -81,16 +81,12 @@ importModules cache paths m loaded = do
                 f' = zipWithMaybeMatched $ \k v1 v2 -> Just v1
                 typeConflicts = merge g1' g2' f' (oldEnv ^. types) (env ^. types)
                 effConflicts = merge g1' g2' f' (oldEnv ^. effs) (env ^. effs)
-                effIntfConflicts = merge g1' g2' f' (oldEnv ^. effIntfs) (env ^. effIntfs)
                 funcConflicts = merge g1' g2' f' (oldEnv ^. funcs) (env ^. funcs)
             if typeConflicts /= M.empty
               then throwError $ "there are type conflicts: " ++ show typeConflicts
               else return ()
             if effConflicts /= M.empty
               then throwError $ "there are eff conflicts: " ++ show effConflicts
-              else return ()
-            if effIntfConflicts /= M.empty
-              then throwError $ "there are eff interface conflicts: " ++ show effIntfConflicts
               else return ()
             if funcConflicts /= M.empty
               then throwError $ "there are function conflicts: " ++ show funcConflicts
@@ -102,7 +98,6 @@ importModules cache paths m loaded = do
               ( oldEnv
                   { _types = (merge g1 g2 f (oldEnv ^. types) (env ^. types)),
                     _effs = (merge g1 g2 f (oldEnv ^. effs) (env ^. effs)),
-                    _effIntfs = (merge g1 g2 f (oldEnv ^. effIntfs) (env ^. effIntfs)),
                     _funcs = (merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs))
                   },
                 id,
