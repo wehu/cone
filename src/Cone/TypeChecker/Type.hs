@@ -178,8 +178,6 @@ checkEffKind k = do
     EKList {..} -> mapM_ checkEffKind _ekList
     _ -> throwError $ "expected a star eff kind, but got " ++ ppr k
 
-
-
 checkTypeMatch :: (Has EnvEff sig m) => Type -> Type -> m ()
 checkTypeMatch a b = do
   if aeq a b
@@ -209,6 +207,7 @@ checkEffKindMatch a b = do
   if aeq a b
     then return ()
     else throwError $ "eff type kind mismatch: " ++ ppr a ++ " vs " ++ ppr b
+
 toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
 toEffList a@EffVar {..} = return $ EffList [a] Nothing _effLoc
 toEffList a@EffApp {..} = return $ EffList [a] Nothing _effLoc
