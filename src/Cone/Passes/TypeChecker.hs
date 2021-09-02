@@ -392,6 +392,18 @@ checkFuncType f = underScope $ do
               ++ ppr eType
               ++ " vs "
               ++ ppr (f ^. funcResultType)
+      effType <- inferExprEffType e
+      let fEff = case f ^. funcEffectType of
+                    Just et -> et
+                    Nothing -> EffTotal pos
+      if aeq effType fEff
+        then return ()
+        else
+          throwError $
+            "function result eff type mismatch: "
+              ++ ppr effType
+              ++ " vs "
+              ++ ppr fEff
     Nothing -> return ()
 
 checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
@@ -677,7 +689,7 @@ inferExprEffType EWhile {..} = do
   if aeq ce be then return $ mergeEffs ce be
   else throwError $ "eff type mismatch: " ++ ppr ce ++ " vs " ++ ppr be
 inferExprEffType EApp {..} = do
-  ft <- inferExprType _eappFunc
+  ft <- inferExprType _eappFunc >>= unbindType
   case ft of
     TFunc{..} -> case _tfuncEff of
                    Just et -> return et
