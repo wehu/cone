@@ -208,26 +208,25 @@ checkTypeKind k = do
     KStar {} -> return ()
     _ -> throwError $ "expected a star kind, but got " ++ ppr k
 
-initEffTypeDef :: (Has EnvEff sig m) => Module -> m ()
-initEffTypeDef m = initEffKinds
-  where
-    edefs = m ^.. topStmts . traverse . _EDef
-    initEffKinds = mapM_ insertEffKind edefs
-    insertEffKind e = do
-      let en = e ^. effectName
-      oe <- getEnv $ effs . at en
-      forMOf _Just oe $ \oe ->
-        throwError $
-          "redefine an effect: " ++ en ++ " vs " ++ ppr oe
-      setEnv (Just $ effKind e) $ effs . at en
-    effKind e =
-      let loc = _effectLoc e
-          args = e ^. effectArgs
-          star = KStar loc
-          estar = EKStar loc
-       in if args == []
-            then estar
-            else EKFunc (args ^.. traverse . _2 . non star) estar loc
+initEffTypeDef :: (Has EnvEff sig m) => EffectDef -> m ()
+initEffTypeDef e = do
+  let en = e ^. effectName
+  oe <- getEnv $ effs . at en
+  forMOf _Just oe $ \oe ->
+    throwError $
+      "redefine an effect: " ++ en ++ " vs " ++ ppr oe
+  setEnv (Just $ effKind e) $ effs . at en
+  where effKind e =
+          let loc = _effectLoc e
+              args = e ^. effectArgs
+              star = KStar loc
+              estar = EKStar loc
+           in if args == []
+                then estar
+                else EKFunc (args ^.. traverse . _2 . non star) estar loc
+
+initEffTypeDefs :: (Has EnvEff sig m) => Module -> m ()
+initEffTypeDefs m = mapM_ initEffTypeDef $ m ^.. topStmts . traverse . _EDef
 
 inferEffKind :: (Has EnvEff sig m) => EffectType -> m EffKind
 inferEffKind a@EffApp {..} = do
@@ -279,73 +278,69 @@ checkEffKind k = do
     EKList {..} -> mapM_ checkEffKind _ekList
     _ -> throwError $ "expected a star eff kind, but got " ++ ppr k
 
-initEffIntfDef :: (Has EnvEff sig m) => Module -> m ()
-initEffIntfDef m = initEffIntfTypes
-  where
-    edefs = m ^.. topStmts . traverse . _EDef
-    initEffIntfTypes = do
-      globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
-      forM_ edefs $ insertEffIntfType globalTypes
-    insertEffIntfType globalTypes e = do
-      let is = e ^. effectIntfs
-          en = e ^. effectName
-          f = \i -> do
-            let intfn = i ^. intfName
-                iargs = i ^. intfArgs
-                iresult = i ^. intfResultType
-                pos = i ^. intfLoc
-                bvars = (i ^. intfBoundVars)
-                targs = (e ^.. effectArgs . traverse . _1) ++ globalTypes
-                b = bind (targs ++ bvars) $ iresult : iargs
-                fvars = (b ^.. fv) :: [TVar]
-            if fvars /= []
-              then
-                throwError $
-                  "eff interfaces's type variables should "
-                    ++ "only exists in eff type arguments: "
-                    ++ ppr fvars
-              else return ()
-            ot <- getEnv $ effIntfs . at intfn
-            forMOf _Just ot $ \t ->
-              throwError $
-                "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
-            let bt = intfType i e
-            setEnv (Just bt) $ effIntfs . at intfn
-      mapM_ f is
-    intfType i e =
-      let iargs = i ^. intfArgs
-          iresult = i ^. intfResultType
-          intfn = i ^. intfName
-          bvars = i ^. intfBoundVars
-          pos = i ^. intfLoc
-          eff = case i ^. intfEffectType of
-                  Just e -> e
-                  Nothing -> EffTotal pos
-          tvars = e ^.. effectArgs . traverse . _1
-       in BoundType $
-            bind tvars $
-              BoundType $
-                bind bvars $ TFunc iargs (Just eff) iresult pos
+initEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
+initEffIntfDef e = do
+  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+  let is = e ^. effectIntfs
+      en = e ^. effectName
+      f = \i -> do
+        let intfn = i ^. intfName
+            iargs = i ^. intfArgs
+            iresult = i ^. intfResultType
+            pos = i ^. intfLoc
+            bvars = (i ^. intfBoundVars)
+            targs = (e ^.. effectArgs . traverse . _1) ++ globalTypes
+            b = bind (targs ++ bvars) $ iresult : iargs
+            fvars = (b ^.. fv) :: [TVar]
+        if fvars /= []
+          then
+            throwError $
+              "eff interfaces's type variables should "
+                ++ "only exists in eff type arguments: "
+                ++ ppr fvars
+          else return ()
+        ot <- getEnv $ effIntfs . at intfn
+        forMOf _Just ot $ \t ->
+          throwError $
+            "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
+        let bt = intfType i e
+        setEnv (Just bt) $ effIntfs . at intfn
+  mapM_ f is
+  where intfType i e =
+          let iargs = i ^. intfArgs
+              iresult = i ^. intfResultType
+              intfn = i ^. intfName
+              bvars = i ^. intfBoundVars
+              pos = i ^. intfLoc
+              eff = case i ^. intfEffectType of
+                      Just e -> e
+                      Nothing -> EffTotal pos
+              tvars = e ^.. effectArgs . traverse . _1
+           in BoundType $
+                bind tvars $
+                  BoundType $
+                    bind bvars $ TFunc iargs (Just eff) iresult pos
 
-checkEffIntfDef :: (Has EnvEff sig m) => Module -> m ()
-checkEffIntfDef m = checkEffIntfTypes
-  where
-    edefs = m ^.. topStmts . traverse . _EDef
-    checkEffIntfTypes = do
-      globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
-      forM_ edefs $ checkEffIntfType globalTypes
-    checkEffIntfType globalTypes e = do
-      let is = e ^. effectIntfs
-          en = e ^. effectName
-          f = \i -> do
-            let intfn = i ^. intfName
-            t <- getEnv $ effIntfs . at intfn
-            forMOf _Nothing t $ \t ->
-              throwError $
-                "cannot find eff interface: " ++ intfn
-            k <- underScope $ inferTypeKind $ fromJust t
-            checkTypeKind k
-      mapM_ f is
+initEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
+initEffIntfDefs m = mapM_ initEffIntfDef $ m ^.. topStmts . traverse . _EDef
+
+checkEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
+checkEffIntfDef e = do
+  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+  let is = e ^. effectIntfs
+      en = e ^. effectName
+      f = \i -> do
+        let intfn = i ^. intfName
+        t <- getEnv $ effIntfs . at intfn
+        forMOf _Nothing t $ \t ->
+          throwError $
+            "cannot find eff interface: " ++ intfn
+        k <- underScope $ inferTypeKind $ fromJust t
+        checkTypeKind k
+  mapM_ f is
+
+checkEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
+checkEffIntfDefs m = mapM_ checkEffIntfDef $ m ^.. topStmts . traverse . _EDef
 
 freeVarName :: Int -> TVar
 freeVarName i = makeName "$" $ toInteger i
@@ -697,16 +692,16 @@ unbindTypeSample t = ([], t)
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id = run . runError . (runState env) . runFresh id $ do
   initTypeDefs m
-  initEffTypeDef m
+  initEffTypeDefs m
   initTypeConDefs m
-  initEffIntfDef m
+  initEffIntfDefs m
   initFuncDef m
   return m
 
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 checkType m env id = run . runError . (runState env) . runFresh id $ do
   checkTypeConDefs m
-  checkEffIntfDef m
+  checkEffIntfDefs m
   checkFuncDefs m
   checkImplFuncDef m
   return m
