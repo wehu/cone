@@ -47,6 +47,8 @@ typeCheckerSpec = hspec $ do
        typeTest(a)
      }
 
+     //[a(i, j) += b(i, k) * c(k, j)]
+
      fun ____sub[a](a: a, b:a) : a
 
      fun ____add[a](a: a, b:a) : a

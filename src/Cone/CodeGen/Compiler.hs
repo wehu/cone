@@ -9,13 +9,9 @@ import Control.Monad
 import Control.Monad.Except
 import Data.Proxy
 
-compile :: [FilePath] -> FilePath -> String -> IO (Either String String)
+compile :: [FilePath] -> FilePath -> String -> ExceptT String IO String
 compile paths f target = do
-  res <- runExceptT $ loadModule paths f
-  case res of
-    Left e -> return $ Left e
-    Right (env, id, m) -> do
-      let output = case target of
-            "cone" -> Right $ show $ gen m (Cone :: (Cone Target))
-            _ -> Left $ "unknown target: " ++ target
-      return output
+  (env, id, m) <- loadModule paths f
+  case target of
+    "cone" -> return $ show $ gen m (Cone :: (Cone Target))
+    _ -> throwError $ "unknown target: " ++ target

@@ -45,7 +45,7 @@ play Opts {..} = do
     execPath <- getExecutablePath
     let libPath = (takeDirectory $ takeDirectory execPath) </> "lib"
         paths = currentPath : libPath : []
-    res <- compile paths f target
+    res <- runExceptT $ compile paths f target
     case res of
       Left e -> putStrLn e
       Right s -> putStrLn s
