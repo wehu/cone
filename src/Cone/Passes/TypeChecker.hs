@@ -671,9 +671,6 @@ unbindTypeSample :: Type -> ([TVar], Type)
 unbindTypeSample b@BoundType {..} = unsafeUnbind _boundType
 unbindTypeSample t = ([], t)
 
---           | EHandle{_ehandleExpr :: Expr, _ehandleBindings :: [FuncDef],
---                     _eloc :: Location}
-
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id = run . runError . (runState env) . runFresh id $ do
   initTypeDefs m
