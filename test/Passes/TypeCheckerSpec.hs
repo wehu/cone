@@ -31,7 +31,7 @@ typeCheckerSpec = hspec $ do
        c2(a<b>, ff)
      }
 
-     type add<a, a> {
+     type ____add<a, a> {
        add000
      }
 
@@ -49,11 +49,11 @@ typeCheckerSpec = hspec $ do
        typeTest(a)
      }
 
-     fun sub[a](a: a, b:a) : a
+     fun ____sub[a](a: a, b:a) : a
 
-     fun add[a](a: a, b:a) : a
+     fun ____add[a](a: a, b:a) : a
 
-     impl fun add(a: i32, b: i32) : i32 {
+     impl fun ____add(a: i32, b: i32) : i32 {
        a + b
      }
 

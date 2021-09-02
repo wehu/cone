@@ -1,5 +1,5 @@
 module core/prelude
 
-fun sub[a](a: a, b:a) : a
+fun ____add[a](a: a, b:a) : a
 
-fun add[a](a: a, b:a) : a
+fun ____sub[a](a: a, b:a) : a

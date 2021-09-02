@@ -112,7 +112,7 @@ tokens :-
   \' ($graphic # [\'\\] | " " | @escape) \'
 				                                { \p s -> (p, LChar s) }
   \" @string* \"	                    	{ \p s -> (p, LStr s) }
-  $alpha [$alpha $digit \_]*            { \p s -> (p, Ident s) }
+  [$alpha \_] [$alpha $digit \_]*       { \p s -> (p, Ident s) }
 
 {
 -- Each action has type :: String -> Token

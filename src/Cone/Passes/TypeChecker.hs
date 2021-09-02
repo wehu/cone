@@ -207,11 +207,11 @@ inferType a@TApp {..} = do
   args <- mapM inferType _tappArgs
   let t = a{_tappArgs=args}
   case name2String _tappName of
-    "add" -> return $ evalType t args (+)
-    "sub" -> return $ evalType t args (-)
-    "mul" -> return $ evalType t args (*)
-    "div" -> return $ evalType t args div
-    "mod" -> return $ evalType t args mod
+    "____add" -> return $ evalType t args (+)
+    "____sub" -> return $ evalType t args (-)
+    "____mul" -> return $ evalType t args (*)
+    "____div" -> return $ evalType t args div
+    "____mod" -> return $ evalType t args mod
     _ -> return t
 inferType a@TAnn {..} = do
   t <- inferType _tannType
