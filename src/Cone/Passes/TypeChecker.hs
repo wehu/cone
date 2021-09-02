@@ -323,11 +323,14 @@ initEffIntfDef m = initEffIntfTypes
           intfn = i ^. intfName
           bvars = i ^. intfBoundVars
           pos = i ^. intfLoc
+          eff = case i ^. intfEffectType of
+                  Just e -> e
+                  Nothing -> EffTotal pos
           tvars = e ^.. effectArgs . traverse . _1
        in BoundType $
             bind tvars $
               BoundType $
-                bind bvars $ TFunc iargs Nothing iresult pos
+                bind bvars $ TFunc iargs (Just eff) iresult pos
 
 checkEffIntfDef :: (Has EnvEff sig m) => Module -> m ()
 checkEffIntfDef m = checkEffIntfTypes
