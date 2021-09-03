@@ -193,7 +193,10 @@ inferTCExprType a@TCAccess{..} e = do
                 case dims ^. at (name2String i) of
                   Just t -> return $ s++[t]
                   Nothing -> throwError $ "cannot index var: " ++ ppr i) [] _tcIndices
-  toTensorType t shape
+  tt <- toTensorType t shape
+  setEnv (Just tt) $ funcs . at _tcVarName
+  return tt
+inferTCExprType t0 t1 = throwError $ "unsupported tc expr: " ++ ppr t0 ++ " and " ++ ppr t1 ++ ppr (_tcloc t0)
 
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
 inferPatternType PVar {..} = inferExprType $ EVar _pvar _ploc
