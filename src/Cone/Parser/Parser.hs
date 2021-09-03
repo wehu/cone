@@ -321,10 +321,10 @@ funcProto =
   where
     f pos bound args (effT, resT) = (pos, bound, args, (effT, resT))
 
-exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr)
+exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr) <*> getPos
   where
-    f e es = case es of
-      Just es' -> A.ESeq $ e : es'
+    f e es pos = case es of
+      Just es' -> A.ESeq (e : es') pos
       Nothing -> e
 
 funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)

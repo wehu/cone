@@ -250,7 +250,7 @@ inferExprEffType ESeq {..} =
         et <- inferExprEffType e
         mergeEffs s et
     )
-    (EffTotal $ _eloc $ last _eseq)
+    (EffTotal $ _eloc)
     _eseq
 inferExprEffType EHandle {..} = underScope $ do
   forM_ _ehandleBindings $ \intf -> do
