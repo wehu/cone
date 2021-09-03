@@ -41,7 +41,7 @@ typeCheckerSpec = hspec $ do
 
      type ____pair<a, b>
 
-     fun typeTest[i,j, k](a:tensor<[i, j, k]>) : tensor<[i+1, j+2, k+3]>
+     fun typeTest<i,j, k>(a:tensor<[i, j, k]>) : tensor<[i+1, j+2, k+3]>
 
      fun runTypeTest(a:tensor<[1, 2, ?]>) : tensor<[2, 4, ?]> {
        typeTest(a)
@@ -49,15 +49,15 @@ typeCheckerSpec = hspec $ do
 
      //[a(i, j) += b(i, k) * c(k, j)]
 
-     fun ____sub[a](a: a, b:a) : a
+     fun ____sub<a>(a: a, b:a) : a
 
-     fun ____add[a](a: a, b:a) : a
+     fun ____add<a>(a: a, b:a) : a
 
      impl fun ____add(a: i32, b: i32) : i32 {
        a + b
      }
 
-     fun ____assign[a](a:a, a:a) : a
+     fun ____assign<a>(a:a, a:a) : a
 
      fun bar(a: i32) : i32 {
        
@@ -83,11 +83,11 @@ typeCheckerSpec = hspec $ do
 
      }
 
-     fun foo[a](a: a) : a {
-        fn[c](a:c):c{a}(a:a)
+     fun foo<a>(a: a) : a {
+        fn<c>(a:c):c{a}(a:a)
      }
 
-      fun zzz[a1](a:a<a1>) : i32 {
+      fun zzz<a1>(a:a<a1>) : i32 {
         handle a<a1> {
           test(c1(1))
           3

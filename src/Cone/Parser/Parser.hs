@@ -277,7 +277,7 @@ type_ = PE.buildExpressionParser typeTable typeTerm
 
 boundTVars :: Parser [A.TVar]
 boundTVars =
-  (brackets $ P.sepBy1 (s2n <$> ident) comma)
+  (angles $ P.sepBy1 (s2n <$> ident) comma)
     P.<|> return []
 
 resultType :: Parser (Maybe A.EffectType, A.Type)
