@@ -194,10 +194,10 @@ namePath = intercalate "/" <$> P.sepBy1 ident div_
 
 imports :: Parser [A.ImportStmt]
 imports =
-  P.many $
+  P.many (
     f <$ kImport <*> namePath <*> getPos
       <*> (P.optionMaybe $ kAs *> ident)
-      <* semi
+      <* semi P.<?> "import stmt")
   where
     f n pos alias = A.ImportStmt n alias [] pos
 
@@ -537,7 +537,7 @@ topStmt =
   ( (A.FDef <$> func)
       P.<|> A.TDef <$> typeDef
       P.<|> A.EDef <$> effectDef
-      P.<|> A.ImplFDef <$ kImpl <*> (A.ImplFuncDef <$> func)
+      P.<|> (A.ImplFDef <$ kImpl <*> (A.ImplFuncDef <$> func) P.<?> "function implementation")
   )
     <* semi
 
