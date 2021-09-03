@@ -82,7 +82,7 @@ typeCheckerSpec = hspec $ do
 
       e1 = e1 + 1
 
-      case a {
+      case a+1 {
         2 -> {a}
         3 -> {a}
       }

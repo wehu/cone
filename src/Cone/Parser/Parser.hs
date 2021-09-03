@@ -396,7 +396,7 @@ term =
                                   <$ kFn <*> funcDef P.<?> "lambda expression"
                               )
                                 P.<|> (A.ELet <$ kLet <*> pat <* assign_ <*> expr P.<?> "var experssion")
-                                P.<|> (A.ECase <$ kCase <*> term
+                                P.<|> (A.ECase <$ kCase <*> expr
                                   <*> braces
                                     (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "case expression")
                                 P.<|> (A.EWhile <$ kWhile <*> term <*> braces exprSeq P.<?> "while expression")
