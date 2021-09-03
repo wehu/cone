@@ -67,9 +67,7 @@ inferExprType a@EApp {..} = do
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
   appFuncType <- inferExprType _eappFunc
-  appFuncType <- (if _eappTypeArgs /= [] 
-                  then applyTypeArgs appFuncType _eappTypeArgs
-                  else return appFuncType) >>= unbindType
+  appFuncType <- applyTypeArgs appFuncType _eappTypeArgs >>= unbindType
   argTypes <- mapM inferExprType _eappArgs
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
@@ -235,9 +233,7 @@ inferExprEffType EApp {..} = do
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
   appFuncType <- inferExprType _eappFunc
-  appFuncType <- (if _eappTypeArgs /= [] 
-                  then applyTypeArgs appFuncType _eappTypeArgs
-                  else return appFuncType) >>= unbindType
+  appFuncType <- applyTypeArgs appFuncType _eappTypeArgs >>= unbindType
   argTypes <- mapM inferExprType _eappArgs
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
