@@ -34,11 +34,11 @@ Cone的一个主要目标是作为AI编程前端语言。在AI深度学习邻域
 AI深度学习的本质是可微编程。为了能达到自动微分，需要一种机制来翻译成微分表示。一种方式是定义macro把函数做基于symbol的自动微分变换。
 
 ```haskell
-fun sin(x: Float) : Float
-fun cos(x: Float) : Float
+fun sin(x: f32) : f32
+fun cos(x: f32) : f32
 
 diff-rule sin -> cos
-grad(sin) -- will generate fun d-sin/d-x(x: Float) : Float = cos x
+grad(sin) -- will generate fun d-sin/d-x(x: f32) : f32 = cos x
 ```
 
 ### Algebraic effect handlers
