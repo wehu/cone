@@ -61,7 +61,7 @@ inferExprType :: (Has EnvEff sig m) => Expr -> m Type
 inferExprType EVar {..} = do
   v <- getEnv $ funcs . at _evarName
   forMOf _Nothing v $ \v ->
-    throwError $ "cannot find expr var: " ++ _evarName
+    throwError $ "cannot find expr var: " ++ _evarName ++ ppr _eloc
   return $ fromJust v
 inferExprType a@EApp {..} = do
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
@@ -92,7 +92,7 @@ inferExprType l@ELam {..} = underScope $ do
     [(n, t) | (n, _) <- _elamArgs | t <- args]
   case _elamExpr of
     Just e -> return ()
-    Nothing -> throwError $ "expected an expression for lambda"
+    Nothing -> throwError $ "expected an expression for lambda" ++ ppr _eloc
   eType <- inferExprType $ fromJust _elamExpr
   k <- inferTypeKind _elamResultType
   checkTypeKind k
@@ -130,7 +130,7 @@ inferExprType EWhile {..} = do
   t <- inferExprType _ewhileCond
   if aeq t (TPrim Pred _eloc)
     then return t
-    else throwError $ "while expected a bool as condition, but got " ++ ppr t
+    else throwError $ "while expected a bool as condition, but got " ++ ppr t ++ ppr _eloc
   underScope $ do
     t <- inferExprType _ewhileBody
     k <- inferTypeKind t
@@ -161,7 +161,7 @@ bindPatternVarTypes p e = do
     ( \bs (v, t) -> do
         let n = name2String v
         case bs ^. at n of
-          Just _ -> throwError $ "pattern rebind a variable: " ++ n
+          Just _ -> throwError $ "pattern rebind a variable: " ++ n ++ ppr (_eloc e)
           Nothing -> do
             setEnv (Just t) $ funcs . at n
             return $ bs & at n ?~ True
@@ -213,7 +213,7 @@ inferExprEffType l@ELam {..} = do
         Just et -> et
         Nothing -> EffTotal _eloc
   forMOf _Nothing _elamExpr $ \_ ->
-    throwError $ "expected an expression for lambda"
+    throwError $ "expected an expression for lambda" ++ ppr _eloc
   resultEffType <- inferExprEffType $ fromJust _elamExpr
   checkEffTypeMatch et resultEffType
   return $ EffTotal _eloc
@@ -253,7 +253,7 @@ inferExprEffType EHandle {..} = underScope $ do
     ft <- unbindType $ funcDefType intf
     intfT' <- getEnv $ funcs . at fn
     forMOf _Nothing intfT' $ \_ ->
-      throwError $ "cannot find eff interface defintion for " ++ ppr intf
+      throwError $ "cannot find eff interface defintion for " ++ ppr intf ++ ppr _eloc
     intfT <- unbindType $ fromJust intfT'
     binds <- collectVarBindings intfT ft
     checkVarBindings binds
@@ -261,16 +261,16 @@ inferExprEffType EHandle {..} = underScope $ do
       ft@TFunc {..} -> case _tfuncEff of
         Just et -> return et
         Nothing -> return $ EffTotal _eloc
-      t -> throwError $ "expected a function type, but got " ++ ppr t
+      t -> throwError $ "expected a function type, but got " ++ ppr t ++ ppr _eloc
     intfEff <- case intfT of
       ft@TFunc {..} -> case _tfuncEff of
         Just et -> return et
         Nothing -> return $ EffTotal _eloc
-      t -> throwError $ "expected a function type, but got " ++ ppr t
+      t -> throwError $ "expected a function type, but got " ++ ppr t ++ ppr _eloc
     effs <- mergeEffs eff _ehandleEff
     if aeq (closeEffType effs) (closeEffType intfEff)
       then return ()
-      else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff
+      else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff ++ ppr _eloc
     fs <- getEnv funcs
     setEnv (M.delete fn fs) $ funcs
     let (bts, ft) = unbindTypeSample $ funcDefType intf
