@@ -7,4 +7,3 @@ import Prettyprinter
 data Python a = Python
 
 instance Backend Python where
-  gen m proxy = pretty m
