@@ -203,8 +203,8 @@ imports =
 
 kind :: Parser A.Kind
 kind =
-  ( A.KStar <$ star
-      P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind)
+  ( A.KStar <$ (star P.<?> "star kind")
+      P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind P.<?> "function kind")
   )
     <*> getPos
     P.<|> parens kind
@@ -278,7 +278,7 @@ type_ = PE.buildExpressionParser typeTable typeTerm
 
 boundTVars :: Parser [A.TVar]
 boundTVars =
-  (angles $ P.sepBy1 (s2n <$> ident) comma)
+  ((angles $ P.sepBy1 (s2n <$> ident) comma) P.<?> "type variable list")
     P.<|> return []
 
 resultType :: Parser (Maybe A.EffectType, A.Type)
@@ -286,8 +286,8 @@ resultType = (,) <$> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_) <*> 
 
 effKind :: Parser A.EffKind
 effKind =
-  ( A.EKStar <$ star
-      P.<|> P.try (A.EKFunc <$> parens (P.sepBy kind comma) <* arrow <*> effKind)
+  ( A.EKStar <$ (star P.<?> "eff star kind")
+      P.<|> P.try (A.EKFunc <$> parens (P.sepBy kind comma) <* arrow <*> effKind P.<?> "eff function kind")
   )
     <*> getPos
     P.<|> parens effKind
@@ -296,13 +296,13 @@ effType :: Parser A.EffectType
 effType =
   parens effType
     P.<|> ( ekann
-              <$> ( ( (P.try $ A.EffApp <$> namePath <*> angles (P.sepBy1 type_ comma))
-                        P.<|> angles (A.EffList <$> (P.sepBy effType comma) <*> (P.optionMaybe $ pipe_ *> (s2n <$> ident)))
-                        P.<|> A.EffVar <$> (s2n <$> ident)
+              <$> ( ( (P.try (A.EffApp <$> namePath <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"))
+                        P.<|> ((angles (A.EffList <$> (P.sepBy effType comma) <*> (P.optionMaybe $ pipe_ *> (s2n <$> ident)))) P.<?> "eff type list")
+                        P.<|> (A.EffVar <$> (s2n <$> ident) P.<?> "eff type variable")
                     )
                       <*> getPos
                   )
-              <*> (P.optionMaybe $ colon *> effKind)
+              <*> (P.optionMaybe (colon *> effKind P.<?> "eff type annotation"))
               <*> getPos
           )
   where
@@ -311,17 +311,17 @@ effType =
       _ -> t
 
 funcArgs :: Parser [(String, A.Type)]
-funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma
+funcArgs = (P.sepBy ((,) <$> ident <* colon <*> type_) comma) P.<?> "function argument types"
 
 funcProto =
   f <$> getPos <*> boundTVars
     <*> parens funcArgs
     <* colon
-    <*> resultType
+    <*> resultType P.<?> "function prototype"
   where
     f pos bound args (effT, resT) = (pos, bound, args, (effT, resT))
 
-exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr) <*> getPos
+exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr) <*> getPos P.<?> "expr sequence"
   where
     f e es pos = case es of
       Just es' -> A.ESeq (e : es') pos
@@ -372,10 +372,10 @@ exprBinary op name assoc =
 pat :: Parser A.Pattern
 pat =
   parens pat
-    P.<|> P.try (A.PApp <$> namePath <*> (angles (P.sepBy1 type_ comma) P.<|> return []) <*> parens (P.sepBy1 pat comma) <*> getPos)
-    P.<|> P.try (A.PApp <$> namePath <*> angles (P.sepBy1 type_ comma) <*> return [] <*> getPos)
-    P.<|> A.PVar <$> ident <*> getPos
-    P.<|> A.PExpr <$> literal <*> getPos
+    P.<|> ((P.try (A.PApp <$> namePath <*> (angles (P.sepBy1 type_ comma) P.<|> return []) <*> parens (P.sepBy1 pat comma) <*> getPos)) P.<?> "pattern application")
+    P.<|> ((P.try (A.PApp <$> namePath <*> angles (P.sepBy1 type_ comma) <*> return [] <*> getPos)) P.<?> "pattern application")
+    P.<|> (A.PVar <$> ident <*> getPos P.<?> "pattern variable")
+    P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal")
 
 literal =
   ( A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
@@ -385,7 +385,7 @@ literal =
       P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
       P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos)
   )
-    <*> getPos
+    <*> getPos P.<?> "literal"
 
 term :: Parser A.Expr
 term =
@@ -393,26 +393,26 @@ term =
     <$> ( eann
             <$> ( parens expr
                     P.<|> ( ( ( (\((pos, bound, args, (effT, resT)), e) -> A.ELam bound args effT resT e)
-                                  <$ kFn <*> funcDef
+                                  <$ kFn <*> funcDef P.<?> "lambda expression"
                               )
-                                P.<|> A.ELet <$ kLet <*> pat <* assign_ <*> expr
-                                P.<|> A.ECase <$ kCase <*> term
+                                P.<|> (A.ELet <$ kLet <*> pat <* assign_ <*> expr P.<?> "var experssion")
+                                P.<|> (A.ECase <$ kCase <*> term
                                   <*> braces
-                                    (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
-                                P.<|> A.EWhile <$ kWhile <*> term <*> braces exprSeq
-                                P.<|> A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace)
-                                P.<|> eif <$ kIf <*> term <*> braces exprSeq <* kElse <*> braces exprSeq
-                                P.<|> varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr)
+                                    (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "case expression")
+                                P.<|> (A.EWhile <$ kWhile <*> term <*> braces exprSeq P.<?> "while expression")
+                                P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
+                                P.<|> (eif <$ kIf <*> term <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
+                                P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "assign expression")
                             )
                               <*> getPos
                           )
                     P.<|> literal
                 )
-            <*> (P.optionMaybe $ colon *> type_)
+            <*> (P.optionMaybe (colon *> type_ P.<?> "expression type annotation"))
             <*> getPos
         )
-    <*> (P.optionMaybe $ angles $ P.sepBy type_ comma)
-    <*> (P.optionMaybe $ parens $ P.sepBy expr comma)
+    <*> (P.optionMaybe $ angles (P.sepBy type_ comma P.<?> "application expression type argument list"))
+    <*> (P.optionMaybe $ parens (P.sepBy expr comma P.<?> "application expression argument list"))
     <*> getPos
   where
     eapp e targs args pos =
@@ -438,7 +438,7 @@ expr = PE.buildExpressionParser exprTable term
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
 typeArgs =
-  ( angles (P.sepBy ((,) <$> (s2n <$> ident) <*> (P.optionMaybe $ colon *> kind)) comma))
+  ( (angles (P.sepBy ((,) <$> (s2n <$> ident) <*> (P.optionMaybe $ colon *> kind)) comma)) P.<?> "type arguments")
     P.<|> return []
 
 typeCon :: Parser A.TypeCon
@@ -447,21 +447,21 @@ typeCon =
     <*> ( parens (P.sepBy type_ comma)
             P.<|> return []
         )
-    <*> getPos
+    <*> getPos P.<?> "tyue constructor"
 
 typeDef :: Parser A.TypeDef
 typeDef =
   A.TypeDef <$ kType <*> ident <*> typeArgs
     <*> (braces (P.sepBy1 typeCon $ P.try $ semi <* P.notFollowedBy rBrace)
          P.<|> return [])
-    <*> getPos
+    <*> getPos P.<?> "type definition"
 
 funcIntf :: Parser A.FuncIntf
 funcIntf =
   f <$ kFunc <*> ident <*> boundTVars
     <*> parens (P.sepBy type_ comma) <* colon
     <*> resultType
-    <*> getPos
+    <*> getPos P.<?> "effect interface definition"
   where
     f n bs args (e, r) pos = A.FuncIntf n bs args e r pos
 
@@ -472,10 +472,10 @@ effectDef =
       ( P.sepBy1 funcIntf $
           P.try $ semi <* P.notFollowedBy rBrace
       )
-    <*> getPos
+    <*> getPos P.<?> "effect type definition"
 
 func :: Parser A.FuncDef
-func = f <$ kFunc <*> ident <*> funcDef
+func = f <$ kFunc <*> ident <*> funcDef P.<?> "function definition"
   where
     f n ((pos, bound, args, (effT, resT)), e) = A.FuncDef n bound args effT resT e pos
 
