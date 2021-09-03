@@ -99,7 +99,7 @@ typeCheckerSpec = hspec $ do
         fn<c>(a:c):c{a}(a:a)
      }
 
-      fun zzz<a1>(a:a<a1>, b:tensor<[2, 4]>, c:tenser<[2,6]>) : i32 {
+      fun zzz<a1>(a:a<a1>, b:tensor<[2, 4]>, c:tensor<[2,6]>) : i32 {
 
 
      // [a[i, j] = b[i, k] * c[k, j]]
