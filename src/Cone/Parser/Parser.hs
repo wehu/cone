@@ -295,9 +295,9 @@ effType :: Parser A.EffectType
 effType =
   parens effType
     P.<|> ( ekann
-              <$> ( ( (P.try $ A.EffApp <$> namePath <* less <*> (P.sepBy1 type_ comma) <* greater)
-                        P.<|> (A.EffList <$ less <*> (P.sepBy effType comma) <*> (P.optionMaybe $ pipe_ *> (s2n <$> ident)) <* greater)
-                        P.<|> (A.EffVar <$> (s2n <$> ident))
+              <$> ( ( (P.try $ A.EffApp <$> namePath <*> angles (P.sepBy1 type_ comma))
+                        P.<|> angles (A.EffList <$> (P.sepBy effType comma) <*> (P.optionMaybe $ pipe_ *> (s2n <$> ident)))
+                        P.<|> A.EffVar <$> (s2n <$> ident)
                     )
                       <*> getPos
                   )
@@ -434,10 +434,7 @@ expr = PE.buildExpressionParser exprTable term
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
 typeArgs =
-  ( less
-      *> (P.sepBy ((,) <$> (s2n <$> ident) <*> (P.optionMaybe $ colon *> kind)) comma)
-      <* greater
-  )
+  ( angles (P.sepBy ((,) <$> (s2n <$> ident) <*> (P.optionMaybe $ colon *> kind)) comma))
     P.<|> return []
 
 typeCon :: Parser A.TypeCon
