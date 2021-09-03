@@ -97,7 +97,7 @@ inferExprType l@ELam {..} = underScope $ do
   k <- inferTypeKind _elamResultType
   checkTypeKind k
   checkTypeMatch eType _elamResultType
-  return $ BoundType $ bind _elamBoundVars $ TFunc args (Just eff) eType _eloc
+  return $ BoundType (bind _elamBoundVars $ TFunc args (Just eff) eType _eloc) _eloc
 inferExprType a@EAnn {..} = do
   t <- inferExprType _eannExpr
   k <- inferTypeKind _eannType
@@ -280,7 +280,7 @@ inferExprEffType EHandle {..} = underScope $ do
     fs <- getEnv funcs
     setEnv (M.delete fn fs) $ funcs
     let (bts, ft) = unbindTypeSample $ funcDefType intf
-    setEnv (Just $ BoundType $ bind bts $ ft {_tfuncEff = Just effs}) $ funcs . at fn
+    setEnv (Just $ BoundType (bind bts $ ft {_tfuncEff = Just effs}) _eloc) $ funcs . at fn
   et <- inferExprEffType _ehandleScope
   -- TODO check intefaces
   removeEff et _ehandleEff

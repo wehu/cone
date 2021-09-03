@@ -56,7 +56,7 @@ inferTypeKind a@TAnn {..} = do
   return _tannKind
 inferTypeKind b@BoundType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind $ _boundType
-      star = KStar $ _tloc t
+      star = KStar $ _tloc
   mapM_ (\v -> setEnv (Just star) $ types . at (name2String v)) bvs
   inferTypeKind t
 inferTypeKind v@TVar {..} = do
@@ -271,7 +271,7 @@ applyTypeArgs t args = do
   else do
     let argsLen = L.length args
         binds = [(n, t) | n <- L.take argsLen bts | t <- args]
-    return $ BoundType $ bind (L.drop argsLen bts) $ substs binds tt
+    return $ BoundType (bind (L.drop argsLen bts) $ substs binds tt) (_tloc t)
 
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m Type
 inferAppResultType f@TFunc {} bargs args = do
@@ -379,7 +379,7 @@ funcDefType f =
       effType = f ^. funcEffectType . (non $ EffTotal pos)
       resultType = f ^. funcResultType
       ft =
-        BoundType $
+        BoundType (
           bind (f ^. funcBoundVars) $
-            TFunc argTypes (Just effType) resultType pos
+            TFunc argTypes (Just effType) resultType pos) pos
    in ft

@@ -81,7 +81,7 @@ closeEffType t =
 unbindType :: (Has EnvEff sig m) => Type -> m Type
 unbindType b@BoundType {..} = do
   let (ps, t) = unsafeUnbind _boundType
-      pos = _tloc t
+      pos = _tloc
   foldM
     ( \t p -> do
         np <- freeVarName <$> fresh

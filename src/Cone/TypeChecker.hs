@@ -90,7 +90,7 @@ initTypeConDef t = do
               if targs == []
                 then rt
                 else TFunc targs Nothing rt pos
-       in BoundType bt
+       in BoundType bt pos
 
 initTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
 initTypeConDefs m = mapM_ initTypeConDef $ m ^.. topStmts . traverse . _TDef
@@ -175,10 +175,10 @@ initEffIntfDef e = do
           bvars = i ^. intfBoundVars
           pos = i ^. intfLoc
           tvars = e ^.. effectArgs . traverse . _1
-       in BoundType $
-            bind tvars $
-              BoundType $
-                bind bvars $ TFunc iargs (Just eff) iresult pos
+       in BoundType 
+            (bind tvars $
+              BoundType (
+                bind bvars $ TFunc iargs (Just eff) iresult pos) pos) pos
 
 initEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
 initEffIntfDefs m = mapM_ initEffIntfDef $ m ^.. topStmts . traverse . _EDef
