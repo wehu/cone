@@ -251,13 +251,13 @@ typeBinary op name assoc =
 typeTerm :: Parser A.Type
 typeTerm =
   ( tann
-      <$> ( ( P.try (A.TApp <$> (s2n <$> namePath) <*> angles (P.sepBy1 type_ comma))
-                P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType)
-                P.<|> (A.TVar <$> (s2n <$> ident))
-                P.<|> (A.TPrim <$> primType)
-                P.<|> (A.TNum <$> (Just . read <$> literalInt))
-                P.<|> (A.TNum Nothing <$ question)
-                P.<|> (tList <$> brackets (P.sepBy1 type_ comma))
+      <$> ( ( P.try ((A.TApp <$> (s2n <$> namePath) <*> angles (P.sepBy1 type_ comma)) P.<?> "application type")
+                P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType P.<?> "function type")
+                P.<|> (A.TVar <$> (s2n <$> ident) P.<?> "type variable")
+                P.<|> (A.TPrim <$> primType P.<?> "primitive type")
+                P.<|> (A.TNum <$> (Just . read <$> literalInt) P.<?> "number type")
+                P.<|> (A.TNum Nothing <$ question P.<?> "unknown number type")
+                P.<|> (tList <$> brackets (P.sepBy1 type_ comma) P.<?> "type list")
             )
               <*> getPos
           )
