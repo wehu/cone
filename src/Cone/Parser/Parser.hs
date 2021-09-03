@@ -410,7 +410,7 @@ term =
             <*> (P.optionMaybe $ colon *> type_)
             <*> getPos
         )
-    <*> (P.optionMaybe $ angles $ P.sepBy1 type_ comma)
+    <*> (P.optionMaybe $ angles $ P.sepBy type_ comma)
     <*> (P.optionMaybe $ parens $ P.sepBy expr comma)
     <*> getPos
   where
