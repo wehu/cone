@@ -43,10 +43,11 @@ typeCheckerSpec = hspec $ do
 
      type ____pair<a, b>
 
-     fun typeTest<i,j, k>(a:tensor<[i, j, k]>) : tensor<[i+1, j+2, k+3]>
+     fun typeTest<i,j, k>() : tensor<[i+1, j+2, k+3]>
 
      fun runTypeTest(a:tensor<[1, 2, ?]>) : tensor<[2, 4, ?]> {
        tensor<[2, 4, ?]>
+       typeTest<1, 2, ?>()
      }
 
      //[a(i, j) += b(i, k) * c(k, j)]
@@ -91,10 +92,10 @@ typeCheckerSpec = hspec $ do
 
       fun zzz<a1>(a:a<a1>) : i32 {
         handle a<a1> {
-          test(c1(1))
+          test<i32>(c1(1))
           3
         } with {
-          fun test(a: a<i32>) : a<i32> {
+          fun test<b>(a: a<b>) : a<b> {
             a
           }
         }
