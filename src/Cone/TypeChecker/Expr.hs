@@ -176,7 +176,11 @@ collectTCExprTypeInfo TCApp{..} = do
                      if aeq t et then return (et, is ++ eis)
                      else throwError $ "+ expected same types, but got " ++ ppr t ++ " vs " ++ ppr et) arg args
     _ -> throwError $ "unsupported tc function: " ++ _tcAppName ++ ppr _tcloc
-collectTCExprTypeInfo tc = throwError $ "unsupported: " ++ ppr tc ++ ppr (_tcloc tc)
+collectTCExprTypeInfo TCVar{..} = do
+  t <- getEnv $ funcs . at _tcVarName
+  case t of
+    Just t -> return (t, [])
+    Nothing -> throwError $ "cannot find var: " ++ _tcVarName ++ ppr _tcloc
 
 inferTCExprType :: (Has EnvEff sig m) => TCExpr -> TCExpr -> m Type
 inferTCExprType a@TCAccess{..} e = do
