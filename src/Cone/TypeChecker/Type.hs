@@ -94,6 +94,8 @@ inferType a@TApp {..} = do
     "____mul" -> return $ evalType t args (*)
     "____div" -> return $ evalType t args div
     "____mod" -> return $ evalType t args mod
+    "max" -> return $ evalType t args max
+    "min" -> return $ evalType t args min
     _ -> return t
 inferType a@TAnn {..} = do
   t <- inferType _tannType

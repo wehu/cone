@@ -78,6 +78,10 @@ type ____mod<a, a>
 
 type ____pair<a, b>
 
+type max<a, a>
+
+type min<a, a>
+
 // tensor types
 
 type tensor<t, shape> {

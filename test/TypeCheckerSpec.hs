@@ -45,10 +45,12 @@ typeCheckerSpec = hspec $ do
 
      fun inline_python<b>(c:str) : b 
 
+     type max<a, a>
+
      fun typeTest<i,j, k>() : tensor<[i+1, j+2, k+3]>
 
      fun runTypeTest(a:tensor<[1, 2, ?]>) : tensor<[2, 4, ?]> {
-       tensor<[1, 2, 3]>
+       tensor<[1, 2, max<4, 3>]>
       case tensor<[1, 2, 4]> {
         tensor<[1, 2, 4]> -> {1}
         tensor<[1, 2, 4]> -> {2}
