@@ -37,7 +37,7 @@ initTypeDef t = do
   ot <- getEnv $ types . at tn
   forMOf _Just ot $ \ot ->
     throwError $
-      "redefine a type: " ++ tn ++ " vs " ++ ppr ot
+      "redefine a type: " ++ tn ++ " vs " ++ ppr ot ++ (ppr $ _typeLoc t)
   let k = Just $ typeKindOf t
   setEnv k $ types . at tn
   where
@@ -72,7 +72,7 @@ initTypeConDef t = do
     ot <- getEnv $ funcs . at cn
     forMOf _Just ot $ \t ->
       throwError $
-        "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t
+        "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t ++ ppr pos
     let bt = tconType c t
     setEnv (Just bt) $ funcs . at cn
   where
@@ -99,11 +99,11 @@ checkTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
 checkTypeConDef t =
   forM_ (t ^. typeCons) $ \c -> do
     let cn = c ^. typeConName
-    t <- getEnv $ funcs . at cn
-    forMOf _Nothing t $ \t ->
+    tt <- getEnv $ funcs . at cn
+    forMOf _Nothing tt $ \_ ->
       throwError $
-        "cannot find type constructor : " ++ cn
-    k <- underScope $ inferTypeKind $ fromJust t
+        "cannot find type constructor : " ++ cn ++ (ppr $ _typeLoc t)
+    k <- underScope $ inferTypeKind $ fromJust tt
     checkTypeKind k
 
 checkTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
@@ -115,7 +115,7 @@ initEffTypeDef e = do
   oe <- getEnv $ effs . at en
   forMOf _Just oe $ \oe ->
     throwError $
-      "redefine an effect: " ++ en ++ " vs " ++ ppr oe
+      "redefine an effect: " ++ en ++ " vs " ++ ppr oe ++ (ppr $ _effectLoc e)
   setEnv (Just $ effKind e) $ effs . at en
   where
     effKind e =
@@ -149,12 +149,12 @@ initEffIntfDef e = do
             throwError $
               "eff interfaces's type variables should "
                 ++ "only exists in eff type arguments: "
-                ++ ppr fvars
+                ++ ppr fvars ++ ppr pos
           else return ()
         ot <- getEnv $ funcs . at intfn
         forMOf _Just ot $ \t ->
           throwError $
-            "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t
+            "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t ++ ppr pos
         let eff = case i ^. intfEffectType of
               Just e -> e
               Nothing -> EffTotal pos
@@ -193,7 +193,7 @@ checkEffIntfDef e = do
         t <- getEnv $ funcs . at intfn
         forMOf _Nothing t $ \t ->
           throwError $
-            "cannot find eff interface: " ++ intfn
+            "cannot find eff interface: " ++ intfn ++ ppr (_effectLoc e)
         k <- underScope $ inferTypeKind $ fromJust t
         checkTypeKind k
   mapM_ f is
@@ -211,7 +211,7 @@ initFuncDef f = do
   checkTypeKind k
   oft <- getEnv $ funcs . at fn
   forMOf _Just oft $ \oft ->
-    throwError $ "function redefine: " ++ fn
+    throwError $ "function redefine: " ++ fn ++ ppr pos
   setEnv (Just ft) $ funcs . at fn
 
 initFuncDefs :: (Has EnvEff sig m) => Module -> m ()
@@ -229,7 +229,7 @@ checkImplFuncDef f = underScope $ do
   checkTypeKind k
   ift <- getEnv $ funcs . at fn
   forMOf _Nothing ift $ \_ ->
-    throwError $ "cannot find general function definiton for impl: " ++ fn
+    throwError $ "cannot find general function definiton for impl: " ++ fn ++ ppr pos
   bindings <- collectVarBindings (fromJust ift) ft
   checkVarBindings bindings
   checkFuncType f
