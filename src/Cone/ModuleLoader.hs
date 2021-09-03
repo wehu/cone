@@ -76,29 +76,33 @@ importModules cache paths m loaded = do
           Nothing -> do
             let fn = (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx)
             (env, id, m) <- loadModule' cache paths fn loaded
-            let g1' = mapMaybeMissing $ \k v -> Nothing
-                g2' = mapMaybeMissing $ \k v -> Nothing
-                f' = zipWithMaybeMatched $ \k v1 v2 -> Just v1
-                typeConflicts = merge g1' g2' f' (oldEnv ^. types) (env ^. types)
-                effConflicts = merge g1' g2' f' (oldEnv ^. effs) (env ^. effs)
-                funcConflicts = merge g1' g2' f' (oldEnv ^. funcs) (env ^. funcs)
-            if typeConflicts /= M.empty
-              then throwError $ "there are type conflicts: " ++ show typeConflicts
-              else return ()
-            if effConflicts /= M.empty
-              then throwError $ "there are eff conflicts: " ++ show effConflicts
-              else return ()
-            if funcConflicts /= M.empty
-              then throwError $ "there are function conflicts: " ++ show funcConflicts
-              else return ()
+            -- let g1' = mapMaybeMissing $ \k v -> Nothing
+            --     g2' = mapMaybeMissing $ \k v -> Nothing
+            --     f' = zipWithMaybeMatched $ \k v1 v2 -> Just v1
+            --     typeConflicts = merge g1' g2' f' (oldEnv ^. types) (env ^. types)
+            --     effConflicts = merge g1' g2' f' (oldEnv ^. effs) (env ^. effs)
+            --     funcConflicts = merge g1' g2' f' (oldEnv ^. funcs) (env ^. funcs)
+            -- if typeConflicts /= M.empty
+            --   then throwError $ "there are type conflicts: " ++ show typeConflicts
+            --   else return ()
+            -- if effConflicts /= M.empty
+            --   then throwError $ "there are eff conflicts: " ++ show effConflicts
+            --   else return ()
+            -- if funcConflicts /= M.empty
+            --   then throwError $ "there are function conflicts: " ++ show funcConflicts
+            --   else return ()
             let g1 = mapMaybeMissing $ \k v -> Just v
                 g2 = mapMaybeMissing $ \k v -> Just v
                 f = zipWithMaybeMatched $ \k v1 v2 -> Just v1
+            let as = i ^. importAlias . non ""
+                addPrefix = \m ->
+                  let pre = if as == "" then "" else as ++ "/"
+                   in M.mapKeys (pre ++) m
             return
               ( oldEnv
-                  { _types = (merge g1 g2 f (oldEnv ^. types) (env ^. types)),
-                    _effs = (merge g1 g2 f (oldEnv ^. effs) (env ^. effs)),
-                    _funcs = (merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs))
+                  { _types = (merge g1 g2 f (oldEnv ^. types) $ addPrefix (env ^. types)),
+                    _effs = (merge g1 g2 f (oldEnv ^. effs) $ addPrefix (env ^. effs)),
+                    _funcs = (merge g1 g2 f (oldEnv ^. funcs) $ addPrefix (env ^. funcs))
                   },
                 id,
                 m
