@@ -232,15 +232,15 @@ data Case = Case
 instance Pretty Case where
   pretty Case {..} =
     parens $
-      pretty _casePattern <+> "|"
-        <+> pretty _caseGuard
+      pretty _casePattern -- <+> "|"
+        -- <+> pretty _caseGuard
         <+> "->"
         <+> pretty _caseExpr
 
 data TCExpr
   = TCAccess {_tcVarName :: NamePath, _tcIndices :: [TVar], _tcloc :: Location}
   | TCApp {_tcAppName :: NamePath, _tcAppArgs :: [TCExpr], _tcloc :: Location}
-  | TCVar {_tcVar :: TVar, _tcloc:: Location}
+  | TCVar {_tcVar :: NamePath, _tcloc:: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty TCExpr where
@@ -274,6 +274,7 @@ data Expr
         _eloc :: Location
       }
   | ESeq {_eseq :: [Expr], _eloc :: Location}
+  | ETC {_etc :: TCExpr, _eloc :: Location}
   | EAnn {_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
   deriving
     ( -- | BoundExpr{_exprBound :: Bind [TVar] Expr}
@@ -303,6 +304,7 @@ instance Pretty Expr where
   pretty ELet {..} = parens $ "var" <+> pretty _eletPattern <+> "=" <+> pretty _eletExpr
   pretty EHandle {..} = parens $ "handle" <+> pretty _ehandleEff
   pretty ESeq {..} = vsep $ fmap pretty _eseq
+  pretty ETC {..} = pretty _etc
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType 
 
 data TypeDef = TypeDef
