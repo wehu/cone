@@ -48,10 +48,11 @@ typeCheckerSpec = hspec $ do
      fun typeTest<i,j, k>() : tensor<[i+1, j+2, k+3]>
 
      fun runTypeTest(a:tensor<[1, 2, ?]>) : tensor<[2, 4, ?]> {
-      // case tensor<[1, 2, ?]> {
-      //   tensor<[1, 2, ?]> -> {1}
-      //   tensor -> {2}
-      // }
+       tensor<[1, 2, 3]>
+      case tensor<[1, 2, 4]> {
+        tensor<[1, 2, 4]> -> {1}
+        tensor<[1, 2, 4]> -> {2}
+      }
        typeTest<1, 2, ?>()
      }
 
@@ -74,7 +75,7 @@ typeCheckerSpec = hspec $ do
       case c1(1) {
         c(b, ff) -> {b}
         c1(b) -> {b}
-     }
+      }
       var c(c2(c1(e), f), d) = c(c2(c1(1), fff), fff)
       foo(1 - 3 + e)
       var c(c2(c1(e1), f1), d1) = c(c2(c1(1), fff), fff)
