@@ -44,6 +44,7 @@ play Opts {..} = do
     currentPath <- getCurrentDirectory
     execPath <- getExecutablePath
     let sharedPath = (takeDirectory $ takeDirectory execPath) </> "share"
+    -- may get old version???
     d0 <- fmap (sharedPath </>) <$> listDirectory sharedPath
     d1 <- mapM (\p -> (fmap (p </>)) <$> listDirectory p) d0
     putStrLn $ show d1
