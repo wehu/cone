@@ -2,17 +2,31 @@ module core/prelude
 
 // builtin functions
 
-fun ____add<a>(a: a, b:a) : a
+fun inline_python<a>(code:str) : a
 
-fun ____sub<a>(a: a, b:a) : a
+fun ____add<a>(a: a, b:a) : a {
+  inline_python<a>("(a + b)")
+}
 
-fun ____mul<a>(a: a, b:a) : a
+fun ____sub<a>(a: a, b:a) : a {
+  inline_python<a>("(a - b)")
+}
 
-fun ____div<a>(a: a, b:a) : a
+fun ____mul<a>(a: a, b:a) : a {
+  inline_python<a>("(a * b)")
+}
 
-fun ____mod<a>(a: a, b:a) : a
+fun ____div<a>(a: a, b:a) : a {
+  inline_python<a>("(a / b)")
+}
 
-fun ____assign<a>(a: a, b:a) : a
+fun ____mod<a>(a: a, b:a) : a {
+  inline_python<a>("(a % b)")
+}
+
+fun ____assign<a>(a: a, b:a) : a {
+  inline_python<a>("a = b")
+}
 
 // builtin types
 
@@ -30,4 +44,6 @@ type ____pair<a, b>
 
 // tensor types
 
-type tensor<a>
+type tensor<t, shape> {
+  tensor
+}
