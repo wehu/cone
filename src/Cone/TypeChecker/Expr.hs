@@ -146,7 +146,11 @@ inferExprType EHandle {..} = do
   return bodyType
 inferExprType (ETC e@TCApp{..} _) = do
   let v:e:[] = _tcAppArgs
-  inferTCExprType v e
+  if _tcAppName /= "=" && _tcAppName /= "+=" &&
+     _tcAppName /= "-=" && _tcAppName /= "*=" &&
+     _tcAppName /= "/=" && _tcAppName /= "%="
+  then throwError $ "unsupported tc assign operator " ++ _tcAppName ++ ppr _tcloc
+  else inferTCExprType v e
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
 collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(String, Type)])
