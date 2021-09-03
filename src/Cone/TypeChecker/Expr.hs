@@ -144,6 +144,7 @@ inferExprType EHandle {..} = do
   checkTypeKind btk
   underScope $ forM_ _ehandleBindings checkFuncDef
   return bodyType
+inferExprType e@ETC{..} = throwError $ "unsupporet yet" ++ ppr e ++ ppr _eloc
 
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
 inferPatternType PVar {..} = inferExprType $ EVar _pvar _ploc

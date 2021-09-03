@@ -58,7 +58,6 @@ typeCheckerSpec = hspec $ do
        typeTest<1, 2, ?>()
      }
 
-     //[a(i, j) += b(i, k) * c(k, j)]
 
      fun ____sub<a>(a: a, b:a) : a {
        inline_python<a>("aaa")
@@ -101,6 +100,10 @@ typeCheckerSpec = hspec $ do
      }
 
       fun zzz<a1>(a:a<a1>) : i32 {
+
+
+     [a[i, j] = b[i, k] * c[k, j]]
+
         handle a<a1> {
           test<i32>(c1(1))
           3

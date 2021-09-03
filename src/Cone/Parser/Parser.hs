@@ -329,6 +329,58 @@ exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr) <*> getP
 
 funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
 
+tcExprTable =
+  [ [tcExprPrefix sub "-"],
+    [ tcExprBinary star "*" PE.AssocLeft,
+      tcExprBinary div_ "/" PE.AssocLeft,
+      tcExprBinary mod_ "%" PE.AssocLeft
+    ],
+    [ tcExprBinary add "+" PE.AssocLeft,
+      tcExprBinary sub "/" PE.AssocLeft
+    ],
+    [ tcExprBinary less "<" PE.AssocLeft,
+      tcExprBinary greater ">" PE.AssocLeft,
+      tcExprBinary le "<=" PE.AssocLeft,
+      tcExprBinary ge ">=" PE.AssocLeft
+    ],
+    [ tcExprBinary eq "==" PE.AssocLeft,
+      tcExprBinary ne "!=" PE.AssocLeft
+    ],
+    [tcExprPrefix not_ "!"],
+    [ tcExprBinary and_ "&&" PE.AssocLeft,
+      tcExprBinary or_ "||" PE.AssocLeft
+    ]
+  ]
+
+tcExprPrefix op name = PE.Prefix $ do
+  op
+  pos <- getPos
+  return $ \i -> A.TCApp name [i] pos
+
+tcExprBinary op name assoc =
+  PE.Infix
+    ( do
+        op
+        pos <- getPos
+        return $
+          \a b ->
+            let args = a : b : []
+             in A.TCApp name args pos
+    )
+    assoc
+
+tcAccess = A.TCAccess <$> ident <*> brackets (P.sepBy1 (s2n <$> ident) comma) <*> getPos P.<?> "tc access"
+
+tcTerm = parens tc
+  P.<|> P.try tcAccess
+  P.<|> P.try (A.TCApp <$> ident <*> parens (P.sepBy1 tc comma) <*> getPos P.<?> "tc application")
+  P.<|> (A.TCVar <$> ident <*> getPos P.<?> "variable")
+
+tc :: Parser A.TCExpr
+tc = brackets $
+       f <$> tcAccess <* assign_ <*> return "=" <*> PE.buildExpressionParser tcExprTable tcTerm <*> getPos
+  where f a op e pos = A.TCApp op [a, e] pos
+
 exprTable =
   [ [exprPrefix sub "____negative"],
     [ exprBinary star "____mul" PE.AssocLeft,
@@ -403,6 +455,7 @@ term =
                                 P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
                                 P.<|> (eif <$ kIf <*> term <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
                                 P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "assign expression")
+                                P.<|> (A.ETC <$> tc P.<?> "tc expression")
                             )
                               <*> getPos
                           )
