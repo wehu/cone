@@ -237,8 +237,10 @@ instance Pretty Case where
         <+> "->"
         <+> pretty _caseExpr
 
+type IndexVar = Name TCExpr
+
 data TCExpr
-  = TCAccess {_tcVarName :: NamePath, _tcIndices :: [TVar], _tcloc :: Location}
+  = TCAccess {_tcVarName :: NamePath, _tcIndices :: [IndexVar], _tcloc :: Location}
   | TCApp {_tcAppName :: NamePath, _tcAppArgs :: [TCExpr], _tcloc :: Location}
   | TCVar {_tcVarName :: NamePath, _tcloc:: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)

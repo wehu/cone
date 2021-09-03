@@ -385,3 +385,45 @@ funcDefType f =
           bind (f ^. funcBoundVars) $
             TFunc argTypes (Just effType) resultType pos) pos
    in ft
+
+extractTensorShape :: (Has EnvEff sig m) => Type -> m [Type]
+extractTensorShape t@TApp{..} = do
+  if name2String _tappName /= "____pair"
+  then throwError $ "expected a pair type, but got " ++ ppr t ++ ppr _tloc
+  else if L.length _tappArgs /= 2
+    then throwError $ "expected 2 arguments, but got " ++ ppr t ++ ppr _tloc
+    else do let a:b:[] = _tappArgs
+            case a of
+              TNum{..} -> case b of
+                           TNum{..} -> return [a, b]
+                           _ -> ((:) a) <$> extractTensorShape b
+              _ -> throwError $ "expected a tnum type, but got " ++ ppr t ++ ppr _tloc 
+extractTensorShape t = throwError $ "expected a pair type, but got " ++ ppr t ++ ppr (_tloc t)
+
+extractTensorInfo :: (Has EnvEff sig m) => Type -> m (Type, [Type])
+extractTensorInfo t@TApp{..} =
+  if name2String _tappName /= "tensor" 
+  then throwError $ "expected a tensor type, but got " ++ ppr t ++ ppr _tloc
+  else if L.length _tappArgs /= 2
+    then throwError $ "expected 2 arguments, but got " ++ ppr t ++ ppr _tloc
+    else let et:shape:[] = _tappArgs
+          in do s <- extractTensorShape shape
+                return (et, s)
+extractTensorInfo t = throwError $ "expected a tensor type, but got " ++ ppr t ++ ppr (_tloc t)
+
+toTensorShape :: (Has EnvEff sig m) => [Type] -> m Type
+toTensorShape t@(d0:d1:[]) = do
+  if isn't _TNum d0 || isn't _TNum d1
+  then throwError $ "expected tnum, but got " ++ ppr d0 ++ ppr (_tloc d0) ++ " or " ++ ppr d1 ++ ppr (_tloc d1)
+  else return $ TApp (s2n "____pair") [d0, d1] (_tloc d0)
+toTensorShape t@(d0:ds) = do
+  ds' <- toTensorShape ds
+  if isn't _TNum d0
+  then throwError $ "expected tnum, but got " ++ ppr d0 ++ ppr (_tloc d0)
+  else return $ TApp (s2n "____pair") [d0, ds'] (_tloc d0) 
+toTensorShape ds = throwError $ "unsupported dims " ++ ppr ds
+
+toTensorType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
+toTensorType t shape = do
+  shape' <- toTensorShape shape
+  return $ TApp (s2n "tensor") [t, shape'] (_tloc t)

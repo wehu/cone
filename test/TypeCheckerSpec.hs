@@ -37,7 +37,7 @@ typeCheckerSpec = hspec $ do
        fun test(a<b>) : a<b>
      }
      
-     type tensor<a> {
+     type tensor<a,s> {
        tensor
      }
 
@@ -47,13 +47,13 @@ typeCheckerSpec = hspec $ do
 
      type max<a, a>
 
-     fun typeTest<i,j, k>() : tensor<[i+1, j+2, k+3]>
+     fun typeTest<i,j, k>() : tensor<i32, [i+1, j+2, k+3]>
 
-     fun runTypeTest(a:tensor<[1, 2, ?]>) : tensor<[2, 4, ?]> {
-       tensor<[1, 2, max<4, 3>]>
-      case tensor<[1, 2, 4]> {
-        tensor<[1, 2, 4]> -> {1}
-        tensor<[1, 2, 4]> -> {2}
+     fun runTypeTest(a:tensor<i32, [1, 2, ?]>) : tensor<i32, [2, 4, ?]> {
+       tensor<i32, [1, 2, max<4, 3>]>
+      case tensor<i32, [1, 2, 4]> {
+        tensor<i32, [1, 2, 4]> -> {1}
+        tensor<i32, [1, 2, 4]> -> {2}
       }
        typeTest<1, 2, ?>()
      }
@@ -90,7 +90,7 @@ typeCheckerSpec = hspec $ do
 
       while true {
         1}
-
+        
       if true {1} else {2}
 
      }
@@ -99,10 +99,10 @@ typeCheckerSpec = hspec $ do
         fn<c>(a:c):c{a}(a:a)
      }
 
-      fun zzz<a1>(a:a<a1>, b:tensor<[2, 4]>, c:tensor<[2,6]>) : i32 {
+      fun zzz<a1>(a:a<a1>, b:tensor<i32, [2, 4]>, c:tensor<i32, [4,6]>) : i32 {
 
 
-     // [a[i, j] = b[i, k] * c[k, j]]
+      [a[i, j] += b[i, k] * c[k, j]] : tensor<i32, [2, 6]>
 
         handle a<a1> {
           test<i32>(c1(1))

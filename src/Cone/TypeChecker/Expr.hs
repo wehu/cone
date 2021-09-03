@@ -144,10 +144,56 @@ inferExprType EHandle {..} = do
   checkTypeKind btk
   underScope $ forM_ _ehandleBindings checkFuncDef
   return bodyType
-inferExprType ETC{..} = inferTCExprType _etc
+inferExprType (ETC e@TCApp{..} _) = do
+  let v:e:[] = _tcAppArgs
+  inferTCExprType v e
+inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
-inferTCExprType :: (Has EnvEff sig m) => TCExpr -> m Type
-inferTCExprType tc = throwError $ "unsupported: " ++ ppr tc ++ ppr (_tcloc tc)
+collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(String, Type)])
+collectTCExprTypeInfo TCAccess{..} = do
+  v <- getEnv $ funcs. at _tcVarName
+  case v of
+    Just v -> do
+      (t, shape) <- extractTensorInfo v
+      if L.length _tcIndices /= L.length shape
+      then throwError $ "type shape rank mismatch: " ++ ppr shape ++
+                " vs " ++ ppr _tcIndices ++ ppr _tcloc
+      else return (t, [(name2String n, d) | n <- _tcIndices | d <- shape])
+    Nothing -> throwError $ "cannot find variable: " ++ _tcVarName ++ ppr _tcloc
+collectTCExprTypeInfo TCApp{..} = do
+  args' <- mapM collectTCExprTypeInfo _tcAppArgs
+  let arg:args = args'
+  case _tcAppName of
+    an | an == "+" ||
+         an == "-" ||
+         an == "*" ||
+         an == "/" ||
+         an == "%" -> foldM (\(t, is) (et, eis) -> do
+                     k0 <- inferTypeKind t
+                     checkTypeKind k0
+                     k1 <- inferTypeKind et
+                     checkTypeKind k1
+                     if aeq t et then return (et, is ++ eis)
+                     else throwError $ "+ expected same types, but got " ++ ppr t ++ " vs " ++ ppr et) arg args
+    _ -> throwError $ "unsupported tc function: " ++ _tcAppName ++ ppr _tcloc
+collectTCExprTypeInfo tc = throwError $ "unsupported: " ++ ppr tc ++ ppr (_tcloc tc)
+
+inferTCExprType :: (Has EnvEff sig m) => TCExpr -> TCExpr -> m Type
+inferTCExprType a@TCAccess{..} e = do
+  info <- collectTCExprTypeInfo e
+  let (t, indices) = info
+  dims <- foldM (\s (n, t) -> do
+    case s ^. at n of
+      Just ot -> 
+        if aeq ot t then return $ s & at n ?~ t
+        else throwError $ "dim size conflict for " ++ n ++ " : " ++ ppr ot ++ ppr (_tloc ot) ++ " vs " ++ ppr t ++ ppr (_tloc t)
+      Nothing -> return $ s & at n ?~ t
+    ) M.empty indices
+  shape <- foldM (\s i -> do
+                case dims ^. at (name2String i) of
+                  Just t -> return $ s++[t]
+                  Nothing -> throwError $ "cannot index var: " ++ ppr i) [] _tcIndices
+  toTensorType t shape
 
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
 inferPatternType PVar {..} = inferExprType $ EVar _pvar _ploc
@@ -288,3 +334,4 @@ inferExprEffType EHandle {..} = underScope $ do
   et <- inferExprEffType _ehandleScope
   -- TODO check intefaces
   removeEff et _ehandleEff
+inferExprEffType ETC{..} = return $ EffTotal _eloc
