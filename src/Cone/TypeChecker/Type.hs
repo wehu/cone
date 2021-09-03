@@ -35,10 +35,10 @@ inferTypeKind a@TApp {..} = do
     KStar {} ->
       if _tappArgs == []
         then return ak
-        else throwError $ "expected a func kind, but got " ++ ppr ak
+        else throwError $ "expected a func kind, but got " ++ ppr ak ++ ppr _tloc
     KFunc {..} ->
       if L.length _tappArgs /= L.length _kfuncArgs
-        then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs ++ ppr a
+        then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs ++ ppr a ++ ppr _tloc
         else do
           forM_
             [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
@@ -63,7 +63,7 @@ inferTypeKind v@TVar {..} = do
   let tvn = name2String _tvar
   k <- getEnv $ types . at tvn
   forMOf _Nothing k $ \k ->
-    throwError $ "cannot find type: " ++ ppr v
+    throwError $ "cannot find type: " ++ ppr v ++ ppr _tloc
   return $ fromJust k
 inferTypeKind f@TFunc {..} = do
   ks <- mapM inferTypeKind _tfuncArgs
@@ -113,7 +113,7 @@ checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
 checkTypeKind k = do
   case k of
     KStar {} -> return ()
-    _ -> throwError $ "expected a star kind, but got " ++ ppr k
+    _ -> throwError $ "expected a star kind, but got " ++ ppr k ++ ppr (_kloc k)
 
 inferEffKind :: (Has EnvEff sig m) => EffectType -> m EffKind
 inferEffKind a@EffApp {..} = do
@@ -121,7 +121,7 @@ inferEffKind a@EffApp {..} = do
   case ak of
     EKFunc {..} ->
       if L.length _effAppArgs /= L.length _ekfuncArgs
-        then throwError $ "eff kind arguments mismatch: " ++ ppr _effAppArgs ++ " vs " ++ ppr _ekfuncArgs
+        then throwError $ "eff kind arguments mismatch: " ++ ppr _effAppArgs ++ " vs " ++ ppr _ekfuncArgs ++ ppr _effLoc
         else do
           forM_
             [(a, b) | a <- _effAppArgs | b <- _ekfuncArgs]
@@ -132,7 +132,7 @@ inferEffKind a@EffApp {..} = do
               checkKindMatch e b
           checkEffKind _ekfuncResult
           return _ekfuncResult
-    _ -> throwError $ "expected a func eff kind, but got " ++ ppr ak
+    _ -> throwError $ "expected a func eff kind, but got " ++ ppr ak ++ ppr _effLoc
 inferEffKind a@EffAnn {..} = do
   k <- inferEffKind _effAnnType
   checkEffKind k
@@ -147,7 +147,7 @@ inferEffKind v@EffVar {..} = do
   let evn = name2String _effVarName
   k <- getEnv $ effs . at evn
   forMOf _Nothing k $ \k ->
-    throwError $ "cannot find type: " ++ ppr v
+    throwError $ "cannot find type: " ++ ppr v ++ ppr _effLoc
   return $ fromJust k
 inferEffKind l@EffList {..} = do
   ls <- mapM inferEffKind _effList
@@ -176,19 +176,19 @@ checkEffKind k = do
   case k of
     EKStar {} -> return ()
     EKList {..} -> mapM_ checkEffKind _ekList
-    _ -> throwError $ "expected a star eff kind, but got " ++ ppr k
+    _ -> throwError $ "expected a star eff kind, but got " ++ ppr k ++ ppr (_ekloc k)
 
 checkTypeMatch :: (Has EnvEff sig m) => Type -> Type -> m ()
 checkTypeMatch a b = do
   if aeq a b
     then return ()
-    else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+    else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 
 checkKindMatch :: (Has EnvEff sig m) => Kind -> Kind -> m ()
 checkKindMatch a b = do
   if aeq a b
     then return ()
-    else throwError $ "type kind mismatch: " ++ ppr a ++ " vs " ++ ppr b
+    else throwError $ "type kind mismatch: " ++ ppr a ++ ppr (_kloc a) ++ " vs " ++ ppr b ++ ppr (_kloc b)
 
 checkEffTypeMatch :: (Has EnvEff sig m) => EffectType -> EffectType -> m ()
 checkEffTypeMatch a b = do
@@ -200,13 +200,13 @@ checkEffTypeMatch a b = do
       (fmap closeEffType $ fmap (\e -> EffVar e pos) $ al ^. effBoundVar)
       (fmap closeEffType $ fmap (\e -> EffVar e pos) $ bl ^. effBoundVar)
     then return ()
-    else throwError $ "eff type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+    else throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
 checkEffKindMatch :: (Has EnvEff sig m) => EffKind -> EffKind -> m ()
 checkEffKindMatch a b = do
   if aeq a b
     then return ()
-    else throwError $ "eff type kind mismatch: " ++ ppr a ++ " vs " ++ ppr b
+    else throwError $ "eff type kind mismatch: " ++ ppr a ++ ppr (_ekloc a) ++ " vs " ++ ppr b ++ ppr (_ekloc b)
 
 toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
 toEffList a@EffVar {..} = return $ EffList [a] Nothing _effLoc
@@ -267,7 +267,7 @@ removeEff f e = do
 applyTypeArgs :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 applyTypeArgs t args = do
   let (bts, tt) = unbindTypeSample t
-  if L.length bts < L.length args then throwError $ "function type variable number mismatch: " ++ ppr bts ++ " vs" ++ ppr args
+  if L.length bts < L.length args then throwError $ "function type variable number mismatch: " ++ ppr bts ++ " vs" ++ ppr args ++ ppr (_tloc t)
   else do
     let argsLen = L.length args
         binds = [(n, t) | n <- L.take argsLen bts | t <- args]
@@ -277,7 +277,7 @@ inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m Type
 inferAppResultType f@TFunc {} bargs args = do
   let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
-    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args
+    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args ++ ppr (_tloc f)
     else return ()
   bindings <-
     foldM
@@ -287,13 +287,13 @@ inferAppResultType f@TFunc {} bargs args = do
   checkVarBindings bindings
   inferType $ substs bindings $ _tfuncResult f
 inferAppResultType t (a:_) [] = return t
-inferAppResultType t _ _ = throwError $ "expected a function type, but got " ++ ppr t
+inferAppResultType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
 inferAppResultEffType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m EffectType
 inferAppResultEffType f@TFunc {} targs args = do
   let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
-    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args
+    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args ++ ppr (_tloc f)
     else return ()
   bindings <-
     foldM
@@ -306,7 +306,7 @@ inferAppResultEffType f@TFunc {} targs args = do
         Nothing -> EffTotal $ _tloc f
   return $ substs bindings resEff
 inferAppResultEffType t (a:_) [] = return $ EffTotal (_tloc t)
-inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t
+inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
 collectVarBindings :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
 collectVarBindings a@TPrim {} b@TPrim {} = do
@@ -319,15 +319,15 @@ collectVarBindings a@TVar {..} t = do
       ut <- unbindType t
       if aeq a ut
         then return []
-        else throwError $ "try to rebind type: " ++ ppr a ++ " to " ++ show t
+        else throwError $ "try to rebind type: " ++ ppr a ++ " to " ++ ppr t ++ ppr _tloc
     Nothing ->
       let fvars = t ^.. fv
        in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
-            then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t
+            then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr _tloc
             else return [(_tvar, t)]
 collectVarBindings a@TFunc {} b@TFunc {} =
   if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
-    then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+    then throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
     else
       (++)
         <$> ( foldM
@@ -345,7 +345,7 @@ collectVarBindings a@TApp {} b@TApp {} =
         (\s e -> (++) <$> (return s) <*> e)
         []
         [collectVarBindings aarg barg | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
-    else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+    else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectVarBindings a@TAnn {} b@TAnn {} =
   collectVarBindings (_tannType a) (_tannType b)
 collectVarBindings a@BoundType {} b@BoundType {} = do
@@ -355,8 +355,8 @@ collectVarBindings a@BoundType {} b@BoundType {} = do
 collectVarBindings a@TNum {} b@TNum {} =
   if (_tnum a) == (_tnum b)
     then return []
-    else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
-collectVarBindings a b = throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr b
+    else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
+collectVarBindings a b = throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 
 checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
 checkVarBindings bindings = do
@@ -367,7 +367,7 @@ checkVarBindings bindings = do
           Just ot ->
             if aeq t ot
               then return b
-              else throwError $ "type var binding conflict: " ++ ppr t ++ " vs " ++ ppr ot
+              else throwError $ "type var binding conflict: " ++ ppr t ++ ppr (_tloc t) ++ " vs " ++ ppr ot ++ ppr (_tloc ot)
     )
     M.empty
     bindings
