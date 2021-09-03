@@ -47,7 +47,6 @@ play Opts {..} = do
     -- may get old version???
     d0 <- fmap (sharedPath </>) <$> listDirectory sharedPath
     d1 <- mapM (\p -> (fmap (p </>)) <$> listDirectory p) d0
-    putStrLn $ show d1
     let paths = currentPath : (map (\p -> p </> "lib") $ join d1)
     res <- runExceptT $ compile paths f target
     case res of
