@@ -64,11 +64,16 @@ inferExprType EVar {..} = do
     throwError $ "cannot find expr var: " ++ _evarName
   return $ fromJust v
 inferExprType a@EApp {..} = do
-  appFuncType <- inferExprType _eappFunc >>= unbindType
+  appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
+  mapM_ checkTypeKind appTypeArgKinds
+  appFuncType <- inferExprType _eappFunc
+  appFuncType <- (if _eappTypeArgs /= [] 
+                  then applyTypeArgs appFuncType _eappTypeArgs
+                  else return appFuncType) >>= unbindType
   argTypes <- mapM inferExprType _eappArgs
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
-  inferAppResultType appFuncType argTypes
+  inferAppResultType appFuncType _eappTypeArgs argTypes
 inferExprType l@ELam {..} = underScope $ do
   mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) _elamBoundVars
   args <-
@@ -147,7 +152,7 @@ inferPatternType PVar {..} = inferExprType $ EVar _pvar _ploc
 inferPatternType PApp {..} = do
   args <- mapM inferPatternType _pappArgs
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
-  inferAppResultType appFuncType args
+  inferAppResultType appFuncType [] args
 inferPatternType PExpr {..} = inferExprType _pExpr
 
 bindPatternVarTypes :: (Has EnvEff sig m) => Pattern -> Expr -> m Type
@@ -192,7 +197,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
                   _ -> newTVar
         )
   argTypes <- mapM cntr (appFuncType ^. tfuncArgs)
-  appT <- inferAppResultType appFuncType argTypes
+  appT <- inferAppResultType appFuncType [] argTypes
   bindings <- collectVarBindings appT t
   foldM
     ( \s e ->
@@ -227,11 +232,16 @@ inferExprEffType EWhile {..} = do
   checkEffTypeMatch ce be
   mergeEffs ce be
 inferExprEffType EApp {..} = do
-  ft <- inferExprType _eappFunc >>= unbindType
+  appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
+  mapM_ checkTypeKind appTypeArgKinds
+  appFuncType <- inferExprType _eappFunc
+  appFuncType <- (if _eappTypeArgs /= [] 
+                  then applyTypeArgs appFuncType _eappTypeArgs
+                  else return appFuncType) >>= unbindType
   argTypes <- mapM inferExprType _eappArgs
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
-  inferAppResultEffType ft argTypes
+  inferAppResultEffType appFuncType _eappTypeArgs argTypes
 inferExprEffType ESeq {..} =
   foldM
     ( \s e -> do

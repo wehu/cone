@@ -264,8 +264,17 @@ removeEff f e = do
   el <- toEffList e
   removeEff fl el
 
-inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
-inferAppResultType f@TFunc {} args = do
+applyTypeArgs :: (Has EnvEff sig m) => Type -> [Type] -> m Type
+applyTypeArgs t args = do
+  let (bts, tt) = unbindTypeSample t
+  if L.length bts < L.length args then throwError $ "function type variable number mismatch: " ++ ppr bts ++ " vs" ++ ppr args
+  else do
+    let argsLen = L.length args
+        binds = [(n, t) | n <- L.take argsLen bts | t <- args]
+    return $ BoundType $ bind (L.drop argsLen bts) $ substs binds tt
+
+inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m Type
+inferAppResultType f@TFunc {} bargs args = do
   let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
     then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args
@@ -277,10 +286,11 @@ inferAppResultType f@TFunc {} args = do
       [collectVarBindings a b | a <- fArgTypes | b <- args]
   checkVarBindings bindings
   inferType $ substs bindings $ _tfuncResult f
-inferAppResultType t _ = throwError $ "expected a function type, but got " ++ ppr t
+inferAppResultType t (a:_) [] = return t
+inferAppResultType t _ _ = throwError $ "expected a function type, but got " ++ ppr t
 
-inferAppResultEffType :: (Has EnvEff sig m) => Type -> [Type] -> m EffectType
-inferAppResultEffType f@TFunc {} args = do
+inferAppResultEffType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m EffectType
+inferAppResultEffType f@TFunc {} targs args = do
   let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
     then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args
@@ -295,7 +305,8 @@ inferAppResultEffType f@TFunc {} args = do
         Just e -> e
         Nothing -> EffTotal $ _tloc f
   return $ substs bindings resEff
-inferAppResultEffType t _ = throwError $ "expected a function type, but got " ++ ppr t
+inferAppResultEffType t (a:_) [] = return $ EffTotal (_tloc t)
+inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t
 
 collectVarBindings :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
 collectVarBindings a@TPrim {} b@TPrim {} = do
