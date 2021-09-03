@@ -251,7 +251,7 @@ data Expr
       }
   | ECase {_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
   | EWhile {_ewhileCond :: Expr, _ewhileBody :: Expr, _eloc :: Location}
-  | EApp {_eappFunc :: Expr, _eappArgs :: [Expr], _eloc :: Location}
+  | EApp {_eappFunc :: Expr, _eappTypeArgs:: [Type], _eappArgs :: [Expr], _eloc :: Location}
   | ELet
       { _eletPattern :: Pattern,
         _eletExpr :: Expr,

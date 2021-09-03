@@ -354,7 +354,7 @@ exprTable =
 exprPrefix op name = PE.Prefix $ do
   op
   pos <- getPos
-  return $ \i -> A.EApp (A.EVar name pos) [i] pos
+  return $ \i -> A.EApp (A.EVar name pos) [] [i] pos
 
 exprBinary op name assoc =
   PE.Infix
@@ -364,7 +364,7 @@ exprBinary op name assoc =
         return $
           \a b ->
             let args = a : b : []
-             in A.EApp (A.EVar name pos) args pos
+             in A.EApp (A.EVar name pos) [] args pos
     )
     assoc
 
@@ -409,12 +409,14 @@ term =
             <*> (P.optionMaybe $ colon *> type_)
             <*> getPos
         )
+    <*> (P.optionMaybe $ angles $ P.sepBy1 type_ comma)
     <*> (P.optionMaybe $ parens $ P.sepBy expr comma)
     <*> getPos
   where
-    eapp e args pos = case args of
-      Just args' -> A.EApp e args' pos
-      _ -> e
+    eapp e targs args pos =
+      if (isn't _Nothing targs) || (isn't _Nothing args)
+      then A.EApp e (targs ^._Just) (args ^._Just) pos
+      else e
     eann e t pos = case t of
       Just t' -> A.EAnn e t' pos
       _ -> e
@@ -427,7 +429,7 @@ term =
         pos
     varOrAssign v e pos = case e of
       Nothing -> A.EVar v pos
-      Just e -> A.EApp (A.EVar "____assign" pos) [A.EVar v pos, e] pos
+      Just e -> A.EApp (A.EVar "____assign" pos) [] [A.EVar v pos, e] pos
 
 expr :: Parser A.Expr
 expr = PE.buildExpressionParser exprTable term
