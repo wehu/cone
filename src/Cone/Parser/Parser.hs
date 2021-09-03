@@ -117,6 +117,16 @@ pipe_ = symbol L.Pipe
 
 assign_ = symbol L.Assign
 
+addAssign = symbol L.AddAssign
+
+subAssign = symbol L.SubAssign
+
+mulAssign = symbol L.MulAssign
+
+divAssign = symbol L.DivAssign
+
+modAssign = symbol L.ModAssign
+
 backSlash = symbol L.Backslash
 
 question = symbol L.Question
@@ -378,7 +388,14 @@ tcTerm = parens tc
 
 tc :: Parser A.TCExpr
 tc = brackets $
-       f <$> tcAccess <* assign_ <*> return "=" <*> PE.buildExpressionParser tcExprTable tcTerm <*> getPos
+       f <$> tcAccess <*>
+        (assign_ *> return "="
+        P.<|> addAssign *> return "+="
+        P.<|> subAssign *> return "-="
+        P.<|> mulAssign *> return "*="
+        P.<|> divAssign *> return "/="
+        P.<|> modAssign *> return "%=") 
+        <*> PE.buildExpressionParser tcExprTable tcTerm <*> getPos
   where f a op e pos = A.TCApp op [a, e] pos
 
 exprTable =

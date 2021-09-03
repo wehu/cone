@@ -69,6 +69,11 @@ tokens :-
   "||"                                  { \p s -> (p, Or) }
   \|                                    { \p s -> (p, Pipe) }
   "="                                   { \p s -> (p, Assign) }
+  "+="                                  { \p s -> (p, AddAssign) }
+  "-="                                  { \p s -> (p, SubAssign) }
+  "*="                                  { \p s -> (p, MulAssign) }
+  "/="                                  { \p s -> (p, DivAssign) }
+  "%="                                  { \p s -> (p, ModAssign) }
   "+"                                   { \p s -> (p, Add) }
   "-"                                   { \p s -> (p, Sub) }
   "/"                                   { \p s -> (p, Div) }
@@ -150,6 +155,11 @@ data Tok =
     And             |
     Or              |
     Assign          |
+    AddAssign       |
+    SubAssign       |
+    MulAssign       |
+    DivAssign       |
+    ModAssign       |
     Add             |
     Sub             |
     Div             |
