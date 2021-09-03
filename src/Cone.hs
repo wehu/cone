@@ -24,7 +24,7 @@ coneOpts =
       ( long "target"
           <> short 't'
           <> metavar "TARGET"
-          <> value "cone"
+          <> value "python"
           <> help "Target for codegen"
       )
 
@@ -43,8 +43,11 @@ play Opts {..} = do
   forM_ inputFiles $ \f -> do
     currentPath <- getCurrentDirectory
     execPath <- getExecutablePath
-    let libPath = (takeDirectory $ takeDirectory execPath) </> "lib"
-        paths = currentPath : libPath : []
+    let sharedPath = (takeDirectory $ takeDirectory execPath) </> "share"
+    d0 <- fmap (sharedPath </>) <$> listDirectory sharedPath
+    d1 <- mapM (\p -> (fmap (p </>)) <$> listDirectory p) d0
+    putStrLn $ show d1
+    let paths = currentPath : (map (\p -> p </> "lib") $ join d1)
     res <- runExceptT $ compile paths f target
     case res of
       Left e -> putStrLn e
