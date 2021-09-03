@@ -1,6 +1,6 @@
 # Cone-lang
 
-Cone是一门新的函数式编程语言，基于algebraic effect handlers来隔离副作用，支持可微编程，同时和python生态无缝融合。
+Cone是一门函数式编程语言，基于algebraic effect handlers来隔离副作用，支持可微编程，同时和python生态无缝融合。
 
 ## 特点
 
