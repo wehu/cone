@@ -21,13 +21,44 @@ class Backend t where
   namePath :: t Target -> String -> Doc a
   namePath proxy n = pretty $ join $ intersperse "." $ splitOn "/" n
 
+  typeName' :: t Target -> String -> Doc a
+  typeName' proxy n = pretty $ "T" ++ n
+
+  funcName' :: t Target -> String -> Doc a
+  funcName' proxy n = pretty $ "f" ++ n
+
   genImport :: t Target -> ImportStmt -> Doc a
   genImport proxy ImportStmt{..} =
-    "import" <+> namePath proxy _importPath <+> (case _importAlias of; Just a -> "as" <+> pretty a; _ -> emptyDoc)
+    "import" <+> namePath proxy _importPath <+> 
+     (case _importAlias of; Just a -> "as" <+> pretty a; _ -> emptyDoc) <+> line
 
   genTypeDef :: t Target -> TypeDef -> Doc a
   genTypeDef proxy TypeDef{..} = 
-    "type" <+> pretty _typeName
+    vsep $ ["class" <+> typeName' proxy _typeName <> ":"
+           ,indent 4 "pass" <+> line
+           ] ++ (fmap (genTypeCon proxy _typeName) _typeCons)
+
+  genTypeCon :: t Target -> String -> TypeCon -> Doc a
+  genTypeCon proxy ptn TypeCon{..} =
+    let tn = typeName' proxy _typeConName 
+        fn = funcName' proxy _typeConName
+     in vsep ["class" <+> tn <> parens (typeName' proxy ptn) <> ":"
+          ,indent 4 constructor
+          ,conf fn tn <+> line]
+    where constructor =
+            vsep ["def" <+> "initialize" <> genArgs <> ":"
+                 ,indent 4 $ vsep genFields]
+          conf fn tn = vsep ["def" <+> fn <> genArgs <> ":"
+                       ,indent 4 ("return" <+> tn <> genArgs)]
+          genArgs = encloseSep lparen rparen comma $ foldl' (\s e -> s++[pretty $ "t" ++ show (length s)]) ["self"] _typeConArgs
+          genFields =
+            if _typeConArgs == []
+            then ["pass"]
+            else foldl' (\s e -> 
+                  let i = show $ length s
+                      f = "self.f" ++ i
+                      a = "t" ++ i
+                   in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
   
   genEffectDef :: t Target -> EffectDef -> Doc a
   genEffectDef proxy e = pretty e
@@ -41,7 +72,7 @@ class Backend t where
 genModule :: Backend t => t Target -> Module -> Doc a
 genModule proxy Module{..} =
   vsep $
-      ["module" <+> namePath proxy _moduleName]
+      ["module" <+> namePath proxy _moduleName <+> line]
         ++ (map (genImport proxy) _imports)
         ++ (map (genTopStmt proxy) _topStmts)
 
