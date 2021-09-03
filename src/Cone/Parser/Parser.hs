@@ -187,6 +187,8 @@ braces e = lBrace *> (P.optional semi) *> e <* (P.optional semi) <* rBrace
 
 brackets e = lBracket *> e <* rBracket
 
+angles e = less *> e <* greater
+
 namePath :: Parser A.NamePath
 namePath = intercalate "/" <$> P.sepBy1 ident div_
 
@@ -248,7 +250,7 @@ typeBinary op name assoc =
 typeTerm :: Parser A.Type
 typeTerm =
   ( tann
-      <$> ( ( P.try (A.TApp <$> (s2n <$> namePath) <* less <*> (P.sepBy1 type_ comma) <* greater)
+      <$> ( ( P.try (A.TApp <$> (s2n <$> namePath) <*> angles (P.sepBy1 type_ comma))
                 P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType)
                 P.<|> (A.TVar <$> (s2n <$> ident))
                 P.<|> (A.TPrim <$> primType)
