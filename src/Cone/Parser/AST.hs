@@ -152,7 +152,7 @@ instance Pretty Type where
   pretty TFunc {..} = parens $ parensList _tfuncArgs <+> "->" <+> pretty _tfuncEff <+> pretty _tfuncResult
   pretty TApp {..} = parens $ pretty _tappName <+> parensList _tappArgs
   pretty TAnn {..} = parens $ pretty _tannType <+> colon <+> pretty _tannKind
-  pretty (BoundType (B tvars t)) = parens $ bracketsList tvars <+> colon <+> pretty t
+  pretty (BoundType (B tvars t)) = parens $ "forall" <+> bracketsList tvars <+> dot <+> pretty t
 
 data Kind
   = KStar {_kloc :: Location}
@@ -235,7 +235,6 @@ instance Pretty Case where
         <+> pretty _caseGuard
         <+> "->"
         <+> pretty _caseExpr
-        <+> pretty _caseLoc
 
 data Expr
   = EVar {_evarName :: NamePath, _eloc :: Location}
