@@ -36,6 +36,7 @@ dependencies:
 - filepath
 - split
 - optparse-applicative
+- process
 
 library:
   source-dirs: src
