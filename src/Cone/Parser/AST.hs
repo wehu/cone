@@ -237,6 +237,17 @@ instance Pretty Case where
         <+> "->"
         <+> pretty _caseExpr
 
+data TCExpr
+  = TCAccess {_tcVarName :: NamePath, _tcIndices :: [TVar], _tcloc :: Location}
+  | TCApp {_tcAppName :: NamePath, _tcAppArgs :: [TCExpr], _tcloc :: Location}
+  | TCVar {_tcVar :: TVar, _tcloc:: Location}
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty TCExpr where
+  pretty TCAccess {..} = parens $ pretty _tcVarName <+> parensList _tcIndices
+  pretty TCApp {..} = parens $ pretty _tcAppName <+> parensList _tcAppArgs
+  pretty TCVar {..} = pretty _tcVar
+
 data Expr
   = EVar {_evarName :: NamePath, _eloc :: Location}
   | ELit {_lit :: String, _litType :: Type, _eloc :: Location}
@@ -572,6 +583,19 @@ instance Subst Type Pattern
 makeLenses ''Pattern
 
 makePrisms ''Pattern
+
+-------------------------------
+
+instance Plated TCExpr where
+  plate = uniplate
+
+instance Alpha TCExpr
+
+instance Subst Type TCExpr
+
+makeLenses ''TCExpr
+
+makePrisms ''TCExpr
 
 -------------------------------
 
