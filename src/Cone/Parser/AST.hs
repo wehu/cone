@@ -240,13 +240,13 @@ instance Pretty Case where
 data TCExpr
   = TCAccess {_tcVarName :: NamePath, _tcIndices :: [TVar], _tcloc :: Location}
   | TCApp {_tcAppName :: NamePath, _tcAppArgs :: [TCExpr], _tcloc :: Location}
-  | TCVar {_tcVar :: NamePath, _tcloc:: Location}
+  | TCVar {_tcVarName :: NamePath, _tcloc:: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty TCExpr where
   pretty TCAccess {..} = parens $ pretty _tcVarName <+> parensList _tcIndices
   pretty TCApp {..} = parens $ pretty _tcAppName <+> parensList _tcAppArgs
-  pretty TCVar {..} = pretty _tcVar
+  pretty TCVar {..} = pretty _tcVarName
 
 data Expr
   = EVar {_evarName :: NamePath, _eloc :: Location}
