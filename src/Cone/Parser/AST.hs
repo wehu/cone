@@ -213,7 +213,7 @@ data Pattern
         _pappArgs :: [Pattern],
         _ploc :: Location
       }
-  | PExpr {_pExpr :: Expr}
+  | PExpr {_pExpr :: Expr, _ploc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Pattern where

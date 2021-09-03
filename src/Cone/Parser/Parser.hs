@@ -374,7 +374,7 @@ pat =
   parens pat
     P.<|> P.try (A.PApp <$> namePath <*> (angles (P.sepBy1 type_ comma) P.<|> return []) <*> parens (P.sepBy1 pat comma) <*> getPos)
     P.<|> A.PVar <$> ident <*> getPos
-    P.<|> A.PExpr <$> literal
+    P.<|> A.PExpr <$> literal <*> getPos
 
 literal =
   ( A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
@@ -424,8 +424,8 @@ term =
     eif c t f pos =
       A.ECase
         c
-        [ A.Case (A.PExpr $ A.ELit "true" (A.TPrim A.Pred pos) pos) Nothing t pos,
-          A.Case (A.PExpr $ A.ELit "false" (A.TPrim A.Pred pos) pos) Nothing f pos
+        [ A.Case (A.PExpr (A.ELit "true" (A.TPrim A.Pred pos) pos) pos) Nothing t pos,
+          A.Case (A.PExpr (A.ELit "false" (A.TPrim A.Pred pos) pos) pos) Nothing f pos
         ]
         pos
     varOrAssign v e pos = case e of
