@@ -50,7 +50,8 @@ class Backend t where
                  ,indent 4 $ vsep genFields]
           conf fn tn = vsep ["def" <+> fn <> genArgs <> ":"
                        ,indent 4 ("return" <+> tn <> genArgs)]
-          genArgs = encloseSep lparen rparen comma $ foldl' (\s e -> s++[pretty $ "t" ++ show (length s)]) ["self"] _typeConArgs
+          genArgs = encloseSep lparen rparen comma $ 
+                 foldl' (\s e -> s++[pretty $ "t" ++ show (length s)]) ["self"] _typeConArgs
           genFields =
             if _typeConArgs == []
             then ["pass"]
@@ -64,7 +65,15 @@ class Backend t where
   genEffectDef proxy e = pretty e
   
   genFuncDef :: t Target -> FuncDef -> Doc a
-  genFuncDef proxy f = pretty f
+  genFuncDef proxy FuncDef{..} = 
+    vsep ["def" <+> funcName' proxy _funcName <> genArgs <> ":"
+         ,indent 4 $ case _funcExpr of
+                       Just e -> genExpr proxy e
+                       Nothing -> "pass"]
+    where genArgs = encloseSep lparen rparen comma $ map pretty $ _funcArgs ^..traverse._1
+  
+  genExpr :: t Target -> Expr -> Doc a
+  genExpr proxy EVar{..} = pretty _evarName
   
   genImplFuncDef :: t Target -> ImplFuncDef -> Doc a
   genImplFuncDef proxy f = pretty f
@@ -72,8 +81,8 @@ class Backend t where
 genModule :: Backend t => t Target -> Module -> Doc a
 genModule proxy Module{..} =
   vsep $
-      ["module" <+> namePath proxy _moduleName <+> line]
-        ++ (map (genImport proxy) _imports)
+      -- [ "module" <+> namePath proxy _moduleName <+> line]
+        (map (genImport proxy) _imports)
         ++ (map (genTopStmt proxy) _topStmts)
 
 genTopStmt :: Backend t => t Target -> TopStmt -> Doc a
