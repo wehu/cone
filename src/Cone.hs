@@ -15,7 +15,7 @@ import System.Directory
 import System.Environment
 import System.FilePath
 
-data Opts = Opts {inputFiles :: [String], target :: String}
+data Opts = Opts {inputFiles :: [String], target :: String, run :: String}
 
 coneOpts :: Parser Opts
 coneOpts =
@@ -26,6 +26,13 @@ coneOpts =
           <> metavar "TARGET"
           <> value "python"
           <> help "Target for codegen"
+      )
+    <*> strOption
+      ( long "run"
+          <> short 'r'
+          <> metavar "Run"
+          <> value "python"
+          <> help "Run code"
       )
 
 coneMain :: IO ()
