@@ -87,3 +87,9 @@ type min<a, a>
 type tensor<t, shape> {
   tensor
 }
+
+// python effect
+
+effect python<a> {
+  fun run_python(str) : a
+}
