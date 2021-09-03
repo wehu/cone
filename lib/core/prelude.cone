@@ -24,6 +24,42 @@ fun ____mod<a>(a: a, b:a) : a {
   inline_python<a>("(a % b)")
 }
 
+fun ____lt<a>(a: a, b:a) : bool {
+  inline_python<a>("(a < b)")
+}
+
+fun ____gt<a>(a: a, b:a) : bool {
+  inline_python<a>("(a > b)")
+}
+
+fun ____le<a>(a: a, b:a) : bool {
+  inline_python<a>("(a <= b)")
+}
+
+fun ____ge<a>(a: a, b:a) : bool {
+  inline_python<a>("(a >= b)")
+}
+
+fun ____eq<a>(a: a, b:a) : bool {
+  inline_python<a>("(a == b)")
+}
+
+fun ____ne<a>(a: a, b:a) : bool {
+  inline_python<a>("(a != b)")
+}
+
+fun ____not<a>(a: bool) : bool {
+  inline_python<a>("(not a)")
+}
+
+fun ____and<a>(a: bool, b:bool) : bool {
+  inline_python<a>("(a and b)")
+}
+
+fun ____or<a>(a: bool, b:bool) : bool {
+  inline_python<a>("(a or b)")
+}
+
 fun ____assign<a>(a: a, b:a) : a {
   inline_python<a>("a = b")
 }
