@@ -209,6 +209,7 @@ data Pattern
   = PVar {_pvar :: NamePath, _ploc :: Location}
   | PApp
       { _pappName :: NamePath,
+        _pappTypeArgs :: [Type],
         _pappArgs :: [Pattern],
         _ploc :: Location
       }

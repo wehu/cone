@@ -372,7 +372,7 @@ exprBinary op name assoc =
 pat :: Parser A.Pattern
 pat =
   parens pat
-    P.<|> P.try (A.PApp <$> namePath <*> parens (P.sepBy1 pat comma) <*> getPos)
+    P.<|> P.try (A.PApp <$> namePath <*> (angles (P.sepBy1 type_ comma) P.<|> return []) <*> parens (P.sepBy1 pat comma) <*> getPos)
     P.<|> A.PVar <$> ident <*> getPos
     P.<|> A.PExpr <$> literal
 

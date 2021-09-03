@@ -149,8 +149,11 @@ inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
 inferPatternType PVar {..} = inferExprType $ EVar _pvar _ploc
 inferPatternType PApp {..} = do
   args <- mapM inferPatternType _pappArgs
-  appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
-  inferAppResultType appFuncType [] args
+  appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
+  mapM_ checkTypeKind appTypeArgKinds
+  appFuncType <- inferExprType (EVar _pappName _ploc) 
+  appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
+  inferAppResultType appFuncType _pappTypeArgs args
 inferPatternType PExpr {..} = inferExprType _pExpr
 
 bindPatternVarTypes :: (Has EnvEff sig m) => Pattern -> Expr -> m Type
@@ -174,7 +177,10 @@ extracePatternVarTypes :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Typ
 extracePatternVarTypes PVar {..} t = return [(s2n _pvar, t)]
 extracePatternVarTypes PExpr {..} t = return []
 extracePatternVarTypes a@PApp {..} t = underScope $ do
-  appFuncType <- inferExprType (EVar _pappName _ploc) >>= unbindType
+  appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
+  mapM_ checkTypeKind appTypeArgKinds
+  appFuncType <- inferExprType (EVar _pappName _ploc) 
+  appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   let cntr =
         ( \arg ->
             let newTVar = do
@@ -195,7 +201,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
                   _ -> newTVar
         )
   argTypes <- mapM cntr (appFuncType ^. tfuncArgs)
-  appT <- inferAppResultType appFuncType [] argTypes
+  appT <- inferAppResultType appFuncType _pappTypeArgs argTypes
   bindings <- collectVarBindings appT t
   foldM
     ( \s e ->
