@@ -247,14 +247,14 @@ removeEff f@EffList {} e@EffList {} = do
       Just _ -> return Nothing
       Nothing -> return fv
     Nothing -> case ev of
-      Just ev -> throwError $ "eff has no variable, cannot be removed"
+      Just ev -> throwError $ "eff has no variable, cannot be removed" ++ ppr pos
       Nothing -> return Nothing
   l <-
     foldM
       ( \l e -> do
           case L.findIndex (aeq e) l of
             Just idx -> return $ L.deleteBy aeq e l
-            Nothing -> throwError $ "eff " ++ ppr l ++ " has no " ++ ppr e ++ ", cannot be removed"
+            Nothing -> throwError $ "eff " ++ ppr l ++ " has no " ++ ppr e ++ ", cannot be removed" ++ ppr pos
       )
       fl
       el
