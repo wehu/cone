@@ -4,6 +4,7 @@ module Cone.Compiler (compile) where
 
 import Cone.CodeGen.Backend
 import Cone.CodeGen.Backend.Cone
+import Cone.CodeGen.Backend.Python
 import Cone.ModuleLoader
 import Control.Monad
 import Control.Monad.Except
@@ -14,4 +15,5 @@ compile paths f target = do
   (env, id, m) <- loadModule paths f
   case target of
     "cone" -> return $ show $ gen m (Cone :: (Cone Target))
+    "python" -> return $ show $ gen m (Python :: (Python Target))
     _ -> throwError $ "unknown target: " ++ target

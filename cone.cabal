@@ -30,6 +30,7 @@ library
       Cone
       Cone.CodeGen.Backend
       Cone.CodeGen.Backend.Cone
+      Cone.CodeGen.Backend.Python
       Cone.Compiler
       Cone.ModuleLoader
       Cone.Parser.AST
