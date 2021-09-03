@@ -2,17 +2,17 @@ module core/prelude
 
 // builtin functions
 
-fun ____add[a](a: a, b:a) : a
+fun ____add<a>(a: a, b:a) : a
 
-fun ____sub[a](a: a, b:a) : a
+fun ____sub<a>(a: a, b:a) : a
 
-fun ____mul[a](a: a, b:a) : a
+fun ____mul<a>(a: a, b:a) : a
 
-fun ____div[a](a: a, b:a) : a
+fun ____div<a>(a: a, b:a) : a
 
-fun ____mod[a](a: a, b:a) : a
+fun ____mod<a>(a: a, b:a) : a
 
-fun ____assign[a](a: a, b:a) : a
+fun ____assign<a>(a: a, b:a) : a
 
 // builtin types
 
