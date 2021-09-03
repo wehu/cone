@@ -224,6 +224,7 @@ primType =
     P.<|> (A.F64 <$ f64)
     P.<|> (A.BF16 <$ bf16)
     P.<|> (A.Pred <$ bool)
+    P.<|> (A.Str <$ str)
 
 typeTable =
   [ [ typeBinary star "____mul" PE.AssocLeft,

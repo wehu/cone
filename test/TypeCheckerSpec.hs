@@ -43,6 +43,8 @@ typeCheckerSpec = hspec $ do
 
      type ____pair<a, b>
 
+     fun inline_python<b>(c:str) : b 
+
      fun typeTest<i,j, k>() : tensor<[i+1, j+2, k+3]>
 
      fun runTypeTest(a:tensor<[1, 2, ?]>) : tensor<[2, 4, ?]> {
@@ -52,7 +54,9 @@ typeCheckerSpec = hspec $ do
 
      //[a(i, j) += b(i, k) * c(k, j)]
 
-     fun ____sub<a>(a: a, b:a) : a
+     fun ____sub<a>(a: a, b:a) : a {
+       inline_python<a>("aaa")
+     }
 
      fun ____add<a>(a: a, b:a) : a
 
