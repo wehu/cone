@@ -85,10 +85,10 @@ unbindType b@BoundType {..} = do
   foldM
     ( \t p -> do
         np <- freeVarName <$> fresh
-        unbindType $ subst p (TVar np pos) t
+        return $ subst p (TVar np pos) t
     )
     t
-    ps
+    ps >>= unbindType
 unbindType t = return t
 
 unbindEffType :: (Has EnvEff sig m) => EffectType -> m EffectType
