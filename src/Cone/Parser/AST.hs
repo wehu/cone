@@ -194,7 +194,7 @@ data EffectType
         _effAnnKind :: EffKind,
         _effLoc :: Location
       }
-  | BoundEffType {_boundEffType :: Bind [TVar] EffectType}
+  | BoundEffType {_boundEffType :: Bind [TVar] EffectType, _effLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty EffectType where
@@ -203,7 +203,7 @@ instance Pretty EffectType where
   pretty EffApp {..} = parens $ pretty _effAppName <+> parensList _effAppArgs
   pretty EffList {..} = anglesList _effList 
   pretty EffAnn {..} = parens $ pretty _effAnnType <+> colon <+> pretty _effAnnKind
-  pretty (BoundEffType (B tvars e)) = parens $ bracketsList tvars <+> colon <+> pretty e
+  pretty (BoundEffType (B tvars e) _) = parens $ bracketsList tvars <+> colon <+> pretty e
 
 data Pattern
   = PVar {_pvar :: NamePath, _ploc :: Location}

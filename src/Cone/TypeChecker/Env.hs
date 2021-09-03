@@ -94,7 +94,7 @@ unbindType t = return t
 unbindEffType :: (Has EnvEff sig m) => EffectType -> m EffectType
 unbindEffType b@BoundEffType {..} = do
   let (ps, t) = unsafeUnbind _boundEffType
-      pos = _effLoc t
+      pos = _effLoc
   foldM
     ( \t p -> do
         np <- freeVarName <$> fresh

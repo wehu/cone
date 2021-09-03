@@ -140,7 +140,7 @@ inferEffKind a@EffAnn {..} = do
   return _effAnnKind
 inferEffKind b@BoundEffType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind $ _boundEffType
-      star = EKStar $ _effLoc t
+      star = EKStar $ _effLoc
   forM_ bvs $ \v -> setEnv (Just star) $ effs . at (name2String v)
   inferEffKind t
 inferEffKind v@EffVar {..} = do
