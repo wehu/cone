@@ -42,9 +42,9 @@ checkFuncType f = underScope $ do
     Just e -> do
       eType <- inferExprType e
       resultType <- inferType $ f ^. funcResultType
-      let resultType' = if isn't _TFunc resultType then resultType
-                       else bindType (f^.funcBoundVars) resultType
-      checkTypeMatch eType resultType'
+      let rType = if isn't _TFunc resultType then resultType
+                  else bindType (f^.funcBoundVars) resultType
+      checkTypeMatch eType rType
       effType <- inferExprEffType e
       let fEff = case f ^. funcEffectType of
             Just et -> et
@@ -67,6 +67,20 @@ inferExprType EVar {..} = do
     throwError $ "cannot find expr var: " ++ _evarName ++ ppr _eloc
   inferType $ fromJust v
 inferExprType a@EApp {..} = do
+  -- check assign variable
+  if _eappFunc ^.evarName == "____assign"
+  then do
+    if L.length _eappArgs /= 2
+    then throwError $ "expected 2 arguments: " ++ ppr a
+    else if isn't _EVar $ head _eappArgs
+         then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs)
+         else do let vn = (head _eappArgs) ^.evarName
+                 v <- getEnv $ locals . at vn
+                 case v of
+                  Just v -> return ()
+                  Nothing -> throwError $ "cannot find local variable " ++ vn
+  else return ()
+  --
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
   appFuncType <- inferExprType _eappFunc
