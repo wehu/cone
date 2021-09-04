@@ -78,24 +78,31 @@ class Backend t where
           fns = "\"" <> fn <> "\""
   genExpr proxy ESeq{..} = encloseSep lbracket rbracket comma $ fmap (genExpr proxy) _eseq
   genExpr proxy ELit{..} = pretty _lit
-  genExpr proxy ELam{..} = "lambda" <+> genArgs <> colon <+> genBody _elamExpr
+  genExpr proxy ELam{..} = parens $ "lambda" <+> genArgs <> colon <+> genBody _elamExpr
     where genArgs = sep $ map pretty $ _elamArgs ^..traverse._1
           genBody e = case e of
                        Just e -> genExpr proxy e
                        Nothing -> "pass" 
   genExpr proxy EWhile{..} = "while" <+> genExpr proxy _ewhileCond <> colon <+> genExpr proxy _ewhileBody
-  genExpr proxy ELet{..} = "f____assign" <> 
+  genExpr proxy ELet{..} = parens $ "f____assign" <> 
         parens ("____state" <> comma <+> genPattern proxy _eletPattern <> comma <+> genExpr proxy _eletExpr)
   genExpr proxy EAnn{..} = genExpr proxy _eannExpr
   genExpr proxy EApp{..} = 
     let fn = _eappFunc ^.evarName
      in case fn of
-         "____add" -> parens $ genExpr proxy (_eappArgs !! 0) <+> "+" <+> genExpr proxy (_eappArgs !! 1)
+         "____add" -> binary "+"
+         "____sub" -> binary "-"
+         "____mul" -> binary "*"
+         "____div" -> binary "/"
+         "____mod" -> binary "%"
          _ -> genExpr proxy _eappFunc <> genArgs
-    where genArgs = encloseSep lparen rparen comma
+    where genArgs = parens $ encloseSep lparen rparen comma
             (if _eappFunc ^.evarName == "____assign" then  
               "____state":("\"" <> (funcName' proxy $ _eappArgs !! 0 ^.evarName) <> "\""):(tail $ map (genExpr proxy) _eappArgs)
             else (map (genExpr proxy) _eappArgs))
+          binary :: String -> Doc a
+          binary op = parens $ genExpr proxy (_eappArgs !! 0) <+> pretty op <+> genExpr proxy (_eappArgs !! 1)
+          
   
   genPattern :: t Target -> Pattern -> Doc a
   genPattern proxy PVar{..} = pretty '"' <> funcName' proxy _pvar <> pretty '"'
