@@ -16,7 +16,7 @@ import System.Directory
 import System.Environment
 import System.FilePath
 
-data Opts = Opts {inputFiles :: [String], target :: String, run :: String}
+data Opts = Opts {inputFiles :: [String], target :: String, dump :: Bool}
 
 coneOpts :: Parser Opts
 coneOpts =
@@ -28,12 +28,10 @@ coneOpts =
           <> value "python"
           <> help "Target for codegen"
       )
-    <*> strOption
-      ( long "run"
-          <> short 'r'
-          <> metavar "Run"
-          <> value "python"
-          <> help "Run code"
+    <*> switch
+      ( long "dump"
+          <> short 'd'
+          <> help "Dump code"
       )
 
 coneMain :: IO ()
@@ -59,5 +57,5 @@ play Opts {..} = do
     res <- runExceptT $ compile paths f target
     case res of
       Left e -> putStrLn e
-      Right s -> if run /= "" then runCode run [] s >>= putStrLn
-                 else putStrLn s
+      Right s -> if dump then putStrLn s
+                 else runCode target [] s >>= putStrLn
