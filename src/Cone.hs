@@ -58,4 +58,4 @@ play Opts {..} = do
     case res of
       Left e -> putStrLn e
       Right s -> if dump then putStrLn s
-                 else runCode target [] s >>= putStrLn
+                 else runCode target [] s >>= print
