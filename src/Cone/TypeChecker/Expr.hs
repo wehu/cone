@@ -44,7 +44,10 @@ checkFuncType f = underScope $ do
       resultType <- inferType $ f ^. funcResultType
       let rType = if isn't _TFunc resultType then resultType
                   else bindType (f^.funcBoundVars) resultType
-      checkTypeMatch eType rType
+          (bts, t) = unbindTypeSample eType
+          eType' = if isn't _TFunc t then eType
+                   else bindType (f^.funcBoundVars ++ bts) t
+      checkTypeMatch eType' rType
       effType <- inferExprEffType e
       let fEff = case f ^. funcEffectType of
             Just et -> et
