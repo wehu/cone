@@ -46,7 +46,7 @@ class Backend t where
           ,indent 4 constructor
           ,ctrFunc fn tn <+> line]
     where constructor =
-            vsep ["def" <+> "initialize" <> genArgs ["self"] <> ":"
+            vsep ["def" <+> "__init__" <> genArgs ["self"] <> ":"
                  ,indent 4 $ vsep genFields]
           genArgs init = encloseSep lparen rparen comma $ 
                  foldl' (\s e -> s++[pretty $ "t" ++ show (length s)]) init _typeConArgs
