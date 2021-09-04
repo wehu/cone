@@ -6,4 +6,4 @@ import Prettyprinter
 
 data Python a = Python
 
-instance Backend Python where
+instance Backend Python

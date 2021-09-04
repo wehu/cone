@@ -49,7 +49,7 @@ class Backend t where
             vsep ["def" <+> "__init__" <> genArgs ["self"] <> ":"
                  ,indent 4 $ vsep genFields]
           genArgs init = encloseSep lparen rparen comma $ 
-                 foldl' (\s e -> s++[pretty $ "t" ++ show (length s)]) init _typeConArgs
+                 foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
           genFields =
             if _typeConArgs == []
             then ["pass"]
