@@ -94,28 +94,18 @@ refresh vs e = do
 
 unbindType :: (Has EnvEff sig m) => Type -> m Type
 unbindType b@BoundType {..} = do
-  let (ps, t) = unsafeUnbind _boundType
+  let (vs, t) = unsafeUnbind _boundType
       pos = _tloc
-  foldM
-    ( \t p -> do
-        np <- freeVarName <$> fresh
-        return $ subst p (TVar np pos) t
-    )
-    t
-    ps >>= unbindType
+  nvs <- mapM (\_ -> freeVarName <$> fresh) vs
+  unbindType $ substs [(f, TVar t pos) | f <- vs | t <- nvs] t
 unbindType t = return t
 
 unbindEffType :: (Has EnvEff sig m) => EffectType -> m EffectType
 unbindEffType b@BoundEffType {..} = do
-  let (ps, t) = unsafeUnbind _boundEffType
+  let (vs, t) = unsafeUnbind _boundEffType
       pos = _effLoc
-  foldM
-    ( \t p -> do
-        np <- freeVarName <$> fresh
-        unbindEffType $ subst p (TVar np pos) t
-    )
-    t
-    ps >>= unbindEffType
+  nvs <- mapM (\_ -> freeVarName <$> fresh) vs
+  unbindEffType $ substs [(f, TVar t pos) | f <- vs | t <- nvs] t
 unbindEffType t = return t
 
 unbindTypeSimple :: Type -> ([TVar], Type)
