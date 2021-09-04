@@ -75,7 +75,7 @@ inferExprType a@EApp {..} = do
     else if isn't _EVar $ head _eappArgs
          then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs)
          else do let vn = (head _eappArgs) ^.evarName
-                 v <- getEnv $ locals . at vn
+                 v <- getEnv $ localState . at vn
                  case v of
                   Just v -> return ()
                   Nothing -> throwError $ "cannot find local variable " ++ vn
@@ -90,8 +90,8 @@ inferExprType a@EApp {..} = do
   mapM_ checkTypeKind argKinds
   inferAppResultType appFuncType _eappTypeArgs argTypes >>= inferType
 inferExprType l@ELam {..} = underScope $ do
-  -- clear locals, lambda cannot capture local state variables
-  setEnv M.empty locals
+  -- clear localState, lambda cannot capture local state variables
+  setEnv M.empty localState
   -- refresh
   (bvs, newLam) <- refresh _elamBoundVars l
   case newLam of
@@ -247,8 +247,8 @@ bindPatternVarTypes p e = do
           Just _ -> throwError $ "pattern rebind a variable: " ++ n ++ ppr (_eloc e)
           Nothing -> do
             setFuncType n t
-            -- set locals for state
-            setEnv (Just t) $ locals . at n
+            -- set localState
+            setEnv (Just t) $ localState . at n
             return $ bs & at n ?~ True
     )
     M.empty

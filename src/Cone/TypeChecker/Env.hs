@@ -34,7 +34,7 @@ data Env = Env
   { _types :: TypeKinds,
     _funcs :: ExprTypes,
     _effs :: EffKinds,
-    _locals :: ExprTypes
+    _localState :: ExprTypes
   }
   deriving (Show)
 
@@ -45,7 +45,7 @@ initialEnv =
     { _types = M.empty,
       _funcs = M.empty,
       _effs = M.empty,
-      _locals = M.empty
+      _localState = M.empty
     }
 
 type EnvEff = Eff Env String
@@ -70,12 +70,12 @@ underScope f = do
 setFuncType :: (Has EnvEff sig m) => String -> Type -> m ()
 setFuncType n t = do
   setEnv (Just t) $ funcs .at n
-  l <- getEnv locals
-  setEnv (M.delete n l) locals
+  l <- getEnv localState
+  setEnv (M.delete n l) localState
 
 getFuncType :: (Has EnvEff sig m) => String -> m Type
 getFuncType n = do
-  v <- getEnv $ locals .at n
+  v <- getEnv $ localState .at n
   case v of
     Just v -> return v
     Nothing -> do
