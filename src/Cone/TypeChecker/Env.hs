@@ -112,10 +112,10 @@ unbindEffType b@BoundEffType {..} = do
     ps
 unbindEffType t = return t
 
-unbindTypeSample :: Type -> ([TVar], Type)
-unbindTypeSample b@BoundType {..} = unsafeUnbind _boundType
-unbindTypeSample t = ([], t)
+unbindTypeSimple :: Type -> ([TVar], Type)
+unbindTypeSimple b@BoundType {..} = unsafeUnbind _boundType
+unbindTypeSimple t = ([], t)
 
-unbindEffTypeSample :: EffectType -> ([TVar], EffectType)
-unbindEffTypeSample b@BoundEffType {..} = unsafeUnbind _boundEffType
-unbindEffTypeSample t = ([], t)
+unbindEffTypeSimple :: EffectType -> ([TVar], EffectType)
+unbindEffTypeSimple b@BoundEffType {..} = unsafeUnbind _boundEffType
+unbindEffTypeSimple t = ([], t)

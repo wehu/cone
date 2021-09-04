@@ -368,7 +368,7 @@ inferExprEffType EHandle {..} = underScope $ do
       else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff ++ ppr _eloc
     fs <- getEnv funcs
     setEnv (M.delete fn fs) $ funcs
-    let (bts, ft) = unbindTypeSample $ funcDefType intf
+    let (bts, ft) = unbindTypeSimple $ funcDefType intf
     setEnv (Just $ bindType bts $ ft {_tfuncEff = Just effs}) $ funcs . at fn
   et <- inferExprEffType _ehandleScope
   -- TODO check intefaces
