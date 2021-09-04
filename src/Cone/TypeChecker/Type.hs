@@ -287,7 +287,7 @@ inferAppResultType f@TFunc {} bargs args = do
       []
       [collectVarBindings a b | a <- fArgTypes | b <- args]
   checkVarBindings bindings
-  inferType $ substs bindings $ _tfuncResult f
+  return $ substs bindings $ _tfuncResult f
 inferAppResultType t (a:_) [] = return t
 inferAppResultType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 

@@ -62,7 +62,7 @@ inferExprType EVar {..} = do
   v <- getEnv $ funcs . at _evarName
   forMOf _Nothing v $ \v ->
     throwError $ "cannot find expr var: " ++ _evarName ++ ppr _eloc
-  return $ fromJust v
+  inferType $ fromJust v
 inferExprType a@EApp {..} = do
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
@@ -71,7 +71,7 @@ inferExprType a@EApp {..} = do
   argTypes <- mapM inferExprType _eappArgs
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
-  inferAppResultType appFuncType _eappTypeArgs argTypes
+  inferAppResultType appFuncType _eappTypeArgs argTypes >>= inferType
 inferExprType l@ELam {..} = underScope $ do
   -- clear locals, lambda cannot capture local state variables
   ls <- getEnv locals
@@ -104,22 +104,22 @@ inferExprType l@ELam {..} = underScope $ do
   k <- inferTypeKind _elamResultType
   checkTypeKind k
   checkTypeMatch eType _elamResultType
-  return $ BoundType (bind _elamBoundVars $ TFunc args (Just eff) eType _eloc) _eloc
+  inferType $ BoundType (bind _elamBoundVars $ TFunc args (Just eff) eType _eloc) _eloc
 inferExprType a@EAnn {..} = do
   t <- inferExprType _eannExpr
   k <- inferTypeKind _eannType
   checkTypeKind k
   checkTypeMatch t _eannType
-  return _eannType
+  inferType _eannType
 inferExprType ELit {..} = do
   k <- inferTypeKind _litType
   checkTypeKind k
-  return _litType
+  inferType _litType
 inferExprType ESeq {..} = do
   ts <- mapM inferExprType _eseq
-  return $ last ts
+  inferType $ last ts
 inferExprType ELet {..} =
-  bindPatternVarTypes _eletPattern _eletExpr
+  bindPatternVarTypes _eletPattern _eletExpr >>= inferType
 inferExprType ECase {..} = do
   ct <- inferExprType _ecaseExpr
   ts <- forM _ecaseBody $ \c -> underScope $ do
@@ -132,7 +132,7 @@ inferExprType ECase {..} = do
     checkTypeMatch ct (t ^. _1)
   forM_ (ts ^.. traverse . _1) $ \e ->
     checkTypeMatch ct e
-  return $ (last ts) ^. _2
+  inferType $ (last ts) ^. _2
 inferExprType EWhile {..} = do
   t <- inferExprType _ewhileCond
   if aeq t (TPrim Pred _eloc)
@@ -150,14 +150,14 @@ inferExprType EHandle {..} = do
   btk <- inferTypeKind bodyType
   checkTypeKind btk
   underScope $ forM_ _ehandleBindings checkFuncDef
-  return bodyType
+  inferType bodyType
 inferExprType (ETC e@TCApp{..} _) = do
   let v:e:[] = _tcAppArgs
   if _tcAppName /= "=" && _tcAppName /= "+=" &&
      _tcAppName /= "-=" && _tcAppName /= "*=" &&
      _tcAppName /= "/=" && _tcAppName /= "%="
   then throwError $ "unsupported tc assign operator " ++ _tcAppName ++ ppr _tcloc
-  else inferTCExprType v e
+  else inferTCExprType v e >>= inferType
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
 collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(String, Type)])
