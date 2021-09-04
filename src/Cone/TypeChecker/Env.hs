@@ -28,12 +28,15 @@ type TypeKinds = M.Map String Kind
 
 type EffKinds = M.Map String EffKind
 
+type EffIntfs = M.Map String [String]
+
 type ExprTypes = M.Map String Type
 
 data Env = Env
   { _types :: TypeKinds,
     _funcs :: ExprTypes,
     _effs :: EffKinds,
+    _effIntfs :: EffIntfs,
     _localState :: ExprTypes
   }
   deriving (Show)
@@ -45,6 +48,7 @@ initialEnv =
     { _types = M.empty,
       _funcs = M.empty,
       _effs = M.empty,
+      _effIntfs = M.empty,
       _localState = M.empty
     }
 
@@ -83,6 +87,13 @@ getFuncType n = do
       case v of
         Just v -> return v
         Nothing -> throwError $ "cannot find variable: " ++ n
+
+addEffIntfs :: (Has EnvEff sig m) => String -> String -> m ()
+addEffIntfs effName intfName = do
+  is <- getEnv $ effIntfs . at effName
+  case is of
+    Just is -> setEnv (Just $ intfName:is) $ effIntfs . at effName
+    Nothing -> setEnv (Just [intfName]) $ effIntfs . at effName
 
 freeVarName :: Int -> TVar
 freeVarName i = makeName "$tvar" $ toInteger i

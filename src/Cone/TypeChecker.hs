@@ -144,6 +144,7 @@ initEffIntfDef e = do
             targs = (e ^.. effectArgs . traverse . _1) ++ globalTypes
             b = bind (targs ++ bvars) $ iresult : iargs
             fvars = (b ^.. fv) :: [TVar]
+        addEffIntfs en intfn
         if fvars /= []
           then
             throwError $
