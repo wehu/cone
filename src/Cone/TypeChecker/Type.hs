@@ -107,8 +107,11 @@ inferType b@BoundType {..} = do
 inferType f@TFunc {..} = do
   args <- mapM inferType _tfuncArgs
   eff <- mapM inferEffectType _tfuncEff
+  let eff' = case eff of
+              Just eff -> Just eff
+              Nothing -> Just $ EffTotal _tloc
   res <- inferType _tfuncResult
-  return f {_tfuncArgs = args, _tfuncEff = eff, _tfuncResult = res}
+  return f {_tfuncArgs = args, _tfuncEff = eff', _tfuncResult = res}
 inferType t = return t
 
 checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
