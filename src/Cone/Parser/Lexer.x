@@ -49,7 +49,8 @@ tokens :-
   fun                                   { \p s -> (p, Func) }
   fn                                    { \p s -> (p, Fn) }
   as                                    { \p s -> (p, As) }
-  var                                   { \p s -> (p, Let) }
+  var                                   { \p s -> (p, Var) }
+  val                                   { \p s -> (p, Val) }
   \(                                    { \p s -> (p, LParen) }
   \)                                    { \p s -> (p, RParen) }
   \{                                    { \p s -> (p, LBrace) }
@@ -130,7 +131,8 @@ data Tok =
     Func            |
     Fn              |
     As              |
-    Let             |
+    Var             |
+    Val             |
     Ident String    |
     LInt String     |
     LFloat String   | 

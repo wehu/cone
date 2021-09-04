@@ -57,7 +57,9 @@ kHandle = keyword L.Handle
 
 kWith = keyword L.With
 
-kLet = keyword L.Let
+kVar = keyword L.Var
+
+kVal = keyword L.Val
 
 kCase = keyword L.Case
 
@@ -469,7 +471,8 @@ term =
                     P.<|> ( ( ( (\((pos, bound, args, (effT, resT)), e) -> A.ELam bound args effT resT e)
                                   <$ kFn <*> funcDef P.<?> "lambda expression"
                               )
-                                P.<|> (A.ELet <$ kLet <*> pat <* assign_ <*> expr P.<?> "var experssion")
+                                P.<|> (A.ELet <$ kVar <*> pat <* assign_ <*> expr <*> return True P.<?> "var experssion")
+                                P.<|> (A.ELet <$ kVal <*> pat <* assign_ <*> expr <*> return False P.<?> "val experssion")
                                 P.<|> (A.ECase <$ kCase <*> expr
                                   <*> braces
                                     (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "case expression")

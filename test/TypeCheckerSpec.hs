@@ -124,7 +124,7 @@ typeCheckerSpec = hspec $ do
       var a = 1
       a = a+1
       test2(fn(a:a):a{a}, a)
-      fn<a>(b:a): a{ b}
+      fn<a>(b:a): a{ a}
     }
 
      // xxxx

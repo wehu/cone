@@ -267,6 +267,7 @@ data Expr
   | ELet
       { _eletPattern :: Pattern,
         _eletExpr :: Expr,
+        _eletState :: Bool,
         _eloc :: Location
       }
   | EHandle

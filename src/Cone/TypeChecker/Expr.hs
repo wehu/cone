@@ -136,11 +136,11 @@ inferExprType ESeq {..} = do
   ts <- mapM inferExprType _eseq
   inferType $ last ts
 inferExprType ELet {..} =
-  bindPatternVarTypes _eletPattern _eletExpr >>= inferType
+  bindPatternVarTypes _eletState _eletPattern _eletExpr >>= inferType
 inferExprType ECase {..} = do
   ct <- inferExprType _ecaseExpr
   ts <- forM _ecaseBody $ \c -> underScope $ do
-    bindPatternVarTypes (c ^. casePattern) _ecaseExpr
+    bindPatternVarTypes False (c ^. casePattern) _ecaseExpr
     pt <- inferPatternType $ c ^. casePattern
     et <- inferExprType $ c ^. caseExpr
     return (pt, et)
@@ -236,8 +236,8 @@ inferPatternType PApp {..} = do
   inferAppResultType appFuncType _pappTypeArgs args
 inferPatternType PExpr {..} = inferExprType _pExpr
 
-bindPatternVarTypes :: (Has EnvEff sig m) => Pattern -> Expr -> m Type
-bindPatternVarTypes p e = do
+bindPatternVarTypes :: (Has EnvEff sig m) => Bool -> Pattern -> Expr -> m Type
+bindPatternVarTypes isState p e = do
   eType <- inferExprType e
   typeBindings <- extracePatternVarTypes p eType
   foldM
@@ -248,7 +248,9 @@ bindPatternVarTypes p e = do
           Nothing -> do
             setFuncType n t
             -- set localState
-            setEnv (Just t) $ localState . at n
+            if isState
+            then setEnv (Just t) $ localState . at n
+            else return ()
             return $ bs & at n ?~ True
     )
     M.empty
