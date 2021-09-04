@@ -62,7 +62,7 @@ class Backend t where
                    in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
   
   genEffectDef :: t Target -> EffectDef -> Doc a
-  genEffectDef proxy e = pretty e
+  genEffectDef proxy e = emptyDoc
   
   genFuncDef :: t Target -> FuncDef -> Doc a
   genFuncDef proxy FuncDef{..} = 
@@ -73,7 +73,19 @@ class Backend t where
     where genArgs = encloseSep lparen rparen comma $ map pretty $ _funcArgs ^..traverse._1
   
   genExpr :: t Target -> Expr -> Doc a
-  genExpr proxy EVar{..} = pretty _evarName
+  genExpr proxy EVar{..} = funcName' proxy _evarName
+  genExpr proxy ESeq{..} = encloseSep lparen rparen comma $ fmap (genExpr proxy) _eseq
+  genExpr proxy ELit{..} = pretty _lit
+  genExpr proxy ELam{..} = "lambda" <+> genArgs <> ":" <+> genBody _elamExpr
+    where genArgs = sep $ map pretty $ _elamArgs ^..traverse._1
+          genBody e = case e of
+                       Just e -> genExpr proxy e
+                       Nothing -> "pass" 
+  genExpr proxy EWhile{..} = "while" <+> genExpr proxy _ewhileCond <> ":" <+> genExpr proxy _ewhileBody
+  genExpr proxy ELet{..} = pretty _eletPattern <+> "=" <+> genExpr proxy _eletExpr
+  genExpr proxy EAnn{..} = genExpr proxy _eannExpr
+  genExpr proxy EApp{..} = genExpr proxy _eappFunc <> encloseSep lparen rparen comma genArgs
+     where genArgs = map (genExpr proxy) _eappArgs 
   
   genImplFuncDef :: t Target -> ImplFuncDef -> Doc a
   genImplFuncDef proxy f = pretty f
