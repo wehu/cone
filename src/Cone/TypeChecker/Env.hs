@@ -80,6 +80,12 @@ closeEffType t =
   let fvars = t ^.. fv
    in bind fvars t
 
+bindType :: [TVar] -> Type -> Type
+bindType bvs t = BoundType (bind bvs t) (_tloc t)
+
+bindEffType :: [TVar] -> EffectType -> EffectType
+bindEffType bvs t = BoundEffType (bind bvs t) (_effLoc t)
+
 unbindType :: (Has EnvEff sig m) => Type -> m Type
 unbindType b@BoundType {..} = do
   let (ps, t) = unsafeUnbind _boundType

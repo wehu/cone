@@ -43,7 +43,7 @@ checkFuncType f = underScope $ do
       eType <- inferExprType e
       resultType <- inferType $ f ^. funcResultType
       let resultType' = if isn't _TFunc resultType then resultType
-                       else BoundType (bind (f^.funcBoundVars) resultType) pos
+                       else bindType (f^.funcBoundVars) resultType
       checkTypeMatch eType resultType'
       effType <- inferExprEffType e
       let fEff = case f ^. funcEffectType of
@@ -107,7 +107,7 @@ inferExprType l@ELam {..} = underScope $ do
   k <- inferTypeKind _elamResultType
   checkTypeKind k
   checkTypeMatch eType _elamResultType
-  inferType $ BoundType (bind _elamBoundVars $ TFunc args (Just eff) eType _eloc) _eloc
+  inferType $ bindType _elamBoundVars $ TFunc args (Just eff) eType _eloc
 inferExprType a@EAnn {..} = do
   t <- inferExprType _eannExpr
   k <- inferTypeKind _eannType
@@ -352,7 +352,7 @@ inferExprEffType EHandle {..} = underScope $ do
     fs <- getEnv funcs
     setEnv (M.delete fn fs) $ funcs
     let (bts, ft) = unbindTypeSample $ funcDefType intf
-    setEnv (Just $ BoundType (bind bts $ ft {_tfuncEff = Just effs}) _eloc) $ funcs . at fn
+    setEnv (Just $ bindType bts $ ft {_tfuncEff = Just effs}) $ funcs . at fn
   et <- inferExprEffType _ehandleScope
   -- TODO check intefaces
   removeEff et _ehandleEff

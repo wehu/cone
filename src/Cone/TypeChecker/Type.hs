@@ -276,7 +276,7 @@ applyTypeArgs t args = do
   else do
     let argsLen = L.length args
         binds = [(n, t) | n <- L.take argsLen bts | t <- args]
-    return $ BoundType (bind (L.drop argsLen bts) $ substs binds tt) (_tloc t)
+    return $ bindType (L.drop argsLen bts) $ substs binds tt
 
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m Type
 inferAppResultType f@TFunc {} bargs args = do
@@ -384,9 +384,8 @@ funcDefType f =
       effType = f ^. funcEffectType . (non $ EffTotal pos)
       resultType = f ^. funcResultType
       ft =
-        BoundType (
-          bind (f ^. funcBoundVars) $
-            TFunc argTypes (Just effType) resultType pos) pos
+        bindType (f ^. funcBoundVars) $
+            TFunc argTypes (Just effType) resultType pos
    in ft
 
 extractTensorShape :: (Has EnvEff sig m) => Type -> m [Type]
