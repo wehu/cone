@@ -119,6 +119,11 @@ typeCheckerSpec = hspec $ do
         a(b)
       }
 
+      fun test3(c:i32) : (i32) -> i32 {
+        var a = 1
+        fn(b:i32): i32{ c }
+      }
+
      // xxxx
 
        |]
