@@ -326,7 +326,7 @@ collectVarBindings a@TVar {..} t = do
       ut <- unbindType t
       if aeq a ut
         then return []
-        else throwError $ "try to rebind type: " ++ ppr a ++ " to " ++ ppr t ++ ppr _tloc
+        else throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr _tloc
     Nothing ->
       let fvars = t ^.. fv
        in if L.foldl' (\r e -> aeq e _tvar || r) False fvars

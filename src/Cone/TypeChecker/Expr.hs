@@ -36,7 +36,10 @@ checkFuncType f = underScope $ do
       bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   mapM_
-    (\(n, t) -> setEnv (Just t) $ funcs . at n)
+    (\(n, t) -> do
+      let bt = if isn't _TFunc t then t
+               else bindType (f^.funcBoundVars) t
+      setEnv (Just bt) $ funcs . at n)
     (f ^. funcArgs)
   case f ^. funcExpr of
     Just e -> do
