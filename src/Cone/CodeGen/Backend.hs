@@ -54,9 +54,9 @@ class Backend t where
             if _typeConArgs == []
             then ["pass"]
             else foldl' (\s e -> 
-                  let i = show $ (length s) + 1
-                      f = "self.f" ++ i
-                      a = "t" ++ i
+                  let i = length s
+                      f = "self.f" ++ show i
+                      a = "t" ++ show (i + 1)
                    in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
           ctrFunc fn tn = vsep ["def" <+> fn <> genArgs [] <> ":"
                        ,indent 4 ("return" <+> tn <> genArgs [])]
