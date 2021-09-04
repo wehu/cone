@@ -68,7 +68,7 @@ class Backend t where
   genFuncDef proxy FuncDef{..} = 
     vsep ["def" <+> funcName' proxy _funcName <> genArgs <> colon
          ,indent 4 $ case _funcExpr of
-                       Just e -> vsep ["__state__ = {}", genExpr proxy e]
+                       Just e -> vsep ["__state__ = {}", "return" <+> genExpr proxy e <> brackets "-1"]
                        Nothing -> "pass"]
     where genArgs = encloseSep lparen rparen comma $ map pretty $ _funcArgs ^..traverse._1
   
@@ -76,7 +76,7 @@ class Backend t where
   genExpr proxy EVar{..} = parens $ "__state__[" <> fns <> "] if" <+> fns <+> "in __state__" <+>  "else" <+> fn
     where fn = funcName' proxy _evarName
           fns = "\"" <> fn <> "\""
-  genExpr proxy ESeq{..} = vsep $ fmap (genExpr proxy) _eseq
+  genExpr proxy ESeq{..} = encloseSep lbracket rbracket comma $ fmap (genExpr proxy) _eseq
   genExpr proxy ELit{..} = pretty _lit
   genExpr proxy ELam{..} = "lambda" <+> genArgs <> colon <+> genBody _elamExpr
     where genArgs = sep $ map pretty $ _elamArgs ^..traverse._1
