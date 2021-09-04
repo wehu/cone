@@ -115,7 +115,7 @@ class Backend t where
   genEpilogue :: t Target -> Doc a
   genEpilogue proxy =
     vsep ["if __name__ == \"__main__\":"
-          ,indent 4 $ "main()" <+> line]
+          ,indent 4 $ "fmain()" <+> line]
   
 genImplFuncDef :: Backend t => t Target -> ImplFuncDef -> Doc a
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 

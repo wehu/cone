@@ -32,6 +32,7 @@ library
       Cone.CodeGen.Backend.Cone
       Cone.CodeGen.Backend.Python
       Cone.Compiler
+      Cone.Executor
       Cone.ModuleLoader
       Cone.Parser.AST
       Cone.Parser.Lexer

@@ -7,6 +7,7 @@ where
 
 import Cone.Compiler
 import Cone.ModuleLoader
+import Cone.Executor
 import Control.Monad
 import Control.Monad.Except
 import Data.Semigroup ((<>))
@@ -58,4 +59,5 @@ play Opts {..} = do
     res <- runExceptT $ compile paths f target
     case res of
       Left e -> putStrLn e
-      Right s -> putStrLn s
+      Right s -> if run /= "" then runCode run [] s >>= putStrLn
+                 else putStrLn s
