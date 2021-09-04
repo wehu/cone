@@ -312,7 +312,7 @@ effType =
   parens effType
     P.<|> ( ekann
               <$> ( ( (P.try (A.EffApp <$> namePath <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"))
-                        P.<|> ((angles (A.EffList <$> (P.sepBy effType comma) <*> (P.optionMaybe $ pipe_ *> (s2n <$> ident)))) P.<?> "eff type list")
+                        P.<|> ((brackets (A.EffList <$> (P.sepBy effType comma) <*> (P.optionMaybe $ pipe_ *> (s2n <$> ident)))) P.<?> "eff type list")
                         P.<|> (A.EffVar <$> (s2n <$> ident) P.<?> "eff type variable")
                     )
                       <*> getPos
