@@ -13,13 +13,9 @@ module Cone.TypeChecker.Expr where
 import Cone.Parser.AST
 import Cone.TypeChecker.Env
 import Cone.TypeChecker.Type
-import Control.Carrier.Error.Either
-import Control.Carrier.Fresh.Strict
-import Control.Carrier.State.Strict
 import Control.Effect.Error
 import Control.Effect.Fresh
 import Control.Effect.State
-import Control.Effect.Sum
 import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
