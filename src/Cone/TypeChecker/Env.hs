@@ -73,6 +73,17 @@ setFuncType n t = do
   l <- getEnv locals
   setEnv (M.delete n l) locals
 
+getFuncType :: (Has EnvEff sig m) => String -> m Type
+getFuncType n = do
+  v <- getEnv $ locals .at n
+  case v of
+    Just v -> return v
+    Nothing -> do
+      v <- getEnv $ funcs .at n
+      case v of
+        Just v -> return v
+        Nothing -> throwError $ "cannot find variable: " ++ n
+
 freeVarName :: Int -> TVar
 freeVarName i = makeName "$tvar" $ toInteger i
 

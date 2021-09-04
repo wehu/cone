@@ -65,10 +65,7 @@ checkFuncDef f = underScope $ do
 
 inferExprType :: (Has EnvEff sig m) => Expr -> m Type
 inferExprType EVar {..} = do
-  v <- getEnv $ funcs . at _evarName
-  forMOf _Nothing v $ \v ->
-    throwError $ "cannot find expr var: " ++ _evarName ++ ppr _eloc
-  inferType $ fromJust v
+  getFuncType _evarName
 inferExprType a@EApp {..} = do
   -- check assign variable
   if _eappFunc ^.evarName == "____assign"
@@ -94,11 +91,7 @@ inferExprType a@EApp {..} = do
   inferAppResultType appFuncType _eappTypeArgs argTypes >>= inferType
 inferExprType l@ELam {..} = underScope $ do
   -- clear locals, lambda cannot capture local state variables
-  ls <- getEnv locals
-  forM_ (M.keys ls) $ \k -> do
-    fs <- getEnv funcs
-    setEnv (M.delete k fs) $ funcs
-  setEnv M.empty $ locals
+  setEnv M.empty locals
   -- refresh
   (bvs, newLam) <- refresh _elamBoundVars l
   case newLam of
@@ -186,15 +179,12 @@ inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
 collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(String, Type)])
 collectTCExprTypeInfo TCAccess{..} = do
-  v <- getEnv $ funcs. at _tcVarName
-  case v of
-    Just v -> do
-      (t, shape) <- extractTensorInfo v
-      if L.length _tcIndices /= L.length shape
-      then throwError $ "type shape rank mismatch: " ++ ppr shape ++
-                " vs " ++ ppr _tcIndices ++ ppr _tcloc
-      else return (t, [(name2String n, d) | n <- _tcIndices | d <- shape])
-    Nothing -> throwError $ "cannot find variable: " ++ _tcVarName ++ ppr _tcloc
+  v <- getFuncType _tcVarName
+  (t, shape) <- extractTensorInfo v
+  if L.length _tcIndices /= L.length shape
+  then throwError $ "type shape rank mismatch: " ++ ppr shape ++
+            " vs " ++ ppr _tcIndices ++ ppr _tcloc
+  else return (t, [(name2String n, d) | n <- _tcIndices | d <- shape])
 collectTCExprTypeInfo TCApp{..} = do
   args' <- mapM collectTCExprTypeInfo _tcAppArgs
   let arg:args = args'
@@ -212,10 +202,8 @@ collectTCExprTypeInfo TCApp{..} = do
                      else throwError $ "+ expected same types, but got " ++ ppr t ++ " vs " ++ ppr et) arg args
     _ -> throwError $ "unsupported tc function: " ++ _tcAppName ++ ppr _tcloc
 collectTCExprTypeInfo TCVar{..} = do
-  t <- getEnv $ funcs . at _tcVarName
-  case t of
-    Just t -> return (t, [])
-    Nothing -> throwError $ "cannot find var: " ++ _tcVarName ++ ppr _tcloc
+  t <- getFuncType _tcVarName
+  return (t, [])
 
 inferTCExprType :: (Has EnvEff sig m) => TCExpr -> TCExpr -> m Type
 inferTCExprType a@TCAccess{..} e = do
@@ -350,10 +338,7 @@ inferExprEffType EHandle {..} = underScope $ do
     let fn = (intf ^. funcName)
     checkFuncDef intf
     ft <- unbindType $ funcDefType intf
-    intfT' <- getEnv $ funcs . at fn
-    forMOf _Nothing intfT' $ \_ ->
-      throwError $ "cannot find eff interface defintion for " ++ ppr intf ++ ppr _eloc
-    intfT <- unbindType $ fromJust intfT'
+    intfT <- getFuncType fn >>= unbindType
     binds <- collectVarBindings intfT ft
     checkVarBindings binds
     eff <- case ft of
