@@ -322,7 +322,7 @@ inferExprEffType ESeq {..} =
     (EffTotal $ _eloc)
     _eseq
 inferExprEffType EHandle {..} = underScope $ do
-  et <- inferExprEffType _ehandleScope
+  et <- inferExprEffType _ehandleScope >>= mergeEffs (EffTotal _eloc)
   forM_ _ehandleBindings $ \intf -> do
     let fn = (intf ^. funcName)
     checkFuncDef intf
@@ -332,7 +332,7 @@ inferExprEffType EHandle {..} = underScope $ do
     checkVarBindings binds
     eff <- case ft of
       ft@TFunc {..} -> case _tfuncEff of
-        Just et -> return et
+        Just et -> return et >>= mergeEffs (EffTotal _eloc)
         Nothing -> return $ EffTotal _eloc
       t -> throwError $ "expected a function type, but got " ++ ppr t ++ ppr _eloc
     -- intfEff <- (case intfT of
