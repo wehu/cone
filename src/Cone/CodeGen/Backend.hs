@@ -96,7 +96,7 @@ class Backend t where
          "____div" -> binary "/"
          "____mod" -> binary "%"
          _ -> genExpr proxy _eappFunc <> genArgs
-    where genArgs = parens $ encloseSep lparen rparen comma
+    where genArgs = encloseSep lparen rparen comma
             (if _eappFunc ^.evarName == "____assign" then  
               "____state":("\"" <> (funcName' proxy $ _eappArgs !! 0 ^.evarName) <> "\""):(tail $ map (genExpr proxy) _eappArgs)
             else (map (genExpr proxy) _eappArgs))
