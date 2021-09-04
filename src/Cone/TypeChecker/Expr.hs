@@ -351,7 +351,7 @@ inferExprEffType EHandle {..} = underScope $ do
     --                Nothing -> return $ EffTotal _eloc
     --              t -> throwError $ "expected a function type, but got " ++ ppr t ++ ppr _eloc)
     --              >>= mergeEffs (EffTotal _eloc)
-    effs <- mergeEffs eff _ehandleEff >>= mergeEffs (EffTotal _eloc)
+    effs <- mergeEffs eff _ehandleEff
     checkEffTypeMatch et effs
     -- if aeq (closeEffType effs) (closeEffType intfEff)
     --   then return ()
