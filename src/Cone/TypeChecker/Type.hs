@@ -280,11 +280,10 @@ applyTypeArgs t args = do
 
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m Type
 inferAppResultType f@TFunc {} bargs args = do
-  fArgTypes <- mapM unbindType $ _tfuncArgs f
+  let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
     then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args ++ ppr (_tloc f)
     else return ()
-  args <- mapM unbindType args
   bindings <-
     foldM
       (\s e -> (++) <$> return s <*> e)
@@ -297,11 +296,10 @@ inferAppResultType t _ _ = throwError $ "expected a function type, but got " ++ 
 
 inferAppResultEffType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m EffectType
 inferAppResultEffType f@TFunc {} targs args = do
-  fArgTypes <- mapM unbindType $ _tfuncArgs f
+  let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
     then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args ++ ppr (_tloc f)
     else return ()
-  args <- mapM unbindType args
   bindings <-
     foldM
       (\s e -> (++) <$> return s <*> e)
