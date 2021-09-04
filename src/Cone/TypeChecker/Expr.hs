@@ -247,6 +247,7 @@ bindPatternVarTypes p e = do
           Just _ -> throwError $ "pattern rebind a variable: " ++ n ++ ppr (_eloc e)
           Nothing -> do
             setFuncType n t
+            -- set locals for state
             setEnv (Just t) $ locals . at n
             return $ bs & at n ?~ True
     )
