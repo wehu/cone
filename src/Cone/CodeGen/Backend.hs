@@ -46,7 +46,7 @@ class Backend t where
           ,indent 4 constructor
           ,ctrFunc fn tn <+> line]
     where constructor =
-            vsep ["def" <+> "__init__" <> genArgs ["self"] <> ":"
+            vsep ["def" <+> "__init__" <> genArgs ["self"] <> colon
                  ,indent 4 $ vsep genFields]
           genArgs init = encloseSep lparen rparen comma $ 
                  foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
@@ -66,29 +66,33 @@ class Backend t where
   
   genFuncDef :: t Target -> FuncDef -> Doc a
   genFuncDef proxy FuncDef{..} = 
-    vsep ["def" <+> funcName' proxy _funcName <> genArgs <> ":"
+    vsep ["def" <+> funcName' proxy _funcName <> genArgs <> colon
          ,indent 4 $ case _funcExpr of
-                       Just e -> genExpr proxy e
+                       Just e -> vsep ["__state__ = {}", genExpr proxy e]
                        Nothing -> "pass"]
     where genArgs = encloseSep lparen rparen comma $ map pretty $ _funcArgs ^..traverse._1
   
   genExpr :: t Target -> Expr -> Doc a
-  genExpr proxy EVar{..} = funcName' proxy _evarName
-  genExpr proxy ESeq{..} = encloseSep lparen rparen comma $ fmap (genExpr proxy) _eseq
+  genExpr proxy EVar{..} = parens $ "__state__[" <> fns <> "] if" <+> fns <+> "in __state__" <+>  "else" <+> fn
+    where fn = funcName' proxy _evarName
+          fns = "\"" <> fn <> "\""
+  genExpr proxy ESeq{..} = vsep $ fmap (genExpr proxy) _eseq
   genExpr proxy ELit{..} = pretty _lit
-  genExpr proxy ELam{..} = "lambda" <+> genArgs <> ":" <+> genBody _elamExpr
+  genExpr proxy ELam{..} = "lambda" <+> genArgs <> colon <+> genBody _elamExpr
     where genArgs = sep $ map pretty $ _elamArgs ^..traverse._1
           genBody e = case e of
                        Just e -> genExpr proxy e
                        Nothing -> "pass" 
-  genExpr proxy EWhile{..} = "while" <+> genExpr proxy _ewhileCond <> ":" <+> genExpr proxy _ewhileBody
-  genExpr proxy ELet{..} = genPattern proxy _eletPattern <+> "=" <+> genExpr proxy _eletExpr
+  genExpr proxy EWhile{..} = "while" <+> genExpr proxy _ewhileCond <> colon <+> genExpr proxy _ewhileBody
+  genExpr proxy ELet{..} = "__update_state__" <> 
+        parens ("__state__" <> comma <+> genPattern proxy _eletPattern <> comma <+> genExpr proxy _eletExpr)
   genExpr proxy EAnn{..} = genExpr proxy _eannExpr
   genExpr proxy EApp{..} = genExpr proxy _eappFunc <> genArgs
      where genArgs = encloseSep lparen rparen comma $ map (genExpr proxy) _eappArgs
   
   genPattern :: t Target -> Pattern -> Doc a
-  genPattern proxy PVar{..} = pretty _pvar
+  genPattern proxy PVar{..} = pretty '"' <> funcName' proxy _pvar <> pretty '"'
+  genPattern proxy PExpr{..} = genExpr proxy _pExpr
   
 genImplFuncDef :: Backend t => t Target -> ImplFuncDef -> Doc a
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
