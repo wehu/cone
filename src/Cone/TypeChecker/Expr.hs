@@ -99,32 +99,36 @@ inferExprType l@ELam {..} = underScope $ do
     fs <- getEnv funcs
     setEnv (M.delete k fs) $ funcs
   setEnv M.empty $ locals
-  --
-  mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) _elamBoundVars
-  args <-
-    mapM
-      ( \(_, t) -> do
-          k <- inferTypeKind t
-          checkTypeKind k
-          return t
-      )
-      _elamArgs
-  eff <- case _elamEffType of
-    Just e -> do
-      inferEffKind e
-      return e
-    Nothing -> return $ EffTotal _eloc
-  mapM_
-    (\(n, t) -> setEnv (Just t) $ funcs . at n)
-    [(n, t) | (n, _) <- _elamArgs | t <- args]
-  case _elamExpr of
-    Just e -> return ()
-    Nothing -> throwError $ "expected an expression for lambda" ++ ppr _eloc
-  eType <- inferExprType $ fromJust _elamExpr
-  k <- inferTypeKind _elamResultType
-  checkTypeKind k
-  checkTypeMatch eType _elamResultType
-  inferType $ bindType _elamBoundVars $ TFunc args (Just eff) eType _eloc
+  -- refresh
+  (bvs, newLam) <- refresh _elamBoundVars l
+  case newLam of
+    l@ELam{..} -> do
+      mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) bvs
+      args <-
+        mapM
+          ( \(_, t) -> do
+              k <- inferTypeKind t
+              checkTypeKind k
+              return t
+          )
+          _elamArgs
+      eff <- case _elamEffType of
+        Just e -> do
+          inferEffKind e
+          return e
+        Nothing -> return $ EffTotal _eloc
+      mapM_
+        (\(n, t) -> setEnv (Just t) $ funcs . at n)
+        [(n, t) | (n, _) <- _elamArgs | t <- args]
+      case _elamExpr of
+        Just e -> return ()
+        Nothing -> throwError $ "expected an expression for lambda" ++ ppr _eloc
+      eType <- inferExprType $ fromJust _elamExpr
+      k <- inferTypeKind _elamResultType
+      checkTypeKind k
+      checkTypeMatch eType _elamResultType
+      inferType $ bindType bvs $ TFunc args (Just eff) eType _eloc
+    _ -> throwError $ "should not be here"
 inferExprType a@EAnn {..} = do
   t <- inferExprType _eannExpr
   k <- inferTypeKind _eannType
