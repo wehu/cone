@@ -345,17 +345,17 @@ inferExprEffType EHandle {..} = underScope $ do
         Just et -> return et
         Nothing -> return $ EffTotal _eloc
       t -> throwError $ "expected a function type, but got " ++ ppr t ++ ppr _eloc
-    intfEff <- (case intfT of
-                 ft@TFunc {..} -> case _tfuncEff of
-                   Just et -> return et
-                   Nothing -> return $ EffTotal _eloc
-                 t -> throwError $ "expected a function type, but got " ++ ppr t ++ ppr _eloc)
-                 >>= mergeEffs (EffTotal _eloc)
+    -- intfEff <- (case intfT of
+    --              ft@TFunc {..} -> case _tfuncEff of
+    --                Just et -> return et
+    --                Nothing -> return $ EffTotal _eloc
+    --              t -> throwError $ "expected a function type, but got " ++ ppr t ++ ppr _eloc)
+    --              >>= mergeEffs (EffTotal _eloc)
     effs <- mergeEffs eff _ehandleEff >>= mergeEffs (EffTotal _eloc)
     checkEffTypeMatch et effs
-    --if aeq (closeEffType effs) (closeEffType intfEff)
-    --  then return ()
-    --  else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff ++ ppr _eloc
+    -- if aeq (closeEffType effs) (closeEffType intfEff)
+    --   then return ()
+    --   else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff ++ ppr _eloc
     let (bts, ft) = unbindTypeSimple $ funcDefType intf
     setEnv (Just $ bindType bts $ ft {_tfuncEff = Just effs}) $ funcs . at fn
   -- et <- inferExprEffType _ehandleScope
