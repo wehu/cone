@@ -68,7 +68,7 @@ underScope f = do
   return res
 
 freeVarName :: Int -> TVar
-freeVarName i = makeName "$" $ toInteger i
+freeVarName i = makeName "$tvar" $ toInteger i
 
 closeType :: Type -> Bind [TVar] Type
 closeType t =
