@@ -117,7 +117,7 @@ typeCheckerSpec = hspec $ do
       }
 
       fun test2<a, b>(a: (a)->a, b : b) : b {
-        a(b)
+        b
       }
 
       fun test3<a>(c:a) : (i32) -> a {
