@@ -262,7 +262,9 @@ typeTerm :: Parser A.Type
 typeTerm =
   ( tann
       <$> ( ( P.try ((A.TApp <$> (s2n <$> namePath) <*> angles (P.sepBy1 type_ comma)) P.<?> "application type")
-                P.<|> P.try (tfunc <$> parens (P.sepBy type_ comma) <* arrow <*> resultType P.<?> "function type")
+                P.<|> P.try (tfunc <$> (angles (P.sepBy1 (s2n <$> ident) comma)
+                                        P.<|> return [])
+                                       <*> parens (P.sepBy type_ comma) <* arrow <*> resultType P.<?> "function type")
                 P.<|> (A.TVar <$> (s2n <$> ident) P.<?> "type variable")
                 P.<|> (A.TPrim <$> primType P.<?> "primitive type")
                 P.<|> (A.TNum <$> (Just . read <$> literalInt) P.<?> "number type")
@@ -276,7 +278,10 @@ typeTerm =
     <*> getPos
     P.<|> parens type_
   where
-    tfunc args (effT, resultT) pos = A.TFunc args effT resultT pos
+    tfunc bvs args (effT, resultT) pos = 
+      let ft = A.TFunc args effT resultT pos
+       in if bvs == [] then ft
+          else A.BoundType (bind bvs ft) pos
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
