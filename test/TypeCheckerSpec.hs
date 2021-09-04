@@ -116,13 +116,14 @@ typeCheckerSpec = hspec $ do
         1
       }
 
-      fun test2<a, b>(a: (a)->b, b : a) : b {
+      fun test2<a>(a: (a)->a, b : a) : a {
         a(b)
       }
 
       fun test3<a>(c:a) : (i32) -> a {
         var a = 1
         a = a+1
+        test2(fn(a:a):a{a}, c)
         fn(b:i32): a{ c }
       }
 
