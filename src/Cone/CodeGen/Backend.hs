@@ -82,13 +82,16 @@ class Backend t where
                        Just e -> genExpr proxy e
                        Nothing -> "pass" 
   genExpr proxy EWhile{..} = "while" <+> genExpr proxy _ewhileCond <> ":" <+> genExpr proxy _ewhileBody
-  genExpr proxy ELet{..} = pretty _eletPattern <+> "=" <+> genExpr proxy _eletExpr
+  genExpr proxy ELet{..} = genPattern proxy _eletPattern <+> "=" <+> genExpr proxy _eletExpr
   genExpr proxy EAnn{..} = genExpr proxy _eannExpr
   genExpr proxy EApp{..} = genExpr proxy _eappFunc <> genArgs
-     where genArgs = encloseSep lparen rparen comma $ map (genExpr proxy) _eappArgs 
+     where genArgs = encloseSep lparen rparen comma $ map (genExpr proxy) _eappArgs
+  
+  genPattern :: t Target -> Pattern -> Doc a
+  genPattern proxy PVar{..} = pretty _pvar
   
   genImplFuncDef :: t Target -> ImplFuncDef -> Doc a
-  genImplFuncDef proxy f = pretty f
+  genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
 
 genModule :: Backend t => t Target -> Module -> Doc a
 genModule proxy Module{..} =
