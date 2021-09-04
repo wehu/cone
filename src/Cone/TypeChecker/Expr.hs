@@ -73,6 +73,13 @@ inferExprType a@EApp {..} = do
   mapM_ checkTypeKind argKinds
   inferAppResultType appFuncType _eappTypeArgs argTypes
 inferExprType l@ELam {..} = underScope $ do
+  -- clear locals, lambda cannot capture local state variables
+  ls <- getEnv locals
+  forM_ (M.keys ls) $ \k -> do
+    fs <- getEnv funcs
+    setEnv (M.delete k fs) $ funcs
+  setEnv M.empty $ locals
+  --
   mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) _elamBoundVars
   args <-
     mapM
@@ -228,6 +235,7 @@ bindPatternVarTypes p e = do
           Just _ -> throwError $ "pattern rebind a variable: " ++ n ++ ppr (_eloc e)
           Nothing -> do
             setEnv (Just t) $ funcs . at n
+            setEnv (Just t) $ locals . at n
             return $ bs & at n ?~ True
     )
     M.empty

@@ -33,7 +33,8 @@ type ExprTypes = M.Map String Type
 data Env = Env
   { _types :: TypeKinds,
     _funcs :: ExprTypes,
-    _effs :: EffKinds
+    _effs :: EffKinds,
+    _locals :: ExprTypes
   }
   deriving (Show)
 
@@ -43,7 +44,8 @@ initialEnv =
   Env
     { _types = M.empty,
       _funcs = M.empty,
-      _effs = M.empty
+      _effs = M.empty,
+      _locals = M.empty
     }
 
 type EnvEff = Eff Env String
