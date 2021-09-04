@@ -22,10 +22,18 @@ class Backend t where
   namePath proxy n = pretty $ join $ intersperse "." $ splitOn "/" n
 
   typeName' :: t Target -> String -> Doc a
-  typeName' proxy n = pretty $ "T" ++ n
+  typeName' proxy n = 
+    let ns = splitOn "/" n
+        ps = init ns
+        tn = "T" ++ last ns
+     in pretty $ join $ intersperse "." $ ps ++ [tn]
 
   funcName' :: t Target -> String -> Doc a
-  funcName' proxy n = pretty $ "f" ++ n
+  funcName' proxy n =
+    let ns = splitOn "/" n
+        ps = init ns
+        fn = "f" ++ last ns
+     in pretty $ join $ intersperse "." $ ps ++ [fn]
 
   genImport :: t Target -> ImportStmt -> Doc a
   genImport proxy ImportStmt{..} =
