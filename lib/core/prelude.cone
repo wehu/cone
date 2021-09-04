@@ -93,3 +93,7 @@ type tensor<t, shape> {
 effect python<a> {
   fun run_python(str) : a
 }
+
+effect io<a> {
+  fun print(a) : unit
+}
