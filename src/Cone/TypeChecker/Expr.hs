@@ -36,7 +36,7 @@ checkFuncType f = underScope $ do
       bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   mapM_
-    (\(n, t) -> setEnv (Just t) $ funcs . at n)
+    (\(n, t) -> setFuncType n t)
     (f ^. funcArgs)
   case f ^. funcExpr of
     Just e -> do
@@ -118,7 +118,7 @@ inferExprType l@ELam {..} = underScope $ do
           return e
         Nothing -> return $ EffTotal _eloc
       mapM_
-        (\(n, t) -> setEnv (Just t) $ funcs . at n)
+        (\(n, t) -> setFuncType n t)
         [(n, t) | (n, _) <- _elamArgs | t <- args]
       case _elamExpr of
         Just e -> return ()
@@ -233,7 +233,7 @@ inferTCExprType a@TCAccess{..} e = do
                   Just t -> return $ s++[t]
                   Nothing -> throwError $ "cannot index var: " ++ ppr i) [] _tcIndices
   tt <- toTensorType t shape
-  setEnv (Just tt) $ funcs . at _tcVarName
+  setFuncType _tcVarName tt
   return tt
 inferTCExprType t0 t1 = throwError $ "unsupported tc expr: " ++ ppr t0 ++ " and " ++ ppr t1 ++ ppr (_tcloc t0)
 
@@ -258,7 +258,7 @@ bindPatternVarTypes p e = do
         case bs ^. at n of
           Just _ -> throwError $ "pattern rebind a variable: " ++ n ++ ppr (_eloc e)
           Nothing -> do
-            setEnv (Just t) $ funcs . at n
+            setFuncType n t
             setEnv (Just t) $ locals . at n
             return $ bs & at n ?~ True
     )
@@ -280,7 +280,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
                   fvn <- fresh
                   let vn = name2String $ freeVarName fvn
                       t = TVar (s2n vn) _ploc
-                  setEnv (Just t) $ funcs . at vn
+                  setFuncType vn t
                   return t
              in case arg of
                   TVar {..} -> do

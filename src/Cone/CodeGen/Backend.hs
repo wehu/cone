@@ -103,7 +103,6 @@ class Backend t where
           binary :: String -> Doc a
           binary op = parens $ genExpr proxy (_eappArgs !! 0) <+> pretty op <+> genExpr proxy (_eappArgs !! 1)
           
-  
   genPattern :: t Target -> Pattern -> Doc a
   genPattern proxy PVar{..} = pretty '"' <> funcName' proxy _pvar <> pretty '"'
   genPattern proxy PExpr{..} = genExpr proxy _pExpr

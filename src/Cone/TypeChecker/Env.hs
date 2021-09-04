@@ -67,6 +67,12 @@ underScope f = do
   put env
   return res
 
+setFuncType :: (Has EnvEff sig m) => String -> Type -> m ()
+setFuncType n t = do
+  setEnv (Just t) $ funcs .at n
+  l <- getEnv locals
+  setEnv (M.delete n l) locals
+
 freeVarName :: Int -> TVar
 freeVarName i = makeName "$tvar" $ toInteger i
 
