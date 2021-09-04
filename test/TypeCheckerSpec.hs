@@ -123,6 +123,7 @@ typeCheckerSpec = hspec $ do
     fun test3<a>(c:a) : <b>(b) -> b {
       var a = 1
       a = a+1
+      val b = 2
       test2(fn(a:a):a{a}, a)
       fn<a>(b:a): a{ b }
     }
