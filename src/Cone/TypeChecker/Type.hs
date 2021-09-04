@@ -200,7 +200,10 @@ checkEffTypeMatch a b = do
   al <- toEffList a
   bl <- toEffList b
   let pos = _effLoc al
-  if aeq (L.sortBy acompare $ al ^. effList) (L.sortBy acompare $ bl ^. effList)
+      total = EffTotal $ _effLoc al
+  all <- mergeEffs total al
+  bll <- mergeEffs total bl
+  if aeq (L.sortBy acompare $ all ^. effList) (L.sortBy acompare $ bll ^. effList)
     && aeq
       (fmap closeEffType $ fmap (\e -> EffVar e pos) $ al ^. effBoundVar)
       (fmap closeEffType $ fmap (\e -> EffVar e pos) $ bl ^. effBoundVar)

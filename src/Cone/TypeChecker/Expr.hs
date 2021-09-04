@@ -43,10 +43,10 @@ checkFuncType f = underScope $ do
       eType <- inferExprType e
       resultType <- inferType $ f ^. funcResultType
       checkTypeMatch eType resultType
-      effType <- inferExprEffType e >>= mergeEffs (EffTotal pos)
-      fEff <- case f ^. funcEffectType of
-              Just et -> mergeEffs et (EffTotal pos)
-              Nothing -> return $ EffTotal pos
+      effType <- inferExprEffType e
+      let fEff = case f ^. funcEffectType of
+              Just et -> et
+              Nothing -> EffTotal pos
       checkEffTypeMatch effType fEff
     Nothing -> return ()
 

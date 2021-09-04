@@ -110,7 +110,9 @@ class Backend t where
   genPrologue :: t Target -> Doc a
   genPrologue proxy = 
     vsep ["def f____assign(state, k, v):"
-          ,indent 4 $ "state[k] = v" <+> line]
+          ,indent 4 $ "state[k] = v" <+> line
+          ,"def fprint(a):"
+          ,indent 4 $ "print(a)" <+> line]
 
   genEpilogue :: t Target -> Doc a
   genEpilogue proxy =
