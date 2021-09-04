@@ -68,12 +68,12 @@ class Backend t where
   genFuncDef proxy FuncDef{..} = 
     vsep ["def" <+> funcName' proxy _funcName <> genArgs <> colon
          ,indent 4 $ case _funcExpr of
-                       Just e -> vsep ["__state__ = {}", "return" <+> genExpr proxy e <> brackets "-1"]
+                       Just e -> vsep ["____state = {}", "return" <+> genExpr proxy e <> brackets "-1"]
                        Nothing -> "pass"]
     where genArgs = encloseSep lparen rparen comma $ map pretty $ _funcArgs ^..traverse._1
   
   genExpr :: t Target -> Expr -> Doc a
-  genExpr proxy EVar{..} = parens $ "__state__[" <> fns <> "] if" <+> fns <+> "in __state__" <+>  "else" <+> fn
+  genExpr proxy EVar{..} = parens $ "____state[" <> fns <> "] if" <+> fns <+> "in ____state" <+>  "else" <+> fn
     where fn = funcName' proxy _evarName
           fns = "\"" <> fn <> "\""
   genExpr proxy ESeq{..} = encloseSep lbracket rbracket comma $ fmap (genExpr proxy) _eseq
@@ -84,11 +84,18 @@ class Backend t where
                        Just e -> genExpr proxy e
                        Nothing -> "pass" 
   genExpr proxy EWhile{..} = "while" <+> genExpr proxy _ewhileCond <> colon <+> genExpr proxy _ewhileBody
-  genExpr proxy ELet{..} = "__update_state__" <> 
-        parens ("__state__" <> comma <+> genPattern proxy _eletPattern <> comma <+> genExpr proxy _eletExpr)
+  genExpr proxy ELet{..} = "f____assign" <> 
+        parens ("____state" <> comma <+> genPattern proxy _eletPattern <> comma <+> genExpr proxy _eletExpr)
   genExpr proxy EAnn{..} = genExpr proxy _eannExpr
-  genExpr proxy EApp{..} = genExpr proxy _eappFunc <> genArgs
-     where genArgs = encloseSep lparen rparen comma $ map (genExpr proxy) _eappArgs
+  genExpr proxy EApp{..} = 
+    let fn = _eappFunc ^.evarName
+     in case fn of
+         "____add" -> parens $ genExpr proxy (_eappArgs !! 0) <+> "+" <+> genExpr proxy (_eappArgs !! 1)
+         _ -> genExpr proxy _eappFunc <> genArgs
+    where genArgs = encloseSep lparen rparen comma
+            (if _eappFunc ^.evarName == "____assign" then  
+              "____state":("\"" <> (funcName' proxy $ _eappArgs !! 0 ^.evarName) <> "\""):(tail $ map (genExpr proxy) _eappArgs)
+            else (map (genExpr proxy) _eappArgs))
   
   genPattern :: t Target -> Pattern -> Doc a
   genPattern proxy PVar{..} = pretty '"' <> funcName' proxy _pvar <> pretty '"'
@@ -96,8 +103,8 @@ class Backend t where
 
   genPrelude :: t Target -> Doc a
   genPrelude proxy = 
-    vsep ["def" <+> "__update_state__" <> parens ("state" <> comma <+> "k" <> comma <+> "v") <> colon
-          ,indent 4 $ "state[k] = v"]
+    vsep ["def f____assign(state, k, v):"
+          ,indent 4 $ "state[k] = v" <+> line]
   
 genImplFuncDef :: Backend t => t Target -> ImplFuncDef -> Doc a
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
