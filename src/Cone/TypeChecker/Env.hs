@@ -87,14 +87,10 @@ bindEffType :: [TVar] -> EffectType -> EffectType
 bindEffType bvs t = BoundEffType (bind bvs t) (_effLoc t)
 
 refresh :: (Has EnvEff sig m) => [TVar] -> Expr -> m ([TVar], Expr)
-refresh vs e =
-  foldM
-    ( \(vs, e) v -> do
-        nv <- freeVarName <$> fresh
-        return (vs++[nv], subst v (TVar nv $ _eloc e) e)
-    )
-    ([], e)
-    vs
+refresh vs e = do
+  let pos = _eloc e
+  nvs <- mapM (\_ -> freeVarName <$> fresh) vs
+  return (nvs, substs [(f, TVar t pos) | f <- vs | t <- nvs] e)
 
 unbindType :: (Has EnvEff sig m) => Type -> m Type
 unbindType b@BoundType {..} = do
