@@ -44,22 +44,22 @@ class Backend t where
         fn = funcName' proxy _typeConName
      in vsep ["class" <+> tn <> parens (typeName' proxy ptn) <> ":"
           ,indent 4 constructor
-          ,conf fn tn <+> line]
+          ,ctrFunc fn tn <+> line]
     where constructor =
-            vsep ["def" <+> "initialize" <> genArgs <> ":"
+            vsep ["def" <+> "initialize" <> genArgs ["self"] <> ":"
                  ,indent 4 $ vsep genFields]
-          conf fn tn = vsep ["def" <+> fn <> genArgs <> ":"
-                       ,indent 4 ("return" <+> tn <> genArgs)]
-          genArgs = encloseSep lparen rparen comma $ 
-                 foldl' (\s e -> s++[pretty $ "t" ++ show (length s)]) ["self"] _typeConArgs
+          genArgs init = encloseSep lparen rparen comma $ 
+                 foldl' (\s e -> s++[pretty $ "t" ++ show (length s)]) init _typeConArgs
           genFields =
             if _typeConArgs == []
             then ["pass"]
             else foldl' (\s e -> 
-                  let i = show $ length s
+                  let i = show $ (length s) + 1
                       f = "self.f" ++ i
                       a = "t" ++ i
                    in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
+          ctrFunc fn tn = vsep ["def" <+> fn <> genArgs [] <> ":"
+                       ,indent 4 ("return" <+> tn <> genArgs [])]
   
   genEffectDef :: t Target -> EffectDef -> Doc a
   genEffectDef proxy e = emptyDoc
@@ -90,8 +90,8 @@ class Backend t where
   genPattern :: t Target -> Pattern -> Doc a
   genPattern proxy PVar{..} = pretty _pvar
   
-  genImplFuncDef :: t Target -> ImplFuncDef -> Doc a
-  genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
+genImplFuncDef :: Backend t => t Target -> ImplFuncDef -> Doc a
+genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
 
 genModule :: Backend t => t Target -> Module -> Doc a
 genModule proxy Module{..} =
