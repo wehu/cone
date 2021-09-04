@@ -161,10 +161,12 @@ initEffIntfDef e = do
               Nothing -> EffTotal pos
         effs <-
           mergeEffs eff $
-            EffApp
-              (e ^. effectName)
-              (map (\v -> TVar v pos) $ e ^.. effectArgs . traverse . _1)
-              pos
+            if e ^. effectArgs == []
+            then EffVar (s2n $ e ^.effectName) pos
+            else EffApp
+                  (e ^. effectName)
+                  (map (\v -> TVar v pos) $ e ^.. effectArgs . traverse . _1)
+                  pos
         let bt = intfType i e effs
         setEnv (Just bt) $ funcs . at intfn
   mapM_ f is
