@@ -107,10 +107,15 @@ class Backend t where
   genPattern proxy PVar{..} = pretty '"' <> funcName' proxy _pvar <> pretty '"'
   genPattern proxy PExpr{..} = genExpr proxy _pExpr
 
-  genPrelude :: t Target -> Doc a
-  genPrelude proxy = 
+  genPrologue :: t Target -> Doc a
+  genPrologue proxy = 
     vsep ["def f____assign(state, k, v):"
           ,indent 4 $ "state[k] = v" <+> line]
+
+  genEpilogue :: t Target -> Doc a
+  genEpilogue proxy =
+    vsep ["if __name__ == \"__main__\":"
+          ,indent 4 $ "main()" <+> line]
   
 genImplFuncDef :: Backend t => t Target -> ImplFuncDef -> Doc a
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
@@ -119,9 +124,10 @@ genModule :: Backend t => t Target -> Module -> Doc a
 genModule proxy Module{..} =
   vsep $
       -- [ "module" <+> namePath proxy _moduleName <+> line]
-        [genPrelude proxy <+> line]
+        [genPrologue proxy]
         ++ (map (genImport proxy) _imports)
         ++ (map (genTopStmt proxy) _topStmts)
+        ++ [line, genEpilogue proxy]
 
 genTopStmt :: Backend t => t Target -> TopStmt -> Doc a
 genTopStmt proxy TDef{..} = genTypeDef proxy _tdef
