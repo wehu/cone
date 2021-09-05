@@ -333,6 +333,14 @@ collectVarBindings a@BoundTypeEffVar {} b@BoundTypeEffVar {} = do
   at <- unbindType a
   bt <- unbindType b
   collectVarBindings at bt
+collectVarBindings a@BoundType {} b@BoundTypeEffVar {} = do
+  at <- unbindType a
+  bt <- unbindType b
+  collectVarBindings at bt
+collectVarBindings a@BoundTypeEffVar {} b@BoundType {} = do
+  at <- unbindType a
+  bt <- unbindType b
+  collectVarBindings at bt
 collectVarBindings a@TNum {} b@TNum {} =
   if (_tnum a) == (_tnum b)
     then return []
