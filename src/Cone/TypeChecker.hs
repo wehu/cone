@@ -197,7 +197,6 @@ initFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
 initFuncDef f = do
   let pos = f ^. funcLoc
       fn = f ^. funcName
-      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
       ft = funcDefType f
   k <- inferTypeKind ft
   checkTypeKind k

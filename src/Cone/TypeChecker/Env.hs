@@ -21,6 +21,7 @@ import Control.Monad
 import qualified Data.Map as M
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
+import Debug.Trace
 
 type Eff s e = Fresh :+: State s :+: Error e
 
