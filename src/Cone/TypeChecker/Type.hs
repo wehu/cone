@@ -195,7 +195,9 @@ checkEffKindMatch a b = do
 toEffList' :: EffectType -> EffectType
 toEffList' a@EffApp {..} = EffList [a] _effLoc
 toEffList' v@EffVar {..} = EffList [v] _effLoc
-toEffList' a@EffList {} = a
+toEffList' l@EffList {} = 
+  let ls = join $ map (_effList . toEffList') (_effList l)
+   in EffList ls (_effLoc l)
 
 toEffList :: EffectType -> EffectType
 toEffList eff = do
@@ -343,6 +345,7 @@ collectVarBindings a@TNum {} b@TNum {} =
 collectVarBindings a b = throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 
 collectVarBindingsInEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m [(TVar, Type)]
+collectVarBindingsInEff s@EffVar{} _ = return []
 collectVarBindingsInEff a@EffApp{} b@EffApp{} =
   if L.length (a ^. effAppArgs) /= L.length (b ^. effAppArgs) ||
      a ^. effAppName /= b ^. effAppName
@@ -356,7 +359,7 @@ collectVarBindingsInEff a@EffList{} b@EffList{} =
   else foldM (\s e -> (++) <$> return s <*> e)
       []
       [collectVarBindingsInEff aarg barg | aarg <- (a ^. effList) | barg <- (b ^. effList)]
-collectVarBindingsInEff a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b) 
+collectVarBindingsInEff a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
 checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
 checkVarBindings bindings = do
