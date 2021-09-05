@@ -24,7 +24,9 @@ checkFuncType :: (Has EnvEff sig m) => FuncDef -> m ()
 checkFuncType f = underScope $ do
   let pos = f ^. funcLoc
       bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+      bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
+  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
   mapM_
     (\(n, t) -> setFuncType n t)
     (f ^. funcArgs)
@@ -81,6 +83,7 @@ inferExprType l@ELam {..} = underScope $ do
   case newLam of
     l@ELam{..} -> do
       mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) bvs
+      mapM_ (\t -> setEnv (Just $ EKStar _eloc) $ effs . at (name2String t)) evs
       args <-
         mapM
           ( \(_, t) -> do

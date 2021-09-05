@@ -185,6 +185,9 @@ instance Pretty EffKind where
 data EffVarName = EffVarName{_effVarName :: EffVar, _effVarLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
+instance Pretty EffVarName where
+  pretty EffVarName{..} = pretty _effVarName
+
 type EffVar = Name EffVarName
 
 data EffectType

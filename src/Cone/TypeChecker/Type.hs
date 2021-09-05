@@ -53,8 +53,8 @@ inferTypeKind b@BoundType {..} = underScope $ do
   inferTypeKind t
 inferTypeKind b@BoundEffVarType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind $ _boundEffVarType
-      star = KStar $ _tloc
-  mapM_ (\v -> setEnv (Just star) $ types . at (name2String v)) bvs
+      star = EKStar $ _tloc
+  mapM_ (\v -> setEnv (Just star) $ effs . at (name2String v)) bvs
   inferTypeKind t
 inferTypeKind v@TVar {..} = do
   let tvn = name2String _tvar
@@ -142,7 +142,16 @@ inferEffKind a@EffApp {..} = do
 inferEffKind l@EffList {..} = do
   ls <- mapM inferEffKind _effList
   mapM_ checkEffKind ls
+  k <- mapM (inferEffVarKind _effLoc) _effVar
+  mapM_ checkEffKind k
   return $ EKList ls _effLoc
+
+inferEffVarKind :: (Has EnvEff sig m) => Location -> EffVar -> m EffKind
+inferEffVarKind loc v = do
+  k <- getEnv $ effs . at (name2String v)
+  case k of
+    Just k -> return k
+    Nothing -> throwError $ "cannot find eff variable: " ++ ppr v ++ ppr loc
 
 inferEffectType :: (Has EnvEff sig m) => EffectType -> m EffectType
 inferEffectType a@EffApp {..} = do
