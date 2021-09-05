@@ -285,7 +285,7 @@ inferAppResultType f@TFunc {} bargs args = do
       [collectVarBindings a b | a <- fArgTypes | b <- args]
   checkVarBindings bindings
   return $ substs bindings $ _tfuncResult f
-inferAppResultType t (a:_) [] = return t
+inferAppResultType t _ [] = return t
 inferAppResultType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
 inferAppResultEffType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m EffectType
@@ -304,7 +304,7 @@ inferAppResultEffType f@TFunc {} targs args = do
         Just e -> e
         Nothing -> EffTotal $ _tloc f
   return $ substs bindings resEff
-inferAppResultEffType t (a:_) [] = return $ EffTotal (_tloc t)
+inferAppResultEffType t _ [] = return $ EffTotal (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
 collectVarBindings :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
