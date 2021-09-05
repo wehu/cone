@@ -189,7 +189,7 @@ typeSpec = hspec $ do
             ^? ix 0
             ^. _Just . _FDef . funcArgs
             ^? ix 0
-            ^. _Just . _2 . tfuncEff . _Just . effAppArgs
+            ^. _Just . _2 . tfuncEff . effAppArgs
             ^? ix 0
             ^. _Just . tvar
         )
@@ -212,7 +212,7 @@ typeSpec = hspec $ do
             ^? ix 0
             ^. _Just . _FDef . funcArgs
             ^? ix 0
-            ^. _Just . _2 . tfuncEff . _Just . effList
+            ^. _Just . _2 . tfuncEff . effList
             ^? ix 1
             ^. _Just . effAppArgs
             ^? ix 0
@@ -237,7 +237,7 @@ typeSpec = hspec $ do
             ^? ix 0
             ^. _Just . _FDef . funcArgs
             ^? ix 0
-            ^. _Just . _2 . tfuncEff . _Just . effList
+            ^. _Just . _2 . tfuncEff . effList
             ^? ix 1
             ^. _Just . effAnnType . effAppArgs
             ^? ix 0

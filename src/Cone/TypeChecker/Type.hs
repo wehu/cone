@@ -59,8 +59,8 @@ inferTypeKind v@TVar {..} = do
 inferTypeKind f@TFunc {..} = do
   ks <- mapM inferTypeKind _tfuncArgs
   mapM_ checkTypeKind ks
-  ek <- mapM inferEffKind _tfuncEff
-  mapM_ checkEffKind ek
+  ek <- inferEffKind _tfuncEff
+  checkEffKind ek
   rk <- inferTypeKind _tfuncResult
   checkTypeKind rk
   return $ KStar _tloc
@@ -97,12 +97,9 @@ inferType b@BoundType {..} = do
   return b {_boundType = bind bts t}
 inferType f@TFunc {..} = do
   args <- mapM inferType _tfuncArgs
-  eff <- mapM inferEffectType _tfuncEff
-  let eff' = case eff of
-              Just eff -> Just eff
-              Nothing -> Just $ EffList [] Nothing _tloc
+  eff <- inferEffectType _tfuncEff
   res <- inferType _tfuncResult
-  return f {_tfuncArgs = args, _tfuncEff = eff', _tfuncResult = res}
+  return f {_tfuncArgs = args, _tfuncEff = eff, _tfuncResult = res}
 inferType t = return t
 
 checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
@@ -305,9 +302,7 @@ inferAppResultEffType f@TFunc {} targs args = do
       []
       [collectVarBindings a b | a <- fArgTypes | b <- args]
   checkVarBindings bindings
-  let resEff = case _tfuncEff f of
-        Just e -> e
-        Nothing -> EffList [] Nothing $ _tloc f
+  let resEff = _tfuncEff f
   return $ substs bindings resEff
 inferAppResultEffType t _ [] = return $ EffList [] Nothing (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
@@ -380,11 +375,11 @@ funcDefType :: FuncDef -> Type
 funcDefType f =
   let pos = f ^. funcLoc
       argTypes = f ^. funcArgs ^.. traverse . _2
-      effType = f ^. funcEffectType . (non $ EffList [] Nothing pos)
+      effType = f ^. funcEffectType
       resultType = f ^. funcResultType
       ft =
         bindType (f ^. funcBoundVars) $
-            TFunc argTypes (Just effType) resultType pos
+            TFunc argTypes effType resultType pos
    in ft
 
 extractTensorShape :: (Has EnvEff sig m) => Type -> m [Type]

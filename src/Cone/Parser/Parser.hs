@@ -299,8 +299,8 @@ boundTVars =
   ((angles $ P.sepBy1 (s2n <$> ident) comma) P.<?> "type variable list")
     P.<|> return []
 
-resultType :: Parser (Maybe A.EffectType, A.Type)
-resultType = (,) <$> (P.optionMaybe $ P.try $ effType <* P.lookAhead type_) <*> type_
+resultType :: Parser (A.EffectType, A.Type)
+resultType = (,) <$> ((P.try $ effType <* P.lookAhead type_) P.<|> (A.EffList [] Nothing) <$> getPos) <*> type_
 
 effKind :: Parser A.EffKind
 effKind =

@@ -131,7 +131,7 @@ data Type
   | TVar {_tvar :: TVar, _tloc :: Location}
   | TFunc
       { _tfuncArgs :: [Type],
-        _tfuncEff :: Maybe EffectType,
+        _tfuncEff :: EffectType,
         _tfuncResult :: Type,
         _tloc :: Location
       }
@@ -254,7 +254,7 @@ data Expr
   | ELam
       { _elamBoundVars :: [TVar],
         _elamArgs :: [(String, Type)],
-        _elamEffType :: Maybe EffectType,
+        _elamEffType :: EffectType,
         _elamResultType :: Type,
         _elamExpr :: Maybe Expr,
         _eloc :: Location
@@ -345,7 +345,7 @@ data FuncIntf = FuncIntf
   { _intfName :: String,
     _intfBoundVars :: [TVar],
     _intfArgs :: [Type],
-    _intfEffectType :: Maybe EffectType,
+    _intfEffectType :: EffectType,
     _intfResultType :: Type,
     _intfLoc :: Location
   }
@@ -406,7 +406,7 @@ data FuncDef = FuncDef
   { _funcName :: String,
     _funcBoundVars :: [TVar],
     _funcArgs :: [(String, Type)],
-    _funcEffectType :: Maybe EffectType,
+    _funcEffectType :: EffectType,
     _funcResultType :: Type,
     _funcExpr :: Maybe Expr,
     _funcLoc :: Location

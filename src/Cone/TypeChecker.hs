@@ -83,7 +83,7 @@ initTypeConDef t = do
             bind tvars $
               if targs == []
                 then rt
-                else TFunc targs Nothing rt pos
+                else TFunc targs (EffList [] Nothing pos) rt pos
        in BoundType bt pos
 
 initTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
@@ -150,9 +150,7 @@ initEffIntfDef e = do
         forMOf _Just ot $ \t ->
           throwError $
             "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t ++ ppr pos
-        let eff = case i ^. intfEffectType of
-              Just e -> e
-              Nothing -> EffList [] Nothing pos
+        let eff = i ^. intfEffectType
         effs <-
           mergeEffs eff $
             if e ^. effectArgs == []
@@ -175,7 +173,7 @@ initEffIntfDef e = do
        in BoundType 
             (bind tvars $
               BoundType (
-                bind bvars $ TFunc iargs (Just eff) iresult pos) pos) pos
+                bind bvars $ TFunc iargs eff iresult pos) pos) pos
 
 initEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
 initEffIntfDefs m = mapM_ initEffIntfDef $ m ^.. topStmts . traverse . _EDef
