@@ -150,7 +150,7 @@ inferExprType EHandle {..} = do
   bodyType <- inferExprType _ehandleScope
   btk <- inferTypeKind bodyType
   checkTypeKind btk
-  underScope $ forM_ _ehandleBindings checkFuncDef
+  -- underScope $ forM_ _ehandleBindings checkFuncDef
   inferType bodyType
 inferExprType (ETC e@TCApp{..} _) = do
   let v:e:[] = _tcAppArgs
@@ -320,7 +320,7 @@ inferExprEffType ESeq {..} =
 inferExprEffType EHandle {..} = underScope $ do
   forM_ _ehandleBindings $ \intf -> do
     let fn = (intf ^. funcName)
-    checkFuncDef intf
+    -- checkFuncDef intf
     oft <- unbindType $ funcDefType intf
     oeffs <- mergeEffs (_tfuncEff oft) _ehandleEff
     let ft = oft{_tfuncEff=oeffs}
@@ -331,6 +331,8 @@ inferExprEffType EHandle {..} = underScope $ do
     intfEff <- toEffList $ _tfuncEff intfT
     binds <- collectEffVarBindings intfEff eff
     checkEffVarBindings binds
+    intfExprEff <- inferExprEffType $ fromJust $ intf ^. funcExpr
+    eff <- mergeEffs eff intfExprEff
     let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
     setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = eff}) $ funcs . at fn
   et <- inferExprEffType _ehandleScope
