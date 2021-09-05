@@ -153,9 +153,7 @@ initEffIntfDef e = do
         let eff = i ^. intfEffectType
         effs <-
           mergeEffs eff $
-            if e ^. effectArgs == []
-            then EffVar (s2n $ e ^.effectName) pos
-            else EffApp
+            EffApp
                   (e ^. effectName)
                   (map (\v -> TVar v pos) $ e ^.. effectArgs . traverse . _1)
                   pos

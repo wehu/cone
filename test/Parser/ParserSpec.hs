@@ -112,7 +112,7 @@ typeSpec = hspec $ do
               [text|
            module foo
 
-	   fun a(a : (a<b>) -> e c) : c {
+	   fun a(a : (a<b>) -> [|e] c) : c {
 		   a
 	   }
        |]

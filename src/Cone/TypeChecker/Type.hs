@@ -110,7 +110,10 @@ checkTypeKind k = do
 
 inferEffKind :: (Has EnvEff sig m) => EffectType -> m EffKind
 inferEffKind a@EffApp {..} = do
-  ak <- inferEffKind $ EffVar (s2n _effAppName) _effLoc
+  k <- getEnv $ effs . at _effAppName
+  forMOf _Nothing k $ \k ->
+    throwError $ "cannot find type: " ++ ppr a ++ ppr _effLoc
+  let ak = fromJust k
   case ak of
     EKFunc {..} ->
       if L.length _effAppArgs /= L.length _ekfuncArgs
@@ -136,12 +139,6 @@ inferEffKind b@BoundEffType {..} = underScope $ do
       star = EKStar $ _effLoc
   forM_ bvs $ \v -> setEnv (Just star) $ effs . at (name2String v)
   inferEffKind t
-inferEffKind v@EffVar {..} = do
-  let evn = name2String _effVarName
-  k <- getEnv $ effs . at evn
-  forMOf _Nothing k $ \k ->
-    throwError $ "cannot find type: " ++ ppr v ++ ppr _effLoc
-  return $ fromJust k
 inferEffKind l@EffList {..} = do
   ls <- mapM inferEffKind _effList
   mapM_ checkEffKind ls
@@ -161,7 +158,6 @@ inferEffectType b@BoundEffType {..} = do
 inferEffectType l@EffList {..} = do
   ls <- mapM inferEffectType _effList
   return l {_effList = ls}
-inferEffectType e = return e
 
 checkEffKind :: (Has EnvEff sig m) => EffKind -> m ()
 checkEffKind k = do
@@ -191,9 +187,7 @@ checkEffTypeMatch a b = do
   all <- mergeEffs total al
   bll <- mergeEffs total bl
   if aeq (all ^. effList) (bll ^. effList)
-     && aeq
-      (fmap (\e -> EffVar e pos) $ al ^. effBoundVar)
-      (fmap (\e -> EffVar e pos) $ bl ^. effBoundVar)
+     && aeq (al ^. effBoundVar) (bl ^. effBoundVar)
     then return ()
     else throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
@@ -204,7 +198,6 @@ checkEffKindMatch a b = do
     else throwError $ "eff type kind mismatch: " ++ ppr a ++ ppr (_ekloc a) ++ " vs " ++ ppr b ++ ppr (_ekloc b)
 
 toEffList' :: (Has EnvEff sig m) => EffectType -> m EffectType
-toEffList' a@EffVar {..} = return $ EffList [a] Nothing _effLoc
 toEffList' a@EffApp {..} = return $ EffList [a] Nothing _effLoc
 toEffList' a@EffList {} = return a
 toEffList' EffAnn {..} = toEffList' _effAnnType

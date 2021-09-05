@@ -341,8 +341,7 @@ inferExprEffType EHandle {..} = underScope $ do
   -- et <- inferExprEffType _ehandleScope
   -- check intefaces
   effName <- if not $ isn't _EffApp _ehandleEff then return $ _ehandleEff ^.effAppName
-             else if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVarName
-                  else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
+             else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
   intfs <- getEnv $ effIntfs . at effName
   case intfs of
     Just is -> do let intfNames = map (\e -> e ^.funcName) _ehandleBindings 
