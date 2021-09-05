@@ -105,7 +105,7 @@ typeCheckerSpec = hspec $ do
       [a[i, j] += b[i, k] * c[k, j]] : tensor<i32, [2, 6]>
       var c = 2
         handle a<i32> {
-          test<i32>(c1(1))
+          test(c1(1))
           3
         } with {
           fun test(a: a<i32>) : a<i32> {

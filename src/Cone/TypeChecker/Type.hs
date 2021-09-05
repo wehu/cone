@@ -240,11 +240,11 @@ removeEff f e = do
 
 applyTypeArgs :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 applyTypeArgs t args = do
-    let (bts, ets, tt) = unbindTypeSimple t
-  --if L.length bts < L.length args then 
-  --  throwError $ "function type variable number mismatch: " 
-  --  ++ ppr bts ++ " vs" ++ ppr args ++ ": " ++ ppr t ++ ppr (_tloc t)
-  --else do
+  let (bts, ets, tt) = unbindTypeSimple t
+  if L.length bts < L.length args then 
+    throwError $ "function type variable number mismatch: " 
+    ++ ppr bts ++ " vs" ++ ppr args ++ ": " ++ ppr t ++ ppr (_tloc t)
+  else do
     let argsLen = L.length args
         binds = [(n, t) | n <- L.take argsLen bts | t <- args]
     return $ bindTypeEffVar ets $ bindType (L.drop argsLen bts) $ substs binds tt
