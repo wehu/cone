@@ -277,7 +277,7 @@ inferAppResultEffType f@TFunc {} targs args = do
   checkVarBindings bindings
   let resEff = _tfuncEff f
   let eff = substs bindings resEff
-  effBindings <- collectEffVarBindings (_tfuncEff f) resEff
+  effBindings <- collectEffVarBindings (toEffList $ _tfuncEff f) (toEffList resEff)
   checkEffVarBindings effBindings
   return $ substs effBindings eff
 inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
