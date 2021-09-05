@@ -165,11 +165,7 @@ checkEffTypeMatch :: (Has EnvEff sig m) => EffectType -> EffectType -> m ()
 checkEffTypeMatch a b = do
   al <- toEffList a
   bl <- toEffList b
-  let pos = _effLoc al
-      total = EffList [] Nothing $ _effLoc al
-  all <- mergeEffs total al
-  bll <- mergeEffs total bl
-  if aeq (all ^. effList) (bll ^. effList)
+  if aeq (al ^. effList) (bl ^. effList)
      && aeq (al ^. effVar) (bl ^. effVar)
     then return ()
     else throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
