@@ -129,16 +129,6 @@ inferEffKind a@EffApp {..} = do
           checkEffKind _ekfuncResult
           return _ekfuncResult
     _ -> throwError $ "expected a func eff kind, but got " ++ ppr ak ++ ppr _effLoc
-inferEffKind a@EffAnn {..} = do
-  k <- inferEffKind _effAnnType
-  checkEffKind k
-  checkEffKindMatch k _effAnnKind
-  return _effAnnKind
-inferEffKind b@BoundEffType {..} = underScope $ do
-  let (bvs, t) = unsafeUnbind $ _boundEffType
-      star = EKStar $ _effLoc
-  forM_ bvs $ \v -> setEnv (Just star) $ effs . at (name2String v)
-  inferEffKind t
 inferEffKind l@EffList {..} = do
   ls <- mapM inferEffKind _effList
   mapM_ checkEffKind ls
@@ -148,13 +138,6 @@ inferEffectType :: (Has EnvEff sig m) => EffectType -> m EffectType
 inferEffectType a@EffApp {..} = do
   args <- mapM inferType _effAppArgs
   return a {_effAppArgs = args}
-inferEffectType a@EffAnn {..} = do
-  e <- inferEffectType _effAnnType
-  return a {_effAnnType = e}
-inferEffectType b@BoundEffType {..} = do
-  let (bts, t) = unbindEffTypeSimple b
-  t <- inferEffectType t
-  return b {_boundEffType = bind bts t}
 inferEffectType l@EffList {..} = do
   ls <- mapM inferEffectType _effList
   return l {_effList = ls}
@@ -200,10 +183,6 @@ checkEffKindMatch a b = do
 toEffList' :: (Has EnvEff sig m) => EffectType -> m EffectType
 toEffList' a@EffApp {..} = return $ EffList [a] Nothing _effLoc
 toEffList' a@EffList {} = return a
-toEffList' EffAnn {..} = toEffList' _effAnnType
-toEffList' a@BoundEffType {} = do
-  ua <- unbindEffType a
-  toEffList' ua
 
 toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
 toEffList eff = do

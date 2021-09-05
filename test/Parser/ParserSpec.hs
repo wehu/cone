@@ -220,31 +220,6 @@ typeSpec = hspec $ do
         )
         `shouldBe` "c"
 
-    it "eff kind" $ do
-      let source =
-            unpack
-              [text|
-           module foo
-
-	   fun a(a : (i8) -> [e1<d>, e<c> : *] d) : i32 {
-		   a
-	   }
-       |]
-      --(show $ parse "" source) `shouldBe` "a"
-      ( name2String $
-          (parse "xxx" source)
-            ^. _Right . topStmts
-            ^? ix 0
-            ^. _Just . _FDef . funcArgs
-            ^? ix 0
-            ^. _Just . _2 . tfuncEff . effList
-            ^? ix 1
-            ^. _Just . effAnnType . effAppArgs
-            ^? ix 0
-            ^. _Just . tvar
-        )
-        `shouldBe` "c"
-
 exprSpec = hspec $ do
   describe "expr syntax" $ do
     it "expr app" $ do

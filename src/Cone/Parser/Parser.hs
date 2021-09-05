@@ -206,10 +206,11 @@ namePath = intercalate "/" <$> P.sepBy1 ident div_
 
 imports :: Parser [A.ImportStmt]
 imports =
-  P.many (
-    f <$ kImport <*> namePath <*> getPos
-      <*> (P.optionMaybe $ kAs *> ident)
-      <* semi P.<?> "import stmt")
+  P.many
+    ( f <$ kImport <*> namePath <*> getPos
+        <*> (P.optionMaybe $ kAs *> ident)
+        <* semi P.<?> "import stmt"
+    )
   where
     f n pos alias = A.ImportStmt n alias [] pos
 
@@ -265,9 +266,14 @@ typeTerm :: Parser A.Type
 typeTerm =
   ( tann
       <$> ( ( P.try ((A.TApp <$> (s2n <$> namePath) <*> angles (P.sepBy1 type_ comma)) P.<?> "application type")
-                P.<|> P.try (tfunc <$> (angles (P.sepBy1 (s2n <$> ident) comma)
-                                        P.<|> return [])
-                                       <*> parens (P.sepBy type_ comma) <* arrow <*> resultType P.<?> "function type")
+                P.<|> P.try
+                  ( tfunc
+                      <$> ( angles (P.sepBy1 (s2n <$> ident) comma)
+                              P.<|> return []
+                          )
+                      <*> parens (P.sepBy type_ comma) <* arrow
+                      <*> resultType P.<?> "function type"
+                  )
                 P.<|> (A.TVar <$> (s2n <$> ident) P.<?> "type variable")
                 P.<|> (A.TPrim <$> primType P.<?> "primitive type")
                 P.<|> (A.TNum <$> (Just . read <$> literalInt) P.<?> "number type")
@@ -281,10 +287,11 @@ typeTerm =
     <*> getPos
     P.<|> parens type_
   where
-    tfunc bvs args (effT, resultT) pos = 
+    tfunc bvs args (effT, resultT) pos =
       let ft = A.TFunc args effT resultT pos
-       in if bvs == [] then ft
-          else A.BoundType (bind bvs ft) pos
+       in if bvs == []
+            then ft
+            else A.BoundType (bind bvs ft) pos
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
@@ -313,19 +320,11 @@ effKind =
 effType :: Parser A.EffectType
 effType =
   parens effType
-    P.<|> ( ekann
-              <$> ( ( (P.try (A.EffApp <$> namePath <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"))
-                        P.<|> ((brackets (A.EffList <$> (P.sepBy effType comma) <*> (P.optionMaybe $ pipe_ *> (s2n <$> ident)))) P.<?> "eff type list")
-                    )
-                      <*> getPos
-                  )
-              <*> (P.optionMaybe (colon *> effKind P.<?> "eff type annotation"))
+    P.<|> ( ( (P.try (A.EffApp <$> namePath <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"))
+                P.<|> ((brackets (A.EffList <$> (P.sepBy effType comma) <*> (P.optionMaybe $ pipe_ *> (s2n <$> ident)))) P.<?> "eff type list")
+            )
               <*> getPos
           )
-  where
-    ekann t ek pos = case ek of
-      Just ek' -> A.EffAnn t ek' pos
-      _ -> t
 
 funcArgs :: Parser [(String, A.Type)]
 funcArgs = (P.sepBy ((,) <$> ident <* colon <*> type_) comma) P.<?> "function argument types"
@@ -388,22 +387,27 @@ tcExprBinary op name assoc =
 
 tcAccess = A.TCAccess <$> ident <*> brackets (P.sepBy1 (s2n <$> ident) comma) <*> getPos P.<?> "tc access"
 
-tcTerm = parens tc
-  P.<|> P.try tcAccess
-  P.<|> P.try (A.TCApp <$> ident <*> parens (P.sepBy1 tc comma) <*> getPos P.<?> "tc application")
-  P.<|> (A.TCVar <$> ident <*> getPos P.<?> "variable")
+tcTerm =
+  parens tc
+    P.<|> P.try tcAccess
+    P.<|> P.try (A.TCApp <$> ident <*> parens (P.sepBy1 tc comma) <*> getPos P.<?> "tc application")
+    P.<|> (A.TCVar <$> ident <*> getPos P.<?> "variable")
 
 tc :: Parser A.TCExpr
-tc = brackets $
-       f <$> tcAccess <*>
-        (assign_ *> return "="
-        P.<|> addAssign *> return "+="
-        P.<|> subAssign *> return "-="
-        P.<|> mulAssign *> return "*="
-        P.<|> divAssign *> return "/="
-        P.<|> modAssign *> return "%=") 
-        <*> PE.buildExpressionParser tcExprTable tcTerm <*> getPos
-  where f a op e pos = A.TCApp op [a, e] pos
+tc =
+  brackets $
+    f <$> tcAccess
+      <*> ( assign_ *> return "="
+              P.<|> addAssign *> return "+="
+              P.<|> subAssign *> return "-="
+              P.<|> mulAssign *> return "*="
+              P.<|> divAssign *> return "/="
+              P.<|> modAssign *> return "%="
+          )
+      <*> PE.buildExpressionParser tcExprTable tcTerm
+      <*> getPos
+  where
+    f a op e pos = A.TCApp op [a, e] pos
 
 exprTable =
   [ [exprPrefix sub "____negative"],
@@ -473,9 +477,11 @@ term =
                               )
                                 P.<|> (A.ELet <$ kVar <*> pat <* assign_ <*> expr <*> return True P.<?> "var experssion")
                                 P.<|> (A.ELet <$ kVal <*> pat <* assign_ <*> expr <*> return False P.<?> "val experssion")
-                                P.<|> (A.ECase <$ kCase <*> expr
-                                  <*> braces
-                                    (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "case expression")
+                                P.<|> ( A.ECase <$ kCase <*> expr
+                                          <*> braces
+                                            (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
+                                            P.<?> "case expression"
+                                      )
                                 P.<|> (A.EWhile <$ kWhile <*> term <*> braces exprSeq P.<?> "while expression")
                                 P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
                                 P.<|> (eif <$ kIf <*> term <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
@@ -495,8 +501,8 @@ term =
   where
     eapp e targs args pos =
       if (isn't _Nothing targs) || (isn't _Nothing args)
-      then A.EApp e (targs ^._Just) (args ^._Just) pos
-      else e
+        then A.EApp e (targs ^. _Just) (args ^. _Just) pos
+        else e
     eann e t pos = case t of
       Just t' -> A.EAnn e t' pos
       _ -> e
@@ -516,7 +522,7 @@ expr = PE.buildExpressionParser exprTable term
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
 typeArgs =
-  ( (angles (P.sepBy ((,) <$> (s2n <$> ident) <*> (P.optionMaybe $ colon *> kind)) comma)) P.<?> "type arguments")
+  ((angles (P.sepBy ((,) <$> (s2n <$> ident) <*> (P.optionMaybe $ colon *> kind)) comma)) P.<?> "type arguments")
     P.<|> return []
 
 typeCon :: Parser A.TypeCon
@@ -530,8 +536,9 @@ typeCon =
 typeDef :: Parser A.TypeDef
 typeDef =
   A.TypeDef <$ kType <*> ident <*> typeArgs
-    <*> (braces (P.sepBy1 typeCon $ P.try $ semi <* P.notFollowedBy rBrace)
-         P.<|> return [])
+    <*> ( braces (P.sepBy1 typeCon $ P.try $ semi <* P.notFollowedBy rBrace)
+            P.<|> return []
+        )
     <*> getPos P.<?> "type definition"
 
 funcIntf :: Parser A.FuncIntf
