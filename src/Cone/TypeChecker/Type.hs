@@ -281,7 +281,7 @@ inferAppResultEffType f@TFunc {} targs args = do
   let eff = substs bindings resEff
   effBindings <- collectEffVarBindings (toEffList $ _tfuncEff f) (toEffList resEff)
   checkEffVarBindings effBindings
-  return $ substs effBindings eff
+  return $ toEffList $ substs effBindings eff
 inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
