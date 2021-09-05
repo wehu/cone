@@ -373,7 +373,11 @@ collectVarBindingsInEff a@EffList{} b@EffList{} = do
 collectVarBindingsInEff a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
 collectEffVarBindings :: (Has EnvEff sig m) => EffectType -> EffectType -> m [(EffVar, EffectType)]
-collectEffVarBindings EffVar{..} e = return [(_effVar, e)]
+collectEffVarBindings EffVar{..} e = do
+  found <- getEnv $ effs . at (name2String _effVar)
+  case found of
+    Nothing -> return [(_effVar, e)]
+    Just _ -> return []
 collectEffVarBindings a@EffApp{} b@EffApp{} = do
   if L.length (a ^. effAppArgs) /= L.length (b ^. effAppArgs) ||
      a ^. effAppName /= b ^. effAppName

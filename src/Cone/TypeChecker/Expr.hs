@@ -318,7 +318,6 @@ inferExprEffType ESeq {..} =
     (EffList [] _eloc)
     _eseq
 inferExprEffType EHandle {..} = underScope $ do
-  et <- inferExprEffType _ehandleScope
   forM_ _ehandleBindings $ \intf -> do
     let fn = (intf ^. funcName)
     checkFuncDef intf
@@ -328,23 +327,13 @@ inferExprEffType EHandle {..} = underScope $ do
     intfT <- getFuncType fn >>= unbindType
     binds <- collectVarBindings intfT ft
     checkVarBindings binds
-    eff <- case ft of
-      ft@TFunc {..} -> return _tfuncEff
-      t -> throwError $ "expected a function type, but got " ++ ppr t ++ ppr _eloc
-    -- intfEff <- (case intfT of
-    --              ft@TFunc {..} -> case _tfuncEff of
-    --                Just et -> return et
-    --                Nothing -> return $ EffTotal _eloc
-    --              t -> throwError $ "expected a function type, but got " ++ ppr t ++ ppr _eloc)
-    --              >>= mergeEffs (EffTotal _eloc)
-    effs <- mergeEffs eff _ehandleEff
-    removeEff et effs
-    -- if aeq (closeEffType effs) (closeEffType intfEff)
-    --   then return ()
-    --   else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff ++ ppr _eloc
+    let eff = _tfuncEff ft
+    binds <- collectEffVarBindings (toEffList $ _tfuncEff intfT) (toEffList eff)
+    checkEffVarBindings binds
+    -- eff <- removeEff eff _ehandleEff
     let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
-    setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = effs}) $ funcs . at fn
-  -- et <- inferExprEffType _ehandleScope
+    setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = eff}) $ funcs . at fn
+  et <- inferExprEffType _ehandleScope
   -- check intefaces
   effName <- if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVar
              else if not $ isn't _EffApp _ehandleEff then return $ _ehandleEff ^.effAppName
