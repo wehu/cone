@@ -179,8 +179,8 @@ checkKindMatch a b = do
 
 checkEffTypeMatch :: (Has EnvEff sig m) => EffectType -> EffectType -> m ()
 checkEffTypeMatch a b = do
-  let al = toEffList a
-  let bl = toEffList b
+  al <- toEffList a
+  bl <- toEffList b
   if aeq (al ^. effList) (bl ^. effList)
      && aeq (al ^. effVar) (bl ^. effVar)
     then return ()
@@ -199,12 +199,15 @@ toEffList' l@EffList {} =
   let ls = join $ map (_effList . toEffList') (_effList l)
    in EffList ls (_effLoc l)
 
-toEffList :: EffectType -> EffectType
-toEffList eff =
+toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
+toEffList eff = do
+  es <- getEnv effs
   let e = toEffList' eff
-      (el, vl) = L.partition (isn't _EffVar) (_effList e)
+      (el, vl) = L.partition (\e -> isn't _EffVar e ||
+                                    (isn't _Nothing $ M.lookup (name2String $ _effVar e) es))
+                               (_effList e)
       l = (L.sortBy acompare el) ++ (L.sortBy acompare vl)
-  in e{_effList=l}
+  return e{_effList=l}
 
 mergeEffs :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 mergeEffs a@EffList {} b@EffList {} = do
@@ -214,8 +217,8 @@ mergeEffs a@EffList {} b@EffList {} = do
       l = L.unionBy aeq al bl
   return $ EffList l pos
 mergeEffs a b = do
-  let al = toEffList a
-  let bl = toEffList b
+  al <- toEffList a
+  bl <- toEffList b
   mergeEffs al bl
 
 removeEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
@@ -234,8 +237,8 @@ removeEff f@EffList {} e@EffList {} = do
       el
   return $ EffList l pos
 removeEff f e = do
-  let fl = toEffList f
-  let el = toEffList e
+  fl <- toEffList f
+  el <- toEffList e
   removeEff fl el
 
 applyTypeArgs :: (Has EnvEff sig m) => Type -> [Type] -> m Type
@@ -277,11 +280,12 @@ inferAppResultEffType f@TFunc {} targs args = do
       []
       [collectVarBindings a b | a <- fArgTypes | b <- args]
   checkVarBindings bindings
-  let resEff = _tfuncEff f
+  resEff <- toEffList $ _tfuncEff f
+  fl <- toEffList $ _tfuncEff f
   let eff = substs bindings resEff
-  effBindings <- collectEffVarBindings (toEffList $ _tfuncEff f) (toEffList resEff)
+  effBindings <- collectEffVarBindings fl resEff
   checkEffVarBindings effBindings
-  return $ toEffList $ substs effBindings eff
+  toEffList $ substs effBindings eff
 inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
@@ -305,16 +309,18 @@ collectVarBindings a@TVar {..} t = do
 collectVarBindings a@TFunc {} b@TFunc {} =
   if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
     then throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
-    else
+    else do
+      al <- toEffList $ _tfuncEff a
+      bl <- toEffList $ _tfuncEff b
       (++) <$>
-      ((++)
+       ((++)
         <$> ( foldM
                 (\s e -> (++) <$> (return s) <*> e)
                 []
                 [collectVarBindings aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
             )
         <*> collectVarBindings (_tfuncResult a) (_tfuncResult b))
-        <*> collectVarBindingsInEff (toEffList $ _tfuncEff a) (toEffList $ _tfuncEff b)
+        <*> collectVarBindingsInEff al bl
 collectVarBindings a@TApp {} b@TApp {} =
   -- not support higher kind so far
   if L.length (_tappArgs a) == L.length (_tappArgs b)
