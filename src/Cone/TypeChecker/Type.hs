@@ -92,7 +92,7 @@ inferType a@TAnn {..} = do
   t <- inferType _tannType
   return a {_tannType = t}
 inferType b@BoundType {..} = do
-  let (bts, t) = unbindTypeSimple b
+  let (bts, _, t) = unbindTypeSimple b
   t <- inferType t
   return b {_boundType = bind bts t}
 inferType f@TFunc {..} = do
@@ -235,7 +235,7 @@ removeEff f e = do
 
 applyTypeArgs :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 applyTypeArgs t args = do
-  let (bts, tt) = unbindTypeSimple t
+  let (bts, _, tt) = unbindTypeSimple t
   if L.length bts < L.length args then throwError $ "function type variable number mismatch: " ++ ppr bts ++ " vs" ++ ppr args ++ ppr (_tloc t)
   else do
     let argsLen = L.length args

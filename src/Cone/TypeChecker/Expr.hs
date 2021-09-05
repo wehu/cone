@@ -336,7 +336,7 @@ inferExprEffType EHandle {..} = underScope $ do
     -- if aeq (closeEffType effs) (closeEffType intfEff)
     --   then return ()
     --   else throwError $ "eff type mismatch: " ++ ppr effs ++ " vs " ++ ppr intfEff ++ ppr _eloc
-    let (bts, ft) = unbindTypeSimple $ funcDefType intf
+    let (bts, _, ft) = unbindTypeSimple $ funcDefType intf
     setEnv (Just $ bindType bts $ ft {_tfuncEff = effs}) $ funcs . at fn
   -- et <- inferExprEffType _ehandleScope
   -- check intefaces

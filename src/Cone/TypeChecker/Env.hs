@@ -136,6 +136,13 @@ unbindType b@BoundTypeEffVar {..} = do
   unbindType $ substs [(f, EffVarName t pos) | f <- vs | t <- nvs] t
 unbindType t = return t
 
-unbindTypeSimple :: Type -> ([TVar], Type)
-unbindTypeSimple b@BoundType {..} = unsafeUnbind _boundType
-unbindTypeSimple t = ([], t)
+unbindTypeSimple :: Type -> ([TVar], [EffVar], Type)
+unbindTypeSimple b@BoundType {..} = 
+  let (bvs, t) = unsafeUnbind _boundType
+      (bvs', evs, t') = unbindTypeSimple t
+   in (bvs ++ bvs', evs, t')
+unbindTypeSimple b@BoundTypeEffVar {..} =
+  let (evs, t) = unsafeUnbind _boundTypeEffVar
+      (bvs, evs', t') = unbindTypeSimple t
+   in (bvs, evs ++ evs', t')
+unbindTypeSimple t = ([], [], t)
