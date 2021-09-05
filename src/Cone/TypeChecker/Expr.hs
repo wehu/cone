@@ -77,6 +77,7 @@ inferExprType l@ELam {..} = underScope $ do
   setEnv M.empty localState
   -- refresh
   (bvs, newLam) <- refresh _elamBoundVars l
+  (evs, newLam) <- refreshEffVar newLam
   case newLam of
     l@ELam{..} -> do
       mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) bvs
@@ -100,7 +101,7 @@ inferExprType l@ELam {..} = underScope $ do
       k <- inferTypeKind _elamResultType
       checkTypeKind k
       checkTypeMatch eType _elamResultType
-      inferType $ bindTypeEffVar [] $ bindType bvs $ TFunc args _elamEffType eType _eloc
+      inferType $ bindTypeEffVar evs $ bindType bvs $ TFunc args _elamEffType eType _eloc
     _ -> throwError $ "should not be here"
 inferExprType a@EAnn {..} = do
   t <- inferExprType _eannExpr
