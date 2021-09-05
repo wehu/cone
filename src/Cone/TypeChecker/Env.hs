@@ -98,6 +98,9 @@ addEffIntfs effName intfName = do
 freeVarName :: Int -> TVar
 freeVarName i = makeName "$tvar" $ toInteger i
 
+freeEffVarName :: Int -> EffVar
+freeEffVarName i = makeName "$effvar" $ toInteger i
+
 closeType :: Type -> Bind [TVar] Type
 closeType t =
   let fvars = t ^.. fv
@@ -111,6 +114,9 @@ closeEffType t =
 bindType :: [TVar] -> Type -> Type
 bindType bvs t = BoundType (bind bvs t) (_tloc t)
 
+bindTypeEffVar :: [EffVar] -> Type -> Type
+bindTypeEffVar bvs t = BoundTypeEffVar (bind bvs t) (_tloc t)
+
 refresh :: (Has EnvEff sig m) => [TVar] -> Expr -> m ([TVar], Expr)
 refresh vs e = do
   let pos = _eloc e
@@ -123,6 +129,11 @@ unbindType b@BoundType {..} = do
       pos = _tloc
   nvs <- mapM (\_ -> freeVarName <$> fresh) vs
   unbindType $ substs [(f, TVar t pos) | f <- vs | t <- nvs] t
+unbindType b@BoundTypeEffVar {..} = do
+  let (vs, t) = unsafeUnbind _boundTypeEffVar
+      pos = _tloc
+  nvs <- mapM (\_ -> freeEffVarName <$> fresh) vs
+  unbindType $ substs [(f, EffVarName t pos) | f <- vs | t <- nvs] t
 unbindType t = return t
 
 unbindTypeSimple :: Type -> ([TVar], Type)

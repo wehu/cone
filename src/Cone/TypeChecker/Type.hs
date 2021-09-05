@@ -349,6 +349,8 @@ funcDefType f =
       ft =
         bindType bvs $
             TFunc argTypes effType resultType pos
+      bes = (ft ^.. fv) :: [EffVar]
+      bft = bindTypeEffVar bes ft
    in ft
 
 extractTensorShape :: (Has EnvEff sig m) => Type -> m [Type]
