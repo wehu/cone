@@ -299,6 +299,7 @@ inferExprEffType EHandle {..} = underScope $ do
     intfT <- getFuncType fn >>= unbindType
     binds <- collectVarBindings intfT ft
     checkVarBindings binds
+    
     eff <- toEffList $ _tfuncEff ft
     intfEff <- toEffList $ _tfuncEff intfT
     binds <- collectEffVarBindings intfEff eff
