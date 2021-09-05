@@ -170,7 +170,7 @@ checkEffTypeMatch a b = do
   all <- mergeEffs total al
   bll <- mergeEffs total bl
   if aeq (all ^. effList) (bll ^. effList)
-     && aeq (al ^. effBoundVar) (bl ^. effBoundVar)
+     && aeq (al ^. effVar) (bl ^. effVar)
     then return ()
     else throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
@@ -195,8 +195,8 @@ mergeEffs :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 mergeEffs a@EffList {} b@EffList {} = do
   let al = a ^. effList
       bl = b ^. effList
-      av = a ^. effBoundVar
-      bv = a ^. effBoundVar
+      av = a ^. effVar
+      bv = a ^. effVar
       pos = _effLoc a
       v = case av of
         Just _ -> av
@@ -212,8 +212,8 @@ removeEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 removeEff f@EffList {} e@EffList {} = do
   let fl = f ^. effList
       el = e ^. effList
-      fv = f ^. effBoundVar
-      ev = e ^. effBoundVar
+      fv = f ^. effVar
+      ev = e ^. effVar
       pos = _effLoc f
   v <- case fv of
     Just _ -> case ev of

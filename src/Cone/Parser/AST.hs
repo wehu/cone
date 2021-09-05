@@ -186,12 +186,12 @@ data EffectType
         _effAppArgs :: [Type],
         _effLoc :: Location
       }
-  | EffList {_effList :: [EffectType], _effBoundVar :: Maybe TVar, _effLoc :: Location}
+  | EffList {_effList :: [EffectType], _effVar :: Maybe TVar, _effLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty EffectType where
   pretty EffApp {..} = parens $ pretty _effAppName <+> parensList _effAppArgs
-  pretty EffList {..} = bracketsList _effList <+> pretty _effBoundVar
+  pretty EffList {..} = bracketsList _effList <+> pretty _effVar
 
 data Pattern
   = PVar {_pvar :: NamePath, _ploc :: Location}
