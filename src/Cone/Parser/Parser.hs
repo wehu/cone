@@ -308,7 +308,7 @@ boundEffVars =
     P.<|> return []
 
 resultType :: Parser (A.EffectType, A.Type)
-resultType = (,) <$> ((P.try $ effType <* P.lookAhead type_) P.<|> (A.EffList [] Nothing) <$> getPos) <*> type_
+resultType = (,) <$> ((P.try $ effType <* P.lookAhead type_) P.<|> (A.EffList []) <$> getPos) <*> type_
 
 effKind :: Parser A.EffKind
 effKind =
@@ -322,7 +322,8 @@ effType :: Parser A.EffectType
 effType =
   parens effType
     P.<|> ( ( (P.try (A.EffApp <$> namePath <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"))
-                P.<|> ((brackets (A.EffList <$> (P.sepBy effType comma) <*> (P.optionMaybe $ pipe_ *> (s2n <$> ident)))) P.<?> "eff type list")
+                P.<|> ((brackets (A.EffList <$> (P.sepBy effType comma))) P.<?> "eff type list")
+                P.<|> (A.EffVar <$> (s2n <$> ident) P.<?> "eff var")
             )
               <*> getPos
           )

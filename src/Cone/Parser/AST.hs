@@ -182,26 +182,22 @@ instance Pretty EffKind where
   pretty EKFunc {..} = parens $ parensList _ekfuncArgs <+> "->" <+> pretty _ekfuncResult
   pretty EKList {..} = anglesList _ekList
 
-data EffVarName = EffVarName{_effVarName :: EffVar, _effVarLoc :: Location}
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-instance Pretty EffVarName where
-  pretty EffVarName{..} = pretty _effVarName
-
-type EffVar = Name EffVarName
+type EffVar = Name EffectType
 
 data EffectType
-  = EffApp
+  = EffVar { _effVar :: EffVar, _effLoc :: Location}
+  | EffApp
       { _effAppName :: NamePath,
         _effAppArgs :: [Type],
         _effLoc :: Location
       }
-  | EffList {_effList :: [EffectType], _effVar :: Maybe EffVar, _effLoc :: Location}
+  | EffList {_effList :: [EffectType], _effLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty EffectType where
+  pretty EffVar {..} = pretty _effVar
   pretty EffApp {..} = parens $ pretty _effAppName <+> parensList _effAppArgs
-  pretty EffList {..} = bracketsList _effList <+> pretty _effVar
+  pretty EffList {..} = bracketsList _effList
 
 data Pattern
   = PVar {_pvar :: NamePath, _ploc :: Location}
@@ -475,7 +471,7 @@ instance Alpha Attr
 
 instance Subst Type Attr
 
-instance Subst EffVarName Attr
+instance Subst EffectType Attr
 
 makeLenses ''Attr
 
@@ -508,7 +504,7 @@ instance Alpha Location where
 
 instance Subst Type Location
 
-instance Subst EffVarName Location
+instance Subst EffectType Location
 
 makeLenses ''Location
 
@@ -523,7 +519,7 @@ instance Alpha PrimType
 
 instance Subst Type PrimType
 
-instance Subst EffVarName PrimType
+instance Subst EffectType PrimType
 
 makeLenses ''PrimType
 
@@ -540,7 +536,7 @@ instance Subst Type Type where
   isvar (TVar x _) = Just (SubstName x)
   isvar _ = Nothing
 
-instance Subst EffVarName Type
+instance Subst EffectType Type
 
 makeLenses ''Type
 
@@ -555,7 +551,7 @@ instance Alpha Kind
 
 instance Subst Type Kind
 
-instance Subst EffVarName Kind
+instance Subst EffectType Kind
 
 makeLenses ''Kind
 
@@ -570,27 +566,11 @@ instance Alpha EffKind
 
 instance Subst Type EffKind
 
-instance Subst EffVarName EffKind
+instance Subst EffectType EffKind
 
 makeLenses ''EffKind
 
 makePrisms ''EffKind
-
--------------------------------
-
-instance Plated EffVarName where
-  plate = uniplate
-
-instance Alpha EffVarName
-
-instance Subst EffVarName EffVarName where
-  isvar (EffVarName x _) = Just (SubstName x)
-
-instance Subst Type EffVarName
-
-makeLenses ''EffVarName
-
-makePrisms ''EffVarName
 
 -------------------------------
 
@@ -599,9 +579,11 @@ instance Plated EffectType where
 
 instance Alpha EffectType
 
-instance Subst Type EffectType
+instance Subst EffectType EffectType where
+  isvar (EffVar x _) = Just (SubstName x)
+  isvar _ = Nothing
 
-instance Subst EffVarName EffectType
+instance Subst Type EffectType
 
 makeLenses ''EffectType
 
@@ -616,7 +598,7 @@ instance Alpha Pattern
 
 instance Subst Type Pattern
 
-instance Subst EffVarName Pattern
+instance Subst EffectType Pattern
 
 makeLenses ''Pattern
 
@@ -631,7 +613,7 @@ instance Alpha TCExpr
 
 instance Subst Type TCExpr
 
-instance Subst EffVarName TCExpr
+instance Subst EffectType TCExpr
 
 makeLenses ''TCExpr
 
@@ -646,7 +628,7 @@ instance Alpha Expr
 
 instance Subst Type Expr
 
-instance Subst EffVarName Expr
+instance Subst EffectType Expr
 
 makeLenses ''Expr
 
@@ -661,7 +643,7 @@ instance Alpha Case
 
 instance Subst Type Case
 
-instance Subst EffVarName Case
+instance Subst EffectType Case
 
 makeLenses ''Case
 
@@ -676,7 +658,7 @@ instance Alpha TypeDef
 
 instance Subst Type TypeDef
 
-instance Subst EffVarName TypeDef
+instance Subst EffectType TypeDef
 
 makeLenses ''TypeDef
 
@@ -691,7 +673,7 @@ instance Alpha TypeCon
 
 instance Subst Type TypeCon
 
-instance Subst EffVarName TypeCon
+instance Subst EffectType TypeCon
 
 makeLenses ''TypeCon
 
@@ -706,7 +688,7 @@ instance Alpha EffectDef
 
 instance Subst Type EffectDef
 
-instance Subst EffVarName EffectDef
+instance Subst EffectType EffectDef
 
 makeLenses ''EffectDef
 
@@ -721,7 +703,7 @@ instance Alpha ImportStmt
 
 instance Subst Type ImportStmt
 
-instance Subst EffVarName ImportStmt
+instance Subst EffectType ImportStmt
 
 makeLenses ''ImportStmt
 
@@ -736,7 +718,7 @@ instance Alpha FuncIntf
 
 instance Subst Type FuncIntf
 
-instance Subst EffVarName FuncIntf
+instance Subst EffectType FuncIntf
 
 makeLenses ''FuncIntf
 
@@ -751,7 +733,7 @@ instance Alpha FuncDef
 
 instance Subst Type FuncDef
 
-instance Subst EffVarName FuncDef
+instance Subst EffectType FuncDef
 
 makeLenses ''FuncDef
 
@@ -766,7 +748,7 @@ instance Alpha ImplFuncDef
 
 instance Subst Type ImplFuncDef
 
-instance Subst EffVarName ImplFuncDef
+instance Subst EffectType ImplFuncDef
 
 makeLenses ''ImplFuncDef
 
@@ -781,7 +763,7 @@ instance Alpha TopStmt
 
 instance Subst Type TopStmt
 
-instance Subst EffVarName TopStmt
+instance Subst EffectType TopStmt
 
 makeLenses ''TopStmt
 
@@ -796,7 +778,7 @@ instance Alpha Module
 
 instance Subst Type Module
 
-instance Subst EffVarName Module
+instance Subst EffectType Module
 
 makeLenses ''Module
 

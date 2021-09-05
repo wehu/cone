@@ -142,8 +142,6 @@ inferEffKind a@EffApp {..} = do
 inferEffKind l@EffList {..} = do
   ls <- mapM inferEffKind _effList
   mapM_ checkEffKind ls
-  k <- mapM (inferEffVarKind _effLoc) _effVar
-  mapM_ checkEffKind k
   return $ EKList ls _effLoc
 
 inferEffVarKind :: (Has EnvEff sig m) => Location -> EffVar -> m EffKind
@@ -196,7 +194,7 @@ checkEffKindMatch a b = do
     else throwError $ "eff type kind mismatch: " ++ ppr a ++ ppr (_ekloc a) ++ " vs " ++ ppr b ++ ppr (_ekloc b)
 
 toEffList' :: EffectType -> EffectType
-toEffList' a@EffApp {..} = EffList [a] Nothing _effLoc
+toEffList' a@EffApp {..} = EffList [a] _effLoc
 toEffList' a@EffList {} = a
 
 toEffList :: EffectType -> EffectType
@@ -210,14 +208,9 @@ mergeEffs :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 mergeEffs a@EffList {} b@EffList {} = do
   let al = a ^. effList
       bl = b ^. effList
-      av = a ^. effVar
-      bv = a ^. effVar
       pos = _effLoc a
-      v = case av of
-        Just _ -> av
-        Nothing -> bv
       l = L.unionBy aeq al bl
-  return $ EffList l v pos
+  return $ EffList l pos
 mergeEffs a b = do
   let al = toEffList a
   let bl = toEffList b
@@ -227,16 +220,7 @@ removeEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 removeEff f@EffList {} e@EffList {} = do
   let fl = f ^. effList
       el = e ^. effList
-      fv = f ^. effVar
-      ev = e ^. effVar
       pos = _effLoc f
-  v <- case fv of
-    Just _ -> case ev of
-      Just _ -> return Nothing
-      Nothing -> return fv
-    Nothing -> case ev of
-      Just ev -> throwError $ "eff has no variable, cannot be removed" ++ ppr pos
-      Nothing -> return Nothing
   l <-
     foldM
       ( \l e -> do
@@ -246,7 +230,7 @@ removeEff f@EffList {} e@EffList {} = do
       )
       fl
       el
-  return $ EffList l v pos
+  return $ EffList l pos
 removeEff f e = do
   let fl = toEffList f
   let el = toEffList e
@@ -291,7 +275,7 @@ inferAppResultEffType f@TFunc {} targs args = do
   checkVarBindings bindings
   let resEff = _tfuncEff f
   return $ substs bindings resEff
-inferAppResultEffType t _ [] = return $ EffList [] Nothing (_tloc t)
+inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
 collectVarBindings :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]

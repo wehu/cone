@@ -128,7 +128,7 @@ refreshEffVar :: (Has EnvEff sig m) => [EffVar] -> Expr -> m ([EffVar], Expr)
 refreshEffVar vs e = do
   let pos = _eloc e
   nvs <- mapM (\_ -> freeEffVarName <$> fresh) vs
-  return (nvs, substs [(f, EffVarName t pos) | f <- vs | t <- nvs] e)
+  return (nvs, substs [(f, EffVar t pos) | f <- vs | t <- nvs] e)
 
 unbindType :: (Has EnvEff sig m) => Type -> m Type
 unbindType b@BoundType {..} = do
@@ -140,7 +140,7 @@ unbindType b@BoundEffVarType {..} = do
   let (vs, t) = unsafeUnbind _boundEffVarType
       pos = _tloc
   nvs <- mapM (\_ -> freeEffVarName <$> fresh) vs
-  unbindType $ substs [(f, EffVarName t pos) | f <- vs | t <- nvs] t
+  unbindType $ substs [(f, EffVar t pos) | f <- vs | t <- nvs] t
 unbindType t = return t
 
 unbindTypeSimple :: Type -> ([TVar], [EffVar], Type)

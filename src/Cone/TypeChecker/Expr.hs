@@ -279,15 +279,15 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
     [extracePatternVarTypes arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
 
 inferExprEffType :: (Has EnvEff sig m) => Expr -> m EffectType
-inferExprEffType EVar {..} = return $ EffList [] Nothing _eloc
-inferExprEffType ELit {..} = return $ EffList [] Nothing _eloc
+inferExprEffType EVar {..} = return $ EffList [] _eloc
+inferExprEffType ELit {..} = return $ EffList [] _eloc
 inferExprEffType EAnn {..} = inferExprEffType _eannExpr
 inferExprEffType l@ELam {..} = do
   forMOf _Nothing _elamExpr $ \_ ->
     throwError $ "expected an expression for lambda" ++ ppr _eloc
   resultEffType <- inferExprEffType $ fromJust _elamExpr
   checkEffTypeMatch _elamEffType resultEffType
-  return $ EffList [] Nothing _eloc
+  return $ EffList [] _eloc
 inferExprEffType ELet {..} = inferExprEffType _eletExpr
 inferExprEffType ECase {..} = do
   ce <- inferExprEffType _ecaseExpr
@@ -315,7 +315,7 @@ inferExprEffType ESeq {..} =
         et <- inferExprEffType e
         mergeEffs s et
     )
-    (EffList [] Nothing _eloc)
+    (EffList [] _eloc)
     _eseq
 inferExprEffType EHandle {..} = underScope $ do
   et <- inferExprEffType _ehandleScope
@@ -356,4 +356,4 @@ inferExprEffType EHandle {..} = underScope $ do
     Nothing -> do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   removeEff et _ehandleEff
-inferExprEffType ETC{..} = return $ EffList [] Nothing _eloc
+inferExprEffType ETC{..} = return $ EffList [] _eloc

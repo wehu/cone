@@ -83,7 +83,7 @@ initTypeConDef t = do
             bindType tvars $
               if targs == []
                 then rt
-                else TFunc targs (EffList [] Nothing pos) rt pos
+                else TFunc targs (EffList [] pos) rt pos
        in bindTypeEffVar [] bt
 
 initTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
