@@ -20,34 +20,6 @@ import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
-checkFuncType :: (Has EnvEff sig m) => FuncDef -> m ()
-checkFuncType f = underScope $ do
-  let pos = f ^. funcLoc
-      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
-      bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
-  forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
-  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
-  mapM_
-    (\(n, t) -> setFuncType n t)
-    (f ^. funcArgs)
-  case f ^. funcExpr of
-    Just e -> do
-      eType <- inferExprType e
-      resultType <- inferType $ f ^. funcResultType
-      checkTypeMatch eType resultType
-      effType <- inferExprEffType e
-      let fEff = f ^. funcEffectType 
-      checkEffTypeMatch effType fEff
-    Nothing -> return ()
-
-checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
-checkFuncDef f = underScope $ do
-  let pos = f ^. funcLoc
-      ft = funcDefType f
-  k <- inferTypeKind ft
-  checkTypeKind k
-  checkFuncType f
-
 inferExprType :: (Has EnvEff sig m) => Expr -> m Type
 inferExprType EVar {..} = do
   getFuncType _evarName
@@ -150,7 +122,6 @@ inferExprType EHandle {..} = do
   bodyType <- inferExprType _ehandleScope
   btk <- inferTypeKind bodyType
   checkTypeKind btk
-  -- underScope $ forM_ _ehandleBindings checkFuncDef
   inferType bodyType
 inferExprType (ETC e@TCApp{..} _) = do
   let v:e:[] = _tcAppArgs
@@ -320,11 +291,7 @@ inferExprEffType ESeq {..} =
 inferExprEffType EHandle {..} = underScope $ do
   forM_ _ehandleBindings $ \intf -> do
     let fn = (intf ^. funcName)
-    -- checkFuncDef intf
-    eType <- inferExprType $ fromJust $ intf ^. funcExpr
-    resultType <- inferType $ intf ^. funcResultType
-    checkTypeMatch eType resultType
-
+    checkEffIntfType intf
     oft <- unbindType $ funcDefType intf
     oeffs <- mergeEffs (_tfuncEff oft) _ehandleEff
     let ft = oft{_tfuncEff=oeffs}
@@ -353,3 +320,20 @@ inferExprEffType EHandle {..} = underScope $ do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   removeEff et _ehandleEff
 inferExprEffType ETC{..} = return $ EffList [] _eloc
+
+checkEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
+checkEffIntfType f = underScope $ do
+  let pos = f ^. funcLoc
+      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+      bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
+  forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
+  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
+  mapM_
+    (\(n, t) -> setFuncType n t)
+    (f ^. funcArgs)
+  case f ^. funcExpr of
+    Just e -> do
+      eType <- inferExprType e
+      resultType <- inferType $ f ^. funcResultType
+      checkTypeMatch eType resultType
+    Nothing -> return ()

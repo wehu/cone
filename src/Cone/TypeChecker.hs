@@ -210,6 +210,34 @@ initFuncDef f = do
 initFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 initFuncDefs m = mapM_ initFuncDef $ m ^.. topStmts . traverse . _FDef
 
+checkFuncType :: (Has EnvEff sig m) => FuncDef -> m ()
+checkFuncType f = underScope $ do
+  let pos = f ^. funcLoc
+      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+      bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
+  forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
+  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
+  mapM_
+    (\(n, t) -> setFuncType n t)
+    (f ^. funcArgs)
+  case f ^. funcExpr of
+    Just e -> do
+      eType <- inferExprType e
+      resultType <- inferType $ f ^. funcResultType
+      checkTypeMatch eType resultType
+      effType <- inferExprEffType e
+      let fEff = f ^. funcEffectType 
+      checkEffTypeMatch effType fEff
+    Nothing -> return ()
+
+checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
+checkFuncDef f = underScope $ do
+  let pos = f ^. funcLoc
+      ft = funcDefType f
+  k <- inferTypeKind ft
+  checkTypeKind k
+  checkFuncType f
+
 checkFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 checkFuncDefs m = mapM_ checkFuncDef $ m ^.. topStmts . traverse . _FDef
 
