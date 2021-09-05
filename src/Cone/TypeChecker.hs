@@ -152,7 +152,7 @@ initEffIntfDef e = do
             "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t ++ ppr pos
         let eff = case i ^. intfEffectType of
               Just e -> e
-              Nothing -> EffTotal pos
+              Nothing -> EffList [] Nothing pos
         effs <-
           mergeEffs eff $
             if e ^. effectArgs == []

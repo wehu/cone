@@ -100,7 +100,7 @@ inferType f@TFunc {..} = do
   eff <- mapM inferEffectType _tfuncEff
   let eff' = case eff of
               Just eff -> Just eff
-              Nothing -> Just $ EffTotal _tloc
+              Nothing -> Just $ EffList [] Nothing _tloc
   res <- inferType _tfuncResult
   return f {_tfuncArgs = args, _tfuncEff = eff', _tfuncResult = res}
 inferType t = return t
@@ -149,7 +149,6 @@ inferEffKind l@EffList {..} = do
   ls <- mapM inferEffKind _effList
   mapM_ checkEffKind ls
   return $ EKList ls _effLoc
-inferEffKind EffTotal {..} = return $ EKStar _effLoc
 
 inferEffectType :: (Has EnvEff sig m) => EffectType -> m EffectType
 inferEffectType a@EffApp {..} = do
@@ -191,7 +190,7 @@ checkEffTypeMatch a b = do
   al <- toEffList a
   bl <- toEffList b
   let pos = _effLoc al
-      total = EffTotal $ _effLoc al
+      total = EffList [] Nothing $ _effLoc al
   all <- mergeEffs total al
   bll <- mergeEffs total bl
   if aeq (all ^. effList) (bll ^. effList)
@@ -210,7 +209,6 @@ checkEffKindMatch a b = do
 toEffList' :: (Has EnvEff sig m) => EffectType -> m EffectType
 toEffList' a@EffVar {..} = return $ EffList [a] Nothing _effLoc
 toEffList' a@EffApp {..} = return $ EffList [a] Nothing _effLoc
-toEffList' a@EffTotal {..} = return $ EffList [a] Nothing _effLoc
 toEffList' a@EffList {} = return a
 toEffList' EffAnn {..} = toEffList' _effAnnType
 toEffList' a@BoundEffType {} = do
@@ -309,9 +307,9 @@ inferAppResultEffType f@TFunc {} targs args = do
   checkVarBindings bindings
   let resEff = case _tfuncEff f of
         Just e -> e
-        Nothing -> EffTotal $ _tloc f
+        Nothing -> EffList [] Nothing $ _tloc f
   return $ substs bindings resEff
-inferAppResultEffType t _ [] = return $ EffTotal (_tloc t)
+inferAppResultEffType t _ [] = return $ EffList [] Nothing (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
 collectVarBindings :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
@@ -382,7 +380,7 @@ funcDefType :: FuncDef -> Type
 funcDefType f =
   let pos = f ^. funcLoc
       argTypes = f ^. funcArgs ^.. traverse . _2
-      effType = f ^. funcEffectType . (non $ EffTotal pos)
+      effType = f ^. funcEffectType . (non $ EffList [] Nothing pos)
       resultType = f ^. funcResultType
       ft =
         bindType (f ^. funcBoundVars) $

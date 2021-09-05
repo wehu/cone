@@ -36,7 +36,7 @@ checkFuncType f = underScope $ do
       effType <- inferExprEffType e
       let fEff = case f ^. funcEffectType of
               Just et -> et
-              Nothing -> EffTotal pos
+              Nothing -> EffList [] Nothing pos
       checkEffTypeMatch effType fEff
     Nothing -> return ()
 
@@ -94,7 +94,7 @@ inferExprType l@ELam {..} = underScope $ do
         Just e -> do
           inferEffKind e
           return e
-        Nothing -> return $ EffTotal _eloc
+        Nothing -> return $ EffList [] Nothing _eloc
       mapM_
         (\(n, t) -> setFuncType n t)
         [(n, t) | (n, _) <- _elamArgs | t <- args]
@@ -280,18 +280,18 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
     [extracePatternVarTypes arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
 
 inferExprEffType :: (Has EnvEff sig m) => Expr -> m EffectType
-inferExprEffType EVar {..} = return $ EffTotal _eloc
-inferExprEffType ELit {..} = return $ EffTotal _eloc
+inferExprEffType EVar {..} = return $ EffList [] Nothing _eloc
+inferExprEffType ELit {..} = return $ EffList [] Nothing _eloc
 inferExprEffType EAnn {..} = inferExprEffType _eannExpr
 inferExprEffType l@ELam {..} = do
   let et = case _elamEffType of
         Just et -> et
-        Nothing -> EffTotal _eloc
+        Nothing -> EffList [] Nothing _eloc
   forMOf _Nothing _elamExpr $ \_ ->
     throwError $ "expected an expression for lambda" ++ ppr _eloc
   resultEffType <- inferExprEffType $ fromJust _elamExpr
   checkEffTypeMatch et resultEffType
-  return $ EffTotal _eloc
+  return $ EffList [] Nothing _eloc
 inferExprEffType ELet {..} = inferExprEffType _eletExpr
 inferExprEffType ECase {..} = do
   ce <- inferExprEffType _ecaseExpr
@@ -319,10 +319,10 @@ inferExprEffType ESeq {..} =
         et <- inferExprEffType e
         mergeEffs s et
     )
-    (EffTotal $ _eloc)
+    (EffList [] Nothing _eloc)
     _eseq
 inferExprEffType EHandle {..} = underScope $ do
-  et <- inferExprEffType _ehandleScope >>= mergeEffs (EffTotal _eloc)
+  et <- inferExprEffType _ehandleScope >>= mergeEffs (EffList [] Nothing _eloc)
   forM_ _ehandleBindings $ \intf -> do
     let fn = (intf ^. funcName)
     checkFuncDef intf
@@ -332,8 +332,8 @@ inferExprEffType EHandle {..} = underScope $ do
     checkVarBindings binds
     eff <- case ft of
       ft@TFunc {..} -> case _tfuncEff of
-        Just et -> return et >>= mergeEffs (EffTotal _eloc)
-        Nothing -> return $ EffTotal _eloc
+        Just et -> return et >>= mergeEffs (EffList [] Nothing _eloc)
+        Nothing -> return $ EffList [] Nothing _eloc
       t -> throwError $ "expected a function type, but got " ++ ppr t ++ ppr _eloc
     -- intfEff <- (case intfT of
     --              ft@TFunc {..} -> case _tfuncEff of
@@ -361,4 +361,4 @@ inferExprEffType EHandle {..} = underScope $ do
     Nothing -> do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   removeEff et _ehandleEff
-inferExprEffType ETC{..} = return $ EffTotal _eloc
+inferExprEffType ETC{..} = return $ EffList [] Nothing _eloc
