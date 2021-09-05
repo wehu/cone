@@ -367,7 +367,8 @@ collectEffVarBindings a@EffApp{} b@EffApp{} =
       []
       [collectVarBindings aarg barg | aarg <- (a ^. effAppArgs) | barg <- (b ^. effAppArgs)]
 collectEffVarBindings a@EffList{} b@EffList{} =
-  if L.length (a ^. effList) /= L.length (b ^. effList)
+  if L.length (a ^. effList) /= L.length (b ^. effList) ||
+     not (aeq (a ^. effVar) (b ^. effVar))
   then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b) 
   else foldM (\s e -> (++) <$> return s <*> e)
       []
