@@ -18,6 +18,7 @@ import Data.Maybe
 import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
+import Unbound.Generics.LocallyNameless.Bind
 
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
 inferTypeKind a@TApp {..} = do
@@ -47,6 +48,11 @@ inferTypeKind a@TAnn {..} = do
   return _tannKind
 inferTypeKind b@BoundType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind $ _boundType
+      star = KStar $ _tloc
+  mapM_ (\v -> setEnv (Just star) $ types . at (name2String v)) bvs
+  inferTypeKind t
+inferTypeKind b@BoundTypeEffVar {..} = underScope $ do
+  let (bvs, t) = unsafeUnbind $ _boundTypeEffVar
       star = KStar $ _tloc
   mapM_ (\v -> setEnv (Just star) $ types . at (name2String v)) bvs
   inferTypeKind t
@@ -92,9 +98,13 @@ inferType a@TAnn {..} = do
   t <- inferType _tannType
   return a {_tannType = t}
 inferType b@BoundType {..} = do
-  let (bts, _, t) = unbindTypeSimple b
+  let (B bts t) = _boundType
   t <- inferType t
-  return b {_boundType = bind bts t}
+  return $ bindType bts t
+inferType b@BoundTypeEffVar {..} = do
+  let (B ets t) = _boundTypeEffVar
+  t <- inferType t
+  return $ bindTypeEffVar ets t
 inferType f@TFunc {..} = do
   args <- mapM inferType _tfuncArgs
   eff <- inferEffectType _tfuncEff
@@ -235,12 +245,12 @@ removeEff f e = do
 
 applyTypeArgs :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 applyTypeArgs t args = do
-  let (bts, _, tt) = unbindTypeSimple t
+  let (bts, ets, tt) = unbindTypeSimple t
   if L.length bts < L.length args then throwError $ "function type variable number mismatch: " ++ ppr bts ++ " vs" ++ ppr args ++ ppr (_tloc t)
   else do
     let argsLen = L.length args
         binds = [(n, t) | n <- L.take argsLen bts | t <- args]
-    return $ bindType (L.drop argsLen bts) $ substs binds tt
+    return $ bindTypeEffVar ets $ bindType (L.drop argsLen bts) $ substs binds tt
 
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m Type
 inferAppResultType f@TFunc {} bargs args = do
@@ -319,6 +329,10 @@ collectVarBindings a@BoundType {} b@BoundType {} = do
   at <- unbindType a
   bt <- unbindType b
   collectVarBindings at bt
+collectVarBindings a@BoundTypeEffVar {} b@BoundTypeEffVar {} = do
+  at <- unbindType a
+  bt <- unbindType b
+  collectVarBindings at bt
 collectVarBindings a@TNum {} b@TNum {} =
   if (_tnum a) == (_tnum b)
     then return []
@@ -351,7 +365,7 @@ funcDefType f =
             TFunc argTypes effType resultType pos
       bes = (ft ^.. fv) :: [EffVar]
       bft = bindTypeEffVar bes ft
-   in ft
+   in bft
 
 extractTensorShape :: (Has EnvEff sig m) => Type -> m [Type]
 extractTensorShape t@TApp{..} = do
