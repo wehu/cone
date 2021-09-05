@@ -182,8 +182,8 @@ checkKindMatch a b = do
 
 checkEffTypeMatch :: (Has EnvEff sig m) => EffectType -> EffectType -> m ()
 checkEffTypeMatch a b = do
-  al <- toEffList a
-  bl <- toEffList b
+  let al = toEffList a
+  let bl = toEffList b
   if aeq (al ^. effList) (bl ^. effList)
      && aeq (al ^. effVar) (bl ^. effVar)
     then return ()
@@ -195,16 +195,16 @@ checkEffKindMatch a b = do
     then return ()
     else throwError $ "eff type kind mismatch: " ++ ppr a ++ ppr (_ekloc a) ++ " vs " ++ ppr b ++ ppr (_ekloc b)
 
-toEffList' :: (Has EnvEff sig m) => EffectType -> m EffectType
-toEffList' a@EffApp {..} = return $ EffList [a] Nothing _effLoc
-toEffList' a@EffList {} = return a
+toEffList' :: EffectType -> EffectType
+toEffList' a@EffApp {..} = EffList [a] Nothing _effLoc
+toEffList' a@EffList {} = a
 
-toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
+toEffList :: EffectType -> EffectType
 toEffList eff = do
-  e <- toEffList' eff
+  let e = toEffList' eff
   case e of
-    e@EffList{..} -> return e{_effList=L.sortBy acompare _effList}
-    _ -> throwError $ "expected ab eff list, but got " ++ ppr e
+    e@EffList{..} -> e{_effList=L.sortBy acompare _effList}
+    _ -> eff
 
 mergeEffs :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 mergeEffs a@EffList {} b@EffList {} = do
@@ -219,8 +219,8 @@ mergeEffs a@EffList {} b@EffList {} = do
       l = L.unionBy aeq al bl
   return $ EffList l v pos
 mergeEffs a b = do
-  al <- toEffList a
-  bl <- toEffList b
+  let al = toEffList a
+  let bl = toEffList b
   mergeEffs al bl
 
 removeEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
@@ -248,8 +248,8 @@ removeEff f@EffList {} e@EffList {} = do
       el
   return $ EffList l v pos
 removeEff f e = do
-  fl <- toEffList f
-  el <- toEffList e
+  let fl = toEffList f
+  let el = toEffList e
   removeEff fl el
 
 applyTypeArgs :: (Has EnvEff sig m) => Type -> [Type] -> m Type
@@ -323,7 +323,7 @@ collectVarBindings a@TFunc {} b@TFunc {} =
                 [collectVarBindings aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
             )
         <*> collectVarBindings (_tfuncResult a) (_tfuncResult b))
-        <*> collectEffVarBindings (_tfuncEff a) (_tfuncEff b)
+        <*> collectEffVarBindings (toEffList $ _tfuncEff a) (toEffList $ _tfuncEff b)
 collectVarBindings a@TApp {} b@TApp {} =
   -- not support higher kind so far
   if L.length (_tappArgs a) == L.length (_tappArgs b)
