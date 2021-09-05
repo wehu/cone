@@ -80,11 +80,11 @@ initTypeConDef t = do
               then TVar (s2n tn) pos
               else TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
           bt =
-            bind tvars $
+            bindType tvars $
               if targs == []
                 then rt
                 else TFunc targs (EffList [] Nothing pos) rt pos
-       in BoundType bt pos
+       in bindTypeEffVar [] bt
 
 initTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
 initTypeConDefs m = mapM_ initTypeConDef $ m ^.. topStmts . traverse . _TDef
