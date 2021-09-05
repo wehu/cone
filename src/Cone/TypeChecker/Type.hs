@@ -51,8 +51,8 @@ inferTypeKind b@BoundType {..} = underScope $ do
       star = KStar $ _tloc
   mapM_ (\v -> setEnv (Just star) $ types . at (name2String v)) bvs
   inferTypeKind t
-inferTypeKind b@BoundTypeEffVar {..} = underScope $ do
-  let (bvs, t) = unsafeUnbind $ _boundTypeEffVar
+inferTypeKind b@BoundEffVarType {..} = underScope $ do
+  let (bvs, t) = unsafeUnbind $ _boundEffVarType
       star = KStar $ _tloc
   mapM_ (\v -> setEnv (Just star) $ types . at (name2String v)) bvs
   inferTypeKind t
@@ -101,8 +101,8 @@ inferType b@BoundType {..} = do
   let (B bts t) = _boundType
   t <- inferType t
   return $ bindType bts t
-inferType b@BoundTypeEffVar {..} = do
-  let (B ets t) = _boundTypeEffVar
+inferType b@BoundEffVarType {..} = do
+  let (B ets t) = _boundEffVarType
   t <- inferType t
   return $ bindTypeEffVar ets t
 inferType f@TFunc {..} = do
@@ -329,15 +329,15 @@ collectVarBindings a@BoundType {} b@BoundType {} = do
   at <- unbindType a
   bt <- unbindType b
   collectVarBindings at bt
-collectVarBindings a@BoundTypeEffVar {} b@BoundTypeEffVar {} = do
+collectVarBindings a@BoundEffVarType {} b@BoundEffVarType {} = do
   at <- unbindType a
   bt <- unbindType b
   collectVarBindings at bt
-collectVarBindings a@BoundType {} b@BoundTypeEffVar {} = do
+collectVarBindings a@BoundType {} b@BoundEffVarType {} = do
   at <- unbindType a
   bt <- unbindType b
   collectVarBindings at bt
-collectVarBindings a@BoundTypeEffVar {} b@BoundType {} = do
+collectVarBindings a@BoundEffVarType {} b@BoundType {} = do
   at <- unbindType a
   bt <- unbindType b
   collectVarBindings at bt

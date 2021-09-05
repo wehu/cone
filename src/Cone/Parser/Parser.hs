@@ -287,7 +287,7 @@ typeTerm =
   where
     tfunc bvs evs args (effT, resultT) pos =
       let ft = A.TFunc args effT resultT pos
-       in A.BoundTypeEffVar (bind evs $ A.BoundType (bind bvs ft) pos) pos
+       in A.BoundEffVarType (bind evs $ A.BoundType (bind bvs ft) pos) pos
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t

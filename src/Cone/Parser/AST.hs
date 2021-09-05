@@ -139,7 +139,7 @@ data Type
   | TApp {_tappName :: TVar, _tappArgs :: [Type], _tloc :: Location}
   | TAnn {_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
   | BoundType {_boundType :: Bind [TVar] Type, _tloc :: Location}
-  | BoundTypeEffVar {_boundTypeEffVar :: Bind [EffVar] Type, _tloc :: Location}
+  | BoundEffVarType {_boundEffVarType :: Bind [EffVar] Type, _tloc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Type where
@@ -154,7 +154,7 @@ instance Pretty Type where
   pretty TApp {..} = parens $ pretty _tappName <+> parensList _tappArgs
   pretty TAnn {..} = parens $ pretty _tannType <+> colon <+> pretty _tannKind
   pretty (BoundType (B tvars t) _) = parens $ "forall" <+> bracketsList tvars <+> dot <+> pretty t
-  pretty (BoundTypeEffVar (B tvars t) _) = parens $ "forall" <+> bracketsList tvars <+> dot <+> pretty t
+  pretty (BoundEffVarType (B tvars t) _) = parens $ "forall" <+> bracketsList tvars <+> dot <+> pretty t
 
 data Kind
   = KStar {_kloc :: Location}

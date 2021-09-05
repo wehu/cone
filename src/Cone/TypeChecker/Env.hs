@@ -115,7 +115,7 @@ bindType :: [TVar] -> Type -> Type
 bindType bvs t = BoundType (bind bvs t) (_tloc t)
 
 bindTypeEffVar :: [EffVar] -> Type -> Type
-bindTypeEffVar bvs t = BoundTypeEffVar (bind bvs t) (_tloc t)
+bindTypeEffVar bvs t = BoundEffVarType (bind bvs t) (_tloc t)
 
 refresh :: (Has EnvEff sig m) => [TVar] -> Expr -> m ([TVar], Expr)
 refresh vs e = do
@@ -135,8 +135,8 @@ unbindType b@BoundType {..} = do
       pos = _tloc
   nvs <- mapM (\_ -> freeVarName <$> fresh) vs
   unbindType $ substs [(f, TVar t pos) | f <- vs | t <- nvs] t
-unbindType b@BoundTypeEffVar {..} = do
-  let (vs, t) = unsafeUnbind _boundTypeEffVar
+unbindType b@BoundEffVarType {..} = do
+  let (vs, t) = unsafeUnbind _boundEffVarType
       pos = _tloc
   nvs <- mapM (\_ -> freeEffVarName <$> fresh) vs
   unbindType $ substs [(f, EffVarName t pos) | f <- vs | t <- nvs] t
@@ -147,8 +147,8 @@ unbindTypeSimple b@BoundType {..} =
   let (bvs, t) = unsafeUnbind _boundType
       (bvs', evs, t') = unbindTypeSimple t
    in (bvs ++ bvs', evs, t')
-unbindTypeSimple b@BoundTypeEffVar {..} =
-  let (evs, t) = unsafeUnbind _boundTypeEffVar
+unbindTypeSimple b@BoundEffVarType {..} =
+  let (evs, t) = unsafeUnbind _boundEffVarType
       (bvs, evs', t') = unbindTypeSimple t
    in (bvs, evs ++ evs', t')
 unbindTypeSimple t = ([], [], t)
