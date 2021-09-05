@@ -322,7 +322,9 @@ inferExprEffType EHandle {..} = underScope $ do
   forM_ _ehandleBindings $ \intf -> do
     let fn = (intf ^. funcName)
     checkFuncDef intf
-    ft <- unbindType $ funcDefType intf
+    oft <- unbindType $ funcDefType intf
+    oeffs <- mergeEffs (_tfuncEff oft) _ehandleEff
+    let ft = oft{_tfuncEff=oeffs}
     intfT <- getFuncType fn >>= unbindType
     binds <- collectVarBindings intfT ft
     checkVarBindings binds
