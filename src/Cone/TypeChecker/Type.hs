@@ -200,11 +200,11 @@ toEffList' l@EffList {} =
    in EffList ls (_effLoc l)
 
 toEffList :: EffectType -> EffectType
-toEffList eff = do
+toEffList eff =
   let e = toEffList' eff
-  case e of
-    e@EffList{..} -> e{_effList=L.sortBy acompare _effList}
-    _ -> eff
+      (el, vl) = L.partition (isn't _EffVar) (_effList e)
+      l = (L.sortBy acompare el) ++ (L.sortBy acompare vl)
+  in e{_effList=l}
 
 mergeEffs :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 mergeEffs a@EffList {} b@EffList {} = do
