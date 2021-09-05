@@ -194,7 +194,7 @@ checkEffTypeMatch a b = do
       total = EffTotal $ _effLoc al
   all <- mergeEffs total al
   bll <- mergeEffs total bl
-  if aeq (L.sortBy acompare $ all ^. effList) (L.sortBy acompare $ bll ^. effList)
+  if aeq (all ^. effList) (bll ^. effList)
      && aeq
       (fmap (\e -> EffVar e pos) $ al ^. effBoundVar)
       (fmap (\e -> EffVar e pos) $ bl ^. effBoundVar)
@@ -207,15 +207,22 @@ checkEffKindMatch a b = do
     then return ()
     else throwError $ "eff type kind mismatch: " ++ ppr a ++ ppr (_ekloc a) ++ " vs " ++ ppr b ++ ppr (_ekloc b)
 
-toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
-toEffList a@EffVar {..} = return $ EffList [a] Nothing _effLoc
-toEffList a@EffApp {..} = return $ EffList [a] Nothing _effLoc
-toEffList a@EffTotal {..} = return $ EffList [a] Nothing _effLoc
-toEffList a@EffList {} = return a
-toEffList EffAnn {..} = toEffList _effAnnType
-toEffList a@BoundEffType {} = do
+toEffList' :: (Has EnvEff sig m) => EffectType -> m EffectType
+toEffList' a@EffVar {..} = return $ EffList [a] Nothing _effLoc
+toEffList' a@EffApp {..} = return $ EffList [a] Nothing _effLoc
+toEffList' a@EffTotal {..} = return $ EffList [a] Nothing _effLoc
+toEffList' a@EffList {} = return a
+toEffList' EffAnn {..} = toEffList _effAnnType
+toEffList' a@BoundEffType {} = do
   ua <- unbindEffType a
   toEffList ua
+
+toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
+toEffList eff = do
+  e <- toEffList' eff
+  case e of
+    e@EffList{..} -> return e{_effList=L.sortBy acompare _effList}
+    _ -> throwError $ "expected ab eff list, but got " ++ ppr e
 
 mergeEffs :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 mergeEffs a@EffList {} b@EffList {} = do
