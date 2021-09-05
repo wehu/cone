@@ -168,10 +168,8 @@ initEffIntfDef e = do
           bvars = i ^. intfBoundVars
           pos = i ^. intfLoc
           tvars = e ^.. effectArgs . traverse . _1
-       in BoundType 
-            (bind tvars $
-              BoundType (
-                bind bvars $ TFunc iargs eff iresult pos) pos) pos
+       in bindType tvars $
+              bindType bvars $ TFunc iargs eff iresult pos
 
 initEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
 initEffIntfDefs m = mapM_ initEffIntfDef $ m ^.. topStmts . traverse . _EDef
