@@ -196,10 +196,10 @@ checkEffTypeMatch a b = do
   bll <- mergeEffs total bl
   if aeq (L.sortBy acompare $ all ^. effList) (L.sortBy acompare $ bll ^. effList)
      && aeq
-      (fmap closeEffType $ fmap (\e -> EffVar e pos) $ al ^. effBoundVar)
-      (fmap closeEffType $ fmap (\e -> EffVar e pos) $ bl ^. effBoundVar)
+      (fmap (\e -> EffVar e pos) $ al ^. effBoundVar)
+      (fmap (\e -> EffVar e pos) $ bl ^. effBoundVar)
     then return ()
-    else throwError $ "eff type mismatch: " ++ ppr all ++ ppr (_effLoc a) ++ " vs " ++ ppr bll ++ ppr (_effLoc b)
+    else throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
 checkEffKindMatch :: (Has EnvEff sig m) => EffKind -> EffKind -> m ()
 checkEffKindMatch a b = do

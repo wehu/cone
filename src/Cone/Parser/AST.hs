@@ -201,7 +201,7 @@ instance Pretty EffectType where
   pretty EffTotal {..} = "total"
   pretty EffVar {..} = pretty _effVarName
   pretty EffApp {..} = parens $ pretty _effAppName <+> parensList _effAppArgs
-  pretty EffList {..} = anglesList _effList 
+  pretty EffList {..} = bracketsList _effList <+> pretty _effBoundVar
   pretty EffAnn {..} = parens $ pretty _effAnnType <+> colon <+> pretty _effAnnKind
   pretty (BoundEffType (B tvars e) _) = parens $ bracketsList tvars <+> colon <+> pretty e
 
