@@ -123,10 +123,9 @@ refresh vs e = do
   nvs <- mapM (\_ -> freeVarName <$> fresh) vs
   return (nvs, substs [(f, TVar t pos) | f <- vs | t <- nvs] e)
 
-refreshEffVar :: (Has EnvEff sig m) => Expr -> m ([EffVar], Expr)
-refreshEffVar e = do
+refreshEffVar :: (Has EnvEff sig m) => [EffVar] -> Expr -> m ([EffVar], Expr)
+refreshEffVar vs e = do
   let pos = _eloc e
-      vs = (e ^.. fv) :: [EffVar]
   nvs <- mapM (\_ -> freeEffVarName <$> fresh) vs
   return (nvs, substs [(f, EffVarName t pos) | f <- vs | t <- nvs] e)
 

@@ -250,6 +250,7 @@ data Expr
   | ELit {_lit :: String, _litType :: Type, _eloc :: Location}
   | ELam
       { _elamBoundVars :: [TVar],
+        _elamBoundEffVars :: [EffVar],
         _elamArgs :: [(String, Type)],
         _elamEffType :: EffectType,
         _elamResultType :: Type,
@@ -341,6 +342,7 @@ instance Pretty TypeCon where
 data FuncIntf = FuncIntf
   { _intfName :: String,
     _intfBoundVars :: [TVar],
+    _intfBoundEffVars :: [EffVar],
     _intfArgs :: [Type],
     _intfEffectType :: EffectType,
     _intfResultType :: Type,
@@ -402,6 +404,7 @@ instance Pretty ImportStmt where
 data FuncDef = FuncDef
   { _funcName :: String,
     _funcBoundVars :: [TVar],
+    _funcBoundEffVars :: [EffVar],
     _funcArgs :: [(String, Type)],
     _funcEffectType :: EffectType,
     _funcResultType :: Type,

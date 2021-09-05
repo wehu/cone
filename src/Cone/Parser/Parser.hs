@@ -268,7 +268,7 @@ typeTerm =
       <$> ( ( P.try ((A.TApp <$> (s2n <$> namePath) <*> angles (P.sepBy1 type_ comma)) P.<?> "application type")
                 P.<|> P.try
                   ( tfunc
-                      <$> boundTVars
+                      <$> boundTVars <*> boundEffVars
                       <*> parens (P.sepBy type_ comma) <* arrow
                       <*> resultType P.<?> "function type"
                   )
@@ -285,9 +285,9 @@ typeTerm =
     <*> getPos
     P.<|> parens type_
   where
-    tfunc bvs args (effT, resultT) pos =
+    tfunc bvs evs args (effT, resultT) pos =
       let ft = A.TFunc args effT resultT pos
-       in A.BoundTypeEffVar (bind [] $ A.BoundType (bind bvs ft) pos) pos
+       in A.BoundTypeEffVar (bind evs $ A.BoundType (bind bvs ft) pos) pos
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
@@ -300,6 +300,11 @@ type_ = PE.buildExpressionParser typeTable typeTerm
 boundTVars :: Parser [A.TVar]
 boundTVars =
   ((angles $ P.sepBy1 (s2n <$> ident) comma) P.<?> "type variable list")
+    P.<|> return []
+
+boundEffVars :: Parser [A.EffVar]
+boundEffVars =
+  ((brackets $ P.sepBy1 (s2n <$> ident) comma) P.<?> "eff type variable list")
     P.<|> return []
 
 resultType :: Parser (A.EffectType, A.Type)
@@ -326,12 +331,12 @@ funcArgs :: Parser [(String, A.Type)]
 funcArgs = (P.sepBy ((,) <$> ident <* colon <*> type_) comma) P.<?> "function argument types"
 
 funcProto =
-  f <$> getPos <*> boundTVars
+  f <$> getPos <*> boundTVars <*> boundEffVars
     <*> parens funcArgs
     <* colon
     <*> resultType P.<?> "function prototype"
   where
-    f pos bound args (effT, resT) = (pos, bound, args, (effT, resT))
+    f pos bts bes args (effT, resT) = (pos, bts, bes, args, (effT, resT))
 
 exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr) <*> getPos P.<?> "expr sequence"
   where
@@ -468,7 +473,7 @@ term =
   eapp
     <$> ( eann
             <$> ( parens expr
-                    P.<|> ( ( ( (\((pos, bound, args, (effT, resT)), e) -> A.ELam bound args effT resT e)
+                    P.<|> ( ( ( (\((pos, bts, bes, args, (effT, resT)), e) -> A.ELam bts bes args effT resT e)
                                   <$ kFn <*> funcDef P.<?> "lambda expression"
                               )
                                 P.<|> (A.ELet <$ kVar <*> pat <* assign_ <*> expr <*> return True P.<?> "var experssion")
@@ -539,12 +544,12 @@ typeDef =
 
 funcIntf :: Parser A.FuncIntf
 funcIntf =
-  f <$ kFunc <*> ident <*> boundTVars
+  f <$ kFunc <*> ident <*> boundTVars <*> boundEffVars
     <*> parens (P.sepBy type_ comma) <* colon
     <*> resultType
     <*> getPos P.<?> "effect interface definition"
   where
-    f n bs args (e, r) pos = A.FuncIntf n bs args e r pos
+    f n bs es args (e, r) pos = A.FuncIntf n bs es args e r pos
 
 effectDef :: Parser A.EffectDef
 effectDef =
@@ -558,7 +563,7 @@ effectDef =
 func :: Parser A.FuncDef
 func = f <$ kFunc <*> ident <*> funcDef P.<?> "function definition"
   where
-    f n ((pos, bound, args, (effT, resT)), e) = A.FuncDef n bound args effT resT e pos
+    f n ((pos, bts, ets, args, (effT, resT)), e) = A.FuncDef n bts ets args effT resT e pos
 
 topStmt :: Parser A.TopStmt
 topStmt =

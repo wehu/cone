@@ -371,7 +371,7 @@ funcDefType f =
       ft =
         bindType bvs $
             TFunc argTypes effType resultType pos
-      bes = (ft ^.. fv) :: [EffVar]
+      bes = f ^. funcBoundEffVars
       bft = bindTypeEffVar bes ft
    in bft
 

@@ -77,7 +77,7 @@ inferExprType l@ELam {..} = underScope $ do
   setEnv M.empty localState
   -- refresh
   (bvs, newLam) <- refresh _elamBoundVars l
-  (evs, newLam) <- refreshEffVar newLam
+  (evs, newLam) <- refreshEffVar _elamBoundEffVars newLam
   case newLam of
     l@ELam{..} -> do
       mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) bvs
