@@ -106,27 +106,6 @@ typeSpec = hspec $ do
         )
         `shouldBe` "b"
 
-    it "func type" $ do
-      let source =
-            unpack
-              [text|
-           module foo
-
-	   fun a(a : (a<b>) -> [|e] c) : c {
-		   a
-	   }
-       |]
-      --(show $ parse "" source) `shouldBe` "a"
-      ( name2String $
-          (parse "" source)
-            ^. _Right . topStmts
-            ^? ix 0
-            ^. _Just . _FDef . funcArgs
-            ^? ix 0
-            ^. _Just . _2 . tfuncResult . tvar
-        )
-        `shouldBe` "c"
-
     it "type annotation" $ do
       let source =
             unpack
@@ -171,54 +150,6 @@ typeSpec = hspec $ do
             . fileName
         )
         `shouldBe` "xxx"
-
-    it "eff app" $ do
-      let source =
-            unpack
-              [text|
-           module foo
-
-	   fun a(a : (c) -> e<c> d, b : f32) : c {
-		   a
-	   }
-       |]
-      --(show $ parse "" source) `shouldBe` "a"
-      ( name2String $
-          (parse "xxx" source)
-            ^. _Right . topStmts
-            ^? ix 0
-            ^. _Just . _FDef . funcArgs
-            ^? ix 0
-            ^. _Just . _2 . tfuncEff . effAppArgs
-            ^? ix 0
-            ^. _Just . tvar
-        )
-        `shouldBe` "c"
-
-    it "eff list" $ do
-      let source =
-            unpack
-              [text|
-           module foo
-
-	   fun a(a : (c) -> [e1<d>, e<c>] d) : f16 {
-		   a
-	   }
-       |]
-      --(show $ parse "" source) `shouldBe` "a"
-      ( name2String $
-          (parse "xxx" source)
-            ^. _Right . topStmts
-            ^? ix 0
-            ^. _Just . _FDef . funcArgs
-            ^? ix 0
-            ^. _Just . _2 . tfuncEff . effList
-            ^? ix 1
-            ^. _Just . effAppArgs
-            ^? ix 0
-            ^. _Just . tvar
-        )
-        `shouldBe` "c"
 
 exprSpec = hspec $ do
   describe "expr syntax" $ do
