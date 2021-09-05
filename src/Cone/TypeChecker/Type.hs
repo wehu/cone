@@ -212,10 +212,10 @@ toEffList' a@EffVar {..} = return $ EffList [a] Nothing _effLoc
 toEffList' a@EffApp {..} = return $ EffList [a] Nothing _effLoc
 toEffList' a@EffTotal {..} = return $ EffList [a] Nothing _effLoc
 toEffList' a@EffList {} = return a
-toEffList' EffAnn {..} = toEffList _effAnnType
+toEffList' EffAnn {..} = toEffList' _effAnnType
 toEffList' a@BoundEffType {} = do
   ua <- unbindEffType a
-  toEffList ua
+  toEffList' ua
 
 toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
 toEffList eff = do
