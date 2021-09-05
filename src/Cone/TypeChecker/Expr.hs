@@ -292,6 +292,7 @@ inferExprEffType EHandle {..} = underScope $ do
   forM_ _ehandleBindings $ \intf -> do
     let fn = (intf ^. funcName)
     checkEffIntfType intf
+
     oft <- unbindType $ funcDefType intf
     oeffs <- mergeEffs (_tfuncEff oft) _ehandleEff
     let ft = oft{_tfuncEff=oeffs}
@@ -302,6 +303,7 @@ inferExprEffType EHandle {..} = underScope $ do
     intfEff <- toEffList $ _tfuncEff intfT
     binds <- collectEffVarBindings intfEff eff
     checkEffVarBindings binds
+
     intfExprEff <- inferExprEffType $ fromJust $ intf ^. funcExpr
     eff <- mergeEffs eff intfExprEff
     let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
@@ -322,7 +324,7 @@ inferExprEffType EHandle {..} = underScope $ do
 inferExprEffType ETC{..} = return $ EffList [] _eloc
 
 checkEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
-checkEffIntfType f = underScope $ do
+checkEffIntfType f = do
   let pos = f ^. funcLoc
       bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
