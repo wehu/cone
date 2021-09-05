@@ -276,7 +276,10 @@ inferAppResultEffType f@TFunc {} targs args = do
       [collectVarBindings a b | a <- fArgTypes | b <- args]
   checkVarBindings bindings
   let resEff = _tfuncEff f
-  return $ substs bindings resEff
+  let eff = substs bindings resEff
+  effBindings <- collectEffVarBindings (_tfuncEff f) resEff
+  checkEffVarBindings effBindings
+  return $ substs effBindings eff
 inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
@@ -353,13 +356,52 @@ collectVarBindingsInEff a@EffApp{} b@EffApp{} =
   else foldM (\s e -> (++) <$> return s <*> e)
       []
       [collectVarBindings aarg barg | aarg <- (a ^. effAppArgs) | barg <- (b ^. effAppArgs)]
-collectVarBindingsInEff a@EffList{} b@EffList{} =
-  if L.length (a ^. effList) /= L.length (b ^. effList)
+collectVarBindingsInEff a@EffList{} b@EffList{} = do
+  let al = a ^. effList
+  let bl = b ^. effList
+  if L.length al > L.length bl
   then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b) 
-  else foldM (\s e -> (++) <$> return s <*> e)
+  else do
+    if L.length al < L.length bl
+    then if isn't _EffVar $ last al 
+         then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
+         else return ()
+    else return () 
+    foldM (\s e -> (++) <$> return s <*> e)
       []
-      [collectVarBindingsInEff aarg barg | aarg <- (a ^. effList) | barg <- (b ^. effList)]
+      [collectVarBindingsInEff aarg barg | aarg <- al | barg <- take (L.length al) bl]
 collectVarBindingsInEff a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
+
+collectEffVarBindings :: (Has EnvEff sig m) => EffectType -> EffectType -> m [(EffVar, EffectType)]
+collectEffVarBindings EffVar{..} e = return [(_effVar, e)]
+collectEffVarBindings a@EffApp{} b@EffApp{} = do
+  if L.length (a ^. effAppArgs) /= L.length (b ^. effAppArgs) ||
+     a ^. effAppName /= b ^. effAppName
+  then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b) 
+  else do
+    bindings <- foldM (\s e -> (++) <$> return s <*> e)
+      []
+      [collectVarBindings aarg barg | aarg <- (a ^. effAppArgs) | barg <- (b ^. effAppArgs)]
+    checkVarBindings bindings
+  return []
+collectEffVarBindings a@EffList{} b@EffList{} = do
+  let al = a ^. effList
+  let bl = b ^. effList
+  if L.length al > L.length bl
+  then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b) 
+  else do
+    if L.length al < L.length bl 
+    then if L.length al == 0 || isn't _EffVar (last al)
+         then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
+         else return ()
+    else return () 
+    bindings <- foldM (\s e -> (++) <$> return s <*> e)
+      []
+      [collectEffVarBindings aarg barg | aarg <- al | barg <- take (L.length al) bl]
+    if L.length al < L.length bl
+    then return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
+    else return bindings
+collectEffVarBindings a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
 checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
 checkVarBindings bindings = do
@@ -371,6 +413,20 @@ checkVarBindings bindings = do
             if aeq t ot
               then return b
               else throwError $ "type var binding conflict: " ++ ppr t ++ ppr (_tloc t) ++ " vs " ++ ppr ot ++ ppr (_tloc ot)
+    )
+    M.empty
+    bindings
+
+checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m ()
+checkEffVarBindings bindings = do
+  foldM_
+    ( \b (n, t) -> do
+        case b ^. at n of
+          Nothing -> return $ at n ?~ t $ b
+          Just ot ->
+            if aeq t ot
+              then return b
+              else throwError $ "eff type var binding conflict: " ++ ppr t ++ ppr (_effLoc t) ++ " vs " ++ ppr ot ++ ppr (_effLoc ot)
     )
     M.empty
     bindings

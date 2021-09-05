@@ -100,7 +100,7 @@ freeVarName :: Int -> TVar
 freeVarName i = makeName "$tvar" $ toInteger i
 
 freeEffVarName :: Int -> EffVar
-freeEffVarName i = makeName "$effvar" $ toInteger i
+freeEffVarName i = makeName "$evar" $ toInteger i
 
 closeType :: Type -> Bind [TVar] Type
 closeType t =
