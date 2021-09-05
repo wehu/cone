@@ -116,7 +116,7 @@ typeCheckerSpec = hspec $ do
         1
       }
 
-      fun test2<b>(a: <a>(a)-> [|e]a, b : b) : [|e]b {
+      fun test2<b>[e](a: <a>[e](a)-> [|e]a, b : b) : [|e]b {
         a(b)
       }
 
