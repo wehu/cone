@@ -119,6 +119,11 @@ checkTypeKind k = do
     _ -> throwError $ "expected a star kind, but got " ++ ppr k ++ ppr (_kloc k)
 
 inferEffKind :: (Has EnvEff sig m) => EffectType -> m EffKind
+inferEffKind v@EffVar{..} = do
+  k <- getEnv $ effs . at (name2String _effVar)
+  case k of
+    Just k -> return k
+    Nothing -> throwError $ "cannot find eff variable: " ++ ppr v ++ ppr _effLoc
 inferEffKind a@EffApp {..} = do
   k <- getEnv $ effs . at _effAppName
   forMOf _Nothing k $ \k ->
@@ -144,14 +149,8 @@ inferEffKind l@EffList {..} = do
   mapM_ checkEffKind ls
   return $ EKList ls _effLoc
 
-inferEffVarKind :: (Has EnvEff sig m) => Location -> EffVar -> m EffKind
-inferEffVarKind loc v = do
-  k <- getEnv $ effs . at (name2String v)
-  case k of
-    Just k -> return k
-    Nothing -> throwError $ "cannot find eff variable: " ++ ppr v ++ ppr loc
-
 inferEffectType :: (Has EnvEff sig m) => EffectType -> m EffectType
+inferEffectType v@EffVar {} = return v
 inferEffectType a@EffApp {..} = do
   args <- mapM inferType _effAppArgs
   return a {_effAppArgs = args}
@@ -195,6 +194,7 @@ checkEffKindMatch a b = do
 
 toEffList' :: EffectType -> EffectType
 toEffList' a@EffApp {..} = EffList [a] _effLoc
+toEffList' v@EffVar {..} = EffList [v] _effLoc
 toEffList' a@EffList {} = a
 
 toEffList :: EffectType -> EffectType
@@ -351,8 +351,7 @@ collectVarBindingsInEff a@EffApp{} b@EffApp{} =
       []
       [collectVarBindings aarg barg | aarg <- (a ^. effAppArgs) | barg <- (b ^. effAppArgs)]
 collectVarBindingsInEff a@EffList{} b@EffList{} =
-  if L.length (a ^. effList) /= L.length (b ^. effList) ||
-     not (aeq (a ^. effVar) (b ^. effVar))
+  if L.length (a ^. effList) /= L.length (b ^. effList)
   then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b) 
   else foldM (\s e -> (++) <$> return s <*> e)
       []
