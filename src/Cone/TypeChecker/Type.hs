@@ -240,9 +240,11 @@ removeEff f e = do
 
 applyTypeArgs :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 applyTypeArgs t args = do
-  let (bts, ets, tt) = unbindTypeSimple t
-  if L.length bts < L.length args then throwError $ "function type variable number mismatch: " ++ ppr bts ++ " vs" ++ ppr args ++ ppr (_tloc t)
-  else do
+    let (bts, ets, tt) = unbindTypeSimple t
+  --if L.length bts < L.length args then 
+  --  throwError $ "function type variable number mismatch: " 
+  --  ++ ppr bts ++ " vs" ++ ppr args ++ ": " ++ ppr t ++ ppr (_tloc t)
+  --else do
     let argsLen = L.length args
         binds = [(n, t) | n <- L.take argsLen bts | t <- args]
     return $ bindTypeEffVar ets $ bindType (L.drop argsLen bts) $ substs binds tt
@@ -363,7 +365,7 @@ collectVarBindingsInEff a@EffList{} b@EffList{} = do
   then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b) 
   else do
     if L.length al < L.length bl
-    then if isn't _EffVar $ last al 
+    then if isn't _EffVar $ last al
          then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
          else return ()
     else return () 
