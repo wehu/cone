@@ -268,9 +268,7 @@ typeTerm =
       <$> ( ( P.try ((A.TApp <$> (s2n <$> namePath) <*> angles (P.sepBy1 type_ comma)) P.<?> "application type")
                 P.<|> P.try
                   ( tfunc
-                      <$> ( angles (P.sepBy1 (s2n <$> ident) comma)
-                              P.<|> return []
-                          )
+                      <$> boundTVars
                       <*> parens (P.sepBy type_ comma) <* arrow
                       <*> resultType P.<?> "function type"
                   )
@@ -291,7 +289,7 @@ typeTerm =
       let ft = A.TFunc args effT resultT pos
        in if bvs == []
             then ft
-            else A.BoundType (bind bvs ft) pos
+            else A.BoundTypeEffVar (bind [] $ A.BoundType (bind bvs ft) pos) pos
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t

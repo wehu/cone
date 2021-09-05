@@ -100,7 +100,7 @@ inferExprType l@ELam {..} = underScope $ do
       k <- inferTypeKind _elamResultType
       checkTypeKind k
       checkTypeMatch eType _elamResultType
-      inferType $ bindType bvs $ TFunc args _elamEffType eType _eloc
+      inferType $ bindTypeEffVar [] $ bindType bvs $ TFunc args _elamEffType eType _eloc
     _ -> throwError $ "should not be here"
 inferExprType a@EAnn {..} = do
   t <- inferExprType _eannExpr
