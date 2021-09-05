@@ -295,11 +295,11 @@ collectVarBindings a@TVar {..} t = do
       if aeq a ut
         then return []
         else throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr _tloc
-    Nothing ->
-      let fvars = t ^.. fv
-       in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
-            then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr _tloc
-            else return [(_tvar, t)]
+    Nothing -> return [(_tvar, t)]
+    -- let fvars = t ^.. fv
+    --  in if L.foldl' (\r e -> aeq e _tvar || r) False fvars
+    --      then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr _tloc
+    --      else return [(_tvar, t)]
 collectVarBindings a@TFunc {} b@TFunc {} =
   if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
     then throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
