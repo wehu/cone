@@ -462,6 +462,7 @@ pat =
 literal =
   ( A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
       P.<|> A.ELit <$ false <*> return "false" <*> ((A.TPrim A.Pred) <$> getPos)
+      P.<|> A.ELit <$ unit <*> return "unit" <*> ((A.TPrim A.Unit) <$> getPos)
       P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
       P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
       P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
