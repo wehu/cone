@@ -151,9 +151,11 @@ initEffIntfDef e = do
           throwError $
             "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t ++ ppr pos
         let eff = i ^. intfEffectType
-        effs <-
+        effs <- 
           mergeEffs eff $
-            EffApp
+            if e ^. effectArgs  == []
+            then EffVar (s2n $ e ^. effectName) pos
+            else EffApp
                   (e ^. effectName)
                   (map (\v -> TVar v pos) $ e ^.. effectArgs . traverse . _1)
                   pos
