@@ -180,13 +180,15 @@ instance Pretty EffKind where
   pretty EKFunc {..} = parens $ parensList _ekfuncArgs <+> "->" <+> pretty _ekfuncResult
   pretty EKList {..} = anglesList _ekList
 
+type EffVar = Name EffectType
+
 data EffectType
   = EffApp
       { _effAppName :: NamePath,
         _effAppArgs :: [Type],
         _effLoc :: Location
       }
-  | EffList {_effList :: [EffectType], _effVar :: Maybe TVar, _effLoc :: Location}
+  | EffList {_effList :: [EffectType], _effVar :: Maybe EffVar, _effLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty EffectType where

@@ -345,8 +345,9 @@ funcDefType f =
       argTypes = f ^. funcArgs ^.. traverse . _2
       effType = f ^. funcEffectType
       resultType = f ^. funcResultType
+      bvs = f ^. funcBoundVars
       ft =
-        bindType (f ^. funcBoundVars) $
+        bindType bvs $
             TFunc argTypes effType resultType pos
    in ft
 
