@@ -346,6 +346,7 @@ inferExprEffType EHandle {..} = underScope $ do
     binds <- collectEffVarBindings intfEff implEff
     checkEffVarBindings binds
 
+    -- check expression result type
     intfResT <- inferExprType $ fromJust $ _funcExpr intf
     checkTypeMatch intfResT resT
 
