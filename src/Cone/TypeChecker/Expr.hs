@@ -293,9 +293,9 @@ inferExprEffType EHandle {..} = underScope $ do
     let fn = (intf ^. funcName)
     checkEffIntfType intf
 
-    implFt' <- unbindType $ funcDefType intf
-    implEffs <- mergeEffs (_tfuncEff implFt') _ehandleEff
-    let implFt = implFt'{_tfuncEff=implEffs}
+    implFt <- unbindType $ funcDefType intf
+    -- implEffs <- mergeEffs (_tfuncEff implFt') _ehandleEff
+    -- let implFt = implFt'{_tfuncEff=implEffs}
     intfT <- getFuncType fn >>= unbindType
     binds <- collectVarBindings intfT implFt
     checkVarBindings binds

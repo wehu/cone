@@ -227,7 +227,9 @@ checkFuncType f = underScope $ do
       checkTypeMatch eType resultType
       effType <- inferExprEffType e
       let fEff = f ^. funcEffectType 
-      checkEffTypeMatch effType fEff
+      restEffs <- removeEff effType fEff
+      if aeq restEffs (EffList [] pos) then return ()
+      else throwError $ "func result effs mismatch: " ++ ppr effType ++ " vs " ++ ppr fEff ++ ppr pos
     Nothing -> return ()
 
 checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
