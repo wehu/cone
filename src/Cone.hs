@@ -6,8 +6,8 @@ module Cone
 where
 
 import Cone.Compiler
-import Cone.ModuleLoader
 import Cone.Executor
+import Cone.ModuleLoader
 import Control.Monad
 import Control.Monad.Except
 import Data.Semigroup ((<>))
@@ -56,6 +56,8 @@ play Opts {..} = do
     let paths = currentPath : (map (\p -> p </> "lib") $ join d1)
     res <- runExceptT $ compile paths f target
     case res of
-      Left e -> putStrLn e
-      Right s -> if dump then putStrLn s
-                 else runCode target [] s >>= putStrLn
+      Left err -> putStrLn err
+      Right code ->
+        if dump
+          then putStrLn code
+          else runCode target [] code >>= putStrLn
