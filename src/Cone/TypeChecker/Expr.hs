@@ -240,8 +240,8 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
                   _ -> newTVar
         )
   argTypes <- mapM cntr (appFuncType ^. tfuncArgs)
-  appT <- inferAppResultType appFuncType _pappTypeArgs argTypes
-  bindings <- collectVarBindings appT t
+  appResT <- inferAppResultType appFuncType _pappTypeArgs argTypes
+  bindings <- collectVarBindings appResT t
   foldM
     ( \s e ->
         (++) <$> return s <*> e
@@ -293,20 +293,20 @@ inferExprEffType EHandle {..} = underScope $ do
     let fn = (intf ^. funcName)
     checkEffIntfType intf
 
-    oft <- unbindType $ funcDefType intf
-    oeffs <- mergeEffs (_tfuncEff oft) _ehandleEff
-    let ft = oft{_tfuncEff=oeffs}
+    implFt' <- unbindType $ funcDefType intf
+    implEffs <- mergeEffs (_tfuncEff implFt') _ehandleEff
+    let implFt = implFt'{_tfuncEff=implEffs}
     intfT <- getFuncType fn >>= unbindType
-    binds <- collectVarBindings intfT ft
+    binds <- collectVarBindings intfT implFt
     checkVarBindings binds
     
-    eff <- toEffList $ _tfuncEff ft
+    implEff <- toEffList $ _tfuncEff implFt
     intfEff <- toEffList $ _tfuncEff intfT
-    binds <- collectEffVarBindings intfEff eff
+    binds <- collectEffVarBindings intfEff implEff
     checkEffVarBindings binds
 
     intfExprEff <- inferExprEffType $ fromJust $ intf ^. funcExpr
-    eff <- mergeEffs eff intfExprEff
+    eff <- mergeEffs implEff intfExprEff
     let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
     setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = eff}) $ funcs . at fn
   et <- inferExprEffType _ehandleScope
