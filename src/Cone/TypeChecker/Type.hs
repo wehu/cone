@@ -234,7 +234,8 @@ removeEff f@EffList {} e@EffList {} = do
   l <-
     foldM
       ( \l e -> return $ 
-          l L.\\ (map (l !!) (L.findIndices (\a -> acompare e a /= LT) l))
+          -- l L.\\ (map (l !!) (L.findIndices (\a -> acompare e a /= LT) l))
+          l L.\\ (map (l !!) (L.findIndices (aeq e) l))
       )
       fl
       el
