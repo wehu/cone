@@ -20,6 +20,7 @@ fun main<a>() : io unit {
    handle e {
       test(0.1)
       test(C<a>)
+      test(a)
    } with {
       fun test<a>(a: a) : e a {
          print(a)
