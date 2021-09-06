@@ -1,0 +1,31 @@
+module xxx
+
+type A<a> {
+   B(a)
+   C
+}
+
+effect e<a> {
+   fun test(a) : a
+}
+
+effect ee {
+   fun test2(i32) : i32
+}
+
+fun main() : io<i32> unit {
+   var a = 0
+   a = a + 1 * 5
+   a = a *5
+   // handle e<i32> {
+   //   test(a)
+   // } with {
+   //    fun test(a11: i32) : i32 {
+   //       print(a11)
+   //       a11
+   //    }
+   // }
+   // unit
+   print(a)
+}
+
