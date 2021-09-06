@@ -20,6 +20,7 @@ import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
+-- | Infer expression's type
 inferExprType :: (Has EnvEff sig m) => Expr -> m Type
 inferExprType EVar {..} = do
   getFuncType _evarName
@@ -37,25 +38,31 @@ inferExprType a@EApp {..} = do
                   Just v -> return ()
                   Nothing -> throwError $ "cannot find local variable " ++ vn
   else return ()
-  --
+  -- infer all type arguments
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
+  -- infer app function type
   appFuncType <- inferExprType _eappFunc
   appFuncType <- applyTypeArgs appFuncType _eappTypeArgs >>= unbindType
+  -- infer all arguments' types
   argTypes <- mapM inferExprType _eappArgs
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
+  -- infer the result type
   inferAppResultType appFuncType _eappTypeArgs argTypes >>= inferType
 inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
   setEnv M.empty localState
-  -- refresh
+  -- refresh all bound variables
   (bvs, newLam) <- refresh _elamBoundVars l
   (evs, newLam) <- refreshEffVar _elamBoundEffVars newLam
   case newLam of
     l@ELam{..} -> do
+      -- add all bound type variables into env
       mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) bvs
+      -- add all bound eff type variables into env
       mapM_ (\t -> setEnv (Just $ EKStar _eloc) $ effs . at (name2String t)) evs
+      -- infer arguments
       args <-
         mapM
           ( \(_, t) -> do
@@ -64,18 +71,23 @@ inferExprType l@ELam {..} = underScope $ do
               return t
           )
           _elamArgs
-      ek  <- inferEffKind _elamEffType
+      -- infer effect type kind
+      ek <- inferEffKind _elamEffType
       checkEffKind ek
+      -- add lambda argument types into env's local scope
       mapM_
         (\(n, t) -> setFuncType n t)
         [(n, t) | (n, _) <- _elamArgs | t <- args]
       case _elamExpr of
         Just e -> return ()
         Nothing -> throwError $ "expected an expression for lambda" ++ ppr _eloc
+      -- infer the lambda's expression type
       eType <- inferExprType $ fromJust _elamExpr
+      -- infer the lambda's result type
       k <- inferTypeKind _elamResultType
       checkTypeKind k
       checkTypeMatch eType _elamResultType
+      -- return the lambda type
       inferType $ bindTypeEffVar evs $ bindType bvs $ TFunc args _elamEffType eType _eloc
     _ -> throwError $ "should not be here"
 inferExprType a@EAnn {..} = do
@@ -94,31 +106,40 @@ inferExprType ESeq {..} = do
 inferExprType ELet {..} =
   bindPatternVarTypes _eletState _eletPattern _eletExpr >>= inferType
 inferExprType ECase {..} = do
+  -- infer case condition expression's type
   ct <- inferExprType _ecaseExpr
+  -- infer all case patterns' types
   ts <- forM _ecaseBody $ \c -> underScope $ do
     bindPatternVarTypes False (c ^. casePattern) _ecaseExpr
     pt <- inferPatternType $ c ^. casePattern
     et <- inferExprType $ c ^. caseExpr
     return (pt, et)
   let t : rest = ts
+  -- check if condition's type match with patterns' type or not
   forM_ (rest ^.. traverse . _2) $ \_ ->
     checkTypeMatch ct (t ^. _1)
+  -- check if all case expressions' type match or not
   forM_ (ts ^.. traverse . _1) $ \e ->
     checkTypeMatch ct e
+  -- return case's type
   inferType $ (last ts) ^. _2
 inferExprType EWhile {..} = do
+  -- infer while condition's type
   t <- inferExprType _ewhileCond
   if aeq t (TPrim Pred _eloc)
     then return t
     else throwError $ "while expected a bool as condition, but got " ++ ppr t ++ ppr _eloc
+  -- infer while's body type
   underScope $ do
     t <- inferExprType _ewhileBody
     k <- inferTypeKind t
     checkTypeKind k
   return $ TPrim Unit _eloc
 inferExprType EHandle {..} = do
+  -- infer handle's effect kind
   ek <- inferEffKind _ehandleEff
   checkEffKind ek
+  -- infer handle's expression's type
   bodyType <- inferExprType _ehandleScope
   btk <- inferTypeKind bodyType
   checkTypeKind btk
@@ -292,19 +313,23 @@ inferExprEffType EHandle {..} = underScope $ do
   forM_ _ehandleBindings $ \intf -> do
     let fn = (intf ^. funcName)
     checkEffIntfType intf
-
+    -- get inteface effect type
     implFt <- unbindType $ funcDefType intf
     -- implEffs <- mergeEffs (_tfuncEff implFt') _ehandleEff
     -- let implFt = implFt'{_tfuncEff=implEffs}
+    
+    -- check if interface defintion match with implemention's or not
     intfT <- getFuncType fn >>= unbindType
     binds <- collectVarBindings intfT implFt
     checkVarBindings binds
-    
+
+    -- check if interface's effect type match with implemention's or not
     implEff <- toEffList $ _tfuncEff implFt
     intfEff <- toEffList $ _tfuncEff intfT
     binds <- collectEffVarBindings intfEff implEff
     checkEffVarBindings binds
 
+    -- infer the result effect type
     intfExprEff <- inferExprEffType $ fromJust $ intf ^. funcExpr
     eff <- mergeEffs implEff intfExprEff
     let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
@@ -321,9 +346,11 @@ inferExprEffType EHandle {..} = underScope $ do
                    else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames
     Nothing -> do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
+  -- remove the handled effects
   removeEff effs _ehandleEff
 inferExprEffType ETC{..} = return $ EffList [] _eloc
 
+-- | Check effect inferface type
 checkEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
 checkEffIntfType f = do
   let pos = f ^. funcLoc
