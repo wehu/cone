@@ -107,7 +107,7 @@ typeCheckerSpec = hspec $ do
         handle a<i32> {
           test(c1(1))
         } with {
-          fun test(a: a<i32>) : a<i32> {
+          fun test(a: a<i32>) {
             c
             a
           }
