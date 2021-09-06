@@ -324,9 +324,8 @@ inferExprEffType EHandle {..} = underScope $ do
     checkEffIntfType intf
     -- get inteface effect type
     implFt' <- unbindType $ funcDefType intf
-    implEffs <- mergeEffs (_tfuncEff implFt') _ehandleEff
-    let implFt = implFt'{_tfuncEff=implEffs, _tfuncResult=resT}
     intfT <- getFuncType fn >>= unbindType
+    let implFt = implFt'{_tfuncEff=_tfuncEff intfT, _tfuncResult=resT}
 
     -- add resume function type
     let resumeT = bindTypeEffVar [] $ bindType [] $ 
@@ -339,12 +338,6 @@ inferExprEffType EHandle {..} = underScope $ do
     else forM_ [(a, b) | a <- _tfuncArgs intfT | b <- _tfuncArgs implFt] $ \(a, b) -> do
            binds <- collectVarBindings a b
            checkVarBindings binds
-
-    -- check if interface's effect type match with implemention's or not
-    implEff <- toEffList $ _tfuncEff implFt
-    intfEff <- toEffList $ _tfuncEff intfT
-    binds <- collectEffVarBindings intfEff implEff
-    checkEffVarBindings binds
 
     -- check expression result type
     intfResT <- inferExprType $ fromJust $ _funcExpr intf
