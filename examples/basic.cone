@@ -1,9 +1,4 @@
-module xxx
-
-type A<a> {
-   B(a)
-   C
-}
+module example
 
 effect state<a> {
    fun get() : a
