@@ -202,12 +202,12 @@ toEffList' l@EffList {} =
 toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
 toEffList eff = do
   es <- getEnv effs
-  let e = toEffList' eff
+  let effs = toEffList' eff
       (el, vl) = L.partition (\e -> isn't _EffVar e ||
                                     (isn't _Nothing $ M.lookup (name2String $ _effVar e) es))
-                               (_effList e)
-      l = (L.sortBy acompare el) ++ (L.sortBy acompare vl)
-  return e{_effList=l}
+                               (_effList effs)
+      al = (L.sortBy acompare el) ++ (L.sortBy acompare vl)
+  return effs{_effList=al}
 
 mergeEffs :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 mergeEffs a@EffList {} b@EffList {} = do
@@ -281,9 +281,9 @@ inferAppResultEffType f@TFunc {} targs args = do
       [collectVarBindings a b | a <- fArgTypes | b <- args]
   checkVarBindings bindings
   resEff <- toEffList $ _tfuncEff f
-  fl <- toEffList $ _tfuncEff f
+  funcEff <- toEffList $ _tfuncEff f
   let eff = substs bindings resEff
-  effBindings <- collectEffVarBindings fl resEff
+  effBindings <- collectEffVarBindings funcEff resEff
   checkEffVarBindings effBindings
   toEffList $ substs effBindings eff
 inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
