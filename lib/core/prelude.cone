@@ -90,8 +90,8 @@ type tensor<t, shape> {
 
 // python effect
 
-effect python<a> {
-  fun run_python(str) : a
+effect python {
+  fun run_python<a>(str) : a
 }
 
 effect io {
