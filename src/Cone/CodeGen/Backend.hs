@@ -21,15 +21,15 @@ class Backend t where
   namePath :: t Target -> String -> Doc a
   namePath proxy n = pretty $ join $ intersperse "." $ splitOn "/" n
 
-  typeName' :: t Target -> String -> Doc a
-  typeName' proxy n = 
+  typeN :: t Target -> String -> Doc a
+  typeN proxy n = 
     let ns = splitOn "/" n
         ps = init ns
         tn = "T" ++ last ns
      in pretty $ join $ intersperse "." $ ps ++ [tn]
 
-  funcName' :: t Target -> String -> Doc a
-  funcName' proxy n =
+  funcN :: t Target -> String -> Doc a
+  funcN proxy n =
     let ns = splitOn "/" n
         ps = init ns
         fn = "f" ++ last ns
@@ -42,15 +42,15 @@ class Backend t where
 
   genTypeDef :: t Target -> TypeDef -> Doc a
   genTypeDef proxy TypeDef{..} = 
-    vsep $ ["class" <+> typeName' proxy _typeName <> ":"
+    vsep $ ["class" <+> typeN proxy _typeName <> ":"
            ,indent 4 "pass" <+> line
            ] ++ (fmap (genTypeCon proxy _typeName) _typeCons)
 
   genTypeCon :: t Target -> String -> TypeCon -> Doc a
   genTypeCon proxy ptn TypeCon{..} =
-    let tn = typeName' proxy _typeConName 
-        fn = funcName' proxy _typeConName
-     in vsep ["class" <+> tn <> parens (typeName' proxy ptn) <> ":"
+    let tn = typeN proxy _typeConName 
+        fn = funcN proxy _typeConName
+     in vsep ["class" <+> tn <> parens (typeN proxy ptn) <> ":"
           ,indent 4 constructor
           ,ctrFunc fn tn <+> line]
     where constructor =
@@ -74,7 +74,7 @@ class Backend t where
   
   genFuncDef :: t Target -> FuncDef -> Doc a
   genFuncDef proxy FuncDef{..} = 
-    vsep ["def" <+> funcName' proxy _funcName <> genArgs <> colon
+    vsep ["def" <+> funcN proxy _funcName <> genArgs <> colon
          ,indent 4 $ case _funcExpr of
                        Just e -> vsep ["____state = {}", "return" <+> genExpr proxy e <> brackets "-1"]
                        Nothing -> "pass"]
@@ -82,7 +82,7 @@ class Backend t where
   
   genExpr :: t Target -> Expr -> Doc a
   genExpr proxy EVar{..} = parens $ "____state[" <> fns <> "] if" <+> fns <+> "in ____state" <+>  "else" <+> fn
-    where fn = funcName' proxy _evarName
+    where fn = funcN proxy _evarName
           fns = "\"" <> fn <> "\""
   genExpr proxy ESeq{..} = encloseSep lbracket rbracket comma $ fmap (genExpr proxy) _eseq
   genExpr proxy ELit{..} = pretty _lit
@@ -106,14 +106,14 @@ class Backend t where
          _ -> genExpr proxy _eappFunc <> genArgs
     where genArgs = encloseSep lparen rparen comma
             (if _eappFunc ^.evarName == "____assign" then  
-              "____state":("\"" <> (funcName' proxy $ _eappArgs !! 0 ^.evarName) <> "\""):(tail $ map (genExpr proxy) _eappArgs)
+              "____state":("\"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\""):(tail $ map (genExpr proxy) _eappArgs)
             else (map (genExpr proxy) _eappArgs))
           binary :: String -> Doc a
           binary op = parens $ genExpr proxy (_eappArgs !! 0) <+> pretty op <+> genExpr proxy (_eappArgs !! 1)
   -- genExpr proxy EHandle{..} =
           
   genPattern :: t Target -> Pattern -> Doc a
-  genPattern proxy PVar{..} = pretty '"' <> funcName' proxy _pvar <> pretty '"'
+  genPattern proxy PVar{..} = pretty '"' <> funcN proxy _pvar <> pretty '"'
   genPattern proxy PExpr{..} = genExpr proxy _pExpr
 
   genPrologue :: t Target -> Doc a
