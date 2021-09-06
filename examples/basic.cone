@@ -20,10 +20,13 @@ fun main<a>(b: a) : io unit {
    handle e<a> {
       test(b)
    } with {
-      fun test(a: a) : a {
-         print(a)
-         resume(a)
-         a
+      fun test(a1: a) : a {
+         print(a1)
+         if (a == 1) {
+           resume(a1)
+         } else {
+           a1
+         }
       }
    }
    unit
