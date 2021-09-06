@@ -320,9 +320,9 @@ inferExprEffType EHandle {..} = underScope $ do
     let fn = (intf ^. funcName)
     checkEffIntfType intf
     -- get inteface effect type
-    implFt <- unbindType $ funcDefType intf
-    -- implEffs <- mergeEffs (_tfuncEff implFt') _ehandleEff
-    -- let implFt = implFt'{_tfuncEff=implEffs}
+    implFt' <- unbindType $ funcDefType intf
+    implEffs <- mergeEffs (_tfuncEff implFt') _ehandleEff
+    let implFt = implFt'{_tfuncEff=implEffs}
     
     -- check if interface defintion match with implemention's or not
     intfT <- getFuncType fn >>= unbindType
@@ -341,17 +341,24 @@ inferExprEffType EHandle {..} = underScope $ do
     let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
     setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = eff}) $ funcs . at fn
   effs <- inferExprEffType _ehandleScope
+  resT <- inferExprType _ehandleScope
+  forM_ _ehandleBindings $ \intf -> do
+    implFt <- unbindType $ funcDefType intf
+    if aeq resT $ _tfuncResult implFt
+      then return ()
+      else throwError $ "handle scope result type mismatch with handle's: " ++
+             ppr resT ++ " vs " ++ ppr (_tfuncResult implFt) ++ ppr (_tloc implFt)
   -- check intefaces
-  effName <- if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVar
-             else if not $ isn't _EffApp _ehandleEff then return $ _ehandleEff ^.effAppName
-             else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
-  intfs <- getEnv $ effIntfs . at effName
-  case intfs of
-    Just ifs -> do let intfNames = map (\e -> e ^.funcName) _ehandleBindings 
-                   if L.sort ifs == L.sort intfNames then return ()
-                   else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames
-    Nothing -> do
-      throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
+  -- effName <- if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVar
+  --            else if not $ isn't _EffApp _ehandleEff then return $ _ehandleEff ^.effAppName
+  --            else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
+  -- intfs <- getEnv $ effIntfs . at effName
+  -- case intfs of
+  --   Just ifs -> do let intfNames = map (\e -> e ^.funcName) _ehandleBindings 
+  --                  if L.sort ifs == L.sort intfNames then return ()
+  --                  else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames
+  --   Nothing -> do
+  --     throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   -- remove the handled effects
   removeEff effs _ehandleEff
 inferExprEffType ETC{..} = return $ EffList [] _eloc
