@@ -5,31 +5,29 @@ type A<a> {
    C
 }
 
-effect e<a> {
-   fun test<a>(a) : a
+effect state<a> {
+   fun get() : a
+   fun set(a) : unit
 }
 
-effect ee {
-   fun test2(i32) : i32
+fun test() : state<i32> unit {
+   val a = get<i32>()
+   set(a+1)
 }
 
-fun main<a>(b: a) : io unit {
+fun main() : io unit {
    var a = 0
-   a = a + 1 * 5
-   a = a * 5
-   handle e<a> {
-      test(b)
+
+   handle state<i32> {
+      test()
    } with {
-      fun test(a1: a) {
-         print(a1)
-         if a == 1 {
-           resume(a1)
-         } else {
-           a1
-         }
+      fun get() {
+         resume(a)
+      }
+      fun set(v:i32) {
+         a = v
       }
    }
-   unit
    print(a)
 }
 
