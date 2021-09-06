@@ -5,7 +5,7 @@ type A<a> {
    C
 }
 
-effect e {
+effect e<a> {
    fun test<a>(a) : a
 }
 
@@ -13,14 +13,14 @@ effect ee {
    fun test2(i32) : i32
 }
 
-fun main<a>() : io unit {
+fun main<a>(b: a) : io unit {
    var a = 0
    a = a + 1 * 5
    a = a * 5
-   handle e {
-      test(a)
+   handle e<a> {
+      test(b)
    } with {
-      fun test(a: i32) : i32 {
+      fun test(a: a) : a {
          print(a)
          a
       }
