@@ -21,6 +21,7 @@ type LoadEnv = ExceptT String IO (Env, Int, Module)
 
 type Cache = M.Map FilePath (Env, Int, Module)
 
+-- | Search a file in path list
 searchFile :: [FilePath] -> FilePath -> ExceptT String IO String
 searchFile (p : paths) f = do
   if isAbsolute f
@@ -37,6 +38,7 @@ searchFile (p : paths) f = do
         else searchFile paths f
 searchFile [] f = throwError $ "cannot find file: " ++ f
 
+-- | Load a module
 loadModule' :: IORef Cache -> [FilePath] -> FilePath -> Loaded -> LoadEnv
 loadModule' cache paths f' loaded = do
   f <- searchFile paths f'
@@ -66,6 +68,7 @@ coneEx = "cone"
 
 preloadedModules = ["core" </> "prelude"]
 
+-- | Import a list of module into current env
 importModules :: IORef Cache -> [FilePath] -> Module -> Loaded -> LoadEnv
 importModules cache paths m loaded = do
   let is = m ^.. imports . traverse
@@ -111,6 +114,7 @@ importModules cache paths m loaded = do
     (initialEnv, 0, m)
     ((map (\f -> ImportStmt f Nothing [] (m ^. moduleLoc)) preloadedModules) ++ is)
 
+-- | Load a module
 loadModule :: [FilePath] -> FilePath -> LoadEnv
 loadModule paths f = do
   cache <- liftIO $ newIORef M.empty

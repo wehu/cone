@@ -18,6 +18,7 @@ import System.FilePath
 
 data Opts = Opts {inputFiles :: [String], target :: String, dump :: Bool}
 
+-- | Option definitions
 coneOpts :: Parser Opts
 coneOpts =
   Opts <$> some (argument str (metavar "FILES..."))
@@ -44,6 +45,7 @@ coneMain = play =<< execParser opts
             <> header "Cone - "
         )
 
+-- | Run the compilier and executor
 play :: Opts -> IO ()
 play Opts {..} = do
   forM_ inputFiles $ \f -> do

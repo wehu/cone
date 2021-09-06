@@ -25,13 +25,16 @@ import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
+-- | Initialize type definition and add the kind for the type into env
 initTypeDef :: (Has EnvEff sig m) => TypeDef -> m ()
 initTypeDef t = do
   let tn = t ^. typeName
   ot <- getEnv $ types . at tn
+  -- check if it exists or not
   forMOf _Just ot $ \ot ->
     throwError $
       "redefine a type: " ++ tn ++ " vs " ++ ppr ot ++ (ppr $ _typeLoc t)
+  -- record the kind of type
   let k = Just $ typeKindOf t
   setEnv k $ types . at tn
   where
@@ -39,13 +42,15 @@ initTypeDef t = do
       let loc = _typeLoc t
           args = t ^. typeArgs
           star = KStar loc
-       in if args == []
+       in if args == []  -- if no arguments, it is just a simple enum
             then star
             else KFunc (args ^.. traverse . _2 . non star) star loc
 
+-- | Initialize all type definitions
 initTypeDefs :: (Has EnvEff sig m) => Module -> m ()
 initTypeDefs m = mapM_ initTypeDef $ m ^.. topStmts . traverse . _TDef
 
+-- | Initialize a constructor in type definition
 initTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
 initTypeConDef t = do
   globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
@@ -53,20 +58,23 @@ initTypeConDef t = do
     let cn = c ^. typeConName
         cargs = c ^. typeConArgs
         pos = c ^. typeConLoc
+        -- find all free type variables
         targs = (t ^.. typeArgs . traverse . _1) ++ globalTypes
         b = bind targs cargs
         fvars = (b ^.. fv) :: [TVar]
-    if fvars /= []
+    if fvars /= [] -- if there are any free type variable, it failed
       then
         throwError $
           "type constructor's type variables should "
             ++ "only exists in type arguments: "
             ++ ppr fvars
       else return ()
+    -- check if the type constructor exists or not
     ot <- getEnv $ funcs . at cn
     forMOf _Just ot $ \t ->
       throwError $
         "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t ++ ppr pos
+    -- record the constructor's type
     let bt = tconType c t
     setEnv (Just bt) $ funcs . at cn
   where
@@ -86,9 +94,11 @@ initTypeConDef t = do
                 else TFunc targs (EffList [] pos) rt pos
        in bindTypeEffVar [] bt
 
+-- | Initialize all type constructors
 initTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
 initTypeConDefs m = mapM_ initTypeConDef $ m ^.. topStmts . traverse . _TDef
 
+-- | Check the type constructor's type
 checkTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
 checkTypeConDef t =
   forM_ (t ^. typeCons) $ \c -> do
@@ -100,9 +110,11 @@ checkTypeConDef t =
     k <- underScope $ inferTypeKind $ fromJust tt
     checkTypeKind k
 
+-- | Check all type constructor's types
 checkTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
 checkTypeConDefs m = mapM_ checkTypeConDef $ m ^.. topStmts . traverse . _TDef
 
+-- | Initializa effect type definition
 initEffTypeDef :: (Has EnvEff sig m) => EffectDef -> m ()
 initEffTypeDef e = do
   let en = e ^. effectName
@@ -121,9 +133,11 @@ initEffTypeDef e = do
             then estar
             else EKFunc (args ^.. traverse . _2 . non star) estar loc
 
+-- | Initialize all effect type difinitions
 initEffTypeDefs :: (Has EnvEff sig m) => Module -> m ()
 initEffTypeDefs m = mapM_ initEffTypeDef $ m ^.. topStmts . traverse . _EDef
 
+-- | Initialize effect inteface definitions
 initEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
 initEffIntfDef e = do
   globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
@@ -139,6 +153,7 @@ initEffIntfDef e = do
             b = bind (targs ++ bvars) $ iresult : iargs
             fvars = (b ^.. fv) :: [TVar]
         addEffIntfs en intfn
+        -- check if has free type variables
         if fvars /= []
           then
             throwError $
@@ -146,10 +161,12 @@ initEffIntfDef e = do
                 ++ "only exists in eff type arguments: "
                 ++ ppr fvars ++ ppr pos
           else return ()
+        -- check if inteface exists or not
         ot <- getEnv $ funcs . at intfn
         forMOf _Just ot $ \t ->
           throwError $
             "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t ++ ppr pos
+        -- get effect type
         let eff = i ^. intfEffectType
         effs <- 
           mergeEffs eff $
@@ -159,6 +176,7 @@ initEffIntfDef e = do
                   (e ^. effectName)
                   (map (\v -> TVar v pos) $ e ^.. effectArgs . traverse . _1)
                   pos
+        --  add effect type to interface's effect list
         let bt = intfType i e effs
         setEnv (Just bt) $ funcs . at intfn
   mapM_ f is
@@ -174,9 +192,11 @@ initEffIntfDef e = do
        in bindTypeEffVar evars $ bindType tvars $
               bindType bvars $ TFunc iargs eff iresult pos
 
+-- | Initialize all effect interfaces
 initEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
 initEffIntfDefs m = mapM_ initEffIntfDef $ m ^.. topStmts . traverse . _EDef
 
+-- | Check an effect interface
 checkEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
 checkEffIntfDef e = do
   globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
@@ -192,9 +212,11 @@ checkEffIntfDef e = do
         checkTypeKind k
   mapM_ f is
 
+-- | Check all effect interfaces
 checkEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
 checkEffIntfDefs m = mapM_ checkEffIntfDef $ m ^.. topStmts . traverse . _EDef
 
+-- | Initializa function definition
 initFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
 initFuncDef f = do
   let pos = f ^. funcLoc
@@ -207,31 +229,39 @@ initFuncDef f = do
     throwError $ "function redefine: " ++ fn ++ ppr pos
   setEnv (Just ft) $ funcs . at fn
 
+-- | Initialize all function definitons
 initFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 initFuncDefs m = mapM_ initFuncDef $ m ^.. topStmts . traverse . _FDef
 
+-- | Check a function type
 checkFuncType :: (Has EnvEff sig m) => FuncDef -> m ()
 checkFuncType f = underScope $ do
   let pos = f ^. funcLoc
       btvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
+  -- add all bound type variables into env
   forM_ btvars $ \(n, k) -> setEnv (Just k) $ types . at n
+  -- add all bound eff type variables into env
   forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
+  -- add function type into env
   mapM_
     (\(n, t) -> setFuncType n t)
     (f ^. funcArgs)
   case f ^. funcExpr of
     Just e -> do
+      -- infer function expression type
       eType <- inferExprType e
       resultType <- inferType $ f ^. funcResultType
       checkTypeMatch eType resultType
       effType <- inferExprEffType e
       let fEff = f ^. funcEffectType 
       restEffs <- removeEff effType fEff
+      -- check if all effects are handled or not
       if aeq restEffs (EffList [] pos) then return ()
       else throwError $ "func result effs mismatch: " ++ ppr effType ++ " vs " ++ ppr fEff ++ ppr pos
     Nothing -> return ()
 
+-- | Check a function definiton
 checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
 checkFuncDef f = underScope $ do
   let pos = f ^. funcLoc
@@ -240,9 +270,11 @@ checkFuncDef f = underScope $ do
   checkTypeKind k
   checkFuncType f
 
+-- | Check all function definitons
 checkFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 checkFuncDefs m = mapM_ checkFuncDef $ m ^.. topStmts . traverse . _FDef
 
+-- | Check a function implementation
 checkImplFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
 checkImplFuncDef f = underScope $ do
   let pos = f ^. funcLoc
@@ -257,9 +289,11 @@ checkImplFuncDef f = underScope $ do
   checkVarBindings bindings
   checkFuncType f
 
+-- | Check all function implementations
 checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 checkImplFuncDefs m = mapM_ checkImplFuncDef $ m ^.. topStmts . traverse . _ImplFDef . implFunDef
 
+-- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id = run . runError . (runState env) . runFresh id $ do
   initTypeDefs m
@@ -269,6 +303,7 @@ initModule m env id = run . runError . (runState env) . runFresh id $ do
   initFuncDefs m
   return m
 
+-- | Type checking a module
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 checkType m env id = run . runError . (runState env) . runFresh id $ do
   checkTypeConDefs m
