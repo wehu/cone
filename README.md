@@ -80,7 +80,7 @@ AI的python生态是无法回避的。所以我们不回避，我们变成python
 因为python的函数无法确定是否有副作用，我们假定所有import的python的函数都有特别的effect python。
 
 ```haskell
-import Python as p
+import python as p
 
 fun foo() : python () {
   p.print("python print");

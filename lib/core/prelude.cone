@@ -94,6 +94,7 @@ effect python {
   fun run_python<a>(str) : a
 }
 
+// io effect
 effect io {
   fun print<a>(a) : unit
 }
