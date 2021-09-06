@@ -88,8 +88,6 @@ type tensor<t, shape> {
   tensor
 }
 
-fun resume<a>(a: a) : a
-
 // python effect
 
 effect python {

@@ -326,14 +326,14 @@ inferExprEffType EHandle {..} = underScope $ do
     implFt' <- unbindType $ funcDefType intf
     implEffs <- mergeEffs (_tfuncEff implFt') _ehandleEff
     let implFt = implFt'{_tfuncEff=implEffs, _tfuncResult=resT}
+    intfT <- getFuncType fn >>= unbindType
 
     -- add resume function type
     let resumeT = bindTypeEffVar [] $ bindType [] $ 
-           TFunc [_tfuncResult implFt] (EffList [] _eloc) (_tfuncResult implFt) _eloc
+           TFunc [_tfuncResult intfT] (EffList [] _eloc) resT _eloc
     setEnv (Just resumeT) $ funcs . at "resume"
     
     -- check if interface defintion match with implemention's or not
-    intfT <- getFuncType fn >>= unbindType
     if L.length (_tfuncArgs intfT) /= L.length (_tfuncArgs implFt)
     then throwError $ "interface arguments number mismatch: " ++ ppr intfT ++ " vs " ++ ppr implFt ++ ppr _eloc
     else forM_ [(a, b) | a <- _tfuncArgs intfT | b <- _tfuncArgs implFt] $ \(a, b) -> do
@@ -369,12 +369,12 @@ checkEffIntfType f = do
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
-  mapM_
-    (\(n, t) -> setFuncType n t)
-    (f ^. funcArgs)
-  case f ^. funcExpr of
-    Just e -> do
-      eType <- inferExprType e
-      resultType <- inferType $ f ^. funcResultType
-      checkTypeMatch eType resultType
-    Nothing -> return ()
+  -- mapM_
+  --   (\(n, t) -> setFuncType n t)
+  --   (f ^. funcArgs)
+  -- case f ^. funcExpr of
+  --   Just e -> do
+  --     eType <- inferExprType e
+  --     resultType <- inferType $ f ^. funcResultType
+  --     checkTypeMatch eType resultType
+  --   Nothing -> return ()
