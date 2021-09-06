@@ -22,7 +22,7 @@ fun main<a>(b: a) : io unit {
    } with {
       fun test(a1: a) : a {
          print(a1)
-         if (a == 1) {
+         if a == 1 {
            resume(a1)
          } else {
            a1

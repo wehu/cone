@@ -485,9 +485,9 @@ term =
                                             (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
                                             P.<?> "case expression"
                                       )
-                                P.<|> (A.EWhile <$ kWhile <*> term <*> braces exprSeq P.<?> "while expression")
+                                P.<|> (A.EWhile <$ kWhile <*> expr <*> braces exprSeq P.<?> "while expression")
                                 P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
-                                P.<|> (eif <$ kIf <*> term <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
+                                P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
                                 P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "assign expression")
                                 P.<|> (A.ETC <$> tc P.<?> "tc expression")
                             )
