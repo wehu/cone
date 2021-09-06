@@ -153,8 +153,8 @@ instance Pretty Type where
   pretty TFunc {..} = parens $ parensList _tfuncArgs <+> "->" <+> pretty _tfuncEff <+> pretty _tfuncResult
   pretty TApp {..} = parens $ pretty _tappName <+> parensList _tappArgs
   pretty TAnn {..} = parens $ pretty _tannType <+> colon <+> pretty _tannKind
-  pretty (BoundType (B tvars t) _) = parens $ "forall" <+> bracketsList tvars <+> dot <+> pretty t
-  pretty (BoundEffVarType (B tvars t) _) = parens $ "forall" <+> bracketsList tvars <+> dot <+> pretty t
+  pretty (BoundType (B tvars t) _) = parens $ anglesList tvars <+> pretty t
+  pretty (BoundEffVarType (B tvars t) _) = parens $ bracketsList tvars <+> pretty t
 
 data Kind
   = KStar {_kloc :: Location}
@@ -212,8 +212,8 @@ data Pattern
 
 instance Pretty Pattern where
   pretty PVar {..} = pretty _pvar
-  pretty PApp {..} = parens $ pretty _pappName <+> parensList _pappArgs
-  pretty PExpr {..} = parens $ pretty _pExpr
+  pretty PApp {..} = parens $ pretty _pappName <+> anglesList _pappTypeArgs <+> parensList _pappArgs
+  pretty PExpr {..} = pretty _pExpr
 
 data Case = Case
   { _casePattern :: Pattern,
@@ -240,7 +240,7 @@ data TCExpr
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty TCExpr where
-  pretty TCAccess {..} = parens $ pretty _tcVarName <+> parensList _tcIndices
+  pretty TCAccess {..} = parens $ pretty _tcVarName <+> bracketsList _tcIndices
   pretty TCApp {..} = parens $ pretty _tcAppName <+> parensList _tcAppArgs
   pretty TCVar {..} = pretty _tcVarName
 
@@ -290,7 +290,7 @@ instance Pretty Expr where
   pretty ELit {..} = pretty _lit
   pretty ELam {..} =
     parens $
-      "fn" <+> bracketsList _elamBoundVars
+      "fn" <+> anglesList _elamBoundVars <+> bracesList _elamBoundEffVars
         <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _elamArgs)
         <+> colon
         <+> pretty _elamEffType
@@ -299,8 +299,10 @@ instance Pretty Expr where
   pretty EWhile {..} = parens $ "while" <+> pretty _ewhileCond <+> braces (pretty _ewhileBody)
   pretty ECase {..} = parens $ "case" <+> pretty _ecaseExpr <+> bracesList _ecaseBody 
   pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs 
-  pretty ELet {..} = parens $ "var" <+> pretty _eletPattern <+> "=" <+> pretty _eletExpr
-  pretty EHandle {..} = parens $ "handle" <+> pretty _ehandleEff
+  pretty ELet {..} = parens $ (if _eletState then "var" else "val") 
+       <+> pretty _eletPattern <+> "=" <+> pretty _eletExpr
+  pretty EHandle {..} = parens $ "handle" <+> pretty _ehandleEff <+> braces (pretty _ehandleScope)
+                        <+> "with" <+> bracesList _ehandleBindings
   pretty ESeq {..} = vsep $ fmap pretty _eseq
   pretty ETC {..} = pretty _etc
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType 
@@ -360,7 +362,7 @@ data FuncIntf = FuncIntf
 
 instance Pretty FuncIntf where
   pretty FuncIntf {..} =
-    pretty _intfName <+> bracesList _intfBoundVars
+    pretty _intfName <+> anglesList _intfBoundVars <+> bracesList _intfBoundEffVars
       <+> parensList _intfArgs
       <+> colon
       <+> pretty _intfEffectType
@@ -398,7 +400,10 @@ data ImportStmt = ImportStmt
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty ImportStmt where
-  pretty ImportStmt {..} = "import" <+> pretty _importPath
+  pretty ImportStmt {..} = "import" <+> pretty _importPath <+> 
+     (case _importAlias of
+       Just a -> "as" <+> pretty a
+       Nothing -> emptyDoc)
 
 data FuncDef = FuncDef
   { _funcName :: String,
@@ -423,7 +428,8 @@ data FuncDef = FuncDef
 
 instance Pretty FuncDef where
   pretty FuncDef {..} =
-    "fun" <+> pretty _funcName <+> bracketsList _funcBoundVars <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _funcArgs) <+> colon <+> pretty _funcEffectType
+    "fun" <+> pretty _funcName <+> anglesList _funcBoundVars <+> bracketsList _funcBoundEffVars <+>
+     parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _funcArgs) <+> colon <+> pretty _funcEffectType
       <+> pretty _funcResultType
       <+> bracesList [_funcExpr]
 
