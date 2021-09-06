@@ -362,7 +362,7 @@ data FuncIntf = FuncIntf
 
 instance Pretty FuncIntf where
   pretty FuncIntf {..} =
-    pretty _intfName <+> anglesList _intfBoundVars <+> bracesList _intfBoundEffVars
+    pretty _intfName <+> anglesList _intfBoundVars <+> bracketsList _intfBoundEffVars
       <+> parensList _intfArgs
       <+> colon
       <+> pretty _intfEffectType
