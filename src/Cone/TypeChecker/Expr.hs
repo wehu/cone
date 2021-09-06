@@ -344,6 +344,7 @@ inferExprEffType EHandle {..} = underScope $ do
     setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = eff}) $ funcs . at fn
   effs <- inferExprEffType _ehandleScope
   resT <- inferExprType _ehandleScope
+  -- the resumed type(scope expression's type) should match with handlers' result type
   forM_ _ehandleBindings $ \intf -> do
     implFt <- unbindType $ funcDefType intf
     if aeq resT $ _tfuncResult implFt
