@@ -316,14 +316,16 @@ inferExprEffType ESeq {..} =
     (EffList [] _eloc)
     _eseq
 inferExprEffType EHandle {..} = underScope $ do
-  forM_ _ehandleBindings $ \intf -> do
+  effs <- inferExprEffType _ehandleScope
+  resT <- inferExprType _ehandleScope
+  forM_ _ehandleBindings $ \intf -> underScope $ do
 
     let fn = (intf ^. funcName)
     checkEffIntfType intf
     -- get inteface effect type
     implFt' <- unbindType $ funcDefType intf
     implEffs <- mergeEffs (_tfuncEff implFt') _ehandleEff
-    let implFt = implFt'{_tfuncEff=implEffs}
+    let implFt = implFt'{_tfuncEff=implEffs, _tfuncResult=resT}
 
     -- add resume function type
     let resumeT = bindTypeEffVar [] $ bindType [] $ 
@@ -332,8 +334,11 @@ inferExprEffType EHandle {..} = underScope $ do
     
     -- check if interface defintion match with implemention's or not
     intfT <- getFuncType fn >>= unbindType
-    binds <- collectVarBindings intfT implFt
-    checkVarBindings binds
+    if L.length (_tfuncArgs intfT) /= L.length (_tfuncArgs implFt)
+    then throwError $ "interface arguments number mismatch: " ++ ppr intfT ++ " vs " ++ ppr implFt ++ ppr _eloc
+    else forM_ [(a, b) | a <- _tfuncArgs intfT | b <- _tfuncArgs implFt] $ \(a, b) -> do
+           binds <- collectVarBindings a b
+           checkVarBindings binds
 
     -- check if interface's effect type match with implemention's or not
     implEff <- toEffList $ _tfuncEff implFt
@@ -341,21 +346,6 @@ inferExprEffType EHandle {..} = underScope $ do
     binds <- collectEffVarBindings intfEff implEff
     checkEffVarBindings binds
 
-    -- infer the result effect type
-    intfExprEff <- inferExprEffType $ fromJust $ intf ^. funcExpr
-    eff <- mergeEffs implEff intfExprEff
-
-    let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
-    setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = eff}) $ funcs . at fn
-  effs <- inferExprEffType _ehandleScope
-  resT <- inferExprType _ehandleScope
-  -- the resumed type(scope expression's type) should match with handlers' result type
-  forM_ _ehandleBindings $ \intf -> do
-    implFt <- unbindType $ funcDefType intf
-    if aeq resT $ _tfuncResult implFt
-      then return ()
-      else throwError $ "handle scope result type mismatch with handle's: " ++
-             ppr resT ++ " vs " ++ ppr (_tfuncResult implFt) ++ ppr (_tloc implFt)
   -- check intefaces
   effName <- if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVar
              else if not $ isn't _EffApp _ehandleEff then return $ _ehandleEff ^.effAppName
