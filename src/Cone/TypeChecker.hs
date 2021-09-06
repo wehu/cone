@@ -213,9 +213,9 @@ initFuncDefs m = mapM_ initFuncDef $ m ^.. topStmts . traverse . _FDef
 checkFuncType :: (Has EnvEff sig m) => FuncDef -> m ()
 checkFuncType f = underScope $ do
   let pos = f ^. funcLoc
-      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+      btvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
-  forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
+  forM_ btvars $ \(n, k) -> setEnv (Just k) $ types . at n
   forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
   mapM_
     (\(n, t) -> setFuncType n t)

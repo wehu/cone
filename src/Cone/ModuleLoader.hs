@@ -116,5 +116,5 @@ loadModule paths f = do
   cache <- liftIO $ newIORef M.empty
   (env, id, m) <- loadModule' cache paths f M.empty
   case checkType m env id of
-    Left e -> throwError e
+    Left err -> throwError err
     Right (env, (id, m)) -> return (env, id, m)
