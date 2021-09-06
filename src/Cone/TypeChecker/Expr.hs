@@ -339,8 +339,6 @@ inferExprEffType EHandle {..} = underScope $ do
     intfExprEff <- inferExprEffType $ fromJust $ intf ^. funcExpr
     eff <- mergeEffs implEff intfExprEff
     let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
-    fs <- getEnv funcs
-    setEnv (M.delete fn fs) funcs
     setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = eff}) $ funcs . at fn
   effs <- inferExprEffType _ehandleScope
   resT <- inferExprType _ehandleScope
@@ -352,16 +350,16 @@ inferExprEffType EHandle {..} = underScope $ do
       else throwError $ "handle scope result type mismatch with handle's: " ++
              ppr resT ++ " vs " ++ ppr (_tfuncResult implFt) ++ ppr (_tloc implFt)
   -- check intefaces
-  -- effName <- if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVar
-  --            else if not $ isn't _EffApp _ehandleEff then return $ _ehandleEff ^.effAppName
-  --            else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
-  -- intfs <- getEnv $ effIntfs . at effName
-  -- case intfs of
-  --   Just ifs -> do let intfNames = map (\e -> e ^.funcName) _ehandleBindings 
-  --                  if L.sort ifs == L.sort intfNames then return ()
-  --                  else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames
-  --   Nothing -> do
-  --     throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
+  effName <- if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVar
+             else if not $ isn't _EffApp _ehandleEff then return $ _ehandleEff ^.effAppName
+             else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
+  intfs <- getEnv $ effIntfs . at effName
+  case intfs of
+    Just ifs -> do let intfNames = map (\e -> e ^.funcName) _ehandleBindings 
+                   if L.sort ifs == L.sort intfNames then return ()
+                   else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames
+    Nothing -> do
+      throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   -- remove the handled effects
   removeEff effs _ehandleEff
 inferExprEffType ETC{..} = return $ EffList [] _eloc
