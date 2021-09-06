@@ -223,8 +223,13 @@ mergeEffs a b = do
 
 removeEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 removeEff f@EffList {} e@EffList {} = do
-  let fl = f ^. effList
-      el = e ^. effList
+  es <- getEnv effs
+  let (fl, fvl) = L.partition (\e -> isn't _EffVar e ||
+                                    (isn't _Nothing $ M.lookup (name2String $ _effVar e) es))
+                               (f ^. effList)
+      (el, evl) = L.partition (\e -> isn't _EffVar e ||
+                                    (isn't _Nothing $ M.lookup (name2String $ _effVar e) es))
+                               (e ^. effList)
       pos = _effLoc f
   l <-
     foldM
@@ -233,7 +238,14 @@ removeEff f@EffList {} e@EffList {} = do
       )
       fl
       el
-  return $ EffList l pos
+  vl <-
+    foldM
+      ( \l e -> return $ 
+          l L.\\ (map (l !!) (L.findIndices (aeq e) l))
+      )
+      fvl
+      evl
+  return $ EffList (L.sortBy acompare l ++ L.sortBy acompare vl) pos
 removeEff f e = do
   fl <- toEffList f
   el <- toEffList e

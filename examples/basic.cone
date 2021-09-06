@@ -19,7 +19,7 @@ fun main<a>() : io<a> unit {
    a = a *5
    handle e<a> {
      test(0.1)
-     test(1)
+     test(a)
    } with {
       fun test<a>(a11: a) : e<a> a {
          print(a11)
