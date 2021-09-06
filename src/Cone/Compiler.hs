@@ -10,6 +10,7 @@ import Control.Monad
 import Control.Monad.Except
 import Data.Proxy
 
+-- | Compile a file
 compile :: [FilePath] -> FilePath -> String -> ExceptT String IO String
 compile paths f target = do
   (env, id, m) <- loadModule paths f

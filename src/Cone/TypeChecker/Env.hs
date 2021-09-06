@@ -55,16 +55,19 @@ initialEnv =
 
 type EnvEff = Eff Env String
 
+-- | Get value by a lens from env
 getEnv :: (Has EnvEff sig m) => Getter Env a -> m a
 getEnv l = do
   env <- get @Env
   return $ view l env
 
+-- | Set value by a lens into env
 setEnv :: (Has EnvEff sig m) => b -> Setter Env Env a b -> m ()
 setEnv v l = do
   env <- get @Env
   put $ set l v env
 
+-- | Run under a local scope
 underScope :: (Has EnvEff sig m) => m a -> m a
 underScope f = do
   env <- get @Env
@@ -72,23 +75,29 @@ underScope f = do
   put env
   return res
 
+-- | Set a function type into env
 setFuncType :: (Has EnvEff sig m) => String -> Type -> m ()
 setFuncType n t = do
   setEnv (Just t) $ funcs .at n
   l <- getEnv localState
+  -- clear the local state
   setEnv (M.delete n l) localState
 
+-- | Get a function type into env
 getFuncType :: (Has EnvEff sig m) => String -> m Type
 getFuncType n = do
+  -- try to find in local state first
   v <- getEnv $ localState .at n
   case v of
     Just v -> return v
     Nothing -> do
+      -- try to find in local scope
       v <- getEnv $ funcs .at n
       case v of
         Just v -> return v
         Nothing -> throwError $ "cannot find variable: " ++ n
 
+-- | Add effect interface into env
 addEffIntfs :: (Has EnvEff sig m) => String -> String -> m ()
 addEffIntfs effName intfName = do
   ifs <- getEnv $ effIntfs . at effName
@@ -96,40 +105,49 @@ addEffIntfs effName intfName = do
                    Just ifs -> intfName:ifs
                    Nothing -> [intfName]) $ effIntfs . at effName
 
+-- | Generate a free type variable name
 freeVarName :: Int -> TVar
 freeVarName i = makeName "$tvar" $ toInteger i
 
+-- | Generate a free effect type variable name
 freeEffVarName :: Int -> EffVar
 freeEffVarName i = makeName "$evar" $ toInteger i
 
+-- | Add all free type variables into bound variable list
 closeType :: Type -> Bind [TVar] Type
 closeType t =
   let fvars = t ^.. fv
    in bind fvars t
 
+-- | Add all free eff type variables into bound variable list
 closeEffType :: EffectType -> Bind [TVar] EffectType
 closeEffType t =
   let fvars = t ^.. fv
    in bind fvars t
 
+-- | Bind a type with type variables
 bindType :: [TVar] -> Type -> Type
 bindType bvs t = BoundType (bind bvs t) (_tloc t)
 
+-- | Bind an effect type with type variables
 bindTypeEffVar :: [EffVar] -> Type -> Type
 bindTypeEffVar bvs t = BoundEffVarType (bind bvs t) (_tloc t)
 
+-- | Refresh all bound type variables with new names
 refresh :: (Has EnvEff sig m) => [TVar] -> Expr -> m ([TVar], Expr)
 refresh vs e = do
   let pos = _eloc e
   nvs <- mapM (\_ -> freeVarName <$> fresh) vs
   return (nvs, substs [(f, TVar t pos) | f <- vs | t <- nvs] e)
 
+-- | Refresh all bound eff type variables witn new names
 refreshEffVar :: (Has EnvEff sig m) => [EffVar] -> Expr -> m ([EffVar], Expr)
 refreshEffVar vs e = do
   let pos = _eloc e
   nvs <- mapM (\_ -> freeEffVarName <$> fresh) vs
   return (nvs, substs [(f, EffVar t pos) | f <- vs | t <- nvs] e)
 
+-- | Unbind a type by all bound variables with new names
 unbindType :: (Has EnvEff sig m) => Type -> m Type
 unbindType b@BoundType {..} = do
   let (vs, t) = unsafeUnbind _boundType
@@ -143,6 +161,7 @@ unbindType b@BoundEffVarType {..} = do
   unbindType $ substs [(f, EffVar t pos) | f <- vs | t <- nvs] t
 unbindType t = return t
 
+-- | Just simply unbind a type
 unbindTypeSimple :: Type -> ([TVar], [EffVar], Type)
 unbindTypeSimple b@BoundType {..} = 
   let (bvs, t) = unsafeUnbind _boundType
