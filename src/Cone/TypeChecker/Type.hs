@@ -228,10 +228,8 @@ removeEff f@EffList {} e@EffList {} = do
       pos = _effLoc f
   l <-
     foldM
-      ( \l e -> do
-          case L.findIndex (\a -> acompare e a /= LT) l of
-            Just idx -> return $ L.deleteBy aeq e l
-            Nothing -> throwError $ "eff " ++ ppr l ++ " has no " ++ ppr e ++ ", cannot be removed" ++ ppr pos
+      ( \l e -> return $ 
+          l L.\\ (map (l !!) (L.findIndices (\a -> acompare e a /= LT) l))
       )
       fl
       el
