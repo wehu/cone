@@ -91,10 +91,10 @@ getFuncType n = do
 
 addEffIntfs :: (Has EnvEff sig m) => String -> String -> m ()
 addEffIntfs effName intfName = do
-  is <- getEnv $ effIntfs . at effName
-  case is of
-    Just is -> setEnv (Just $ intfName:is) $ effIntfs . at effName
-    Nothing -> setEnv (Just [intfName]) $ effIntfs . at effName
+  ifs <- getEnv $ effIntfs . at effName
+  setEnv (Just $ case ifs of
+                   Just ifs -> intfName:ifs
+                   Nothing -> [intfName]) $ effIntfs . at effName
 
 freeVarName :: Int -> TVar
 freeVarName i = makeName "$tvar" $ toInteger i
