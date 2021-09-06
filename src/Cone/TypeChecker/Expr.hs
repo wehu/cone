@@ -309,19 +309,19 @@ inferExprEffType EHandle {..} = underScope $ do
     eff <- mergeEffs implEff intfExprEff
     let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
     setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = eff}) $ funcs . at fn
-  et <- inferExprEffType _ehandleScope
+  effs <- inferExprEffType _ehandleScope
   -- check intefaces
   effName <- if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVar
              else if not $ isn't _EffApp _ehandleEff then return $ _ehandleEff ^.effAppName
              else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
   intfs <- getEnv $ effIntfs . at effName
   case intfs of
-    Just is -> do let intfNames = map (\e -> e ^.funcName) _ehandleBindings 
-                  if L.sort is == L.sort intfNames then return ()
-                  else throwError $ "eff interfaces mismatch: " ++ ppr is ++ " vs " ++ ppr intfNames
+    Just ifs -> do let intfNames = map (\e -> e ^.funcName) _ehandleBindings 
+                   if L.sort ifs == L.sort intfNames then return ()
+                   else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames
     Nothing -> do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
-  removeEff et _ehandleEff
+  removeEff effs _ehandleEff
 inferExprEffType ETC{..} = return $ EffList [] _eloc
 
 checkEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
