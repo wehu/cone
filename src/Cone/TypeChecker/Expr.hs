@@ -339,6 +339,8 @@ inferExprEffType EHandle {..} = underScope $ do
     intfExprEff <- inferExprEffType $ fromJust $ intf ^. funcExpr
     eff <- mergeEffs implEff intfExprEff
     let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
+    fs <- getEnv funcs
+    setEnv (M.delete fn fs) funcs
     setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = eff}) $ funcs . at fn
   effs <- inferExprEffType _ehandleScope
   resT <- inferExprType _ehandleScope
