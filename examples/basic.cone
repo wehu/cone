@@ -12,7 +12,6 @@ fun test() : state<i32> unit {
 
 fun main() : io unit {
    var a = 0
-
    handle state<i32> {
       test()
    } with {
@@ -21,6 +20,7 @@ fun main() : io unit {
       }
       fun set(v:i32) {
          a = v
+         resume(unit)
       }
    }
    print(a)

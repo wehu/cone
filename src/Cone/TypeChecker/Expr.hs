@@ -346,6 +346,9 @@ inferExprEffType EHandle {..} = underScope $ do
     binds <- collectEffVarBindings intfEff implEff
     checkEffVarBindings binds
 
+    intfResT <- inferExprType $ fromJust $ _funcExpr intf
+    checkTypeMatch intfResT resT
+
   -- check intefaces
   effName <- if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVar
              else if not $ isn't _EffApp _ehandleEff then return $ _ehandleEff ^.effAppName
@@ -369,9 +372,9 @@ checkEffIntfType f = do
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
-  -- mapM_
-  --   (\(n, t) -> setFuncType n t)
-  --   (f ^. funcArgs)
+  mapM_
+    (\(n, t) -> setFuncType n t)
+    (f ^. funcArgs)
   -- case f ^. funcExpr of
   --   Just e -> do
   --     eType <- inferExprType e
