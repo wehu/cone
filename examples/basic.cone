@@ -22,6 +22,7 @@ fun main<a>(b: a) : io unit {
    } with {
       fun test(a: a) : a {
          print(a)
+         resume(a)
          a
       }
    }

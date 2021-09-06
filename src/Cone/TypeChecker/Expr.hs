@@ -317,12 +317,18 @@ inferExprEffType ESeq {..} =
     _eseq
 inferExprEffType EHandle {..} = underScope $ do
   forM_ _ehandleBindings $ \intf -> do
+
     let fn = (intf ^. funcName)
     checkEffIntfType intf
     -- get inteface effect type
     implFt' <- unbindType $ funcDefType intf
     implEffs <- mergeEffs (_tfuncEff implFt') _ehandleEff
     let implFt = implFt'{_tfuncEff=implEffs}
+
+    -- add resume function type
+    let resumeT = bindTypeEffVar [] $ bindType [] $ 
+           TFunc [_tfuncResult implFt] (EffList [] _eloc) (_tfuncResult implFt) _eloc
+    setEnv (Just resumeT) $ funcs . at "resume"
     
     -- check if interface defintion match with implemention's or not
     intfT <- getFuncType fn >>= unbindType
@@ -338,6 +344,7 @@ inferExprEffType EHandle {..} = underScope $ do
     -- infer the result effect type
     intfExprEff <- inferExprEffType $ fromJust $ intf ^. funcExpr
     eff <- mergeEffs implEff intfExprEff
+
     let (bts, ets, ft) = unbindTypeSimple $ funcDefType intf
     setEnv (Just $ bindTypeEffVar ets $ bindType bts $ ft {_tfuncEff = eff}) $ funcs . at fn
   effs <- inferExprEffType _ehandleScope
