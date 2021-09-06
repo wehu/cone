@@ -20,7 +20,7 @@ fun main<a>(b: a) : io unit {
    handle e<a> {
       test(b)
    } with {
-      fun test(a1: a) : unit {
+      fun test(a1: a) {
          print(a1)
          if a == 1 {
            resume(a1)

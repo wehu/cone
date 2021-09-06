@@ -486,7 +486,7 @@ term =
                                             P.<?> "case expression"
                                       )
                                 P.<|> (A.EWhile <$ kWhile <*> expr <*> braces exprSeq P.<?> "while expression")
-                                P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
+                                P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 handle $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
                                 P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
                                 P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "assign expression")
                                 P.<|> (A.ETC <$> tc P.<?> "tc expression")
@@ -519,6 +519,12 @@ term =
     varOrAssign v e pos = case e of
       Nothing -> A.EVar v pos
       Just e -> A.EApp (A.EVar "____assign" pos) [] [A.EVar v pos, e] pos
+
+handle :: Parser A.FuncDef
+handle = do
+  pos <- getPos
+  A.FuncDef <$ kFunc <*> ident <*> boundTVars <*> boundEffVars <*> parens funcArgs
+         <*> return (A.EffList [] pos) <*> return (A.TPrim A.Unit pos) <*> braces (Just <$> exprSeq) <*> getPos
 
 expr :: Parser A.Expr
 expr = PE.buildExpressionParser exprTable term
