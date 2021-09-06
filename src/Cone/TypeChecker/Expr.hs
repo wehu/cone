@@ -153,6 +153,7 @@ inferExprType (ETC e@TCApp{..} _) = do
   else inferTCExprType v e >>= inferType
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
+-- | Collect the tensor informations
 collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(String, Type)])
 collectTCExprTypeInfo TCAccess{..} = do
   v <- getFuncType _tcVarName
@@ -181,6 +182,7 @@ collectTCExprTypeInfo TCVar{..} = do
   t <- getFuncType _tcVarName
   return (t, [])
 
+-- | Infer a tensor comprehensive expression's type
 inferTCExprType :: (Has EnvEff sig m) => TCExpr -> TCExpr -> m Type
 inferTCExprType a@TCAccess{..} e = do
   info <- collectTCExprTypeInfo e
@@ -201,6 +203,7 @@ inferTCExprType a@TCAccess{..} e = do
   return tt
 inferTCExprType t0 t1 = throwError $ "unsupported tc expr: " ++ ppr t0 ++ " and " ++ ppr t1 ++ ppr (_tcloc t0)
 
+-- | Infer a pattern's type
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
 inferPatternType PVar {..} = inferExprType $ EVar _pvar _ploc
 inferPatternType PApp {..} = do
@@ -212,6 +215,7 @@ inferPatternType PApp {..} = do
   inferAppResultType appFuncType _pappTypeArgs args
 inferPatternType PExpr {..} = inferExprType _pExpr
 
+-- | Bind a pattern's variables with real types
 bindPatternVarTypes :: (Has EnvEff sig m) => Bool -> Pattern -> Expr -> m Type
 bindPatternVarTypes isState p e = do
   eType <- inferExprType e
@@ -243,6 +247,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   let cntr =
         ( \arg ->
+            -- construct a type with type variables
             let newTVar = do
                   fvn <- fresh
                   let vn = name2String $ freeVarName fvn
@@ -270,6 +275,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
     []
     [extracePatternVarTypes arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
 
+-- | Infer the expression's effect type
 inferExprEffType :: (Has EnvEff sig m) => Expr -> m EffectType
 inferExprEffType EVar {..} = return $ EffList [] _eloc
 inferExprEffType ELit {..} = return $ EffList [] _eloc
