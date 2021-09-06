@@ -20,6 +20,7 @@ import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 import Unbound.Generics.LocallyNameless.Bind
 
+-- | Infer type's kind
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
 inferTypeKind a@TApp {..} = do
   ak <- inferTypeKind $ TVar _tappName _tloc
@@ -73,6 +74,7 @@ inferTypeKind f@TFunc {..} = do
 inferTypeKind n@TNum {..} = return $ KStar _tloc
 inferTypeKind t = return $ KStar $ _tloc t
 
+-- | Eval a type if there is number calc
 evalType :: Type -> [Type] -> (Int -> Int -> Int) -> Type
 evalType t args f =
   if all (not . isn't _TNum) args
@@ -81,6 +83,7 @@ evalType t args f =
        in TNum (L.foldl' (\a b -> f <$> a <*> b) arg rest) (_tloc t)
     else t
 
+-- | Simplize the type
 inferType :: (Has EnvEff sig m) => Type -> m Type
 inferType a@TApp {..} = do
   args <- mapM inferType _tappArgs
@@ -112,12 +115,14 @@ inferType f@TFunc {..} = do
   return f {_tfuncArgs = args, _tfuncEff = eff, _tfuncResult = res}
 inferType t = return t
 
+-- | Check a type kind
 checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
 checkTypeKind k = do
   case k of
     KStar {} -> return ()
     _ -> throwError $ "expected a star kind, but got " ++ ppr k ++ ppr (_kloc k)
 
+-- | Infer an effect type kind
 inferEffKind :: (Has EnvEff sig m) => EffectType -> m EffKind
 inferEffKind v@EffVar{..} = do
   k <- getEnv $ effs . at (name2String _effVar)
@@ -149,6 +154,7 @@ inferEffKind l@EffList {..} = do
   mapM_ checkEffKind ls
   return $ EKList ls _effLoc
 
+-- | Infer effect type
 inferEffectType :: (Has EnvEff sig m) => EffectType -> m EffectType
 inferEffectType v@EffVar {} = return v
 inferEffectType a@EffApp {..} = do
@@ -158,6 +164,7 @@ inferEffectType l@EffList {..} = do
   ls <- mapM inferEffectType _effList
   return l {_effList = ls}
 
+-- | Check effect kind
 checkEffKind :: (Has EnvEff sig m) => EffKind -> m ()
 checkEffKind k = do
   case k of
@@ -165,18 +172,21 @@ checkEffKind k = do
     EKList {..} -> mapM_ checkEffKind _ekList
     _ -> throwError $ "expected a star eff kind, but got " ++ ppr k ++ ppr (_ekloc k)
 
+-- | Check if type match or not
 checkTypeMatch :: (Has EnvEff sig m) => Type -> Type -> m ()
 checkTypeMatch a b = do
   if aeq a b
     then return ()
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 
+-- | Check if type kind match or not
 checkKindMatch :: (Has EnvEff sig m) => Kind -> Kind -> m ()
 checkKindMatch a b = do
   if aeq a b
     then return ()
     else throwError $ "type kind mismatch: " ++ ppr a ++ ppr (_kloc a) ++ " vs " ++ ppr b ++ ppr (_kloc b)
 
+-- | Check effect type match or not
 checkEffTypeMatch :: (Has EnvEff sig m) => EffectType -> EffectType -> m ()
 checkEffTypeMatch a b = do
   al <- toEffList a
@@ -186,12 +196,14 @@ checkEffTypeMatch a b = do
     then return ()
     else throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
+-- | Check if effect type kind match or not
 checkEffKindMatch :: (Has EnvEff sig m) => EffKind -> EffKind -> m ()
 checkEffKindMatch a b = do
   if aeq a b
     then return ()
     else throwError $ "eff type kind mismatch: " ++ ppr a ++ ppr (_ekloc a) ++ " vs " ++ ppr b ++ ppr (_ekloc b)
 
+-- | Convert an effect type to effect list type
 toEffList' :: EffectType -> EffectType
 toEffList' a@EffApp {..} = EffList [a] _effLoc
 toEffList' v@EffVar {..} = EffList [v] _effLoc
@@ -199,16 +211,19 @@ toEffList' l@EffList {} =
   let ls = join $ map (_effList . toEffList') (_effList l)
    in EffList ls (_effLoc l)
 
+-- | Convert an effect type to effect list type
 toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
 toEffList eff = do
   es <- getEnv effs
   let effs = toEffList' eff
+      -- first part is application effect type and second part is effect variable list
       (el, vl) = L.partition (\e -> isn't _EffVar e ||
                                     (isn't _Nothing $ M.lookup (name2String $ _effVar e) es))
                                (_effList effs)
       al = (L.sortBy acompare el) ++ (L.sortBy acompare vl)
   return effs{_effList=al}
 
+-- | Merge two effect types
 mergeEffs :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 mergeEffs a@EffList {} b@EffList {} = do
   let al = a ^. effList
@@ -221,6 +236,7 @@ mergeEffs a b = do
   bl <- toEffList b
   mergeEffs al bl
 
+-- | Remove effect types
 removeEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m EffectType
 removeEff f@EffList {} e@EffList {} = do
   -- es <- getEnv effs
@@ -254,6 +270,7 @@ removeEff f e = do
   el <- toEffList e
   removeEff fl el
 
+-- | Apply type arguments to application type
 applyTypeArgs :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 applyTypeArgs t args = do
   let (bts, ets, tt) = unbindTypeSimple t
@@ -265,6 +282,7 @@ applyTypeArgs t args = do
         binds = [(n, t) | n <- L.take argsLen bts | t <- args]
     return $ bindTypeEffVar ets $ bindType (L.drop argsLen bts) $ substs binds tt
 
+-- | Infer a result type of application type
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m Type
 inferAppResultType f@TFunc {} bargs args = do
   let fArgTypes = _tfuncArgs f
@@ -281,6 +299,7 @@ inferAppResultType f@TFunc {} bargs args = do
 inferAppResultType t _ [] = return t
 inferAppResultType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
+-- | Infer the result effect type of application type
 inferAppResultEffType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m EffectType
 inferAppResultEffType f@TFunc {} targs args = do
   let fArgTypes = _tfuncArgs f
@@ -302,6 +321,7 @@ inferAppResultEffType f@TFunc {} targs args = do
 inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
+-- | Collect all variable bindings
 collectVarBindings :: (Has EnvEff sig m) => Type -> Type -> m [(TVar, Type)]
 collectVarBindings a@TPrim {} b@TPrim {} = do
   checkTypeMatch a b
@@ -368,6 +388,7 @@ collectVarBindings a@TNum {} b@TNum {} =
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectVarBindings a b = throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 
+-- | Return if an effect variable is local variable or not
 isEffVar :: (Has EnvEff sig m) => EffectType -> m Bool
 isEffVar e@EffVar{..} = do
   found <- getEnv $ effs . at (name2String _effVar)
@@ -376,6 +397,7 @@ isEffVar e@EffVar{..} = do
     Nothing -> return True
 isEffVar _ = return False
 
+-- | Check all variable bindings in effect type
 collectVarBindingsInEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m [(TVar, Type)]
 collectVarBindingsInEff s@EffVar{} _ = return []
 collectVarBindingsInEff a@EffApp{} b@EffApp{} =
@@ -403,6 +425,7 @@ collectVarBindingsInEff a@EffList{} b@EffList{} = do
       [collectVarBindingsInEff aarg barg | aarg <- al | barg <- take (L.length al) bl]
 collectVarBindingsInEff a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
+-- | Check all effect variables 
 collectEffVarBindings :: (Has EnvEff sig m) => EffectType -> EffectType -> m [(EffVar, EffectType)]
 collectEffVarBindings EffVar{..} e = do
   is <- isEffVar e
@@ -453,6 +476,7 @@ checkVarBindings bindings = do
     M.empty
     bindings
 
+-- | Check all effect variable bindings
 checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m ()
 checkEffVarBindings bindings = do
   foldM_
@@ -467,6 +491,7 @@ checkEffVarBindings bindings = do
     M.empty
     bindings
 
+-- | Get a function type from a function defintion
 funcDefType :: FuncDef -> Type
 funcDefType f =
   let pos = f ^. funcLoc
@@ -481,6 +506,7 @@ funcDefType f =
       bft = bindTypeEffVar bes ft
    in bft
 
+-- | Extract a tensor type's shape
 extractTensorShape :: (Has EnvEff sig m) => Type -> m [Type]
 extractTensorShape t@TApp{..} = do
   if name2String _tappName /= "____pair"
@@ -495,6 +521,7 @@ extractTensorShape t@TApp{..} = do
               _ -> throwError $ "expected a tnum type, but got " ++ ppr t ++ ppr _tloc 
 extractTensorShape t = throwError $ "expected a pair type, but got " ++ ppr t ++ ppr (_tloc t)
 
+-- | Extract a tensor type's information
 extractTensorInfo :: (Has EnvEff sig m) => Type -> m (Type, [Type])
 extractTensorInfo t@TApp{..} =
   if name2String _tappName /= "tensor" 
@@ -506,6 +533,7 @@ extractTensorInfo t@TApp{..} =
                 return (et, s)
 extractTensorInfo t = throwError $ "expected a tensor type, but got " ++ ppr t ++ ppr (_tloc t)
 
+-- | Construct a number list type based on pair types
 toTensorShape :: (Has EnvEff sig m) => [Type] -> m Type
 toTensorShape t@(d0:d1:[]) = do
   if isn't _TNum d0 || isn't _TNum d1
@@ -518,6 +546,7 @@ toTensorShape t@(d0:ds) = do
   else return $ TApp (s2n "____pair") [d0, ds'] (_tloc d0) 
 toTensorShape ds = throwError $ "unsupported dims " ++ ppr ds
 
+-- | Construct a tensor type based on number list type
 toTensorType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 toTensorType t shape = do
   shape' <- toTensorShape shape
