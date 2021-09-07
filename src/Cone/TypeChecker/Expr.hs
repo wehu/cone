@@ -155,7 +155,7 @@ inferExprType EHandle {..} = underScope $ do
 
     -- get inteface effect type
     handleT <- unbindType $ funcDefType intf
-    intfT <- getFuncType _eloc fn >>= unbindType
+    intfT <- getFuncType (intf ^. funcLoc) fn >>= unbindType
 
     -- add resume function type
     let resumeT =
