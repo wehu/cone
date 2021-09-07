@@ -149,11 +149,10 @@ class Backend t where
                        Just e -> do es <- genExpr proxy e
                                     return $ callWithCpsEmptyState es
                        Nothing -> return "pass"
-  -- genExpr proxy EWhile{..} = do
-  --   c <- head <$> genExpr proxy _ewhileCond
-  --   es <- genExpr proxy _ewhileBody
-  --   return $ [vsep ["while" <+> c <> colon
-  --                  ,indent 4 $ vsep es]]
+  genExpr proxy EWhile{..} = do
+    c <- genExpr proxy _ewhileCond
+    es <- genExpr proxy _ewhileBody
+    return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["__k", "__state", c, es]
   genExpr proxy ELet{..} = do
     p <- genPattern proxy _eletPattern
     e <- genExpr proxy _eletExpr
@@ -204,7 +203,13 @@ class Backend t where
      vsep ["def "<> funcN proxy "print(a):"
           ,indent 4 $ "print(a)"
           ,"def ____update_state(state, k, v):"
-          ,indent 4 $ "state[k] = v"]
+          ,indent 4 $ "state[k] = v"
+          ,"def ____while(__k, __state, cond, body):"
+          ,indent 4 $ vsep ["if cond(__k, __state):"
+                           ,indent 4 $ "[body(__k, __state), ____while(__k, __state, cond, body)][-1]"
+                           ,"else:"
+                           ,indent 4 $ "pass"]
+          ,"unit = None"]
 
   genEpilogue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genEpilogue proxy = do
