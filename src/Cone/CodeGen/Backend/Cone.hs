@@ -7,4 +7,4 @@ import Prettyprinter
 data Cone a = Cone
 
 instance Backend Cone where
-  gen proxy m = pretty m
+  gen proxy m = return $ pretty m

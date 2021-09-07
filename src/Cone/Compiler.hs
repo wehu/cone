@@ -15,6 +15,10 @@ compile :: [FilePath] -> FilePath -> String -> ExceptT String IO String
 compile paths f target = do
   (env, id, m) <- loadModule paths f
   case target of
-    "cone" -> return $ show $ gen (Cone :: (Cone Target)) m
-    "python" -> return $ show $ gen (Python :: (Python Target)) m
+    "cone" -> case gen (Cone :: (Cone Target)) m of
+                Left err -> throwError err
+                Right doc -> return $ show doc
+    "python" -> case gen (Python :: (Python Target)) m of
+                  Left err -> throwError err
+                  Right doc -> return $ show doc
     _ -> throwError $ "unknown target: " ++ target
