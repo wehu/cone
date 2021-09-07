@@ -32,6 +32,7 @@ inferExprType a@EApp {..} = do
     then throwError $ "expected 2 arguments: " ++ ppr a
     else if isn't _EVar $ head _eappArgs
          then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs)
+         -- first argument is the assigned variable which should be in local state
          else do let vn = (head _eappArgs) ^.evarName
                  v <- getEnv $ localState . at vn
                  case v of
@@ -140,10 +141,43 @@ inferExprType EHandle {..} = do
   ek <- inferEffKind _ehandleEff
   checkEffKind ek
   -- infer handle's expression's type
-  bodyType <- inferExprType _ehandleScope
-  btk <- inferTypeKind bodyType
+  resT <- inferExprType _ehandleScope
+  btk <- inferTypeKind resT
   checkTypeKind btk
-  inferType bodyType
+  forM_ _ehandleBindings $ \intf -> underScope $ do
+
+    let fn = (intf ^. funcName)
+        emptyEff = EffList [] _eloc
+        unit = TPrim Unit _eloc
+
+    setupEffIntfType intf
+
+    -- get inteface effect type
+    handleT <- unbindType $ funcDefType intf
+    intfT <- getFuncType fn >>= unbindType
+
+    -- add resume function type
+    let resumeT = bindTypeEffVar [] $ bindType [] $ 
+           TFunc [_tfuncResult intfT] emptyEff resT _eloc
+    setEnv (Just resumeT) $ funcs . at "resume"
+    
+    -- check if interface defintion match with implemention's or not
+    let handleT' = handleT{_tfuncEff=emptyEff, _tfuncResult=unit}
+        intfT' = intfT{_tfuncEff=emptyEff, _tfuncResult=unit}
+    binds <- collectVarBindings intfT' handleT'
+    checkVarBindings binds
+
+    -- check expression result type
+    intfResT <- inferExprType $ fromJust $ _funcExpr intf
+    checkTypeMatch intfResT resT
+
+    -- check scope expr again
+    setEnv (Just handleT') $ funcs . at fn
+    t <- inferExprType _ehandleScope
+    k <- inferTypeKind t
+    checkTypeKind k
+  
+  inferType resT
 inferExprType (ETC e@TCApp{..} _) = do
   let v:e:[] = _tcAppArgs
   if _tcAppName /= "=" && _tcAppName /= "+=" &&
@@ -308,6 +342,7 @@ inferExprEffType EApp {..} = do
   mapM_ checkTypeKind argKinds
   inferAppResultEffType appFuncType _eappTypeArgs argTypes
 inferExprEffType ESeq {..} =
+  -- merge effects
   foldM
     ( \s e -> do
         et <- inferExprEffType e
@@ -317,31 +352,6 @@ inferExprEffType ESeq {..} =
     _eseq
 inferExprEffType EHandle {..} = underScope $ do
   effs <- inferExprEffType _ehandleScope
-  resT <- inferExprType _ehandleScope
-  forM_ _ehandleBindings $ \intf -> underScope $ do
-
-    let fn = (intf ^. funcName)
-    checkEffIntfType intf
-    -- get inteface effect type
-    implFt' <- unbindType $ funcDefType intf
-    intfT <- getFuncType fn >>= unbindType
-    let implFt = implFt'{_tfuncEff=_tfuncEff intfT, _tfuncResult=resT}
-
-    -- add resume function type
-    let resumeT = bindTypeEffVar [] $ bindType [] $ 
-           TFunc [_tfuncResult intfT] (EffList [] _eloc) resT _eloc
-    setEnv (Just resumeT) $ funcs . at "resume"
-    
-    -- check if interface defintion match with implemention's or not
-    if L.length (_tfuncArgs intfT) /= L.length (_tfuncArgs implFt)
-    then throwError $ "interface arguments number mismatch: " ++ ppr intfT ++ " vs " ++ ppr implFt ++ ppr _eloc
-    else forM_ [(a, b) | a <- _tfuncArgs intfT | b <- _tfuncArgs implFt] $ \(a, b) -> do
-           binds <- collectVarBindings a b
-           checkVarBindings binds
-
-    -- check expression result type
-    intfResT <- inferExprType $ fromJust $ _funcExpr intf
-    checkTypeMatch intfResT resT
 
   -- check intefaces
   effName <- if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVar
@@ -358,9 +368,9 @@ inferExprEffType EHandle {..} = underScope $ do
   removeEff effs _ehandleEff
 inferExprEffType ETC{..} = return $ EffList [] _eloc
 
--- | Check effect inferface type
-checkEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
-checkEffIntfType f = do
+-- | Setup for effect inferface type
+setupEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
+setupEffIntfType f = do
   let pos = f ^. funcLoc
       bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
@@ -369,9 +379,3 @@ checkEffIntfType f = do
   mapM_
     (\(n, t) -> setFuncType n t)
     (f ^. funcArgs)
-  -- case f ^. funcExpr of
-  --   Just e -> do
-  --     eType <- inferExprType e
-  --     resultType <- inferType $ f ^. funcResultType
-  --     checkTypeMatch eType resultType
-  --   Nothing -> return ()
