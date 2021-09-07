@@ -206,9 +206,10 @@ class Backend t where
   genPatternMatch proxy PVar{..} e = return $ "____update_state(__state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> ")"
   genPatternMatch proxy PExpr{..} e = return e
   genPatternMatch proxy PApp{..} e = do
-    bindings <- mapM (\(p, e) -> 
-                encloseSep lbracket rbracket comma 
-                 [genPatternMatch proxy p e, "isinstance("<> e <> typeN proxy _pappName)] <> brackets "-1") 
+    bindings <- mapM (\(p, e) -> do
+                b <- genPatternMatch proxy p e
+                return $ encloseSep lbracket rbracket comma 
+                 [b, "isinstance(" <> e <> comma <+> typeN proxy _pappName <> ")"] <> brackets "-1") 
                [(arg, parens $ e <> ".f" <> pretty id) | arg <- _pappArgs | id <- [0::Int ..]]
     return $ encloseSep lbracket rbracket comma bindings
 
