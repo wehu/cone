@@ -111,8 +111,8 @@ class Backend t where
                       f = "self.f" ++ show i
                       a = "t" ++ show (i + 1)
                    in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
-          ctrFunc fn tn = vsep ["def" <+> fn <> genArgs ["__k", "__state"] <> ":"
-                       ,indent 4 ("return" <+> exprToCps (tn <> genArgs []))]
+          ctrFunc fn tn = vsep ["def" <+> fn <> genArgs [] <> ":"
+                       ,indent 4 ("return" <+> (tn <> genArgs []))]
   
   genEffectDef :: (Has EnvEff sig m) => t Target -> EffectDef -> m (Doc a)
   genEffectDef proxy e = return emptyDoc
@@ -125,7 +125,7 @@ class Backend t where
               Nothing -> return "pass"
     return $ vsep ["def" <+> funcN proxy _funcName <> genArgs <> colon
          ,indent 4 body]
-    where genArgs = encloseSep lparen rparen comma $ map pretty $ "__k":"__state":(_funcArgs ^..traverse._1)
+    where genArgs = encloseSep lparen rparen comma $ "__k":"__state":(map (funcN proxy) $ _funcArgs ^..traverse._1)
   
   genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m (Doc a)
   genExpr proxy EVar{..} = 
@@ -144,7 +144,7 @@ class Backend t where
   genExpr proxy ELam{..} = do
     es <- genBody _elamExpr
     return $ parens $ "lambda __k, __state" <> colon <+> es
-    where genArgs = encloseSep emptyDoc emptyDoc comma $ (map (funcN proxy) $ _elamArgs ^..traverse._1)
+    where genArgs = encloseSep emptyDoc emptyDoc comma $ "__k":"__state":(map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
                                     return $ "lambda" <+> genArgs <> colon <+> callWithCpsEmptyState es
@@ -183,7 +183,7 @@ class Backend t where
            return $ exprToCps $ callWithCps f <> args
     where genArgs = do
             args <- mapM (\a -> callWithCps <$> genExpr proxy a) _eappArgs
-            return $ encloseSep lparen rparen comma $ args
+            return $ encloseSep lparen rparen comma $ "__k":"__state":args
           binary :: (Has EnvEff sig m) => String -> m (Doc a)
           binary op = do
             lhs <- callWithCps <$> genExpr proxy (_eappArgs !! 0)
@@ -200,7 +200,7 @@ class Backend t where
   genPrologue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genPrologue proxy = 
     return $
-     vsep ["def "<> funcN proxy "print(a):"
+     vsep ["def "<> funcN proxy "print(k, s, a):"
           ,indent 4 $ "print(a)"
           ,"def ____update_state(state, k, v):"
           ,indent 4 $ "state[k] = v"
