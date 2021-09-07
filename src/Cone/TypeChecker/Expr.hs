@@ -23,7 +23,7 @@ import Unbound.Generics.LocallyNameless.Unsafe
 -- | Infer expression's type
 inferExprType :: (Has EnvEff sig m) => Expr -> m Type
 inferExprType EVar {..} = do
-  getFuncType _evarName
+  getFuncType _eloc _evarName
 inferExprType a@EApp {..} = do
   -- check assign variable
   if _eappFunc ^. evarName == "____assign"
@@ -155,7 +155,7 @@ inferExprType EHandle {..} = underScope $ do
 
     -- get inteface effect type
     handleT <- unbindType $ funcDefType intf
-    intfT <- getFuncType fn >>= unbindType
+    intfT <- getFuncType _eloc fn >>= unbindType
 
     -- add resume function type
     let resumeT =
@@ -195,7 +195,7 @@ inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 -- | Collect the tensor informations
 collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(String, Type)])
 collectTCExprTypeInfo TCAccess {..} = do
-  v <- getFuncType _tcVarName
+  v <- getFuncType _tcloc _tcVarName
   (t, shape) <- extractTensorInfo v
   if L.length _tcIndices /= L.length shape
     then
@@ -229,7 +229,7 @@ collectTCExprTypeInfo TCApp {..} = do
           args
     _ -> throwError $ "unsupported tc function: " ++ _tcAppName ++ ppr _tcloc
 collectTCExprTypeInfo TCVar {..} = do
-  t <- getFuncType _tcVarName
+  t <- getFuncType _tcloc _tcVarName
   return (t, [])
 
 -- | Infer a tensor comprehensive expression's type

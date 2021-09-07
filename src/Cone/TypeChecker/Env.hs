@@ -90,8 +90,8 @@ setFuncType n t = do
   setEnv (M.delete n l) localState
 
 -- | Get a function type into env
-getFuncType :: (Has EnvEff sig m) => String -> m Type
-getFuncType n = do
+getFuncType :: (Has EnvEff sig m) => Location -> String -> m Type
+getFuncType pos n = do
   -- try to find in local state first
   v <- getEnv $ localState . at n
   case v of
@@ -101,7 +101,7 @@ getFuncType n = do
       v <- getEnv $ funcs . at n
       case v of
         Just v -> return v
-        Nothing -> throwError $ "cannot find variable: " ++ n
+        Nothing -> throwError $ "cannot find variable: " ++ n ++ ppr pos
 
 -- | Add effect interface into env
 addEffIntfs :: (Has EnvEff sig m) => String -> String -> m ()
