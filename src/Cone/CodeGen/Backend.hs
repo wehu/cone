@@ -193,6 +193,7 @@ class Backend t where
   genPattern :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
   genPattern proxy PVar{..} = return $ funcN proxy _pvar
   genPattern proxy PExpr{..} = head <$> genExpr proxy _pExpr
+  genPattern _ p = throwError $ "unsupported pattern: " ++ ppr p ++ ppr (_ploc p)
 
   genPrologue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genPrologue proxy = 
