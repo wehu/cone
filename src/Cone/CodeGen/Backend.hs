@@ -177,14 +177,14 @@ class Backend t where
   genPattern proxy PVar{..} = return $ funcN proxy _pvar
   genPattern proxy PExpr{..} = head <$> genExpr proxy _pExpr
 
-  genPrologue :: t Target -> Doc a
+  genPrologue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genPrologue proxy = 
-    vsep ["def "<> funcN proxy "print" <> "(a):"
+    return $ vsep ["def "<> funcN proxy "print" <> "(a):"
           ,indent 4 $ "print(a)" <+> line]
 
-  genEpilogue :: t Target -> Doc a
+  genEpilogue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genEpilogue proxy =
-    vsep ["if __name__ == \"__main__\":"
+    return $ vsep ["if __name__ == \"__main__\":"
           ,indent 4 $ funcN proxy "main" <> "()" <+> line]
   
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
@@ -192,14 +192,16 @@ genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef
 
 genModule :: (Has EnvEff sig m) => Backend t => t Target -> Module -> m (Doc a)
 genModule proxy Module{..} = do
+  pre <- genPrologue proxy
   imps <- mapM (genImport proxy) _imports
   tops <- mapM (genTopStmt proxy) _topStmts
+  pos <- genEpilogue proxy
   return $ vsep $
       -- [ "module" <+> namePath proxy _moduleName <+> line]
-        [genPrologue proxy]
+        [pre]
         ++ imps
         ++ tops
-        ++ [genEpilogue proxy]
+        ++ [pos]
 
 genTopStmt :: (Has EnvEff sig m) => Backend t => t Target -> TopStmt -> m (Doc a)
 genTopStmt proxy TDef{..} = genTypeDef proxy _tdef
