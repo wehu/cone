@@ -155,9 +155,8 @@ class Backend t where
     es <- genExpr proxy _ewhileBody
     return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["__k", "__state", c, es]
   genExpr proxy ELet{..} = do
-    p <- genPattern proxy _eletPattern
-    e <- genExpr proxy _eletExpr
-    return $ exprToCps $ "____update_state(__state, \"" <> p <> "\"," <+> callWithCps e <> ")"
+    e <- callWithCps <$> genExpr proxy _eletExpr
+    exprToCps <$> genPatternMatch proxy _eletPattern e
   genExpr proxy EAnn{..} = genExpr proxy _eannExpr
   genExpr proxy EApp{..} =
     let fn = _eappFunc ^.evarName
@@ -201,10 +200,13 @@ class Backend t where
       (encloseSep lbrace rbrace comma handlers) <> ")"
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
           
-  genPattern :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
-  genPattern proxy PVar{..} = return $ funcN proxy _pvar
-  genPattern proxy PExpr{..} = genExpr proxy _pExpr
-  genPattern _ p = throwError $ "unsupported pattern: " ++ ppr p ++ ppr (_ploc p)
+  genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> Doc a -> m (Doc a)
+  genPatternMatch proxy PVar{..} e = return $ "____update_state(__state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> ")"
+  genPatternMatch proxy PExpr{..} e = return e
+  genPatternMatch proxy PApp{..} e = do
+    bindings <- mapM (\(p, e) -> genPatternMatch proxy p e) 
+               [(arg, parens $ e <> ".f" <> pretty id) | arg <- _pappArgs | id <- [0::Int ..]]
+    return $ encloseSep lbracket rbracket comma bindings
 
   genPrologue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genPrologue proxy = 
