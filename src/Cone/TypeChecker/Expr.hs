@@ -356,7 +356,7 @@ inferExprEffType ECase {..} = do
 inferExprEffType EWhile {..} = do
   ce <- inferExprEffType _ewhileCond
   be <- inferExprEffType _ewhileBody
-  checkEffTypeMatch ce be
+  -- checkEffTypeMatch ce be
   mergeEffs ce be
 inferExprEffType EApp {..} = do
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs

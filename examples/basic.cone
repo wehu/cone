@@ -23,7 +23,11 @@ fun main() : io unit {
    //       resume(unit)
    //    }
    // }
-   fn (a:i32) : i32 { a }
+   while a != 10 {
+     print(a)
+     a = a + 1
+   }
+  // fn (a:i32) : i32 { a }
    print(a)
 }
 
