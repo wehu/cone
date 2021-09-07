@@ -198,13 +198,21 @@ class Backend t where
       return $ "\"" <> n <> "\" :" <+> parens ("lambda" <+> args <> colon <+> callWithCps e)) _ehandleBindings
     return $ exprToCps $ "____handle(__k, __state, " <> scope <> comma <+> 
       (encloseSep lbrace rbrace comma handlers) <> ")"
-  -- genExpr proxy ECase{..} = do
-  --  return $ exprToCps $ 
+  genExpr proxy ECase{..} = do
+    c <- callWithCps <$> genExpr proxy _ecaseExpr
+    cs <- mapM (\p -> exprToCps <$> genPatternMatch proxy p c) $ _ecaseBody ^.. traverse . casePattern
+    es <- mapM (genExpr proxy) $ _ecaseBody ^.. traverse . caseExpr
+    return $ exprToCps $ "____case(__k, __state, " <> 
+        encloseSep lbracket rbracket comma cs <> comma <+>
+        encloseSep lbracket rbracket comma es <> ")"
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
           
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> Doc a -> m (Doc a)
-  genPatternMatch proxy PVar{..} e = return $ "____update_state(__state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> ")"
-  genPatternMatch proxy PExpr{..} e = return e
+  genPatternMatch proxy PVar{..} e = 
+    return $ "[____update_state(__state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> "), True][-1]"
+  genPatternMatch proxy PExpr{..} e = do
+    p <- callWithCps <$> genExpr proxy _pExpr
+    return $ parens $ p <+> "==" <+> e
   genPatternMatch proxy PApp{..} e = do
     bindings <- mapM (\(p, e) -> do
                 b <- genPatternMatch proxy p e
@@ -225,13 +233,18 @@ class Backend t where
                            ,indent 4 $ "[body(__k, __state), ____while(__k, __state, cond, body)][-1]"
                            ,"else:"
                            ,indent 4 $ "pass"]
-          ,"# def ____case(__k, __state, cond, "
+          ,"def ____case(__k, __state, conds, exprs):"
+          ,indent 4 $ vsep ["for (p, e) in zip(conds, exprs):"
+                           ,indent 4 $ vsep ["if p(__k, __state):"
+                                            ,indent 4 $ "return e(__k, __state)"]]
           ,"def ____handle(__k, __state, scope, handlers):"
           ,indent 4 $ vsep ["__state.update(handlers)"
                            ,"scope(lambda x: x, __state)"]
           ,"def "<> funcN proxy "resume(k, s, a):"
           ,indent 4 $ "return k(a)"
-          ,"unit = None"]
+          ,"unit = None"
+          ,"true = True"
+          ,"false = False"]
 
   genEpilogue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genEpilogue proxy = do
