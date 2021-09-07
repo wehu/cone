@@ -21,10 +21,14 @@ fun test2(a:i32) : i32 {
 fun main() : io unit {
   var a = 0
   val A(b) = A(2)
+  var c = 0
   handle state<i32> {
+     while c < 2 {
      test()
      test()
      test()
+     c = c + 1
+     }
   } with {
      fun get() {
         resume(a)
