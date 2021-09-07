@@ -22,6 +22,8 @@ fun main() : io unit {
   var a = 0
   handle state<i32> {
      test()
+     test()
+     test()
   } with {
      fun get() {
         resume(a)

@@ -222,7 +222,7 @@ class Backend t where
           ,indent 4 $ vsep ["__state.update(handlers)"
                            ,"scope(lambda _, x: x, __state)"]
           ,"def "<> funcN proxy "resume(k, s, a):"
-          ,indent 4 $ "k(s, a)"
+          ,indent 4 $ "return k(s, a)"
           ,"unit = None"]
 
   genEpilogue :: (Has EnvEff sig m) => t Target -> m (Doc a)
