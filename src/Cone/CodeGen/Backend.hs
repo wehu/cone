@@ -100,7 +100,7 @@ class Backend t where
           ,indent 4 constructor
           ,ctrFunc fn tn <+> line]
     where constructor =
-            vsep ["def" <+> "__init__" <> genArgs ["self"] <> colon
+            vsep ["def" <+> "__init__" <> genArgs ["self", "__k", "__state"] <> colon
                  ,indent 4 $ vsep genFields]
           genArgs init = encloseSep lparen rparen comma $ 
                  foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
@@ -110,10 +110,10 @@ class Backend t where
             else foldl' (\s e -> 
                   let i = length s
                       f = "self.f" ++ show i
-                      a = "t" ++ show (i + 1)
+                      a = "t" ++ show (i + 3)
                    in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
-          ctrFunc fn tn = vsep ["def" <+> fn <> genArgs [] <> ":"
-                       ,indent 4 ("return" <+> (tn <> genArgs []))]
+          ctrFunc fn tn = vsep ["def" <+> fn <> genArgs ["__k", "__state"] <> ":"
+                       ,indent 4 ("return" <+> (tn <> genArgs ["__k", "__state"]))]
   
   genEffectDef :: (Has EnvEff sig m) => t Target -> EffectDef -> m (Doc a)
   genEffectDef proxy e = return emptyDoc

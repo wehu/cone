@@ -1,7 +1,7 @@
 module example
 
-type A {
-   A
+type A<b> {
+   A(b)
 }
 
 effect state<a> {
@@ -20,6 +20,7 @@ fun test2(a:i32) : i32 {
 
 fun main() : io unit {
   var a = 0
+  val A(b) = A(2)
   handle state<i32> {
      test()
      test()
@@ -40,6 +41,7 @@ fun main() : io unit {
   print(test2(a))
   val f = fn () : i32 { a + 1 }
   f()
+  print(b)
   unit
 }
 
