@@ -142,7 +142,7 @@ class Backend t where
     ls <- getEnv lambdas
     setEnv (lambda:ls) $ lambdas
     return [pretty lambdaName]
-    where genArgs = encloseSep lparen rparen comma $ map pretty $ _elamArgs ^..traverse._1
+    where genArgs = encloseSep lparen rparen comma $ map (funcN proxy) $ _elamArgs ^..traverse._1
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
                                     return $ init es ++ ["return" <+> last es]
