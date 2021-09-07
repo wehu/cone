@@ -147,7 +147,7 @@ class Backend t where
     where genArgs = encloseSep emptyDoc emptyDoc comma $ "__k":"__state":(map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
-                                    return $ "lambda" <+> genArgs <> colon <+> callWithCpsEmptyState es
+                                    return $ "lambda" <+> genArgs <> colon <+> callWithCpsClonedState es
                        Nothing -> return $ "lambda" <+> colon <> "pass"
   genExpr proxy EWhile{..} = do
     c <- genExpr proxy _ewhileCond
@@ -226,6 +226,9 @@ callWithCps e = parens $ e <> (encloseSep lparen rparen comma $ "__k":"__state":
 
 callWithCpsEmptyState :: Doc a -> Doc a
 callWithCpsEmptyState e = parens $ e <> lparen <> "__k" <> comma <+> "{}" <> rparen
+
+callWithCpsClonedState :: Doc a -> Doc a
+callWithCpsClonedState e = parens $ e <> lparen <> "__k" <> comma <+> "__state.copy()" <> rparen
 
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
