@@ -27,7 +27,7 @@ fun main() : io unit {
      print(a)
      a = a + 1
    }
-   fn (a:i32) : i32 { a }
+   print(fn (a:i32) : i32 { a + 1 }(a))
    print(a)
 }
 
