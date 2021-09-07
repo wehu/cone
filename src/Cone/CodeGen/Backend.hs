@@ -137,7 +137,7 @@ class Backend t where
     es <- genBody _elamExpr
     fid <- fresh
     let lambdaName = "____lambda" ++ show fid
-        lambda = show $ vsep ["def" <+> pretty lambdaName <+> genArgs <> colon
+        lambda = show $ vsep ["def" <+> pretty lambdaName <> genArgs <> colon
                        ,indent 4 $ vsep es]
     ls <- getEnv lambdas
     setEnv (lambda:ls) $ lambdas
