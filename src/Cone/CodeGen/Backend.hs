@@ -87,15 +87,15 @@ class Backend t where
   genTypeDef proxy TypeDef{..} = do
     cons <- mapM (genTypeCon proxy _typeName) _typeCons
     return $
-      vsep $ ["class" <+> typeN proxy _typeName <> ":"
+      vsep $ {-["class" <+> typeN proxy _typeName <> ":"
              ,indent 4 "pass" <+> line
-             ] ++ cons
+             ] ++-} cons
 
   genTypeCon :: (Has EnvEff sig m) => t Target -> String -> TypeCon -> m (Doc a)
   genTypeCon proxy ptn TypeCon{..} =
     let tn = typeN proxy _typeConName 
         fn = funcN proxy _typeConName
-     in return $ vsep ["class" <+> tn <> parens (typeN proxy ptn) <> ":"
+     in return $ vsep ["class" <+> tn {- <> parens (typeN proxy ptn) -} <> ":"
           ,indent 4 constructor
           ,ctrFunc fn tn <+> line]
     where constructor =
@@ -111,8 +111,8 @@ class Backend t where
                       f = "self.f" ++ show i
                       a = "t" ++ show (i + 1)
                    in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
-          ctrFunc fn tn = vsep ["def" <+> fn <> genArgs [] <> ":"
-                       ,indent 4 ("return" <+> tn <> genArgs [])]
+          ctrFunc fn tn = vsep ["def" <+> fn <> genArgs ["__k", "__state"] <> ":"
+                       ,indent 4 ("return" <+> callWithCpsEmptyState (tn <> genArgs []))]
   
   genEffectDef :: (Has EnvEff sig m) => t Target -> EffectDef -> m (Doc a)
   genEffectDef proxy e = return emptyDoc
@@ -121,41 +121,43 @@ class Backend t where
   genFuncDef proxy FuncDef{..} = do
     body <- case _funcExpr of
               Just e -> do es <- genExpr proxy e 
-                           return $ vsep $ init es ++ ["return" <+> last es]
+                           return $ "return" <+> callWithCps es
               Nothing -> return "pass"
     return $ vsep ["def" <+> funcN proxy _funcName <> genArgs <> colon
          ,indent 4 body]
-    where genArgs = encloseSep lparen rparen comma $ map pretty $ _funcArgs ^..traverse._1
+    where genArgs = encloseSep lparen rparen comma $ map pretty $ "__k":"__state":(_funcArgs ^..traverse._1)
   
-  genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m [Doc a]
-  genExpr proxy EVar{..} = return [funcN proxy _evarName]
+  genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m (Doc a)
+  genExpr proxy EVar{..} = 
+    let fn = funcN proxy _evarName
+        fnQ = "\"" <> fn <> "\""
+     in return $ exprToCps $ "__state[" <> fnQ <> "] if" <+> fnQ <+> "in" <+> "__state" <+> "else" <+> fn 
   genExpr proxy ESeq{..} = do
-    es <- mapM (genExpr proxy) _eseq
-    return $ join es
-  genExpr proxy ELit{..} = return [pretty _lit]
+    let e:es = (reverse _eseq)
+    e' <- genExpr proxy e
+    foldM (\doc e -> do
+      e' <- genExpr proxy e
+      return $ exprToCps $ brackets (callWithCps e' <> comma <+> callWithCps doc) <> brackets "-1")
+      e'
+      es
+  genExpr proxy ELit{..} = return $ exprToCps $ pretty _lit
   genExpr proxy ELam{..} = do
     es <- genBody _elamExpr
-    fid <- fresh
-    let lambdaName = "____lambda" ++ show fid
-        lambda = show $ vsep ["def" <+> pretty lambdaName <> genArgs <> colon
-                       ,indent 4 $ vsep es]
-    ls <- getEnv lambdas
-    setEnv (lambda:ls) $ lambdas
-    return [pretty lambdaName]
-    where genArgs = encloseSep lparen rparen comma $ map (funcN proxy) $ _elamArgs ^..traverse._1
+    return $ "lambda" <+> genArgs <> colon <+> es
+    where genArgs = encloseSep lparen rparen comma $ map (funcN proxy) $ "__k":"__state":(_elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
-                                    return $ init es ++ ["return" <+> last es]
-                       Nothing -> return ["pass"]
-  genExpr proxy EWhile{..} = do
-    c <- head <$> genExpr proxy _ewhileCond
-    es <- genExpr proxy _ewhileBody
-    return $ [vsep ["while" <+> c <> colon
-                   ,indent 4 $ vsep es]]
+                                    return $ callWithCpsEmptyState es
+                       Nothing -> return "pass"
+  -- genExpr proxy EWhile{..} = do
+  --   c <- head <$> genExpr proxy _ewhileCond
+  --   es <- genExpr proxy _ewhileBody
+  --   return $ [vsep ["while" <+> c <> colon
+  --                  ,indent 4 $ vsep es]]
   genExpr proxy ELet{..} = do
     p <- genPattern proxy _eletPattern
-    e <- head <$> genExpr proxy _eletExpr
-    return [p <+> "=" <+> e]
+    e <- genExpr proxy _eletExpr
+    return $ exprToCps $ "____update_state(__state, \"" <> p <> "\"," <+> callWithCps e <> ")"
   genExpr proxy EAnn{..} = genExpr proxy _eannExpr
   genExpr proxy EApp{..} =
     let fn = _eappFunc ^.evarName
@@ -174,40 +176,52 @@ class Backend t where
          "____and" -> binary "and"
          "____or" -> binary "or"
          "____assign" -> do
-           e <- head <$> genExpr proxy (_eappArgs !! 1)
-           return [(funcN proxy $ _eappArgs !! 0 ^.evarName) <+> "=" <+> e]
+           e <- genExpr proxy (_eappArgs !! 1)
+           return $ exprToCps $ "____update_state(__state, \"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\"," <+> callWithCps e <> ")"
          _ -> do
-           f <- head <$> genExpr proxy _eappFunc
+           f <- genExpr proxy _eappFunc
            args <- genArgs
-           return [f <> args]
+           return $ exprToCps $ callWithCps f <> args
     where genArgs = do
-            args <- mapM (\a -> head <$> genExpr proxy a) _eappArgs
+            args <- mapM (\a -> callWithCps <$> genExpr proxy a) _eappArgs
             return $ encloseSep lparen rparen comma args
-          binary :: (Has EnvEff sig m) => String -> m [Doc a]
+          binary :: (Has EnvEff sig m) => String -> m (Doc a)
           binary op = do
-            lhs <- head <$> genExpr proxy (_eappArgs !! 0)
-            rhs <- head <$> genExpr proxy (_eappArgs !! 1)
-            return [parens $ lhs <+> pretty op <+> rhs]
+            lhs <- callWithCps <$> genExpr proxy (_eappArgs !! 0)
+            rhs <- callWithCps <$> genExpr proxy (_eappArgs !! 1)
+            return $ exprToCps $ lhs <+> pretty op <+> rhs
   -- genExpr proxy EHandle{..} =
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
           
   genPattern :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
   genPattern proxy PVar{..} = return $ funcN proxy _pvar
-  genPattern proxy PExpr{..} = head <$> genExpr proxy _pExpr
+  genPattern proxy PExpr{..} = genExpr proxy _pExpr
   genPattern _ p = throwError $ "unsupported pattern: " ++ ppr p ++ ppr (_ploc p)
 
   genPrologue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genPrologue proxy = 
-    return $ vsep ["def "<> funcN proxy "print" <> "(a):"
-          ,indent 4 $ "print(a)" <+> line]
+    return $
+     vsep ["def "<> funcN proxy "print(a):"
+          ,indent 4 $ "print(a)"
+          ,"def ____update_state(state, k, v):"
+          ,indent 4 $ "state[k] = v"]
 
   genEpilogue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genEpilogue proxy = do
     ls <- getEnv lambdas
     return $ vsep $ map pretty ls ++ 
           ["if __name__ == \"__main__\":"
-          ,indent 4 $ funcN proxy "main" <> "()" <+> line]
-  
+          ,indent 4 $ funcN proxy "main" <> "(lambda _, x: x, {})" <+> line]
+
+exprToCps :: Doc a -> Doc a
+exprToCps e = parens $ "lambda" <+> "__k" <> comma <+> "__state" <> colon <+> e
+
+callWithCps :: Doc a -> Doc a
+callWithCps e = e <> lparen <> "__k" <> comma <+> "__state" <> rparen
+
+callWithCpsEmptyState :: Doc a -> Doc a
+callWithCpsEmptyState e = e <> lparen <> "__k" <> comma <+> "{}" <> rparen
+
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
 
