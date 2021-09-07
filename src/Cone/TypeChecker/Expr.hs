@@ -138,7 +138,7 @@ inferExprType EWhile {..} = do
     k <- inferTypeKind t
     checkTypeKind k
   return $ TPrim Unit _eloc
-inferExprType EHandle {..} = do
+inferExprType EHandle {..} = underScope $ do
   -- infer handle's effect kind
   ek <- inferEffKind _ehandleEff
   checkEffKind ek
