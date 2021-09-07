@@ -143,12 +143,12 @@ class Backend t where
   genExpr proxy ELit{..} = return $ exprToCps $ pretty _lit
   genExpr proxy ELam{..} = do
     es <- genBody _elamExpr
-    return $ "lambda" <+> genArgs <> colon <+> es
-    where genArgs = encloseSep lparen rparen comma $ map (funcN proxy) $ "__k":"__state":(_elamArgs ^..traverse._1)
+    return $ parens $ "lambda __k, __state" <> colon <+> es
+    where genArgs = encloseSep emptyDoc emptyDoc comma $ (map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
-                                    return $ callWithCpsEmptyState es
-                       Nothing -> return "pass"
+                                    return $ "lambda" <+> genArgs <> colon <+> callWithCpsEmptyState es
+                       Nothing -> return $ "lambda" <+> colon <> "pass"
   genExpr proxy EWhile{..} = do
     c <- genExpr proxy _ewhileCond
     es <- genExpr proxy _ewhileBody
@@ -183,7 +183,7 @@ class Backend t where
            return $ exprToCps $ callWithCps f <> args
     where genArgs = do
             args <- mapM (\a -> callWithCps <$> genExpr proxy a) _eappArgs
-            return $ encloseSep lparen rparen comma args
+            return $ encloseSep lparen rparen comma $ args
           binary :: (Has EnvEff sig m) => String -> m (Doc a)
           binary op = do
             lhs <- callWithCps <$> genExpr proxy (_eappArgs !! 0)
@@ -222,10 +222,10 @@ exprToCps :: Doc a -> Doc a
 exprToCps e = parens $ "lambda" <+> "__k" <> comma <+> "__state" <> colon <+> e
 
 callWithCps :: Doc a -> Doc a
-callWithCps e = e <> lparen <> "__k" <> comma <+> "__state" <> rparen
+callWithCps e = parens $ e <> (encloseSep lparen rparen comma $ "__k":"__state":[])
 
 callWithCpsEmptyState :: Doc a -> Doc a
-callWithCpsEmptyState e = e <> lparen <> "__k" <> comma <+> "{}" <> rparen
+callWithCpsEmptyState e = parens $ e <> lparen <> "__k" <> comma <+> "{}" <> rparen
 
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
