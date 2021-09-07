@@ -29,7 +29,7 @@ import Control.Carrier.State.Strict
 type Eff s e = Fresh :+: State s :+: Error e
 
 data Env = Env {
-  _lambdas :: forall a. [Doc a]
+  _lambdas :: [String]
 }
 
 makeLenses ''Env
@@ -40,6 +40,18 @@ initialEnv =
     }
 
 type EnvEff = Eff Env String
+
+-- | Get value by a lens from env
+getEnv :: (Has EnvEff sig m) => Getter Env a -> m a
+getEnv l = do
+  env <- get @Env
+  return $ view l env
+
+-- | Set value by a lens into env
+setEnv :: (Has EnvEff sig m) => b -> Setter Env Env a b -> m ()
+setEnv v l = do
+  env <- get @Env
+  put $ set l v env
 
 data Target
 
@@ -123,8 +135,13 @@ class Backend t where
   genExpr proxy ELit{..} = return [pretty _lit]
   genExpr proxy ELam{..} = do
     es <- genBody _elamExpr
-    return [parens $ vsep ["def" <+> "lambdaxxx" <+> genArgs <> colon
-                                          ,indent 4 $ vsep es]]
+    fid <- fresh
+    let lambdaName = "____lambda" ++ show fid
+        lambda = show $ vsep ["def" <+> pretty lambdaName <+> genArgs <> colon
+                       ,indent 4 $ vsep es]
+    ls <- getEnv lambdas
+    setEnv (lambda:ls) $ lambdas
+    return [pretty lambdaName]
     where genArgs = encloseSep lparen rparen comma $ map pretty $ _elamArgs ^..traverse._1
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
@@ -183,8 +200,10 @@ class Backend t where
           ,indent 4 $ "print(a)" <+> line]
 
   genEpilogue :: (Has EnvEff sig m) => t Target -> m (Doc a)
-  genEpilogue proxy =
-    return $ vsep ["if __name__ == \"__main__\":"
+  genEpilogue proxy = do
+    ls <- getEnv lambdas
+    return $ vsep $ map pretty ls ++ 
+          ["if __name__ == \"__main__\":"
           ,indent 4 $ funcN proxy "main" <> "()" <+> line]
   
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
