@@ -60,7 +60,7 @@ fun ____or<a>(a: bool, b:bool) : bool {
   inline_python<a>("(a or b)")
 }
 
-fun ____assign<a>(a: a, b:a) : a {
+fun ____assign<a>(a: a, b:a) : unit {
   inline_python<a>("a = b")
 }
 
