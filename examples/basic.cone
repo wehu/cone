@@ -36,7 +36,8 @@ fun main() : io unit {
     a = a + 1
   }
   print(test2(a))
-  print(fn (a:i32) : i32 { a + 1 }(a))
+  val f = fn (a:i32) : i32 { a + 1 }
+  f(a)
   unit
 }
 
