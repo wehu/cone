@@ -323,6 +323,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
                   tp@TApp {..} -> do
                     as <- mapM cntr _tappArgs
                     return $ tp {_tappArgs = as}
+                  t@TPrim{..} -> return t
                   _ -> newTVar
         )
   argTypes <- mapM cntr (appFuncType ^. tfuncArgs)

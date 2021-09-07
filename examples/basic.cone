@@ -1,7 +1,7 @@
 module example
 
-type A<b> {
-   A(b)
+type A {
+   A(i32)
 }
 
 effect state<a> {
