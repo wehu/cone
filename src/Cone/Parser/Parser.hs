@@ -488,7 +488,7 @@ term =
                                 P.<|> (A.EWhile <$ kWhile <*> expr <*> braces exprSeq P.<?> "while expression")
                                 P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 handle $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
                                 P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
-                                P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "assign expression")
+                                P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "var or assign expression")
                                 P.<|> (A.ETC <$> tc P.<?> "tc expression")
                             )
                               <*> getPos
@@ -498,8 +498,8 @@ term =
             <*> (P.optionMaybe (colon *> type_ P.<?> "expression type annotation"))
             <*> getPos
         )
-    <*> (P.optionMaybe $ angles (P.sepBy type_ comma P.<?> "application expression type argument list"))
-    <*> (P.optionMaybe $ parens (P.sepBy expr comma P.<?> "application expression argument list"))
+    <*> (P.optionMaybe $ P.try $ angles (P.sepBy type_ comma P.<?> "application expression type argument list"))
+    <*> (P.optionMaybe $ P.try $ parens (P.sepBy expr comma P.<?> "application expression argument list"))
     <*> getPos
   where
     eapp e targs args pos =
