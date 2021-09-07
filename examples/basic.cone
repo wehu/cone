@@ -12,17 +12,17 @@ fun test() : state<i32> unit {
 
 fun main() : io unit {
    var a = 0
-   // handle state<i32> {
-   //    test()
-   // } with {
-   //    fun get() {
-   //       resume(a)
-   //    }
-   //    fun set(v:i32) {
-   //       a = v
-   //       resume(unit)
-   //    }
-   // }
+   handle state<i32> {
+      test()
+   } with {
+      fun get() {
+         resume(a)
+      }
+      fun set(v:i32) {
+         a = v
+         resume(unit)
+      }
+   }
    while a < 10 {
      print(a)
      a = a + 1

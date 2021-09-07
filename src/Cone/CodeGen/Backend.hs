@@ -189,6 +189,7 @@ class Backend t where
             rhs <- head <$> genExpr proxy (_eappArgs !! 1)
             return [parens $ lhs <+> pretty op <+> rhs]
   -- genExpr proxy EHandle{..} =
+  genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
           
   genPattern :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
   genPattern proxy PVar{..} = return $ funcN proxy _pvar
