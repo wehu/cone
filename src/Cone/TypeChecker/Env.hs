@@ -19,9 +19,9 @@ import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
 import qualified Data.Map as M
+import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
-import Debug.Trace
 
 type Eff s e = Fresh :+: State s :+: Error e
 
@@ -78,7 +78,7 @@ underScope f = do
 -- | Set a function type into env
 setFuncType :: (Has EnvEff sig m) => String -> Type -> m ()
 setFuncType n t = do
-  setEnv (Just t) $ funcs .at n
+  setEnv (Just t) $ funcs . at n
   l <- getEnv localState
   -- clear the local state
   setEnv (M.delete n l) localState
@@ -87,12 +87,12 @@ setFuncType n t = do
 getFuncType :: (Has EnvEff sig m) => String -> m Type
 getFuncType n = do
   -- try to find in local state first
-  v <- getEnv $ localState .at n
+  v <- getEnv $ localState . at n
   case v of
     Just v -> return v
     Nothing -> do
       -- try to find in local scope
-      v <- getEnv $ funcs .at n
+      v <- getEnv $ funcs . at n
       case v of
         Just v -> return v
         Nothing -> throwError $ "cannot find variable: " ++ n
@@ -101,9 +101,12 @@ getFuncType n = do
 addEffIntfs :: (Has EnvEff sig m) => String -> String -> m ()
 addEffIntfs effName intfName = do
   ifs <- getEnv $ effIntfs . at effName
-  setEnv (Just $ case ifs of
-                   Just ifs -> intfName:ifs
-                   Nothing -> [intfName]) $ effIntfs . at effName
+  setEnv
+    ( Just $ case ifs of
+        Just ifs -> intfName : ifs
+        Nothing -> [intfName]
+    )
+    $ effIntfs . at effName
 
 -- | Generate a free type variable name
 freeVarName :: Int -> TVar
@@ -163,7 +166,7 @@ unbindType t = return t
 
 -- | Just simply unbind a type
 unbindTypeSimple :: Type -> ([TVar], [EffVar], Type)
-unbindTypeSimple b@BoundType {..} = 
+unbindTypeSimple b@BoundType {..} =
   let (bvs, t) = unsafeUnbind _boundType
       (bvs', evs, t') = unbindTypeSimple t
    in (bvs ++ bvs', evs, t')

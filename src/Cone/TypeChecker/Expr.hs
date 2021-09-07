@@ -26,19 +26,21 @@ inferExprType EVar {..} = do
   getFuncType _evarName
 inferExprType a@EApp {..} = do
   -- check assign variable
-  if _eappFunc ^.evarName == "____assign"
-  then do
-    if L.length _eappArgs /= 2
-    then throwError $ "expected 2 arguments: " ++ ppr a
-    else if isn't _EVar $ head _eappArgs
-         then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs)
-         -- first argument is the assigned variable which should be in local state
-         else do let vn = (head _eappArgs) ^.evarName
-                 v <- getEnv $ localState . at vn
-                 case v of
-                  Just v -> return ()
-                  Nothing -> throwError $ "cannot find local variable " ++ vn
-  else return ()
+  if _eappFunc ^. evarName == "____assign"
+    then do
+      if L.length _eappArgs /= 2
+        then throwError $ "expected 2 arguments: " ++ ppr a
+        else
+          if isn't _EVar $ head _eappArgs
+            then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs)
+            else -- first argument is the assigned variable which should be in local state
+            do
+              let vn = (head _eappArgs) ^. evarName
+              v <- getEnv $ localState . at vn
+              case v of
+                Just v -> return ()
+                Nothing -> throwError $ "cannot find local variable " ++ vn
+    else return ()
   -- infer all type arguments
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
@@ -58,7 +60,7 @@ inferExprType l@ELam {..} = underScope $ do
   (bvs, newLam) <- refresh _elamBoundVars l
   (evs, newLam) <- refreshEffVar _elamBoundEffVars newLam
   case newLam of
-    l@ELam{..} -> do
+    l@ELam {..} -> do
       -- add all bound type variables into env
       mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) bvs
       -- add all bound eff type variables into env
@@ -145,7 +147,6 @@ inferExprType EHandle {..} = do
   btk <- inferTypeKind resT
   checkTypeKind btk
   forM_ _ehandleBindings $ \intf -> underScope $ do
-
     let fn = (intf ^. funcName)
         emptyEff = EffList [] _eloc
         unit = TPrim Unit _eloc
@@ -157,13 +158,15 @@ inferExprType EHandle {..} = do
     intfT <- getFuncType fn >>= unbindType
 
     -- add resume function type
-    let resumeT = bindTypeEffVar [] $ bindType [] $ 
-           TFunc [_tfuncResult intfT] emptyEff resT _eloc
+    let resumeT =
+          bindTypeEffVar [] $
+            bindType [] $
+              TFunc [_tfuncResult intfT] emptyEff resT _eloc
     setEnv (Just resumeT) $ funcs . at "resume"
-    
+
     -- check if interface defintion match with implemention's or not
-    let handleT' = handleT{_tfuncEff=emptyEff, _tfuncResult=unit}
-        intfT' = intfT{_tfuncEff=emptyEff, _tfuncResult=unit}
+    let handleT' = handleT {_tfuncEff = emptyEff, _tfuncResult = unit}
+        intfT' = intfT {_tfuncEff = emptyEff, _tfuncResult = unit}
     binds <- collectVarBindings intfT' handleT'
     checkVarBindings binds
 
@@ -176,62 +179,85 @@ inferExprType EHandle {..} = do
     t <- inferExprType _ehandleScope
     k <- inferTypeKind t
     checkTypeKind k
-  
+
   inferType resT
-inferExprType (ETC e@TCApp{..} _) = do
-  let v:e:[] = _tcAppArgs
-  if _tcAppName /= "=" && _tcAppName /= "+=" &&
-     _tcAppName /= "-=" && _tcAppName /= "*=" &&
-     _tcAppName /= "/=" && _tcAppName /= "%="
-  then throwError $ "unsupported tc assign operator " ++ _tcAppName ++ ppr _tcloc
-  else inferTCExprType v e >>= inferType
+inferExprType (ETC e@TCApp {..} _) = do
+  let v : e : [] = _tcAppArgs
+  if _tcAppName /= "=" && _tcAppName /= "+="
+    && _tcAppName /= "-="
+    && _tcAppName /= "*="
+    && _tcAppName /= "/="
+    && _tcAppName /= "%="
+    then throwError $ "unsupported tc assign operator " ++ _tcAppName ++ ppr _tcloc
+    else inferTCExprType v e >>= inferType
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
 -- | Collect the tensor informations
 collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(String, Type)])
-collectTCExprTypeInfo TCAccess{..} = do
+collectTCExprTypeInfo TCAccess {..} = do
   v <- getFuncType _tcVarName
   (t, shape) <- extractTensorInfo v
   if L.length _tcIndices /= L.length shape
-  then throwError $ "type shape rank mismatch: " ++ ppr shape ++
-            " vs " ++ ppr _tcIndices ++ ppr _tcloc
-  else return (t, [(name2String n, d) | n <- _tcIndices | d <- shape])
-collectTCExprTypeInfo TCApp{..} = do
+    then
+      throwError $
+        "type shape rank mismatch: " ++ ppr shape
+          ++ " vs "
+          ++ ppr _tcIndices
+          ++ ppr _tcloc
+    else return (t, [(name2String n, d) | n <- _tcIndices | d <- shape])
+collectTCExprTypeInfo TCApp {..} = do
   args' <- mapM collectTCExprTypeInfo _tcAppArgs
-  let arg:args = args'
+  let arg : args = args'
   case _tcAppName of
-    an | an == "+" ||
-         an == "-" ||
-         an == "*" ||
-         an == "/" ||
-         an == "%" -> foldM (\(t, is) (et, eis) -> do
-                     k0 <- inferTypeKind t
-                     checkTypeKind k0
-                     k1 <- inferTypeKind et
-                     checkTypeKind k1
-                     if aeq t et then return (et, is ++ eis)
-                     else throwError $ "+ expected same types, but got " ++ ppr t ++ " vs " ++ ppr et) arg args
+    an
+      | an == "+"
+          || an == "-"
+          || an == "*"
+          || an == "/"
+          || an == "%" ->
+        foldM
+          ( \(t, is) (et, eis) -> do
+              k0 <- inferTypeKind t
+              checkTypeKind k0
+              k1 <- inferTypeKind et
+              checkTypeKind k1
+              if aeq t et
+                then return (et, is ++ eis)
+                else throwError $ "+ expected same types, but got " ++ ppr t ++ " vs " ++ ppr et
+          )
+          arg
+          args
     _ -> throwError $ "unsupported tc function: " ++ _tcAppName ++ ppr _tcloc
-collectTCExprTypeInfo TCVar{..} = do
+collectTCExprTypeInfo TCVar {..} = do
   t <- getFuncType _tcVarName
   return (t, [])
 
 -- | Infer a tensor comprehensive expression's type
 inferTCExprType :: (Has EnvEff sig m) => TCExpr -> TCExpr -> m Type
-inferTCExprType a@TCAccess{..} e = do
+inferTCExprType a@TCAccess {..} e = do
   info <- collectTCExprTypeInfo e
   let (t, indices) = info
-  dims <- foldM (\s (n, t) -> do
-    case s ^. at n of
-      Just ot -> 
-        if aeq ot t then return $ s & at n ?~ t
-        else throwError $ "dim size conflict for " ++ n ++ " : " ++ ppr ot ++ ppr (_tloc ot) ++ " vs " ++ ppr t ++ ppr (_tloc t)
-      Nothing -> return $ s & at n ?~ t
-    ) M.empty indices
-  shape <- foldM (\s i -> do
-                case dims ^. at (name2String i) of
-                  Just t -> return $ s++[t]
-                  Nothing -> throwError $ "cannot index var: " ++ ppr i) [] _tcIndices
+  dims <-
+    foldM
+      ( \s (n, t) -> do
+          case s ^. at n of
+            Just ot ->
+              if aeq ot t
+                then return $ s & at n ?~ t
+                else throwError $ "dim size conflict for " ++ n ++ " : " ++ ppr ot ++ ppr (_tloc ot) ++ " vs " ++ ppr t ++ ppr (_tloc t)
+            Nothing -> return $ s & at n ?~ t
+      )
+      M.empty
+      indices
+  shape <-
+    foldM
+      ( \s i -> do
+          case dims ^. at (name2String i) of
+            Just t -> return $ s ++ [t]
+            Nothing -> throwError $ "cannot index var: " ++ ppr i
+      )
+      []
+      _tcIndices
   tt <- toTensorType t shape
   setFuncType _tcVarName tt
   return tt
@@ -244,7 +270,7 @@ inferPatternType PApp {..} = do
   args <- mapM inferPatternType _pappArgs
   appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
-  appFuncType <- inferExprType (EVar _pappName _ploc) 
+  appFuncType <- inferExprType (EVar _pappName _ploc)
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   inferAppResultType appFuncType _pappTypeArgs args
 inferPatternType PExpr {..} = inferExprType _pExpr
@@ -263,8 +289,8 @@ bindPatternVarTypes isState p e = do
             setFuncType n t
             -- set localState
             if isState
-            then setEnv (Just t) $ localState . at n
-            else return ()
+              then setEnv (Just t) $ localState . at n
+              else return ()
             return $ bs & at n ?~ True
     )
     M.empty
@@ -277,7 +303,7 @@ extracePatternVarTypes PExpr {..} t = return []
 extracePatternVarTypes a@PApp {..} t = underScope $ do
   appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
-  appFuncType <- inferExprType (EVar _pappName _ploc) 
+  appFuncType <- inferExprType (EVar _pappName _ploc)
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   let cntr =
         ( \arg ->
@@ -354,19 +380,25 @@ inferExprEffType EHandle {..} = underScope $ do
   effs <- inferExprEffType _ehandleScope
 
   -- check intefaces
-  effName <- if not $ isn't _EffVar _ehandleEff then return $ name2String $ _ehandleEff ^.effVar
-             else if not $ isn't _EffApp _ehandleEff then return $ _ehandleEff ^.effAppName
-             else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
+  effName <-
+    if not $ isn't _EffVar _ehandleEff
+      then return $ name2String $ _ehandleEff ^. effVar
+      else
+        if not $ isn't _EffApp _ehandleEff
+          then return $ _ehandleEff ^. effAppName
+          else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
   intfs <- getEnv $ effIntfs . at effName
   case intfs of
-    Just ifs -> do let intfNames = map (\e -> e ^.funcName) _ehandleBindings 
-                   if L.sort ifs == L.sort intfNames then return ()
-                   else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames
+    Just ifs -> do
+      let intfNames = map (\e -> e ^. funcName) _ehandleBindings
+      if L.sort ifs == L.sort intfNames
+        then return ()
+        else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames
     Nothing -> do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   -- remove the handled effects
   removeEff effs _ehandleEff
-inferExprEffType ETC{..} = return $ EffList [] _eloc
+inferExprEffType ETC {..} = return $ EffList [] _eloc
 
 -- | Setup for effect inferface type
 setupEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
