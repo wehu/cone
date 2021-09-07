@@ -198,13 +198,17 @@ class Backend t where
       return $ "\"" <> n <> "\" :" <+> parens ("lambda" <+> args <> colon <+> callWithCps e)) _ehandleBindings
     return $ exprToCps $ "____handle(__k, __state, " <> scope <> comma <+> 
       (encloseSep lbrace rbrace comma handlers) <> ")"
+  -- genExpr proxy ECase{..} = do
+  --  return $ exprToCps $ 
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
           
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> Doc a -> m (Doc a)
   genPatternMatch proxy PVar{..} e = return $ "____update_state(__state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> ")"
   genPatternMatch proxy PExpr{..} e = return e
   genPatternMatch proxy PApp{..} e = do
-    bindings <- mapM (\(p, e) -> genPatternMatch proxy p e) 
+    bindings <- mapM (\(p, e) -> 
+                encloseSep lbracket rbracket comma 
+                 [genPatternMatch proxy p e, "isinstance("<> e <> typeN proxy _pappName)] <> brackets "-1") 
                [(arg, parens $ e <> ".f" <> pretty id) | arg <- _pappArgs | id <- [0::Int ..]]
     return $ encloseSep lbracket rbracket comma bindings
 
@@ -220,6 +224,7 @@ class Backend t where
                            ,indent 4 $ "[body(__k, __state), ____while(__k, __state, cond, body)][-1]"
                            ,"else:"
                            ,indent 4 $ "pass"]
+          ,"# def ____case(__k, __state, cond, "
           ,"def ____handle(__k, __state, scope, handlers):"
           ,indent 4 $ vsep ["__state.update(handlers)"
                            ,"scope(lambda x: x, __state)"]
