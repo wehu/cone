@@ -220,9 +220,9 @@ class Backend t where
                            ,indent 4 $ "pass"]
           ,"def ____handle(__k, __state, scope, handlers):"
           ,indent 4 $ vsep ["__state.update(handlers)"
-                           ,"scope(lambda _, x: x, __state)"]
+                           ,"scope(lambda x: x, __state)"]
           ,"def "<> funcN proxy "resume(k, s, a):"
-          ,indent 4 $ "return k(s, a)"
+          ,indent 4 $ "return k(a)"
           ,"unit = None"]
 
   genEpilogue :: (Has EnvEff sig m) => t Target -> m (Doc a)
@@ -230,7 +230,7 @@ class Backend t where
     ls <- getEnv lambdas
     return $ vsep $ map pretty ls ++ 
           ["if __name__ == \"__main__\":"
-          ,indent 4 $ funcN proxy "main" <> "(lambda _, x: x, {})" <+> line]
+          ,indent 4 $ funcN proxy "main" <> "(lambda x: x, {})" <+> line]
 
 exprToCps :: Doc a -> Doc a
 exprToCps e = parens $ "lambda" <+> "__k" <> comma <+> "__state" <> colon <+> e
