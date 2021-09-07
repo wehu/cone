@@ -18,6 +18,7 @@ import Control.Lens
 import Control.Monad
 import Prettyprinter
 import Data.List.Split
+import Data.Maybe
 import Control.Effect.Error
 import Control.Effect.Fresh
 import Control.Effect.State
@@ -189,7 +190,15 @@ class Backend t where
             lhs <- callWithCps <$> genExpr proxy (_eappArgs !! 0)
             rhs <- callWithCps <$> genExpr proxy (_eappArgs !! 1)
             return $ exprToCps $ lhs <+> pretty op <+> rhs
-  -- genExpr proxy EHandle{..} =
+  genExpr proxy EHandle{..} = do
+    scope <- genExpr proxy _ehandleScope
+    handlers <- mapM (\intf -> do
+      e <- genExpr proxy (fromJust $ _funcExpr intf)
+      let n = funcN proxy $ _funcName intf
+          args = encloseSep emptyDoc emptyDoc comma $ "__k":"__state":(map (\(n, _) -> funcN proxy n) (_funcArgs intf))
+      return $ "\"" <> n <> "\" :" <+> parens ("lambda" <+> args <> colon <+> callWithCps e)) _ehandleBindings
+    return $ exprToCps $ "____handle(__k, __state, " <> scope <> comma <+> 
+      (encloseSep lbrace rbrace comma handlers) <> ")"
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
           
   genPattern :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
@@ -209,6 +218,11 @@ class Backend t where
                            ,indent 4 $ "[body(__k, __state), ____while(__k, __state, cond, body)][-1]"
                            ,"else:"
                            ,indent 4 $ "pass"]
+          ,"def ____handle(__k, __state, scope, handlers):"
+          ,indent 4 $ vsep ["__state.update(handlers)"
+                           ,"scope(lambda _, x: x, __state)"]
+          ,"def "<> funcN proxy "resume(k, s, a):"
+          ,indent 4 $ "k(s, a)"
           ,"unit = None"]
 
   genEpilogue :: (Has EnvEff sig m) => t Target -> m (Doc a)
