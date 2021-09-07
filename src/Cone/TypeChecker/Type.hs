@@ -404,6 +404,7 @@ collectVarBindings a b = throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a
 -- | Return if an effect variable is local variable or not
 isEffVar :: (Has EnvEff sig m) => EffectType -> m Bool
 isEffVar e@EffVar {..} = do
+  -- if a variable can be found in eff records, it is not a type variable
   found <- getEnv $ effs . at (name2String _effVar)
   case found of
     Just _ -> return False
