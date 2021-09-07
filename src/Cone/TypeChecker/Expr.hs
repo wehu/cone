@@ -29,17 +29,17 @@ inferExprType a@EApp {..} = do
   if _eappFunc ^. evarName == "____assign"
     then do
       if L.length _eappArgs /= 2
-        then throwError $ "expected 2 arguments: " ++ ppr a
+        then throwError $ "expected 2 arguments: " ++ ppr a ++ ppr _eloc
         else
           if isn't _EVar $ head _eappArgs
-            then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs)
+            then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs) ++ ppr _eloc
             else -- first argument is the assigned variable which should be in local state
             do
               let vn = (head _eappArgs) ^. evarName
               v <- getEnv $ localState . at vn
               case v of
                 Just v -> return ()
-                Nothing -> throwError $ "cannot find local variable " ++ vn
+                Nothing -> throwError $ "cannot find local variable " ++ vn ++ ppr _eloc
     else return ()
   -- infer all type arguments
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
@@ -223,7 +223,7 @@ collectTCExprTypeInfo TCApp {..} = do
               checkTypeKind k1
               if aeq t et
                 then return (et, is ++ eis)
-                else throwError $ "+ expected same types, but got " ++ ppr t ++ " vs " ++ ppr et
+                else throwError $ "+ expected same types, but got " ++ ppr t ++ " vs " ++ ppr et ++ ppr _tcloc
           )
           arg
           args
@@ -254,7 +254,7 @@ inferTCExprType a@TCAccess {..} e = do
       ( \s i -> do
           case dims ^. at (name2String i) of
             Just t -> return $ s ++ [t]
-            Nothing -> throwError $ "cannot index var: " ++ ppr i
+            Nothing -> throwError $ "cannot index var: " ++ ppr i ++ ppr _tcloc
       )
       []
       _tcIndices
@@ -393,7 +393,7 @@ inferExprEffType EHandle {..} = underScope $ do
       let intfNames = map (\e -> e ^. funcName) _ehandleBindings
       if L.sort ifs == L.sort intfNames
         then return ()
-        else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames
+        else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames ++ ppr _eloc
     Nothing -> do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   -- remove the handled effects
