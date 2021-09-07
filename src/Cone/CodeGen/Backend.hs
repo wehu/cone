@@ -112,7 +112,7 @@ class Backend t where
                       a = "t" ++ show (i + 1)
                    in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
           ctrFunc fn tn = vsep ["def" <+> fn <> genArgs ["__k", "__state"] <> ":"
-                       ,indent 4 ("return" <+> callWithCpsEmptyState (tn <> genArgs []))]
+                       ,indent 4 ("return" <+> exprToCps (tn <> genArgs []))]
   
   genEffectDef :: (Has EnvEff sig m) => t Target -> EffectDef -> m (Doc a)
   genEffectDef proxy e = return emptyDoc
