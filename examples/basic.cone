@@ -43,7 +43,7 @@ fun main() : io unit {
         resume(unit)
      }
   }
-  if a < 10 {
+  if a > 10 {
      print(100)
   } else {
      print(1000)
@@ -54,7 +54,7 @@ fun main() : io unit {
   }
 
   case A(200) {
-     A(a) -> {print(a)}
+     A(a) -> {print("ddddd")}
      B(3) -> {print("bbbb")}
   }
 

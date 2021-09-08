@@ -220,12 +220,11 @@ class Backend t where
     p <- callWithCps <$> genExpr proxy _pExpr
     return $ parens $ p <+> "==" <+> e
   genPatternMatch proxy PApp{..} e = do
-    bindings <- mapM (\(p, e) -> do
-                b <- genPatternMatch proxy p e
-                return $ encloseSep lbracket rbracket comma 
-                 [b, "isinstance(" <> e <> comma <+> typeN proxy _pappName <> ")"] <> brackets "-1") 
+    bindings <- mapM (\(p, ee) -> do
+                b <- genPatternMatch proxy p ee
+                return $ parens $ "isinstance(" <> e <> comma <+> typeN proxy _pappName <> ") and " <> b) 
                [(arg, parens $ e <> ".f" <> pretty id) | arg <- _pappArgs | id <- [0::Int ..]]
-    return $ encloseSep lbracket rbracket comma bindings
+    return $ parens $ "all(" <> encloseSep lbracket rbracket comma bindings <> ")"
 
   genPrologue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genPrologue proxy = 
