@@ -115,7 +115,7 @@ importModules cache paths m loaded = do
                 imports ++ is
               )
     )
-    (initialEnv, 0, m, (is ^.. traverse. importPath))
+    (initialEnv, 0, m, preloadedModules ++ (is ^.. traverse. importPath))
     ((map (\f -> ImportStmt f Nothing [] (m ^. moduleLoc)) preloadedModules) ++ is)
 
 -- | Load a module

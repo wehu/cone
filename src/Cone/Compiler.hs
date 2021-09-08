@@ -35,7 +35,6 @@ checkAndCompileImport paths i target = do
       d = takeDirectory fn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
   liftIO $ createDirectoryIfMissing True d
-  liftIO $ putStrLn fn
   found <- liftIO $ doesFileExist fn
   if found then do
     fTS <- liftIO $ getModificationTime fn
@@ -73,8 +72,6 @@ compile' paths f target = do
 -- | Compile a file
 compile :: [FilePath] -> FilePath -> String -> CompileEnv String
 compile paths f target = do
-  forM_ preloadedModules $ \p ->
-    checkAndCompileImport paths p target
   (o, m, imports) <- compile' paths f target
   forM_ imports $ \p ->
     checkAndCompileImport paths p target
