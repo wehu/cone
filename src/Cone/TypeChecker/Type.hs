@@ -429,12 +429,15 @@ collectVarBindingsInEff a@EffList {} b@EffList {} = do
   if L.length al > L.length bl
     then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
     else do
-      if L.length al < L.length bl && al /= []
+      if L.length al < L.length bl
         then do
-          is <- isEffVar $ last al
-          if not is
-            then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-            else return ()
+          if al == []
+          then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
+          else do
+            is <- isEffVar $ last al
+            if not is
+              then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
+              else return ()
         else return ()
       foldM
         (\s e -> (++) <$> return s <*> e)
@@ -468,19 +471,24 @@ collectEffVarBindings a@EffList {} b@EffList {} = do
     then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
     else do
       if L.length al < L.length bl && al /= []
-        then do
-          is <- isEffVar $ last al
-          if L.length al == 0 || not is
-            then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-            else return ()
+        then
+          if al == []
+          then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
+          else do
+            is <- isEffVar $ last al
+            if L.length al == 0 || not is
+              then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
+              else return ()
         else return ()
       bindings <-
         foldM
           (\s e -> (++) <$> return s <*> e)
           []
           [collectEffVarBindings aarg barg | aarg <- al | barg <- take (L.length al) bl]
-      if L.length al < L.length bl && al /= []
-        then return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
+      if L.length al < L.length bl
+        then if al == []
+             then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
+             else return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
         else return bindings
 collectEffVarBindings a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 

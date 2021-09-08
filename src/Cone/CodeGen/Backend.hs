@@ -103,11 +103,21 @@ class Backend t where
         fn = funcN proxy _typeConName
      in return $ vsep ["class" <+> tn {- <> parens (typeN proxy ptn) -} <> ":"
           ,indent 4 constructor
+          ,indent 4 hash
+          ,indent 4 $ eq tn
           ,ctrFunc fn tn
           ,ctrFuncWrapper fn <+> line]
     where constructor =
             vsep ["def" <+> "__init__" <> genArgs ["self", "____k", "____state"] <> colon
                  ,indent 4 $ vsep genFields]
+          hash = 
+            vsep ["def __hash__(self):"
+                 ,indent 4 $ "return hash(" <> fields <> ")"]
+          eq tn = 
+            vsep ["def __eq__(self, other):"
+                 ,indent 4 $ "return" <+> "isinstance(other, " <> tn <> ") and" <+> cmpFields]
+          fields = encloseSep lparen rparen comma $["self.f" <> pretty i | i <- [0.. length(_typeConArgs)-1]]
+          cmpFields = encloseSep lparen rparen " and " $ "True" : ["self.f" <> pretty i <+> "==" <+> "other.f" <> pretty i | i <- [0.. length(_typeConArgs)-1]]
           genArgs init = encloseSep lparen rparen comma $ 
                  foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
           genFields =

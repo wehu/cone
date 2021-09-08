@@ -31,9 +31,8 @@ fun main() : io unit {
 
   val l = Cons(1, Nil<i32>)
 
-  map(l, fn(a:i32) : io i32{
-     print(a)
-     a
+  map(l, fn(a:i32) : i32{
+     a + 1
   })
 
   handle state<i32> {
