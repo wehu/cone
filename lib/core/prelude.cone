@@ -25,43 +25,43 @@ fun ____mod<a>(a: a, b:a) : a {
 }
 
 fun ____lt<a>(a: a, b:a) : bool {
-  inline_python<a>("(a < b)")
+  inline_python<bool>("(a < b)")
 }
 
 fun ____gt<a>(a: a, b:a) : bool {
-  inline_python<a>("(a > b)")
+  inline_python<bool>("(a > b)")
 }
 
 fun ____le<a>(a: a, b:a) : bool {
-  inline_python<a>("(a <= b)")
+  inline_python<bool>("(a <= b)")
 }
 
 fun ____ge<a>(a: a, b:a) : bool {
-  inline_python<a>("(a >= b)")
+  inline_python<bool>("(a >= b)")
 }
 
 fun ____eq<a>(a: a, b:a) : bool {
-  inline_python<a>("(a == b)")
+  inline_python<bool>("(a == b)")
 }
 
 fun ____ne<a>(a: a, b:a) : bool {
-  inline_python<a>("(a != b)")
+  inline_python<bool>("(a != b)")
 }
 
 fun ____not<a>(a: bool) : bool {
-  inline_python<a>("(not a)")
+  inline_python<bool>("(not a)")
 }
 
 fun ____and<a>(a: bool, b:bool) : bool {
-  inline_python<a>("(a and b)")
+  inline_python<bool>("(a and b)")
 }
 
 fun ____or<a>(a: bool, b:bool) : bool {
-  inline_python<a>("(a or b)")
+  inline_python<bool>("(a or b)")
 }
 
 fun ____assign<a>(a: a, b:a) : unit {
-  inline_python<a>("a = b")
+  inline_python<unit>("a = b")
 }
 
 // builtin types

@@ -311,7 +311,8 @@ genModule proxy Module{..} = do
   pos <- genEpilogue proxy
   return $ vsep $
       -- [ "module" <+> namePath proxy _moduleName <+> line]
-        [pre]
+        ["import core.prelude"]
+        ++ [pre]
         ++ imps
         ++ tops
         ++ [pos]

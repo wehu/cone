@@ -1,4 +1,4 @@
-module Cone.ModuleLoader (loadModule) where
+module Cone.ModuleLoader (loadModule, coneEx, preloadedModules, searchFile) where
 
 import Cone.Parser.AST
 import Cone.Parser.Parser
