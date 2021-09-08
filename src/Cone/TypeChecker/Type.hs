@@ -433,11 +433,12 @@ collectVarBindingsInEff a@EffList {} b@EffList {} = do
   let bl = b ^. effList
   let error = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
   if L.length al > L.length bl
-    then if L.length al == (L.length bl) + 1
-      then do is <- isEffVar $ last al
-              if is then return ()
-              else error
-      else error
+    then -- if L.length al == (L.length bl) + 1
+      -- then do is <- isEffVar $ last al
+      --         if is then return ()
+      --         else error
+      -- else error
+      error
     else return ()
   if L.length al < L.length bl
     then do
@@ -479,11 +480,12 @@ collectEffVarBindings a@EffList {} b@EffList {} = do
   let bl = b ^. effList
   let error = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
   if L.length al > L.length bl
-    then if L.length al == (L.length bl) + 1
-      then do is <- isEffVar $ last al
-              if is then return ()
-              else error
-      else error
+    then -- if L.length al == (L.length bl) + 1
+      -- then do is <- isEffVar $ last al
+      --         if is then return ()
+      --         else error
+      -- else error
+      error
     else return ()
   if L.length al < L.length bl
     then
@@ -500,7 +502,7 @@ collectEffVarBindings a@EffList {} b@EffList {} = do
       (\s e -> (++) <$> return s <*> e)
       []
       [collectEffVarBindings aarg barg | aarg <- al | barg <- take (L.length al) bl]
-  if L.length al < L.length bl || L.length al == (L.length bl) + 1
+  if L.length al < L.length bl -- || L.length al == (L.length bl) + 1
     then if al == []
          then error
          else return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
