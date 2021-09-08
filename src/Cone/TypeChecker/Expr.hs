@@ -118,10 +118,10 @@ inferExprType ECase {..} = do
     et <- inferExprType $ c ^. caseExpr
     return (pt, et)
   let t : rest = ts
-  -- check if condition's type match with patterns' type or not
-  forM_ (rest ^.. traverse . _2) $ \_ ->
-    checkTypeMatch ct (t ^. _1)
-  -- check if all case expressions' type match or not
+  -- check if condition's type match with case exprs' type or not
+  forM_ (rest ^.. traverse . _2) $ \et ->
+    checkTypeMatch et (t ^. _2)
+  -- check if all pattern expressions' type match or not
   forM_ (ts ^.. traverse . _1) $ \e ->
     checkTypeMatch ct e
   -- return case's type
