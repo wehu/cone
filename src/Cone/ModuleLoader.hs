@@ -17,9 +17,9 @@ import System.IO
 
 type Loaded = M.Map FilePath Bool
 
-type LoadEnv = ExceptT String IO (Env, Int, Module)
+type LoadEnv = ExceptT String IO (Env, Int, Module, [String])
 
-type Cache = M.Map FilePath (Env, Int, Module)
+type Cache = M.Map FilePath (Env, Int, Module, [String])
 
 -- | Search a file in path list
 searchFile :: [FilePath] -> FilePath -> ExceptT String IO String
@@ -56,14 +56,14 @@ loadModule' cache paths f' loaded = do
           case result of
             Left e -> throwError $ show e
             Right m -> do
-              (env, id, _) <- importModules cache paths m newLoaded
+              (env, id, _, imports) <- importModules cache paths m newLoaded
               case initModule m env id of
                 Left e -> throwError e
                 Right (env, (id, m)) -> do
                   case checkType m env id of
                    Left err -> throwError err
                    Right (env, (id, m)) -> do
-                     let res = (env, id, m)
+                     let res = (env, id, m, imports)
                      liftIO $ modifyIORef cache $ at f ?~ res
                      return res
 
@@ -76,12 +76,12 @@ importModules :: IORef Cache -> [FilePath] -> Module -> Loaded -> LoadEnv
 importModules cache paths m loaded = do
   let is = m ^.. imports . traverse
   foldM
-    ( \(oldEnv, oldId, oldM) i ->
+    ( \(oldEnv, oldId, oldM, imports) i ->
         case (m ^. moduleName) `elemIndex` preloadedModules of
-          Just _ -> return (oldEnv, oldId, oldM)
+          Just _ -> return (oldEnv, oldId, oldM, imports)
           Nothing -> do
             let fn = (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx)
-            (env, id, m) <- loadModule' cache paths fn loaded
+            (env, id, m, is) <- loadModule' cache paths fn loaded
             -- let g1' = mapMaybeMissing $ \k v -> Nothing
             --     g2' = mapMaybeMissing $ \k v -> Nothing
             --     f' = zipWithMaybeMatched $ \k v1 v2 -> Just v1
@@ -111,10 +111,11 @@ importModules cache paths m loaded = do
                     _funcs = (merge g1 g2 f (oldEnv ^. funcs) $ addPrefix (env ^. funcs))
                   },
                 id,
-                m
+                m,
+                imports ++ is
               )
     )
-    (initialEnv, 0, m)
+    (initialEnv, 0, m, (is ^.. traverse. importPath))
     ((map (\f -> ImportStmt f Nothing [] (m ^. moduleLoc)) preloadedModules) ++ is)
 
 -- | Load a module

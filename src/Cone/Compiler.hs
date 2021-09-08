@@ -42,13 +42,13 @@ checkAndCompileImport paths i target = do
     coneFTS <- liftIO $ getModificationTime coneFn
     if fTS /= coneFTS
     then do
-      (o, _) <- compile' paths coneFn target
+      (o, _, _) <- compile' paths coneFn target
       liftIO $ writeFile fn o
       liftIO $ writeFile initFn ""
     else
       return ()
   else do
-    (o, _) <- compile' paths coneFn target
+    (o, _, _) <- compile' paths coneFn target
     liftIO $ writeFile fn o
     liftIO $ writeFile initFn ""
 
@@ -58,16 +58,16 @@ checkAndCompileImports paths m target = do
   forM_ ims (\i -> checkAndCompileImport paths i target)
 
 -- | Compile a file
-compile' :: [FilePath] -> FilePath -> String -> CompileEnv (String, Module)
+compile' :: [FilePath] -> FilePath -> String -> CompileEnv (String, Module, [String])
 compile' paths f target = do
-  (env, id, m) <- loadModule paths f
+  (env, id, m, imports) <- loadModule paths f
   case target of
     "cone" -> case gen (Cone :: (Cone Target)) m of
                 Left err -> throwError err
-                Right doc -> return $ (show doc, m)
+                Right doc -> return $ (show doc, m, imports)
     "python" -> case gen (Python :: (Python Target)) m of
                   Left err -> throwError err
-                  Right doc -> return $ (show doc, m)
+                  Right doc -> return $ (show doc, m, imports)
     _ -> throwError $ "unknown target: " ++ target
 
 -- | Compile a file
@@ -75,6 +75,7 @@ compile :: [FilePath] -> FilePath -> String -> CompileEnv String
 compile paths f target = do
   forM_ preloadedModules $ \p ->
     checkAndCompileImport paths p target
-  (o, m) <- compile' paths f target
-  checkAndCompileImports paths m target
+  (o, m, imports) <- compile' paths f target
+  forM_ imports $ \p ->
+    checkAndCompileImport paths p target
   return o
