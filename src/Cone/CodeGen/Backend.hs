@@ -256,21 +256,21 @@ class Backend t where
                                             ,indent 4 $ "pass"]
                            ,"finally:"
                            ,indent 4 $ "del state[-1]"]
-          ,"def ____case(____k, ____state, ____conds, ____exprs):"
-          ,indent 4 $ vsep ["for (____p, ____e) in zip(____conds, ____exprs):"
-                           ,indent 4 $ vsep ["____state.append({})"
+          ,"def ____case(k, state, conds, exprs):"
+          ,indent 4 $ vsep ["for (p, e) in zip(conds, exprs):"
+                           ,indent 4 $ vsep ["state.append({})"
                                             ,"try:"
-                                            ,indent 4 $ vsep ["if ____p(____k, ____state):"
-                                                             ,indent 4 $ "return ____e(____k, ____state)"]
+                                            ,indent 4 $ vsep ["if p(k, state):"
+                                                             ,indent 4 $ "return e(k, state)"]
                                             ,"finally:"
-                                            ,indent 4 "del ____state[-1]"]]
-          ,"def ____handle(____k, ____state, ____scope, ____handlers):"
-          ,indent 4 $ vsep ["#____state.append({})"
+                                            ,indent 4 "del state[-1]"]]
+          ,"def ____handle(k, state, scope, handlers):"
+          ,indent 4 $ vsep ["#state.append({})"
                            ,"#try:"
-                           ,indent 4 $ vsep ["____state[-1].update(____handlers)"
-                                            ,"____scope(lambda x: x, ____state)"]
+                           ,indent 4 $ vsep ["state[-1].update(handlers)"
+                                            ,"scope(lambda x: x, state)"]
                            ,"#finally:"
-                           ,indent 4 $ "#del ____state[-1]"]
+                           ,indent 4 $ "#del state[-1]"]
           ,"def "<> funcN proxy "resume(k, s, a):"
           ,indent 4 $ "return k(a)"
           ,"unit = None"
