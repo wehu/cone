@@ -495,15 +495,22 @@ collectEffVarBindings a@EffList {} b@EffList {} = do
           then error
           else return ()
     else return ()
-  bindings <-
-    foldM
-      (\s e -> (++) <$> return s <*> e)
-      []
-      [collectEffVarBindings aarg barg | aarg <- al | barg <- bl]
-  if L.length al < L.length bl || L.length al == (L.length bl) + 1
-    then if al == []
-         then error
-         else return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
+  if L.length al < L.length bl
+  then do 
+    bindings <-
+      foldM
+        (\s e -> (++) <$> return s <*> e)
+        []
+        [collectEffVarBindings aarg barg | aarg <- init al | barg <- bl]
+    return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
+  else do
+    bindings <-
+      foldM
+        (\s e -> (++) <$> return s <*> e)
+        []
+        [collectEffVarBindings aarg barg | aarg <- al | barg <- bl]
+    if L.length al == (L.length bl) + 1
+    then return $ bindings ++ [(_effVar (last al), EffList [] (_effLoc b))]
     else return bindings
 collectEffVarBindings a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
