@@ -140,7 +140,7 @@ class Backend t where
   genExpr proxy EVar{..} = 
     let fn = funcN proxy _evarName
         fnQ = "\"" <> fn <> "\""
-     in return $ exprToCps $ "____state[" <> fnQ <> "] if" <+> fnQ <+> "in" <+> "____state" <+> "else" <+> fn 
+     in return $ exprToCps $ "____lookup_var(____state, " <> fnQ <> ") if" <+> "____lookup_var(____state, " <> fnQ <+> ") != None else" <+> fn 
   genExpr proxy ESeq{..} = do
     let e:es = (reverse _eseq)
     e' <- genExpr proxy e
@@ -234,6 +234,8 @@ class Backend t where
     return $
      vsep ["def "<> funcN proxy "print(k, s, a):"
           ,indent 4 $ "print(a)"
+          ,"def ____lookup_var(state, k):"
+          ,indent 4 $ "return state[k] if k in state else None"
           ,"def ____update_state(state, k, v):"
           ,indent 4 $ "state[k] = v"
           ,"def ____while(____k, ____state, ____cond, ____body):"
