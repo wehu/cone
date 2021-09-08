@@ -333,7 +333,7 @@ inferAppResultEffType f@TFunc {} targs args = do
       []
       [collectEffVarBindingsInType a b | a <- fArgTypes | b <- args])
     <*> collectEffVarBindings funcEff resEff
-  -- checkEffVarBindings effBindings
+  checkEffVarBindings effBindings
   toEffList $ substs effBindings eff
 inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
@@ -568,7 +568,9 @@ checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
 checkVarBindings bindings = do
   foldM_
     ( \b (n, t) -> do
-        case b ^. at n of
+      if aeq (TVar n $ _tloc t) t
+      then return b
+      else case b ^. at n of
           Nothing -> return $ at n ?~ t $ b
           Just ot ->
             if aeq t ot
@@ -583,7 +585,9 @@ checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m ()
 checkEffVarBindings bindings = do
   foldM_
     ( \b (n, t) -> do
-        case b ^. at n of
+      if aeq (EffVar n $ _effLoc t) t
+      then return b
+      else case b ^. at n of
           Nothing -> return $ at n ?~ t $ b
           Just ot ->
             if aeq t ot
