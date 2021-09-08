@@ -235,14 +235,14 @@ class Backend t where
      vsep ["def "<> funcN proxy "print(k, s, a):"
           ,indent 4 $ "print(a)"
           ,"def ____lookup_var(state, k):"
-          ,indent 4 $ vsep ["for s in state:"
+          ,indent 4 $ vsep ["for s in reversed(state):"
                            ,indent 4 $ vsep ["if k in s:"
                                             ,indent 4 $ vsep ["return s[k]"]]]
           ,indent 4 $ "return None"
           ,"def ____add_var(state, k, v):"
-          ,indent 4 $ "state[0][k] = v"
+          ,indent 4 $ "state[-1][k] = v"
           ,"def ____update_state(state, k, v):"
-          ,indent 4 $ vsep ["for s in state:"
+          ,indent 4 $ vsep ["for s in reversed(state):"
                            ,indent 4 $ vsep ["if k in s:"
                                             ,indent 4 $ vsep ["s[k] = v"
                                                              ,"return"]]]
@@ -257,7 +257,7 @@ class Backend t where
                            ,indent 4 $ vsep ["if ____p(____k, ____state):"
                                             ,indent 4 $ "return ____e(____k, ____state)"]]
           ,"def ____handle(____k, ____state, ____scope, ____handlers):"
-          ,indent 4 $ vsep ["____state[0].update(____handlers)"
+          ,indent 4 $ vsep ["____state[-1].update(____handlers)"
                            ,"____scope(lambda x: x, ____state)"]
           ,"def "<> funcN proxy "resume(k, s, a):"
           ,indent 4 $ "return k(a)"
