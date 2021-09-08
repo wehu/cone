@@ -491,7 +491,7 @@ collectEffVarBindings a@EffList {} b@EffList {} = do
       then error
       else do
         is <- isEffVar $ last al
-        if L.length al == 0 || not is
+        if not is
           then error
           else return ()
     else return ()
@@ -499,7 +499,7 @@ collectEffVarBindings a@EffList {} b@EffList {} = do
     foldM
       (\s e -> (++) <$> return s <*> e)
       []
-      [collectEffVarBindings aarg barg | aarg <- al | barg <- take (L.length al) bl]
+      [collectEffVarBindings aarg barg | aarg <- al | barg <- bl]
   if L.length al < L.length bl || L.length al == (L.length bl) + 1
     then if al == []
          then error
