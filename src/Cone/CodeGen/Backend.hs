@@ -247,15 +247,15 @@ class Backend t where
                                             ,indent 4 $ vsep ["s[k] = v"
                                                              ,"return"]]]
           --,indent 4 $ "raise \"cannot find variable\".format(k)"
-          ,"def ____while(____k, ____state, ____cond, ____body):"
-          ,indent 4 $ vsep ["____state.append({})"
+          ,"def ____while(k, state, cond, body):"
+          ,indent 4 $ vsep ["state.append({})"
                            ,"try:"
-                           ,indent 4 $ vsep ["if ____cond(____k, ____state):"
-                                            ,indent 4 $ "[____body(____k, ____state), ____while(____k, ____state, ____cond, ____body)][-1]"
+                           ,indent 4 $ vsep ["if cond(k, state):"
+                                            ,indent 4 $ "[body(k, state), ____while(k, state, cond, body)][-1]"
                                             ,"else:"
                                             ,indent 4 $ "pass"]
                            ,"finally:"
-                           ,indent 4 $ "del ____state[-1]"]
+                           ,indent 4 $ "del state[-1]"]
           ,"def ____case(____k, ____state, ____conds, ____exprs):"
           ,indent 4 $ vsep ["for (____p, ____e) in zip(____conds, ____exprs):"
                            ,indent 4 $ vsep ["____state.append({})"
