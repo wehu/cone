@@ -69,14 +69,14 @@ class Backend t where
   typeN proxy n = 
     let ns = splitOn "/" n
         ps = init ns
-        tn = "T" ++ last ns
+        tn = "Cone__" ++ last ns
      in pretty $ join $ intersperse "." $ ps ++ [tn]
 
   funcN :: t Target -> String -> Doc a
   funcN proxy n =
     let ns = splitOn "/" n
         ps = init ns
-        fn = "f" ++ last ns
+        fn = "cone__" ++ last ns
      in pretty $ join $ intersperse "." $ ps ++ [fn]
 
   genImport :: (Has EnvEff sig m) => t Target -> ImportStmt -> m (Doc a)
@@ -100,7 +100,7 @@ class Backend t where
           ,indent 4 constructor
           ,ctrFunc fn tn <+> line]
     where constructor =
-            vsep ["def" <+> "__init__" <> genArgs ["self", "__k", "__state"] <> colon
+            vsep ["def" <+> "__init__" <> genArgs ["self", "____k", "____state"] <> colon
                  ,indent 4 $ vsep genFields]
           genArgs init = encloseSep lparen rparen comma $ 
                  foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
@@ -112,8 +112,8 @@ class Backend t where
                       f = "self.f" ++ show i
                       a = "t" ++ show (i + 3)
                    in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
-          ctrFunc fn tn = vsep ["def" <+> fn <> genArgs ["__k", "__state"] <> ":"
-                       ,indent 4 ("return" <+> (tn <> genArgs ["__k", "__state"]))]
+          ctrFunc fn tn = vsep ["def" <+> fn <> genArgs ["____k", "____state"] <> ":"
+                       ,indent 4 ("return" <+> (tn <> genArgs ["____k", "____state"]))]
   
   genEffectDef :: (Has EnvEff sig m) => t Target -> EffectDef -> m (Doc a)
   genEffectDef proxy e = return emptyDoc
@@ -126,13 +126,13 @@ class Backend t where
               Nothing -> return "pass"
     return $ vsep ["def" <+> funcN proxy _funcName <> genArgs <> colon
          ,indent 4 body]
-    where genArgs = encloseSep lparen rparen comma $ "__k":"__state":(map (funcN proxy) $ _funcArgs ^..traverse._1)
+    where genArgs = encloseSep lparen rparen comma $ "____k":"____state":(map (funcN proxy) $ _funcArgs ^..traverse._1)
   
   genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m (Doc a)
   genExpr proxy EVar{..} = 
     let fn = funcN proxy _evarName
         fnQ = "\"" <> fn <> "\""
-     in return $ exprToCps $ "__state[" <> fnQ <> "] if" <+> fnQ <+> "in" <+> "__state" <+> "else" <+> fn 
+     in return $ exprToCps $ "____state[" <> fnQ <> "] if" <+> fnQ <+> "in" <+> "____state" <+> "else" <+> fn 
   genExpr proxy ESeq{..} = do
     let e:es = (reverse _eseq)
     e' <- genExpr proxy e
@@ -144,8 +144,8 @@ class Backend t where
   genExpr proxy ELit{..} = return $ exprToCps $ pretty _lit
   genExpr proxy ELam{..} = do
     es <- genBody _elamExpr
-    return $ parens $ "lambda __k, __state" <> colon <+> es
-    where genArgs = encloseSep emptyDoc emptyDoc comma $ "__k":"__state":(map (funcN proxy) $ _elamArgs ^..traverse._1)
+    return $ parens $ "lambda ____k, ____state" <> colon <+> es
+    where genArgs = encloseSep emptyDoc emptyDoc comma $ "____k":"____state":(map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
                                     return $ "lambda" <+> genArgs <> colon <+> callWithCpsClonedState es
@@ -153,7 +153,7 @@ class Backend t where
   genExpr proxy EWhile{..} = do
     c <- genExpr proxy _ewhileCond
     es <- genExpr proxy _ewhileBody
-    return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["__k", "__state", c, es]
+    return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["____k", "____state", c, es]
   genExpr proxy ELet{..} = do
     e <- callWithCps <$> genExpr proxy _eletExpr
     exprToCps <$> genPatternMatch proxy _eletPattern e
@@ -176,14 +176,14 @@ class Backend t where
          "____or" -> binary "or"
          "____assign" -> do
            e <- genExpr proxy (_eappArgs !! 1)
-           return $ exprToCps $ "____update_state(__state, \"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\"," <+> callWithCps e <> ")"
+           return $ exprToCps $ "____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\"," <+> callWithCps e <> ")"
          _ -> do
            f <- genExpr proxy _eappFunc
            args <- genArgs
            return $ exprToCps $ callWithCps f <> args
     where genArgs = do
             args <- mapM (\a -> callWithCps <$> genExpr proxy a) _eappArgs
-            return $ encloseSep lparen rparen comma $ "__k":"__state":args
+            return $ encloseSep lparen rparen comma $ "____k":"____state":args
           binary :: (Has EnvEff sig m) => String -> m (Doc a)
           binary op = do
             lhs <- callWithCps <$> genExpr proxy (_eappArgs !! 0)
@@ -194,22 +194,22 @@ class Backend t where
     handlers <- mapM (\intf -> do
       e <- genExpr proxy (fromJust $ _funcExpr intf)
       let n = funcN proxy $ _funcName intf
-          args = encloseSep emptyDoc emptyDoc comma $ "__k":"__state":(map (\(n, _) -> funcN proxy n) (_funcArgs intf))
+          args = encloseSep emptyDoc emptyDoc comma $ "____k":"____state":(map (\(n, _) -> funcN proxy n) (_funcArgs intf))
       return $ "\"" <> n <> "\" :" <+> parens ("lambda" <+> args <> colon <+> callWithCps e)) _ehandleBindings
-    return $ exprToCps $ "____handle(__k, __state, " <> scope <> comma <+> 
+    return $ exprToCps $ "____handle(____k, ____state, " <> scope <> comma <+> 
       (encloseSep lbrace rbrace comma handlers) <> ")"
   genExpr proxy ECase{..} = do
     c <- callWithCps <$> genExpr proxy _ecaseExpr
     cs <- mapM (\p -> exprToCps <$> genPatternMatch proxy p c) $ _ecaseBody ^.. traverse . casePattern
     es <- mapM (genExpr proxy) $ _ecaseBody ^.. traverse . caseExpr
-    return $ exprToCps $ "____case(__k, __state, " <> 
+    return $ exprToCps $ "____case(____k, ____state, " <> 
         encloseSep lbracket rbracket comma cs <> comma <+>
         encloseSep lbracket rbracket comma es <> ")"
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
           
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> Doc a -> m (Doc a)
   genPatternMatch proxy PVar{..} e = 
-    return $ "[____update_state(__state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> "), True][-1]"
+    return $ "[____update_state(____state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> "), True][-1]"
   genPatternMatch proxy PExpr{..} e = do
     p <- callWithCps <$> genExpr proxy _pExpr
     return $ parens $ p <+> "==" <+> e
@@ -228,18 +228,18 @@ class Backend t where
           ,indent 4 $ "print(a)"
           ,"def ____update_state(state, k, v):"
           ,indent 4 $ "state[k] = v"
-          ,"def ____while(__k, __state, cond, body):"
-          ,indent 4 $ vsep ["if cond(__k, __state):"
-                           ,indent 4 $ "[body(__k, __state), ____while(__k, __state, cond, body)][-1]"
+          ,"def ____while(____k, ____state, cond, body):"
+          ,indent 4 $ vsep ["if cond(____k, ____state):"
+                           ,indent 4 $ "[body(____k, ____state), ____while(____k, ____state, cond, body)][-1]"
                            ,"else:"
                            ,indent 4 $ "pass"]
-          ,"def ____case(__k, __state, conds, exprs):"
+          ,"def ____case(____k, ____state, conds, exprs):"
           ,indent 4 $ vsep ["for (p, e) in zip(conds, exprs):"
-                           ,indent 4 $ vsep ["if p(__k, __state):"
-                                            ,indent 4 $ "return e(__k, __state)"]]
-          ,"def ____handle(__k, __state, scope, handlers):"
-          ,indent 4 $ vsep ["__state.update(handlers)"
-                           ,"scope(lambda x: x, __state)"]
+                           ,indent 4 $ vsep ["if p(____k, ____state):"
+                                            ,indent 4 $ "return e(____k, ____state)"]]
+          ,"def ____handle(____k, ____state, scope, handlers):"
+          ,indent 4 $ vsep ["____state.update(handlers)"
+                           ,"scope(lambda x: x, ____state)"]
           ,"def "<> funcN proxy "resume(k, s, a):"
           ,indent 4 $ "return k(a)"
           ,"unit = None"
@@ -254,16 +254,16 @@ class Backend t where
           ,indent 4 $ funcN proxy "main" <> "(lambda x: x, {})" <+> line]
 
 exprToCps :: Doc a -> Doc a
-exprToCps e = parens $ "lambda" <+> "__k" <> comma <+> "__state" <> colon <+> e
+exprToCps e = parens $ "lambda" <+> "____k" <> comma <+> "____state" <> colon <+> e
 
 callWithCps :: Doc a -> Doc a
-callWithCps e = parens $ e <> (encloseSep lparen rparen comma $ "__k":"__state":[])
+callWithCps e = parens $ e <> (encloseSep lparen rparen comma $ "____k":"____state":[])
 
 callWithCpsEmptyState :: Doc a -> Doc a
-callWithCpsEmptyState e = parens $ e <> lparen <> "__k" <> comma <+> "{}" <> rparen
+callWithCpsEmptyState e = parens $ e <> lparen <> "____k" <> comma <+> "{}" <> rparen
 
 callWithCpsClonedState :: Doc a -> Doc a
-callWithCpsClonedState e = parens $ e <> lparen <> "__k" <> comma <+> "__state.copy()" <> rparen
+callWithCpsClonedState e = parens $ e <> lparen <> "____k" <> comma <+> "____state.copy()" <> rparen
 
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
