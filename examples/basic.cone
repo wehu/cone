@@ -11,8 +11,8 @@ effect state<a> {
 }
 
 fun test() : state<i32> unit {
-   val a = get<i32>()
-   set(a+1)
+   val b = get<i32>()
+   set(b+1)
 }
 
 fun test2(a:i32) : i32 {
@@ -36,6 +36,7 @@ fun main() : io unit {
      }
      fun set(v:i32) {
         a = v
+        print(a)
         resume(unit)
      }
   }

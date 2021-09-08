@@ -128,7 +128,11 @@ class Backend t where
   genFuncDef proxy FuncDef{..} = do
     body <- case _funcExpr of
               Just e -> do es <- genExpr proxy e 
-                           return $ "return" <+> callWithCps es
+                           return $ vsep ["____state.append({})"
+                                         ,"try:"
+                                         ,indent 4 $ "return" <+> callWithCps es
+                                         ,"finally:"
+                                         ,indent 4 "del ____state[-1]"]
               Nothing -> return "pass"
     return $ vsep ["def" <+> funcN proxy _funcName <> genArgs ["____k","____state"] <> colon
                   ,indent 4 body
@@ -156,7 +160,7 @@ class Backend t where
     where genArgs = encloseSep emptyDoc emptyDoc comma $ "____k":"____state":(map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
-                                    return $ "lambda" <+> genArgs <> colon <+> callWithCpsClonedState es
+                                    return $ "lambda" <+> genArgs <> colon <+> callWithCpsDeepClonedState es
                        Nothing -> return $ "lambda" <+> colon <> "pass"
   genExpr proxy EWhile{..} = do
     c <- genExpr proxy _ewhileCond
@@ -265,12 +269,12 @@ class Backend t where
                                             ,"finally:"
                                             ,indent 4 "del state[-1]"]]
           ,"def ____handle(k, state, scope, handlers):"
-          ,indent 4 $ vsep ["#state.append({})"
-                           ,"#try:"
+          ,indent 4 $ vsep ["state.append({})"
+                           ,"try:"
                            ,indent 4 $ vsep ["state[-1].update(handlers)"
                                             ,"scope(lambda x: x, state)"]
-                           ,"#finally:"
-                           ,indent 4 $ "#del state[-1]"]
+                           ,"finally:"
+                           ,indent 4 $ "del state[-1]"]
           ,"def "<> funcN proxy "resume(k, s, a):"
           ,indent 4 $ "return k(a)"
           ,"unit = None"
@@ -297,7 +301,11 @@ callWithCpsEmptyState e = parens $ e <> lparen <> "____k" <> comma <+> "[{}]" <>
 
 -- | Call a cps function with cloned state
 callWithCpsClonedState :: Doc a -> Doc a
-callWithCpsClonedState e = parens $ e <> lparen <> "____k" <> comma <+> "copy.deepcopy(____state)" <> rparen
+callWithCpsClonedState e = parens $ e <> lparen <> "____k" <> comma <+> "____state.copy()" <> rparen
+
+-- | Call a cps function with cloned state
+callWithCpsDeepClonedState :: Doc a -> Doc a
+callWithCpsDeepClonedState e = parens $ e <> lparen <> "____k" <> comma <+> "copy.deepcopy(____state)" <> rparen
 
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
