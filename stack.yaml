@@ -44,7 +44,6 @@ packages:
 extra-deps:
 - unbound-generics-0.4.1
 - fused-effects-1.1.1.1
-- linearEqSolver-2.3
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

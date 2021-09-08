@@ -37,7 +37,6 @@ dependencies:
 - split
 - optparse-applicative
 - process
-- linearEqSolver
 
 library:
   source-dirs: src
