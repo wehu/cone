@@ -91,6 +91,20 @@ fun foo() : python () {
 
 直接生成python包，然后发布。
 
-## 语法
+## Install
+
+安装stack
+
+```bash
+curl https://get-ghcup.haskell.org -sSf | sh
+```
+
+编译运行例子
+
+```bash
+stack run examples/basic.cone
+```
+
+
 
 
