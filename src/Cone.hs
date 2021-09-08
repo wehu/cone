@@ -17,6 +17,8 @@ import System.Directory
 import System.Environment
 import System.FilePath
 import System.Info
+import Paths_cone (version)
+import Data.Version (showVersion)
 
 data Opts = Opts {inputFiles :: [String], target :: String, dump :: Bool}
 
@@ -64,7 +66,7 @@ play Opts {..} = do
     let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100)
 #endif
 #endif
-    let coneVersion = "0.1.0.0"
+    let coneVersion = showVersion version
     let libPath = (takeDirectory $ takeDirectory execPath) </> "share" </> arch ++ "-" ++ os ++ "-ghc-" ++ ghcVersion </> "cone-" ++ coneVersion </> "lib"
     let paths = (takeDirectory f): currentPath : [libPath]
     res <- runExceptT $ compile paths f target
