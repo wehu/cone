@@ -54,9 +54,12 @@ setEnv v l = do
   env <- get @Env
   put $ set l v env
 
+-- | Targe proxy
 data Target
 
+-- | Backend interfaces
 class Backend t where
+  -- | Generate a module
   gen :: t Target -> Module -> Either String (Doc a)
   gen proxy m = do
     (env, (id, doc)) <- run . runError . (runState initialEnv) . runFresh 0 $ genModule proxy m
@@ -258,15 +261,19 @@ class Backend t where
           ["if __name__ == \"__main__\":"
           ,indent 4 $ funcN proxy "main_w()" <+> line]
 
+-- | Convert a experision to cps 
 exprToCps :: Doc a -> Doc a
 exprToCps e = parens $ "lambda" <+> "____k" <> comma <+> "____state" <> colon <+> e
 
+-- | Call a cps function
 callWithCps :: Doc a -> Doc a
 callWithCps e = parens $ e <> (encloseSep lparen rparen comma $ "____k":"____state":[])
 
+-- | Call a cps function with new empty state
 callWithCpsEmptyState :: Doc a -> Doc a
 callWithCpsEmptyState e = parens $ e <> lparen <> "____k" <> comma <+> "{}" <> rparen
 
+-- | Call a cps function with cloned state
 callWithCpsClonedState :: Doc a -> Doc a
 callWithCpsClonedState e = parens $ e <> lparen <> "____k" <> comma <+> "____state.copy()" <> rparen
 
