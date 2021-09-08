@@ -119,7 +119,7 @@ class Backend t where
           ctrFunc fn tn = vsep ["def" <+> fn <> genArgs ["____k", "____state"] <> ":"
                                ,indent 4 ("return" <+> (tn <> genArgs ["____k", "____state"]))]
           ctrFuncWrapper fn = vsep ["def" <+> fn <> "_w" <> genArgs [] <> ":"
-                                   ,indent 4 ("return" <+> (fn <> genArgs ["lambda x:x", "{}"]))]
+                                   ,indent 4 ("return" <+> (fn <> genArgs ["lambda x:x", "[{}]"]))]
   
   genEffectDef :: (Has EnvEff sig m) => t Target -> EffectDef -> m (Doc a)
   genEffectDef proxy e = return emptyDoc
@@ -133,7 +133,7 @@ class Backend t where
     return $ vsep ["def" <+> funcN proxy _funcName <> genArgs ["____k","____state"] <> colon
                   ,indent 4 body
                   ,"def" <+> funcN proxy _funcName <> "_w" <> genArgs [] <> colon
-                  ,indent 4 $ "return" <+> funcN proxy _funcName <> genArgs ["lambda x:x", "{}"]]
+                  ,indent 4 $ "return" <+> funcN proxy _funcName <> genArgs ["lambda x:x", "[{}]"]]
     where genArgs init = encloseSep lparen rparen comma $ init ++ (map (funcN proxy) $ _funcArgs ^..traverse._1)
   
   genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m (Doc a)
@@ -218,7 +218,7 @@ class Backend t where
           
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> Doc a -> m (Doc a)
   genPatternMatch proxy PVar{..} e = 
-    return $ "[____update_state(____state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> "), True][-1]"
+    return $ "[____add_var(____state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> "), True][-1]"
   genPatternMatch proxy PExpr{..} e = do
     p <- callWithCps <$> genExpr proxy _pExpr
     return $ parens $ p <+> "==" <+> e
@@ -235,9 +235,18 @@ class Backend t where
      vsep ["def "<> funcN proxy "print(k, s, a):"
           ,indent 4 $ "print(a)"
           ,"def ____lookup_var(state, k):"
-          ,indent 4 $ "return state[k] if k in state else None"
+          ,indent 4 $ vsep ["for s in state:"
+                           ,indent 4 $ vsep ["if k in s:"
+                                            ,indent 4 $ vsep ["return s[k]"]]]
+          ,indent 4 $ "return None"
+          ,"def ____add_var(state, k, v):"
+          ,indent 4 $ "state[0][k] = v"
           ,"def ____update_state(state, k, v):"
-          ,indent 4 $ "state[k] = v"
+          ,indent 4 $ vsep ["for s in state:"
+                           ,indent 4 $ vsep ["if k in s:"
+                                            ,indent 4 $ vsep ["s[k] = v"
+                                                             ,"return"]]]
+          --,indent 4 $ "raise \"cannot find variable\".format(k)"
           ,"def ____while(____k, ____state, ____cond, ____body):"
           ,indent 4 $ vsep ["if ____cond(____k, ____state):"
                            ,indent 4 $ "[____body(____k, ____state), ____while(____k, ____state, ____cond, ____body)][-1]"
@@ -248,7 +257,7 @@ class Backend t where
                            ,indent 4 $ vsep ["if ____p(____k, ____state):"
                                             ,indent 4 $ "return ____e(____k, ____state)"]]
           ,"def ____handle(____k, ____state, ____scope, ____handlers):"
-          ,indent 4 $ vsep ["____state.update(____handlers)"
+          ,indent 4 $ vsep ["____state[0].update(____handlers)"
                            ,"____scope(lambda x: x, ____state)"]
           ,"def "<> funcN proxy "resume(k, s, a):"
           ,indent 4 $ "return k(a)"
@@ -273,11 +282,11 @@ callWithCps e = parens $ e <> (encloseSep lparen rparen comma $ "____k":"____sta
 
 -- | Call a cps function with new empty state
 callWithCpsEmptyState :: Doc a -> Doc a
-callWithCpsEmptyState e = parens $ e <> lparen <> "____k" <> comma <+> "{}" <> rparen
+callWithCpsEmptyState e = parens $ e <> lparen <> "____k" <> comma <+> "[{}]" <> rparen
 
 -- | Call a cps function with cloned state
 callWithCpsClonedState :: Doc a -> Doc a
-callWithCpsClonedState e = parens $ e <> lparen <> "____k" <> comma <+> "____state.copy()" <> rparen
+callWithCpsClonedState e = parens $ e <> lparen <> "____k" <> comma <+> "copy.deepcopy(____state)" <> rparen
 
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
@@ -290,7 +299,7 @@ genModule proxy Module{..} = do
   pos <- genEpilogue proxy
   return $ vsep $
       -- [ "module" <+> namePath proxy _moduleName <+> line]
-        [pre]
+        [pre, "import copy"]
         ++ imps
         ++ tops
         ++ [pos]
