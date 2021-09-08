@@ -19,7 +19,7 @@ fun test2(a:i32) : i32 {
    a + 1
 }
 
-fun test_inline() : unit {
+fun test_inline() : io unit {
    inline_python<unit>("print(\"test_inline\")")
 }
 
