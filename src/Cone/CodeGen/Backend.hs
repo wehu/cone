@@ -128,9 +128,10 @@ class Backend t where
   genFuncDef proxy FuncDef{..} = do
     body <- case _funcExpr of
               Just e -> do es <- genExpr proxy e 
-                           return $ vsep ["____state.append({})"
+                           return $ vsep ["____state = ____state.copy()"
+                                         ,"____state.append({})"
                                          ,"try:"
-                                         ,indent 4 $ "return" <+> callWithCpsDeepClonedState es
+                                         ,indent 4 $ "return" <+> callWithCps es
                                          ,"finally:"
                                          ,indent 4 "del ____state[-1]"]
               Nothing -> return "pass"
@@ -160,7 +161,7 @@ class Backend t where
     where genArgs = encloseSep emptyDoc emptyDoc comma $ "____k":"____state_unused":(map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
-                                    return $ "lambda" <+> genArgs <> colon <+> callWithCpsDeepClonedState es
+                                    return $ "lambda" <+> genArgs <> colon <+> callWithCpsNewState es
                        Nothing -> return $ "lambda" <+> colon <> "pass"
   genExpr proxy EWhile{..} = do
     c <- genExpr proxy _ewhileCond
@@ -296,16 +297,9 @@ exprToCps e = parens $ "lambda" <+> "____k" <> comma <+> "____state" <> colon <+
 callWithCps :: Doc a -> Doc a
 callWithCps e = parens $ e <> (encloseSep lparen rparen comma $ "____k":"____state":[])
 
-callWithCpsEmptyState :: Doc a -> Doc a
-callWithCpsEmptyState e = parens $ e <> lparen <> "____k" <> comma <+> "[{}]" <> rparen
-
 -- | Call a cps function with cloned state
-callWithCpsClonedState :: Doc a -> Doc a
-callWithCpsClonedState e = parens $ e <> lparen <> "____k" <> comma <+> "____state.copy()" <> rparen
-
--- | Call a cps function with cloned state
-callWithCpsDeepClonedState :: Doc a -> Doc a
-callWithCpsDeepClonedState e = parens $ e <> lparen <> "____k" <> comma <+> "copy.deepcopy(____state)" <> rparen
+callWithCpsNewState :: Doc a -> Doc a
+callWithCpsNewState e = parens $ e <> lparen <> "____k" <> comma <+> "(____state + [{}])" <> rparen
 
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
 genImplFuncDef proxy ImplFuncDef{..} = genFuncDef proxy _implFunDef 
@@ -318,7 +312,7 @@ genModule proxy Module{..} = do
   pos <- genEpilogue proxy
   return $ vsep $
       -- [ "module" <+> namePath proxy _moduleName <+> line]
-        [pre, "import copy"]
+        [pre]
         ++ imps
         ++ tops
         ++ [pos]
