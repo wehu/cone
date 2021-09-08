@@ -60,9 +60,12 @@ loadModule' cache paths f' loaded = do
               case initModule m env id of
                 Left e -> throwError e
                 Right (env, (id, m)) -> do
-                  let res = (env, id, m)
-                  liftIO $ modifyIORef cache $ at f ?~ res
-                  return res
+                  case checkType m env id of
+                   Left err -> throwError err
+                   Right (env, (id, m)) -> do
+                     let res = (env, id, m)
+                     liftIO $ modifyIORef cache $ at f ?~ res
+                     return res
 
 coneEx = "cone"
 
@@ -118,7 +121,5 @@ importModules cache paths m loaded = do
 loadModule :: [FilePath] -> FilePath -> LoadEnv
 loadModule paths f = do
   cache <- liftIO $ newIORef M.empty
-  (env, id, m) <- loadModule' cache paths f M.empty
-  case checkType m env id of
-    Left err -> throwError err
-    Right (env, (id, m)) -> return (env, id, m)
+  loadModule' cache paths f M.empty
+
