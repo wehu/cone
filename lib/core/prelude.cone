@@ -4,65 +4,35 @@ module core/prelude
 
 fun inline_python<a>(code:str) : a
 
-fun ____add<a>(a: a, b:a) : a {
-  inline_python<a>("(a + b)")
-}
+fun ____add<a>(a: a, b:a) : a 
 
-fun ____sub<a>(a: a, b:a) : a {
-  inline_python<a>("(a - b)")
-}
+fun ____sub<a>(a: a, b:a) : a 
 
-fun ____mul<a>(a: a, b:a) : a {
-  inline_python<a>("(a * b)")
-}
+fun ____mul<a>(a: a, b:a) : a
 
-fun ____div<a>(a: a, b:a) : a {
-  inline_python<a>("(a / b)")
-}
+fun ____div<a>(a: a, b:a) : a
 
-fun ____mod<a>(a: a, b:a) : a {
-  inline_python<a>("(a % b)")
-}
+fun ____mod<a>(a: a, b:a) : a
 
-fun ____lt<a>(a: a, b:a) : bool {
-  inline_python<bool>("(a < b)")
-}
+fun ____lt<a>(a: a, b:a) : bool
 
-fun ____gt<a>(a: a, b:a) : bool {
-  inline_python<bool>("(a > b)")
-}
+fun ____gt<a>(a: a, b:a) : bool 
 
-fun ____le<a>(a: a, b:a) : bool {
-  inline_python<bool>("(a <= b)")
-}
+fun ____le<a>(a: a, b:a) : bool 
 
-fun ____ge<a>(a: a, b:a) : bool {
-  inline_python<bool>("(a >= b)")
-}
+fun ____ge<a>(a: a, b:a) : bool 
 
-fun ____eq<a>(a: a, b:a) : bool {
-  inline_python<bool>("(a == b)")
-}
+fun ____eq<a>(a: a, b:a) : bool
 
-fun ____ne<a>(a: a, b:a) : bool {
-  inline_python<bool>("(a != b)")
-}
+fun ____ne<a>(a: a, b:a) : bool 
 
-fun ____not<a>(a: bool) : bool {
-  inline_python<bool>("(not a)")
-}
+fun ____not<a>(a: bool) : bool 
 
-fun ____and<a>(a: bool, b:bool) : bool {
-  inline_python<bool>("(a and b)")
-}
+fun ____and<a>(a: bool, b:bool) : bool
 
-fun ____or<a>(a: bool, b:bool) : bool {
-  inline_python<bool>("(a or b)")
-}
+fun ____or<a>(a: bool, b:bool) : bool 
 
-fun ____assign<a>(a: a, b:a) : unit {
-  inline_python<unit>("a = b")
-}
+fun ____assign<a>(a: a, b:a) : unit 
 
 // builtin types
 

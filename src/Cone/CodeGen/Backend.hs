@@ -192,7 +192,7 @@ class Backend t where
          "____assign" -> do
            e <- genExpr proxy (_eappArgs !! 1)
            return $ exprToCps $ "____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\"," <+> callWithCps e <> ")"
-         "inline_python" -> return $ exprToCps $ "eval(" <> pretty ((_eappArgs !! 0) ^.lit) <> ")"
+         "inline_python" -> return $ exprToCps $ pretty $ (read ((_eappArgs !! 0) ^.lit) :: String)
          _ -> do
            f <- genExpr proxy _eappFunc
            args <- genArgs
