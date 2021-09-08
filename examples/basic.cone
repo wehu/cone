@@ -54,7 +54,7 @@ fun main() : io unit {
   }
 
   case A(200) {
-     A(a) -> {print("ddddd")}
+     A(a) -> {print(a)}
      B(3) -> {print("bbbb")}
   }
 

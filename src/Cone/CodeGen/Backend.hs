@@ -215,7 +215,7 @@ class Backend t where
           
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> Doc a -> m (Doc a)
   genPatternMatch proxy PVar{..} e = 
-    return $ "[____update_state(____state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> "), True][-1]"
+    return $ "[____add_var(____state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> "), True][-1]"
   genPatternMatch proxy PExpr{..} e = do
     p <- callWithCps <$> genExpr proxy _pExpr
     return $ parens $ p <+> "==" <+> e
@@ -231,6 +231,13 @@ class Backend t where
     return $
      vsep ["def "<> funcN proxy "print(k, s, a):"
           ,indent 4 $ "print(a)"
+          ,"def ____add_var(state, k, v):"
+          ,indent 4 $ vsep ["state[k] = v"
+                           ,"lvk = \"____local_vars\""
+                           ,"if lvk in state:"
+                           ,indent 4 $ "state[lvk].append(k)"
+                           ,"else:"
+                           ,indent 4 $ "state[lvk] = [k]"]
           ,"def ____update_state(state, k, v):"
           ,indent 4 $ "state[k] = v"
           ,"def ____while(____k, ____state, cond, body):"
