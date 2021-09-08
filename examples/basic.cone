@@ -2,6 +2,7 @@ module example
 
 type A {
    A(i32)
+   B(i32)
 }
 
 effect state<a> {
@@ -51,6 +52,12 @@ fun main() : io unit {
     print(a)
     a = a + 1
   }
+
+  case A(2) {
+     A(a) -> {print(a)}
+     B(3) -> {print("bbbb")}
+  }
+
   print(test2(a))
   val f = fn () : i32 { a + 1 }
   f()
