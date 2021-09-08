@@ -475,7 +475,7 @@ collectEffVarBindings a@EffList {} b@EffList {} = do
   if L.length al > L.length bl
     then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
     else do
-      if L.length al < L.length bl && al /= []
+      if L.length al < L.length bl
         then
           if al == []
           then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
