@@ -16,7 +16,7 @@ fun reverse<a>(l : list<a>) : list<a> {
   newl
 }
 
-fun map<a, b>(l : list<a>, f : (a) -> b) : list<b> {
+fun map<a, b>[e](l : list<a>, f : (a) -> e b) : e list<b> {
   var rest = l
   var newl = Nil<b>
   while (rest != Nil<a>) {

@@ -29,13 +29,12 @@ fun main() : io unit {
   var a = 0
   val A(b) = A(2)
 
-  val l = Cons(1, Nil<i32>)
+  val l = Cons(2, Cons(1, Nil<i32>))
 
-  val ll = map(l, fn(a:i32) : i32{
+  val ll = map(l, fn(a:i32) : io i32{
+     print(a)
      a + 1
   })
-
-  print(ll)
 
   handle state<i32> {
      test()
