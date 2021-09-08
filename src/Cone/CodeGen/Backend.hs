@@ -98,7 +98,8 @@ class Backend t where
         fn = funcN proxy _typeConName
      in return $ vsep ["class" <+> tn {- <> parens (typeN proxy ptn) -} <> ":"
           ,indent 4 constructor
-          ,ctrFunc fn tn <+> line]
+          ,ctrFunc fn tn
+          ,ctrFuncWrapper fn <+> line]
     where constructor =
             vsep ["def" <+> "__init__" <> genArgs ["self", "____k", "____state"] <> colon
                  ,indent 4 $ vsep genFields]
@@ -113,7 +114,9 @@ class Backend t where
                       a = "t" ++ show (i + 3)
                    in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
           ctrFunc fn tn = vsep ["def" <+> fn <> genArgs ["____k", "____state"] <> ":"
-                       ,indent 4 ("return" <+> (tn <> genArgs ["____k", "____state"]))]
+                               ,indent 4 ("return" <+> (tn <> genArgs ["____k", "____state"]))]
+          ctrFuncWrapper fn = vsep ["def" <+> fn <> "_w" <> genArgs [] <> ":"
+                                   ,indent 4 ("return" <+> (fn <> genArgs ["lambda x:x", "{}"]))]
   
   genEffectDef :: (Has EnvEff sig m) => t Target -> EffectDef -> m (Doc a)
   genEffectDef proxy e = return emptyDoc
@@ -124,9 +127,11 @@ class Backend t where
               Just e -> do es <- genExpr proxy e 
                            return $ "return" <+> callWithCps es
               Nothing -> return "pass"
-    return $ vsep ["def" <+> funcN proxy _funcName <> genArgs <> colon
-         ,indent 4 body]
-    where genArgs = encloseSep lparen rparen comma $ "____k":"____state":(map (funcN proxy) $ _funcArgs ^..traverse._1)
+    return $ vsep ["def" <+> funcN proxy _funcName <> genArgs ["____k","____state"] <> colon
+                  ,indent 4 body
+                  ,"def" <+> funcN proxy _funcName <> "_w" <> genArgs [] <> colon
+                  ,indent 4 $ "return" <+> funcN proxy _funcName <> genArgs ["lambda x:x", "{}"]]
+    where genArgs init = encloseSep lparen rparen comma $ init ++ (map (funcN proxy) $ _funcArgs ^..traverse._1)
   
   genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m (Doc a)
   genExpr proxy EVar{..} = 
@@ -251,7 +256,7 @@ class Backend t where
     ls <- getEnv lambdas
     return $ vsep $ map pretty ls ++ 
           ["if __name__ == \"__main__\":"
-          ,indent 4 $ funcN proxy "main" <> "(lambda x: x, {})" <+> line]
+          ,indent 4 $ funcN proxy "main_w()" <+> line]
 
 exprToCps :: Doc a -> Doc a
 exprToCps e = parens $ "lambda" <+> "____k" <> comma <+> "____state" <> colon <+> e
