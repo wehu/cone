@@ -173,8 +173,10 @@ class Backend t where
     where genArgs = encloseSep emptyDoc emptyDoc comma $ "____k":"____state_unused":(map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
-                                    return $ "lambda" <+> genArgs <> colon <+> callWithCpsNewState es
+                                    return $ "lambda" <+> genArgs <> colon <+> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es)
                        Nothing -> return $ "lambda" <+> colon <> "pass"
+          callCpsWithclearedVars es = encloseSep lparen rparen comma $ 
+                 "____k":"____state":(encloseSep lbracket rbracket comma $ map (\n -> "\"" <> funcN proxy n <> "\"") $ _elamArgs ^..traverse._1):[es]
   genExpr proxy EWhile{..} = do
     c <- genExpr proxy _ewhileCond
     es <- genExpr proxy _ewhileBody
@@ -263,6 +265,13 @@ class Backend t where
                            ,indent 4 $ vsep ["if k in s:"
                                             ,indent 4 $ vsep ["s[k] = v"
                                                              ,"return"]]]
+          ,"def ____call_cps_with_cleared_vars(k, state, ks, e):"
+          ,indent 4 $ vsep ["state = copy.deepcopy(state)"
+                           ,"for s in state:"
+                           ,indent 4 $ vsep ["for k in ks:"
+                                            ,indent 4 $ vsep ["if k in s:"
+                                                             ,indent 4 "del s[k]"]]
+                           ,"e(k, state)"]
           ,"def ____while(k, state, cond, body):"
           ,indent 4 $ vsep ["state.append({})"
                            ,"try:"
@@ -323,7 +332,8 @@ genModule proxy Module{..} = do
   pos <- genEpilogue proxy
   return $ vsep $
       -- [ "module" <+> namePath proxy _moduleName <+> line]
-        ["from core.prelude import *"]
+        ["from core.prelude import *"
+        ,"import copy"]
         ++ [pre]
         ++ imps
         ++ tops
