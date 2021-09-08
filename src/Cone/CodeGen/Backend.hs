@@ -130,7 +130,7 @@ class Backend t where
               Just e -> do es <- genExpr proxy e 
                            return $ vsep ["____state.append({})"
                                          ,"try:"
-                                         ,indent 4 $ "return" <+> callWithCps es
+                                         ,indent 4 $ "return" <+> callWithCpsDeepClonedState es
                                          ,"finally:"
                                          ,indent 4 "del ____state[-1]"]
               Nothing -> return "pass"
@@ -157,7 +157,7 @@ class Backend t where
   genExpr proxy ELam{..} = do
     es <- genBody _elamExpr
     return $ parens $ "lambda ____k, ____state" <> colon <+> es
-    where genArgs = encloseSep emptyDoc emptyDoc comma $ "____k":"____state":(map (funcN proxy) $ _elamArgs ^..traverse._1)
+    where genArgs = encloseSep emptyDoc emptyDoc comma $ "____k":"____state_unused":(map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
                                     return $ "lambda" <+> genArgs <> colon <+> callWithCpsDeepClonedState es
@@ -207,7 +207,7 @@ class Backend t where
     handlers <- mapM (\intf -> do
       e <- genExpr proxy (fromJust $ _funcExpr intf)
       let n = funcN proxy $ _funcName intf
-          args = encloseSep emptyDoc emptyDoc comma $ "____k":"____state":(map (\(n, _) -> funcN proxy n) (_funcArgs intf))
+          args = encloseSep emptyDoc emptyDoc comma $ "____k":"____state_unused":(map (\(n, _) -> funcN proxy n) (_funcArgs intf))
       return $ "\"" <> n <> "\" :" <+> parens ("lambda" <+> args <> colon <+> callWithCps e)) _ehandleBindings
     return $ exprToCps $ "____handle(____k, ____state, " <> scope <> comma <+> 
       (encloseSep lbrace rbrace comma handlers) <> ")"
