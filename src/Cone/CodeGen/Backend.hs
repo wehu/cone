@@ -84,8 +84,10 @@ class Backend t where
 
   genImport :: (Has EnvEff sig m) => t Target -> ImportStmt -> m (Doc a)
   genImport proxy ImportStmt{..} = return $
-    "import" <+> namePath proxy _importPath <+> 
-     (case _importAlias of; Just a -> "as" <+> pretty a; _ -> emptyDoc) <+> line
+     (case _importAlias of
+       Just a -> "import" <+> namePath proxy _importPath <+> "as" <+> pretty a
+       Nothing -> "from" <+> namePath proxy _importPath <+> "import *")
+      <+> line
 
   genTypeDef :: (Has EnvEff sig m) => t Target -> TypeDef -> m (Doc a)
   genTypeDef proxy TypeDef{..} = do
@@ -311,7 +313,7 @@ genModule proxy Module{..} = do
   pos <- genEpilogue proxy
   return $ vsep $
       -- [ "module" <+> namePath proxy _moduleName <+> line]
-        ["import core.prelude"]
+        ["from core.prelude import *"]
         ++ [pre]
         ++ imps
         ++ tops
