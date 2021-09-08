@@ -140,18 +140,15 @@ class Backend t where
   genFuncDef proxy FuncDef{..} = do
     body <- case _funcExpr of
               Just e -> do es <- genExpr proxy e 
-                           return $ vsep ["____state = ____state.copy()"
-                                         ,"____state.append({})"
-                                         ,"try:"
-                                         ,indent 4 $ "return" <+> callWithCps es
-                                         ,"finally:"
-                                         ,indent 4 "del ____state[-1]"]
+                           return $ "return" <+> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es)
               Nothing -> return "pass"
     return $ vsep ["def" <+> funcN proxy _funcName <> genArgs ["____k","____state"] <> colon
                   ,indent 4 body
                   ,"def" <+> funcN proxy _funcName <> "_w" <> genArgs [] <> colon
                   ,indent 4 $ "return" <+> funcN proxy _funcName <> genArgs ["lambda x:x", "[{}]"]]
     where genArgs init = encloseSep lparen rparen comma $ init ++ (map (funcN proxy) $ _funcArgs ^..traverse._1)
+          callCpsWithclearedVars es = encloseSep lparen rparen comma $ 
+                 "____k":"____state":(encloseSep lbracket rbracket comma $ map (\n -> "\"" <> funcN proxy n <> "\"") $ _funcArgs ^..traverse._1):[es]
   
   genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m (Doc a)
   genExpr proxy EVar{..} = 
@@ -271,7 +268,7 @@ class Backend t where
                            ,indent 4 $ vsep ["for k in ks:"
                                             ,indent 4 $ vsep ["if k in s:"
                                                              ,indent 4 "del s[k]"]]
-                           ,"e(k, state)"]
+                           ,"return e(k, state)"]
           ,"def ____while(k, state, cond, body):"
           ,indent 4 $ vsep ["state.append({})"
                            ,"try:"
