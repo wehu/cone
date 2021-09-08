@@ -31,7 +31,7 @@ fun main() : io unit {
 
   val l = Cons(3, Cons(2, Cons(1, Nil<i32>)))
 
-  val ll = map(l, fn(b:i32) : io i32{
+  val ll = map(l, fn(b:i32) : i32{
      print(b)
      a + 1
   })

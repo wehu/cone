@@ -431,23 +431,28 @@ collectVarBindingsInEff a@EffApp {} b@EffApp {} =
 collectVarBindingsInEff a@EffList {} b@EffList {} = do
   let al = a ^. effList
   let bl = b ^. effList
+  let error = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
   if L.length al > L.length bl
-    then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-    else do
-      if L.length al < L.length bl
-        then do
-          if al == []
-          then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-          else do
-            is <- isEffVar $ last al
-            if not is
-              then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-              else return ()
-        else return ()
-      foldM
-        (\s e -> (++) <$> return s <*> e)
-        []
-        [collectVarBindingsInEff aarg barg | aarg <- al | barg <- take (L.length al) bl]
+    then if L.length al == (L.length bl) + 1
+      then do is <- isEffVar $ last al
+              if is then return ()
+              else error
+      else error
+    else return ()
+  if L.length al < L.length bl
+    then do
+      if al == []
+      then error
+      else do
+        is <- isEffVar $ last al
+        if not is
+          then error
+          else return ()
+    else return ()
+  foldM
+    (\s e -> (++) <$> return s <*> e)
+    []
+    [collectVarBindingsInEff aarg barg | aarg <- al | barg <- bl]
 collectVarBindingsInEff a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
 -- | Check all effect variables
@@ -472,29 +477,34 @@ collectEffVarBindings a@EffApp {} b@EffApp {} = do
 collectEffVarBindings a@EffList {} b@EffList {} = do
   let al = a ^. effList
   let bl = b ^. effList
+  let error = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
   if L.length al > L.length bl
-    then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-    else do
-      if L.length al < L.length bl
-        then
-          if al == []
-          then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-          else do
-            is <- isEffVar $ last al
-            if L.length al == 0 || not is
-              then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-              else return ()
-        else return ()
-      bindings <-
-        foldM
-          (\s e -> (++) <$> return s <*> e)
-          []
-          [collectEffVarBindings aarg barg | aarg <- al | barg <- take (L.length al) bl]
-      if L.length al < L.length bl
-        then if al == []
-             then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-             else return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
-        else return bindings
+    then if L.length al == (L.length bl) + 1
+      then do is <- isEffVar $ last al
+              if is then return ()
+              else error
+      else error
+    else return ()
+  if L.length al < L.length bl
+    then
+      if al == []
+      then error
+      else do
+        is <- isEffVar $ last al
+        if L.length al == 0 || not is
+          then error
+          else return ()
+    else return ()
+  bindings <-
+    foldM
+      (\s e -> (++) <$> return s <*> e)
+      []
+      [collectEffVarBindings aarg barg | aarg <- al | barg <- take (L.length al) bl]
+  if L.length al < L.length bl || L.length al == (L.length bl) + 1
+    then if al == []
+         then error
+         else return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
+    else return bindings
 collectEffVarBindings a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
 collectEffVarBindingsInType :: (Has EnvEff sig m) => Type -> Type -> m [(EffVar, EffectType)]
