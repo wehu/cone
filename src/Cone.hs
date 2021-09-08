@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE CPP #-}
 
 module Cone
   ( coneMain,
@@ -15,6 +16,7 @@ import Options.Applicative
 import System.Directory
 import System.Environment
 import System.FilePath
+import System.Info
 
 data Opts = Opts {inputFiles :: [String], target :: String, dump :: Bool}
 
@@ -51,11 +53,20 @@ play Opts {..} = do
   forM_ inputFiles $ \f -> do
     currentPath <- getCurrentDirectory
     execPath <- getExecutablePath
-    let sharedPath = (takeDirectory $ takeDirectory execPath) </> "share"
-    -- may get old version???
-    d0 <- fmap (sharedPath </>) <$> listDirectory sharedPath
-    d1 <- mapM (\p -> (fmap (p </>)) <$> listDirectory p) d0
-    let paths = (takeDirectory f): currentPath : (map (\p -> p </> "lib") $ join d1)
+#if defined(__GLASGOW_HASKELL_PATCHLEVEL2__)
+    let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100) ++ "." 
+                     ++ show __GLASGOW_HASKELL_PATCHLEVEL1__ ++ "." ++ show __GLASGOW_HASKELL_PATCHLEVEL2__
+#else
+#if defined(__GLASGOW_HASKELL_PATCHLEVEL1__)
+    let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100) ++ "."
+                     ++ show __GLASGOW_HASKELL_PATCHLEVEL1__
+#else
+    let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100)
+#endif
+#endif
+    let coneVersion = "0.1.0.0"
+    let libPath = (takeDirectory $ takeDirectory execPath) </> "share" </> arch ++ "-" ++ os ++ "-ghc-" ++ ghcVersion </> "cone-" ++ coneVersion </> "lib"
+    let paths = (takeDirectory f): currentPath : [libPath]
     res <- runExceptT $ compile paths f target
     case res of
       Left err -> putStrLn err

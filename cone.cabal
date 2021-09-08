@@ -53,6 +53,7 @@ library
     , filepath
     , fused-effects
     , lens
+    , linearEqSolver
     , mtl
     , optparse-applicative
     , parsec
@@ -78,6 +79,7 @@ executable cone-exe
     , filepath
     , fused-effects
     , lens
+    , linearEqSolver
     , mtl
     , optparse-applicative
     , parsec
@@ -107,6 +109,7 @@ test-suite cone-test
     , fused-effects
     , hspec
     , lens
+    , linearEqSolver
     , mtl
     , neat-interpolation
     , optparse-applicative
