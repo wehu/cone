@@ -1,5 +1,7 @@
 module example
 
+import data/list
+
 type A {
    A(i32)
    B(i32)
@@ -26,6 +28,9 @@ fun test_inline() : io unit {
 fun main() : io unit {
   var a = 0
   val A(b) = A(2)
+
+  val l = Cons(1, Nil<i32>)
+
   handle state<i32> {
      test()
      test()

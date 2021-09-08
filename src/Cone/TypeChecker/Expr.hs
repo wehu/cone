@@ -347,10 +347,14 @@ inferExprEffType l@ELam {..} = do
   resultEffType <- inferExprEffType $ fromJust _elamExpr
   checkEffTypeMatch _elamEffType resultEffType
   return $ EffList [] _eloc
-inferExprEffType ELet {..} = inferExprEffType _eletExpr
+inferExprEffType ELet {..} = do
+  bindPatternVarTypes _eletState _eletPattern _eletExpr
+  inferExprEffType _eletExpr
 inferExprEffType ECase {..} = do
   ce <- inferExprEffType _ecaseExpr
-  cse <- mapM inferExprEffType $ _ecaseBody ^.. traverse . caseExpr
+  cse <- forM _ecaseBody $ \c -> underScope $ do
+    bindPatternVarTypes False (c ^. casePattern) _ecaseExpr
+    inferExprEffType $ c ^. caseExpr
   let le : _ = cse
   forM_ cse $ checkEffTypeMatch le
   mergeEffs ce le

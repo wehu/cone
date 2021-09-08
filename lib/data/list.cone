@@ -1,2 +1,28 @@
 module data/list
 
+type list<a> {
+  Nil
+  Cons(a, list<a>)
+}
+
+fun reverse<a>(l : list<a>) : list<a> {
+  var rest = l
+  var newl = Nil<a>
+  while (rest != Nil<a>) {
+    val Cons(e, r) = rest
+    rest = r
+    newl = Cons(e, newl)
+  }
+  newl
+}
+
+fun map<a, b>(l : list<a>, f : (a) -> b) : list<b> {
+  var rest = l
+  var newl = Nil<b>
+  while (rest != Nil<a>) {
+    val Cons(e, r) = rest
+    rest = r
+    newl = Cons(f(e), newl)
+  }
+  reverse(newl)
+}
