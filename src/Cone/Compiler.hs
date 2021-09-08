@@ -12,6 +12,7 @@ import Control.Lens
 import Control.Monad.Except
 import Data.Proxy
 import Data.List.Split
+import Data.List
 import System.Directory
 import System.FilePath
 import System.IO
@@ -73,6 +74,6 @@ compile' paths f target = do
 compile :: [FilePath] -> FilePath -> String -> CompileEnv String
 compile paths f target = do
   (o, m, imports) <- compile' paths f target
-  forM_ (unique imports) $ \p ->
+  forM_ (reverse . nub . reverse $ imports) $ \p ->
     checkAndCompileImport paths p target
   return o
