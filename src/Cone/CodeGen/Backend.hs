@@ -257,13 +257,13 @@ class Backend t where
                            ,"finally:"
                            ,indent 4 $ "del ____state[-1]"]
           ,"def ____case(____k, ____state, ____conds, ____exprs):"
-          ,indent 4 $ vsep ["____state.append({})"
-                           ,"try:"
-                           ,indent 4 $ vsep ["for (____p, ____e) in zip(____conds, ____exprs):"
+          ,indent 4 $ vsep ["for (____p, ____e) in zip(____conds, ____exprs):"
+                           ,indent 4 $ vsep ["____state.append({})"
+                                            ,"try:"
                                             ,indent 4 $ vsep ["if ____p(____k, ____state):"
-                                                             ,indent 4 $ "return ____e(____k, ____state)"]]
-                           ,"finally:"
-                           ,indent 4 $ "del ____state[-1]"]
+                                                             ,indent 4 $ "return ____e(____k, ____state)"]
+                                            ,"finally:"
+                                            ,indent 4 "del ____state[-1]"]]
           ,"def ____handle(____k, ____state, ____scope, ____handlers):"
           ,indent 4 $ vsep ["____state.append({})"
                            ,"try:"
