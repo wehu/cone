@@ -215,7 +215,7 @@ class Backend t where
           
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> Doc a -> m (Doc a)
   genPatternMatch proxy PVar{..} e = 
-    return $ "[____add_var(____state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> "), True][-1]"
+    return $ "[____update_state(____state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> "), True][-1]"
   genPatternMatch proxy PExpr{..} e = do
     p <- callWithCps <$> genExpr proxy _pExpr
     return $ parens $ p <+> "==" <+> e
@@ -231,27 +231,20 @@ class Backend t where
     return $
      vsep ["def "<> funcN proxy "print(k, s, a):"
           ,indent 4 $ "print(a)"
-          ,"def ____add_var(state, k, v):"
-          ,indent 4 $ vsep ["state[k] = v"
-                           ,"lvk = \"____local_vars\""
-                           ,"if lvk in state:"
-                           ,indent 4 $ "state[lvk].append(k)"
-                           ,"else:"
-                           ,indent 4 $ "state[lvk] = [k]"]
           ,"def ____update_state(state, k, v):"
           ,indent 4 $ "state[k] = v"
-          ,"def ____while(____k, ____state, cond, body):"
-          ,indent 4 $ vsep ["if cond(____k, ____state):"
-                           ,indent 4 $ "[body(____k, ____state), ____while(____k, ____state, cond, body)][-1]"
+          ,"def ____while(____k, ____state, ____cond, ____body):"
+          ,indent 4 $ vsep ["if ____cond(____k, ____state):"
+                           ,indent 4 $ "[____body(____k, ____state), ____while(____k, ____state, ____cond, ____body)][-1]"
                            ,"else:"
                            ,indent 4 $ "pass"]
-          ,"def ____case(____k, ____state, conds, exprs):"
-          ,indent 4 $ vsep ["for (p, e) in zip(conds, exprs):"
-                           ,indent 4 $ vsep ["if p(____k, ____state):"
-                                            ,indent 4 $ "return e(____k, ____state)"]]
-          ,"def ____handle(____k, ____state, scope, handlers):"
-          ,indent 4 $ vsep ["____state.update(handlers)"
-                           ,"scope(lambda x: x, ____state)"]
+          ,"def ____case(____k, ____state, ____conds, ____exprs):"
+          ,indent 4 $ vsep ["for (____p, ____e) in zip(____conds, ____exprs):"
+                           ,indent 4 $ vsep ["if ____p(____k, ____state):"
+                                            ,indent 4 $ "return ____e(____k, ____state)"]]
+          ,"def ____handle(____k, ____state, ____scope, ____handlers):"
+          ,indent 4 $ vsep ["____state.update(____handlers)"
+                           ,"____scope(lambda x: x, ____state)"]
           ,"def "<> funcN proxy "resume(k, s, a):"
           ,indent 4 $ "return k(a)"
           ,"unit = None"
