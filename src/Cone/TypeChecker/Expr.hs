@@ -367,10 +367,12 @@ inferExprEffType EApp {..} = do
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
   appFuncType <- inferExprType _eappFunc
+  inferExprEffType _eappFunc
   appFuncType <- applyTypeArgs appFuncType _eappTypeArgs >>= unbindType
   argTypes <- mapM inferExprType _eappArgs
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
+  mapM_ inferExprEffType _eappArgs
   inferAppResultEffType appFuncType _eappTypeArgs argTypes
 inferExprEffType ESeq {..} =
   -- merge effects
