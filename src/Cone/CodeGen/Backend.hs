@@ -248,17 +248,29 @@ class Backend t where
                                                              ,"return"]]]
           --,indent 4 $ "raise \"cannot find variable\".format(k)"
           ,"def ____while(____k, ____state, ____cond, ____body):"
-          ,indent 4 $ vsep ["if ____cond(____k, ____state):"
-                           ,indent 4 $ "[____body(____k, ____state), ____while(____k, ____state, ____cond, ____body)][-1]"
-                           ,"else:"
-                           ,indent 4 $ "pass"]
+          ,indent 4 $ vsep ["____state.append({})"
+                           ,"try:"
+                           ,indent 4 $ vsep ["if ____cond(____k, ____state):"
+                                            ,indent 4 $ "[____body(____k, ____state), ____while(____k, ____state, ____cond, ____body)][-1]"
+                                            ,"else:"
+                                            ,indent 4 $ "pass"]
+                           ,"finally:"
+                           ,indent 4 $ "del ____state[-1]"]
           ,"def ____case(____k, ____state, ____conds, ____exprs):"
-          ,indent 4 $ vsep ["for (____p, ____e) in zip(____conds, ____exprs):"
-                           ,indent 4 $ vsep ["if ____p(____k, ____state):"
-                                            ,indent 4 $ "return ____e(____k, ____state)"]]
+          ,indent 4 $ vsep ["____state.append({})"
+                           ,"try:"
+                           ,indent 4 $ vsep ["for (____p, ____e) in zip(____conds, ____exprs):"
+                                            ,indent 4 $ vsep ["if ____p(____k, ____state):"
+                                                             ,indent 4 $ "return ____e(____k, ____state)"]]
+                           ,"finally:"
+                           ,indent 4 $ "del ____state[-1]"]
           ,"def ____handle(____k, ____state, ____scope, ____handlers):"
-          ,indent 4 $ vsep ["____state[-1].update(____handlers)"
-                           ,"____scope(lambda x: x, ____state)"]
+          ,indent 4 $ vsep ["____state.append({})"
+                           ,"try:"
+                           ,indent 4 $ vsep ["____state[-1].update(____handlers)"
+                                            ,"____scope(lambda x: x, ____state)"]
+                           ,"finally:"
+                           ,indent 4 $ "del ____state[-1]"]
           ,"def "<> funcN proxy "resume(k, s, a):"
           ,indent 4 $ "return k(a)"
           ,"unit = None"
