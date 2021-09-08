@@ -73,6 +73,6 @@ compile' paths f target = do
 compile :: [FilePath] -> FilePath -> String -> CompileEnv String
 compile paths f target = do
   (o, m, imports) <- compile' paths f target
-  forM_ imports $ \p ->
+  forM_ (unique imports) $ \p ->
     checkAndCompileImport paths p target
   return o
