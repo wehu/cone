@@ -265,12 +265,12 @@ class Backend t where
                                             ,"finally:"
                                             ,indent 4 "del ____state[-1]"]]
           ,"def ____handle(____k, ____state, ____scope, ____handlers):"
-          ,indent 4 $ vsep ["____state.append({})"
-                           ,"try:"
+          ,indent 4 $ vsep ["#____state.append({})"
+                           ,"#try:"
                            ,indent 4 $ vsep ["____state[-1].update(____handlers)"
                                             ,"____scope(lambda x: x, ____state)"]
-                           ,"finally:"
-                           ,indent 4 $ "del ____state[-1]"]
+                           ,"#finally:"
+                           ,indent 4 $ "#del ____state[-1]"]
           ,"def "<> funcN proxy "resume(k, s, a):"
           ,indent 4 $ "return k(a)"
           ,"unit = None"
@@ -292,7 +292,6 @@ exprToCps e = parens $ "lambda" <+> "____k" <> comma <+> "____state" <> colon <+
 callWithCps :: Doc a -> Doc a
 callWithCps e = parens $ e <> (encloseSep lparen rparen comma $ "____k":"____state":[])
 
--- | Call a cps function with new empty state
 callWithCpsEmptyState :: Doc a -> Doc a
 callWithCpsEmptyState e = parens $ e <> lparen <> "____k" <> comma <+> "[{}]" <> rparen
 
