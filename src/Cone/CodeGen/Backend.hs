@@ -160,7 +160,8 @@ class Backend t where
     e' <- genExpr proxy e
     foldM (\doc e -> do
       e' <- genExpr proxy e
-      return $ exprToCps $ parens ("lambda ____k2: ____k2(" <> callWithCps e' <> ")") <> parens ("lambda ____unused: " <> callWithCps doc))
+      return $ exprToCps $ parens ("lambda ____k2: ____k2(" <> e' <> (encloseSep lparen rparen comma ["lambda x: x", "____state"]) <> ")") <> 
+           parens ("lambda ____unused: " <> callWithCps doc))
       e'
       es
   genExpr proxy ELit{..} = return $ exprToCps $ "____k" <> parens (
@@ -205,7 +206,7 @@ class Backend t where
          "____or" -> binary "or"
          "____assign" -> do
            e <- genExpr proxy (_eappArgs !! 1)
-           return $ exprToCps $ "____k(____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\"," <+> callWithCps e <> "))"
+           return $ exprToCps $ "____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\"," <+> callWithCps e <> ")"
          "inline_python" -> return $ exprToCps $ "____k(" <> (pretty $ (read ((_eappArgs !! 0) ^.lit) :: String)) <> ")"
          _ -> do
            f <- genExpr proxy _eappFunc

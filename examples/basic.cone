@@ -57,14 +57,14 @@ fun main() : io unit {
    }
   } with {
      fun branch(a:i32) {
-        resume(false) + resume(true)
+        resume(false)
      }
   })
   print(if a > 10 {
-     //print(100)
+     print(10000)
      100
   } else {
-     //print(1000)
+     print(1000000)
      1000
   })
   while a < 10 {
