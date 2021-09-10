@@ -277,8 +277,8 @@ class Backend t where
           ,"def ____while(k, state, cond, body):"
           ,indent 4 $ vsep ["state.append({})"
                            ,"try:"
-                           ,indent 4 $ vsep ["if cond(k, state):"
-                                            ,indent 4 $ "[body(k, state), ____while(k, state, cond, body)][-1]"
+                           ,indent 4 $ vsep ["while cond(k, state):"
+                                            ,indent 4 $ "body(k, state)"
                                             ,"else:"
                                             ,indent 4 $ "pass"]
                            ,"finally:"
