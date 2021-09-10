@@ -60,11 +60,13 @@ fun main() : io unit {
         resume(false) + resume(true)
      }
   })
-  if a > 10 {
-     print(100)
+  print(if a > 10 {
+     //print(100)
+     100
   } else {
-     print(1000)
-  }
+     //print(1000)
+     1000
+  })
   while a < 10 {
     print(a)
     a = a + 1

@@ -244,7 +244,7 @@ class Backend t where
   genPatternMatch proxy PVar{..} = 
     return $ parens $ "lambda ____e: [____add_var(____state, \"" <> funcN proxy _pvar <> "\""<> comma <+> "____e), True][-1]"
   genPatternMatch proxy PExpr{..} = do
-    p <- callWithCps <$> genExpr proxy _pExpr
+    p <- (\e -> e <> encloseSep lparen rparen comma ["lambda x : x", "____state"]) <$> genExpr proxy _pExpr
     return $ parens $ "lambda ____e:" <+> p <+> "== ____e"
   genPatternMatch proxy PApp{..} = do
     bindings <- mapM (\(p, ee) -> do
