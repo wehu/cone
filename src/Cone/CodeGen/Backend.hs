@@ -129,7 +129,7 @@ class Backend t where
                       a = "t" ++ show (i + 3)
                    in s++[pretty f <+> "=" <+> pretty a]) [] _typeConArgs
           ctrFunc fn tn = vsep ["def" <+> fn <> genArgs ["____k", "____state"] <> ":"
-                               ,indent 4 ("return" <+> (tn <> genArgs ["____k", "____state"]))]
+                               ,indent 4 ("return" <+> ("____k" <> parens (tn <> genArgs ["____k", "____state"])))]
           ctrFuncWrapper fn = vsep ["def" <+> fn <> "_w" <> genArgs [] <> ":"
                                    ,indent 4 ("return" <+> (fn <> genArgs ["lambda x:x", "[{}]"]))]
   
@@ -154,20 +154,20 @@ class Backend t where
   genExpr proxy EVar{..} = 
     let fn = funcN proxy _evarName
         fnQ = "\"" <> fn <> "\""
-     in return $ exprToCps $ "____lookup_var(____state, " <> fnQ <> ") if" <+> "____lookup_var(____state, " <> fnQ <+> ") != None else" <+> fn 
+     in return $ exprToCps $ "____k(____lookup_var(____state, " <> fnQ <> ") if" <+> "____lookup_var(____state, " <> fnQ <+> ") != None else" <+> fn <> ")"
   genExpr proxy ESeq{..} = do
     let e:es = (reverse _eseq)
     e' <- genExpr proxy e
     foldM (\doc e -> do
       e' <- genExpr proxy e
-      return $ exprToCps $ brackets (callWithCps e' <> comma <+> callWithCps doc) <> brackets "-1")
+      return $ exprToCps $ parens ("lambda ____k2: ____k2(" <> callWithCps e' <> ")") <> parens ("lambda ____unused: " <> callWithCps doc))
       e'
       es
-  genExpr proxy ELit{..} = return $ exprToCps $ 
+  genExpr proxy ELit{..} = return $ exprToCps $ "____k" <> parens (
     case _litType of
       TPrim Pred _ -> if _lit == "true" then "True" else "False"
       TPrim Unit _ -> "None"
-      _ -> pretty _lit
+      _ -> pretty _lit)
   genExpr proxy ELam{..} = do
     es <- genBody _elamExpr
     return $ parens $ "lambda ____k, ____state" <> colon <+> es
@@ -205,20 +205,23 @@ class Backend t where
          "____or" -> binary "or"
          "____assign" -> do
            e <- genExpr proxy (_eappArgs !! 1)
-           return $ exprToCps $ "____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\"," <+> callWithCps e <> ")"
-         "inline_python" -> return $ exprToCps $ pretty $ (read ((_eappArgs !! 0) ^.lit) :: String)
+           return $ exprToCps $ "____k(____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\"," <+> callWithCps e <> "))"
+         "inline_python" -> return $ exprToCps $ "____k(" <> (pretty $ (read ((_eappArgs !! 0) ^.lit) :: String)) <> ")"
          _ -> do
            f <- genExpr proxy _eappFunc
-           args <- genArgs
-           return $ exprToCps $ callWithCps f <> args
-    where genArgs = do
-            args <- mapM (\a -> callWithCps <$> genExpr proxy a) _eappArgs
-            return $ encloseSep lparen rparen comma $ "____k":"____state":args
-          binary :: (Has EnvEff sig m) => String -> m (Doc a)
+           args <- mapM (genExpr proxy) _eappArgs
+           let argNames = map (\i -> "____arg" <> pretty i) [0.. (length _eappArgs)-1]
+           return $ exprToCps $ foldl'
+                   (\s (e, n) -> 
+                     parens $ e <> encloseSep lparen rparen comma ["lambda " <> n <> ": " <> s, "____state"])
+                   ("____f" <> (encloseSep lparen rparen comma ("____k":"____state":argNames)))
+                   [(e, n) | e <- f:args | n <- "____f":argNames]
+    where binary :: (Has EnvEff sig m) => String -> m (Doc a)
           binary op = do
-            lhs <- callWithCps <$> genExpr proxy (_eappArgs !! 0)
-            rhs <- callWithCps <$> genExpr proxy (_eappArgs !! 1)
-            return $ exprToCps $ lhs <+> pretty op <+> rhs
+            lhs <- genExpr proxy (_eappArgs !! 0)
+            rhs <- genExpr proxy (_eappArgs !! 1)
+            return $ exprToCps $ rhs <> encloseSep lparen rparen comma 
+                          [lhs <> encloseSep lparen rparen comma [("lambda ____lhs: (lambda ____rhs : ____k(____lhs" <+> pretty op <+> "____rhs))"), "____state"], "____state"]
   genExpr proxy EHandle{..} = do
     scope <- genExpr proxy _ehandleScope
     handlers <- mapM (\intf -> do
@@ -254,7 +257,7 @@ class Backend t where
   genPrologue proxy = 
     return $
      vsep ["def "<> funcN proxy "print(k, s, a):"
-          ,indent 4 $ "print(a)"
+          ,indent 4 $ "k(print(a))"
           ,"def ____lookup_var(state, k):"
           ,indent 4 $ vsep ["for s in reversed(state):"
                            ,indent 4 $ vsep ["if k in s:"
