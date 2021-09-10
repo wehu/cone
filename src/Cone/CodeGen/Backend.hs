@@ -298,7 +298,7 @@ class Backend t where
           ,indent 4 $ vsep ["state.append({})"
                            ,"try:"
                            ,indent 4 $ vsep ["state[-1].update(handlers)"
-                                            ,"return scope(lambda x: x, state)"]
+                                            ,"return k(scope(lambda x: x, state))"]
                            ,"finally:"
                            ,indent 4 $ "del state[-1]"]
           ,"def "<> funcN proxy "resume(k, s, a):"
