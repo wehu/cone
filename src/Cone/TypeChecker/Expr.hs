@@ -151,28 +151,31 @@ inferExprType EHandle {..} = underScope $ do
         emptyEff = EffList [] _eloc
         unit = TPrim Unit _eloc
 
-    setupEffIntfType intf
+    handleT' <- underScope $ do
+      setupEffIntfType intf
 
-    -- get inteface effect type
-    handleT <- unbindType $ funcDefType intf
-    intfT <- getFuncType (intf ^. funcLoc) fn >>= unbindType
+      -- get inteface effect type
+      handleT <- unbindType $ funcDefType intf
+      intfT <- getFuncType (intf ^. funcLoc) fn >>= unbindType
 
-    -- add resume function type
-    let resumeT =
-          bindTypeEffVar [] $
-            bindType [] $
-              TFunc [_tfuncResult intfT] emptyEff resT _eloc
-    setEnv (Just resumeT) $ funcs . at "resume"
+      -- add resume function type
+      let resumeT =
+            bindTypeEffVar [] $
+              bindType [] $
+                TFunc [_tfuncResult intfT] emptyEff resT _eloc
+      setEnv (Just resumeT) $ funcs . at "resume"
 
-    -- check if interface defintion match with implemention's or not
-    let handleT' = handleT {_tfuncEff = emptyEff, _tfuncResult = unit}
-        intfT' = intfT {_tfuncEff = emptyEff, _tfuncResult = unit}
-    binds <- collectVarBindings intfT' handleT'
-    checkVarBindings binds
+      -- check if interface defintion match with implemention's or not
+      let handleT' = handleT {_tfuncEff = emptyEff, _tfuncResult = unit}
+          intfT' = intfT {_tfuncEff = emptyEff, _tfuncResult = unit}
+      binds <- collectVarBindings intfT' handleT'
+      checkVarBindings binds
 
-    -- check expression result type
-    intfResT <- inferExprType $ fromJust $ _funcExpr intf
-    checkTypeMatch intfResT resT
+      -- check expression result type
+      intfResT <- inferExprType $ fromJust $ _funcExpr intf
+      checkTypeMatch intfResT resT
+
+      return handleT'
 
     -- check scope expr again
     setEnv (Just handleT') $ funcs . at fn

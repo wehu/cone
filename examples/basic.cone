@@ -16,6 +16,14 @@ fun test2(a:i32) : i32 {
    a + 1
 }
 
+fun test_branch(a:i32) : nodet<i32> i32 {
+   if (branch(a)) {
+      a + 1
+   } else {
+      a + 2
+   }
+}
+
 fun test_inline() : io unit {
    inline_python<unit>("print(\"test_inline\")")
 }
@@ -31,20 +39,27 @@ fun main() : io unit {
      a + 1
   })
 
-  handle state<i32> {
-     test()
-     test()
-     test()
+  print(handle nodet<i32> {
+    handle state<i32> {
+       test()
+       test()
+       test()
+       test_branch(a)
+    } with {
+       fun get() {
+          resume(a)
+       }
+       fun set(v:i32) {
+          a = v
+          print(a)
+          resume(unit)
+       }
+    }
   } with {
-     fun get() {
-        resume(a)
+     fun branch(a:i32) {
+        resume(true) + resume(true)
      }
-     fun set(v:i32) {
-        a = v
-        print(a)
-        resume(unit)
-     }
-  }
+  })
   if a > 10 {
      print(100)
   } else {
