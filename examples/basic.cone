@@ -44,20 +44,20 @@ fun main() : io unit {
        test()
        test()
        test()
-       test_branch(a)
+       test_branch(50)
     } with {
        fun get() {
           resume(a)
        }
        fun set(v:i32) {
           a = v
-          print(a)
+          //print(a)
           resume(unit)
        }
     }
   } with {
      fun branch(a:i32) {
-        resume(true) + resume(true)
+        resume(false) + resume(true)
      }
   })
   if a > 10 {

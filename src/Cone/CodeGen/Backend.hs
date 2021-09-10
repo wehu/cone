@@ -229,12 +229,12 @@ class Backend t where
     return $ exprToCps $ "____handle(____k, ____state, " <> scope <> comma <+> 
       (encloseSep lbrace rbrace comma handlers) <> ")"
   genExpr proxy ECase{..} = do
-    c <- callWithCps <$> genExpr proxy _ecaseExpr
+    c <- genExpr proxy _ecaseExpr
     cs <- mapM (genPatternMatch proxy) $ _ecaseBody ^.. traverse . casePattern
     es <- mapM (genExpr proxy) $ _ecaseBody ^.. traverse . caseExpr
-    return $ exprToCps $ "____case(____k, ____state, " <> c <> comma <+> 
+    return $ exprToCps $ c <> encloseSep lparen rparen comma ["lambda ____c: ____case(____k, ____state, ____c" <> comma <+> 
         encloseSep lbracket rbracket comma cs <> comma <+>
-        encloseSep lbracket rbracket comma es <> ")"
+        encloseSep lbracket rbracket comma es <> ")", "____state"]
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
           
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
