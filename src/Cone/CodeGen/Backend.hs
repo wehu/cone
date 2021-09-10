@@ -229,7 +229,8 @@ class Backend t where
       e <- genExpr proxy (fromJust $ _funcExpr intf)
       let n = funcN proxy $ _funcName intf
           args = encloseSep emptyDoc emptyDoc comma $ "____k":"____state_unused":(map (\(n, _) -> funcN proxy n) (_funcArgs intf))
-      return $ "\"" <> n <> "\" :" <+> parens ("lambda" <+> args <> colon <+> callWithCps e)) _ehandleBindings
+      return $ "\"" <> n <> "\" :" <+> parens ("lambda" <+> args <> colon <+> 
+                "____call_with_resumed_k(____k, ____state, " <> e <> ")")) _ehandleBindings
     return $ exprToCps $ "____handle(____k, ____state, " <> scope <> comma <+> 
       (encloseSep lbrace rbrace comma handlers) <> ")"
   genExpr proxy ECase{..} = do
@@ -302,8 +303,15 @@ class Backend t where
                                             ,"return k(scope(lambda x: x, state))"]
                            ,"finally:"
                            ,indent 4 $ "del state[-1]"]
+          ,"def ____call_with_resumed_k(k, state, handler):"
+          ,indent 4 $ vsep ["state.append({})"
+                           ,"state[-1]['____resumed_k'] = k"
+                           ,"try:"
+                           ,indent 4 $ vsep ["return handler(lambda x:x, state)"]
+                           ,"finally:"
+                           ,indent 4 $ "del state[-1]"]
           ,"def "<> funcN proxy "resume(k, s, a):"
-          ,indent 4 $ "return k(a)"
+          ,indent 4 $ "return k(s[-1]['____resumed_k'](a))"
           ,"unit = None"
           ,"true = True"
           ,"false = False"]
