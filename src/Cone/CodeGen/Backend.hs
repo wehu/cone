@@ -171,12 +171,12 @@ class Backend t where
       _ -> pretty _lit)
   genExpr proxy ELam{..} = do
     es <- genBody _elamExpr
-    return $ parens $ "lambda ____k, ____state" <> colon <+> es
+    return $ parens $ "lambda ____k2, ____state" <> colon <+> es
     where genArgs = encloseSep emptyDoc emptyDoc comma $ "____k":"____state_unused":(map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
-                                    return $ "lambda" <+> genArgs <> colon <+> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es)
-                       Nothing -> return $ "lambda" <+> colon <> "pass"
+                                    return $ parens $ "lambda" <+> genArgs <> colon <+> parens ("____k2(____call_cps_with_cleared_vars" <> callCpsWithclearedVars es <> ")")
+                       Nothing -> return $ "lambda" <+> genArgs <> colon <+> "pass"
           callCpsWithclearedVars es = encloseSep lparen rparen comma $ 
                  "____k":"____state":(encloseSep lbracket rbracket comma $ map (\n -> "\"" <> funcN proxy n <> "\"") $ _elamArgs ^..traverse._1):[es]
   genExpr proxy EWhile{..} = do
@@ -282,12 +282,16 @@ class Backend t where
           ,"def ____while(k, state, cond, body):"
           ,indent 4 $ vsep ["state.append({})"
                            ,"try:"
-                           ,indent 4 $ vsep ["while cond(k, state):"
-                                            ,indent 4 $ "body(k, state)"
-                                            ,"else:"
+                           ,indent 4 $ vsep ["while cond(lambda c: ____if(k, state, c, body), state):"
                                             ,indent 4 $ "pass"]
                            ,"finally:"
                            ,indent 4 $ "del state[-1]"]
+          ,"def ____if(k, state, c, body):"
+          ,indent 4 $ vsep ["if c:"
+                           ,indent 4 $ vsep ["body(k, state)"
+                                            ,"return True"]
+                           ,"else:"
+                           ,indent 4 $ vsep ["return False"]]
           ,"def ____case(k, state, ce, conds, exprs):"
           ,indent 4 $ vsep ["for (p, e) in zip(conds, exprs):"
                            ,indent 4 $ vsep ["state.append({})"
