@@ -108,6 +108,7 @@ importModules cache paths m loaded = do
               ( oldEnv
                   { _types = (merge g1 g2 f (oldEnv ^. types) $ addPrefix (env ^. types)),
                     _effs = (merge g1 g2 f (oldEnv ^. effs) $ addPrefix (env ^. effs)),
+                    _effIntfs = (merge g1 g2 f (oldEnv ^. effIntfs) $ addPrefix (env ^. effIntfs)),
                     _funcs = (merge g1 g2 f (oldEnv ^. funcs) $ addPrefix (env ^. funcs))
                   },
                 id,

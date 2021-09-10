@@ -7,11 +7,6 @@ type A {
    B(i32)
 }
 
-effect state<a> {
-   fun get() : a
-   fun set(a) : unit
-}
-
 fun test() : state<i32> unit {
    val a = get<i32>()
    set(a+1)

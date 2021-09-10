@@ -68,3 +68,14 @@ effect python {
 effect io {
   fun print<a>(a) : unit
 }
+
+// state effect
+effect state<a> {
+   fun get() : a
+   fun set(a) : unit
+}
+
+// nodet effect
+effect nodet<a> {
+  fun branch(a) : bool
+}

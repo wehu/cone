@@ -2,7 +2,7 @@
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Cone.TypeChecker (Env (..), types, funcs, effs, initialEnv, initModule, checkType) where
+module Cone.TypeChecker (Env (..), types, funcs, effs, effIntfs, initialEnv, initModule, checkType) where
 
 import Cone.Parser.AST
 import Cone.TypeChecker.Env
