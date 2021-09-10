@@ -30,37 +30,37 @@ fun test_inline() : io unit {
 
 fun main() : io unit {
   var a = 0
-  val A(b) = A(2)
+  // val A(b) = A(2)
 
-  val l = Cons(3, Cons(2, Cons(1, Nil<i32>)))
+  // val l = Cons(3, Cons(2, Cons(1, Nil<i32>)))
 
-  val ll = map(l, fn(b:i32) : io i32{
-     print(b)
-     print("xxxx")
-     a + 1
-  })
+  // val ll = map(l, fn(b:i32) : io i32{
+  //    print(b)
+  //    print("xxxx")
+  //    a + 1
+  // })
 
-  print(handle nodet<i32> {
-   handle state<i32> {
-      test()
-      test()
-      test()
-      test_branch(50)
-   } with {
-      fun get() {
-         resume(a)
-      }
-      fun set(v:i32) {
-         a = v
-         print(a)
-         resume(unit)
-      }
-   }
-  } with {
-     fun branch(a:i32) {
-        resume(false) + resume(true)
-     }
-  })
+  // print(handle nodet<i32> {
+  //  handle state<i32> {
+  //     test()
+  //     test()
+  //     test()
+  //     test_branch(50)
+  //  } with {
+  //     fun get() {
+  //        resume(a)
+  //     }
+  //     fun set(v:i32) {
+  //        a = v
+  //        print(a)
+  //        resume(unit)
+  //     }
+  //  }
+  // } with {
+  //    fun branch(a:i32) {
+  //       resume(false) + resume(true)
+  //    }
+  // })
   print(if a > 10 {
      print(10000)
      100
@@ -80,10 +80,11 @@ fun main() : io unit {
 
   print(test2(a))
   val f = fn () : i32 { a + 1 }
-  f()
-  print(b)
+  print(f())
+  print(a)
   test_inline()
-  print(a+1)
-  unit
+  //print(1)
+  //print(2)
+  //unit
 }
 

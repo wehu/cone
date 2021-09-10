@@ -160,8 +160,7 @@ class Backend t where
     e' <- genExpr proxy e
     foldM (\doc e -> do
       e' <- genExpr proxy e
-      return $ exprToCps $ parens ("lambda ____k2: ____k2(" <> e' <> (encloseSep lparen rparen comma ["lambda x: x", "____state"]) <> ")") <> 
-           parens ("lambda ____unused: " <> callWithCps doc))
+      return $ exprToCps $ e' <> encloseSep lparen rparen comma ["lambda ____unused: " <> callWithCps doc, "____state"])
       e'
       es
   genExpr proxy ELit{..} = return $ exprToCps $ "____k" <> parens (
@@ -175,7 +174,7 @@ class Backend t where
     where genArgs = encloseSep emptyDoc emptyDoc comma $ "____k":"____state_unused":(map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
-                                    return $ parens $ "lambda" <+> genArgs <> colon <+> parens ("____k2(____call_cps_with_cleared_vars" <> callCpsWithclearedVars es <> ")")
+                                    return $ parens $ "lambda" <+> genArgs <> colon <+> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es)
                        Nothing -> return $ "lambda" <+> genArgs <> colon <+> "pass"
           callCpsWithclearedVars es = encloseSep lparen rparen comma $ 
                  "____k":"____state":(encloseSep lbracket rbracket comma $ map (\n -> "\"" <> funcN proxy n <> "\"") $ _elamArgs ^..traverse._1):[es]
@@ -184,9 +183,9 @@ class Backend t where
     es <- genExpr proxy _ewhileBody
     return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["____k", "____state", c, es]
   genExpr proxy ELet{..} = do
-    e <- callWithCps <$> genExpr proxy _eletExpr
+    e <- genExpr proxy _eletExpr
     p <- genPatternMatch proxy _eletPattern
-    return $ exprToCps $ p <> parens e
+    return $ exprToCps $ e <> encloseSep lparen rparen comma ["lambda ____e: ____k(" <> p <> parens "____e" <> ")", "____state"]
   genExpr proxy EAnn{..} = genExpr proxy _eannExpr
   genExpr proxy EApp{..} =
     let fn = _eappFunc ^.evarName
@@ -206,7 +205,8 @@ class Backend t where
          "____or" -> binary "or"
          "____assign" -> do
            e <- genExpr proxy (_eappArgs !! 1)
-           return $ exprToCps $ "____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\"," <+> callWithCps e <> ")"
+           return $ exprToCps $ "____k(____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^.evarName) <> "\"," <+> 
+                                       parens (e <> encloseSep lparen rparen comma ["lambda x:x", "____state"]) <> "))"
          "inline_python" -> return $ exprToCps $ "____k(" <> (pretty $ (read ((_eappArgs !! 0) ^.lit) :: String)) <> ")"
          _ -> do
            f <- genExpr proxy _eappFunc
@@ -259,7 +259,7 @@ class Backend t where
   genPrologue proxy = 
     return $
      vsep ["def "<> funcN proxy "print(k, s, a):"
-          ,indent 4 $ "k(print(a))"
+          ,indent 4 $ vsep ["k(print(a))"]
           ,"def ____lookup_var(state, k):"
           ,indent 4 $ vsep ["for s in reversed(state):"
                            ,indent 4 $ vsep ["if k in s:"
@@ -281,25 +281,22 @@ class Backend t where
                            ,"return e(k, state)"]
           ,"def ____while(k, state, cond, body):"
           ,indent 4 $ vsep ["state.append({})"
-                           ,"try:"
-                           ,indent 4 $ vsep ["while cond(lambda c: ____if(k, state, c, body), state):"
-                                            ,indent 4 $ "pass"]
-                           ,"finally:"
-                           ,indent 4 $ "del state[-1]"]
-          ,"def ____if(k, state, c, body):"
-          ,indent 4 $ vsep ["if c:"
-                           ,indent 4 $ vsep ["body(k, state)"
-                                            ,"return True"]
-                           ,"else:"
-                           ,indent 4 $ vsep ["return False"]]
+                           ,"def k2(o):"
+                           ,indent 4 $ vsep ["if o:"
+                                            ,indent 4 $ vsep ["body(lambda k: cond(k2, state), state)"]
+                                            ,"else:"
+                                            ,indent 4 $ vsep ["del state[-1]"
+                                                             ,"k(o)"]]
+                           ,"return cond(k2, state)"]
           ,"def ____case(k, state, ce, conds, exprs):"
           ,indent 4 $ vsep ["for (p, e) in zip(conds, exprs):"
                            ,indent 4 $ vsep ["state.append({})"
-                                            ,"try:"
-                                            ,indent 4 $ vsep ["if p(ce):"
-                                                             ,indent 4 $ "return e(k, state)"]
-                                            ,"finally:"
-                                            ,indent 4 "del state[-1]"]]
+                                            ,"def k2(o):"
+                                            ,indent 4 $ vsep ["del state[-1]"
+                                                             ,"return k(o)"]
+                                            ,"if p(ce):"
+                                            ,indent 4 $ vsep ["return e(k2, state)"]
+                                            ,"del state[-1]"]]
           ,"def ____handle(k, state, scope, handlers):"
           ,indent 4 $ vsep ["state.append({})"
                            ,"try:"
