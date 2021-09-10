@@ -184,7 +184,8 @@ class Backend t where
     return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["____k", "____state", c, es]
   genExpr proxy ELet{..} = do
     e <- callWithCps <$> genExpr proxy _eletExpr
-    exprToCps <$> genPatternMatch proxy _eletPattern e
+    p <- genPatternMatch proxy _eletPattern
+    return $ exprToCps $ p <> parens e
   genExpr proxy EAnn{..} = genExpr proxy _eannExpr
   genExpr proxy EApp{..} =
     let fn = _eappFunc ^.evarName
@@ -229,25 +230,25 @@ class Backend t where
       (encloseSep lbrace rbrace comma handlers) <> ")"
   genExpr proxy ECase{..} = do
     c <- callWithCps <$> genExpr proxy _ecaseExpr
-    cs <- mapM (\p -> exprToCps <$> genPatternMatch proxy p c) $ _ecaseBody ^.. traverse . casePattern
+    cs <- mapM (genPatternMatch proxy) $ _ecaseBody ^.. traverse . casePattern
     es <- mapM (genExpr proxy) $ _ecaseBody ^.. traverse . caseExpr
-    return $ exprToCps $ "____case(____k, ____state, " <> 
+    return $ exprToCps $ "____case(____k, ____state, " <> c <> comma <+> 
         encloseSep lbracket rbracket comma cs <> comma <+>
         encloseSep lbracket rbracket comma es <> ")"
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
           
-  genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> Doc a -> m (Doc a)
-  genPatternMatch proxy PVar{..} e = 
-    return $ "[____add_var(____state, \"" <> funcN proxy _pvar <> "\""<> comma <+> e <> "), True][-1]"
-  genPatternMatch proxy PExpr{..} e = do
+  genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
+  genPatternMatch proxy PVar{..} = 
+    return $ parens $ "lambda ____e: [____add_var(____state, \"" <> funcN proxy _pvar <> "\""<> comma <+> "____e), True][-1]"
+  genPatternMatch proxy PExpr{..} = do
     p <- callWithCps <$> genExpr proxy _pExpr
-    return $ parens $ p <+> "==" <+> e
-  genPatternMatch proxy PApp{..} e = do
+    return $ parens $ "lambda ____e:" <+> p <+> "== ____e"
+  genPatternMatch proxy PApp{..} = do
     bindings <- mapM (\(p, ee) -> do
-                b <- genPatternMatch proxy p ee
-                return $ parens $ "isinstance(" <> e <> comma <+> typeN proxy _pappName <> ") and " <> b) 
-               [(arg, parens $ e <> ".f" <> pretty id) | arg <- _pappArgs | id <- [0::Int ..]]
-    return $ parens $ "all(" <> encloseSep lbracket rbracket comma bindings <> ")"
+                b <- genPatternMatch proxy p
+                return $ parens $ "isinstance(____e" <> comma <+> typeN proxy _pappName <> ") and " <> b <> parens ee) 
+               [(arg, parens $ "____e" <> ".f" <> pretty id) | arg <- _pappArgs | id <- [0::Int ..]]
+    return $ parens $ "lambda ____e: all(" <> encloseSep lbracket rbracket comma bindings <> ")"
 
   genPrologue :: (Has EnvEff sig m) => t Target -> m (Doc a)
   genPrologue proxy = 
@@ -282,11 +283,11 @@ class Backend t where
                                             ,indent 4 $ "pass"]
                            ,"finally:"
                            ,indent 4 $ "del state[-1]"]
-          ,"def ____case(k, state, conds, exprs):"
+          ,"def ____case(k, state, ce, conds, exprs):"
           ,indent 4 $ vsep ["for (p, e) in zip(conds, exprs):"
                            ,indent 4 $ vsep ["state.append({})"
                                             ,"try:"
-                                            ,indent 4 $ vsep ["if p(k, state):"
+                                            ,indent 4 $ vsep ["if p(ce):"
                                                              ,indent 4 $ "return e(k, state)"]
                                             ,"finally:"
                                             ,indent 4 "del state[-1]"]]
