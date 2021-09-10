@@ -163,7 +163,11 @@ class Backend t where
       return $ exprToCps $ brackets (callWithCps e' <> comma <+> callWithCps doc) <> brackets "-1")
       e'
       es
-  genExpr proxy ELit{..} = return $ exprToCps $ pretty _lit
+  genExpr proxy ELit{..} = return $ exprToCps $ 
+    case _litType of
+      TPrim Pred _ -> if _lit == "true" then "True" else "False"
+      TPrim Unit _ -> "None"
+      _ -> pretty _lit
   genExpr proxy ELam{..} = do
     es <- genBody _elamExpr
     return $ parens $ "lambda ____k, ____state" <> colon <+> es
@@ -265,9 +269,9 @@ class Backend t where
           ,"def ____call_cps_with_cleared_vars(k, state, ks, e):"
           ,indent 4 $ vsep ["state = copy.deepcopy(state)"
                            ,"for s in state:"
-                           ,indent 4 $ vsep ["for k in ks:"
-                                            ,indent 4 $ vsep ["if k in s:"
-                                                             ,indent 4 "del s[k]"]]
+                           ,indent 4 $ vsep ["for k_ in ks:"
+                                            ,indent 4 $ vsep ["if k_ in s:"
+                                                             ,indent 4 "del s[k_]"]]
                            ,"return e(k, state)"]
           ,"def ____while(k, state, cond, body):"
           ,indent 4 $ vsep ["state.append({})"
@@ -290,7 +294,7 @@ class Backend t where
           ,indent 4 $ vsep ["state.append({})"
                            ,"try:"
                            ,indent 4 $ vsep ["state[-1].update(handlers)"
-                                            ,"scope(lambda x: x, state)"]
+                                            ,"return scope(lambda x: x, state)"]
                            ,"finally:"
                            ,indent 4 $ "del state[-1]"]
           ,"def "<> funcN proxy "resume(k, s, a):"
@@ -331,8 +335,8 @@ genModule proxy Module{..} = do
       -- [ "module" <+> namePath proxy _moduleName <+> line]
         ["from core.prelude import *"
         ,"import copy"]
-        ++ [pre]
         ++ imps
+        ++ [pre]
         ++ tops
         ++ [pos]
 
