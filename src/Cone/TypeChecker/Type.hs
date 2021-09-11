@@ -724,6 +724,6 @@ setFuncImpl impl = do
           oldImpl = is ^. at t
       forM_ (M.toList is) $ \(it, ie) -> do 
         isAmb <- isAmbiguous it t
-        if isAmb then throwError $ "implemention conflict: " ++ ppr it ++ ppr (_tloc it) ++ " vs " ++ ppr t ++ ppr (_tloc t)
+        if isAmb then throwError $ "implementation conflict: " ++ ppr it ++ ppr (_tloc it) ++ " vs " ++ ppr t ++ ppr (_tloc t)
         else return ()
       setEnv (Just $ is & at t ?~ i) $ funcImpls . at fn
