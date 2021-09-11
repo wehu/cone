@@ -248,7 +248,8 @@ class Backend t where
             e <- genExpr proxy (_eappArgs !! 1)
             return $
               exprToCps $
-                callWithCps e
+                callWithCps
+                  e
                   ("lambda ____e : ____k(____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^. evarName) <> "\"," <+> "____e))")
           "inline_python" -> return $ exprToCps $ "____k(" <> (pretty $ (read ((_eappArgs !! 0) ^. lit) :: String)) <> ")"
           _ -> do
@@ -380,14 +381,20 @@ class Backend t where
             vsep
               [ "state.append({})",
                 "def k3(o):",
-                indent 4 $ vsep ["del state[-1]"
-                                 ,"cond(k2, state)"],
+                indent 4 $
+                  vsep
+                    [ "del state[-1]",
+                      "cond(k2, state)"
+                    ],
                 "def k2(o):",
                 indent 4 $
                   vsep
                     [ "if o:",
-                      indent 4 $ vsep ["state.append({})"
-                                      ,"body(k3, state)"],
+                      indent 4 $
+                        vsep
+                          [ "state.append({})",
+                            "body(k3, state)"
+                          ],
                       "else:",
                       indent 4 $
                         vsep
