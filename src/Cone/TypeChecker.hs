@@ -286,16 +286,9 @@ initImplFuncDefs m = mapM_ initImplFuncDef $ m ^.. topStmts . traverse . _ImplFD
 -- | Check a function implementation
 checkImplFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
 checkImplFuncDef f = underScope $ do
-  let pos = f ^. funcLoc
-      fn = f ^. funcName
-      ft = funcDefType f
+  let ft = funcDefType f
   k <- inferTypeKind ft
   checkTypeKind k
-  ift <- getEnv $ funcs . at fn
-  forMOf _Nothing ift $ \_ ->
-    throwError $ "cannot find general function definiton for impl: " ++ fn ++ ppr pos
-  bindings <- collectVarBindings (fromJust ift) ft
-  checkVarBindings bindings
   checkFuncType f
 
 -- | Check all function implementations
