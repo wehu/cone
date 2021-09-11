@@ -309,12 +309,12 @@ class Backend t where
           ,indent 4 $ vsep ["state.append({})"
                            ,"state[-1]['____resumed_k'] = k"
                            ,"try:"
-                           ,indent 4 $ vsep ["o = handler(lambda x:x, state)"]
+                           ,indent 4 $ vsep ["o = handler(lambda x: x, state)"]
                            ,"finally:"
                            ,indent 4 $ "del state[-1]"
                            ,"return o"]
           ,"def "<> funcN proxy "resume(k, s, a):"
-          ,indent 4 $ "return k(s[-1]['____resumed_k'](a))"
+          ,indent 4 $ vsep ["return k(s[-1]['____resumed_k'](a))"]
           ,"unit = None"
           ,"true = True"
           ,"false = False"]
