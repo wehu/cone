@@ -36,7 +36,6 @@ fun main() : io unit {
 
   val ll = map(l, fn(b:i32) : io i32{
      print(b)
-     print("xxxx")
      a + 1
   })
 
@@ -58,9 +57,6 @@ fun main() : io unit {
      }
   } with {
      fun branch(a:i32) {
-        print("yyyy")
-        //1111
-        //1111
         resume(false) + resume(true)
      }
   })
@@ -87,8 +83,5 @@ fun main() : io unit {
   print(f())
   print(a)
   test_inline()
-  //print(1)
-  //print(2)
-  //unit
 }
 
