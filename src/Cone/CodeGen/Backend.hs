@@ -259,7 +259,7 @@ class Backend t where
   genPrologue proxy = 
     return $
      vsep ["def "<> funcN proxy "print(k, s, a):"
-          ,indent 4 $ vsep ["k(print(a))"]
+          ,indent 4 $ vsep ["print(s)", "k(print(a))"]
           ,"def ____lookup_var(state, k):"
           ,indent 4 $ vsep ["for s in reversed(state):"
                            ,indent 4 $ vsep ["if k in s:"
@@ -301,16 +301,18 @@ class Backend t where
           ,indent 4 $ vsep ["state.append({})"
                            ,"try:"
                            ,indent 4 $ vsep ["state[-1].update(handlers)"
-                                            ,"return k(scope(lambda x: x, state))"]
+                                            ,"o = scope(lambda x: x, state)"]
                            ,"finally:"
-                           ,indent 4 $ "del state[-1]"]
+                           ,indent 4 $ "del state[-1]"
+                           ,"return k(o)"]
           ,"def ____call_with_resumed_k(k, state, handler):"
           ,indent 4 $ vsep ["state.append({})"
                            ,"state[-1]['____resumed_k'] = k"
                            ,"try:"
-                           ,indent 4 $ vsep ["return handler(lambda x:x, state)"]
+                           ,indent 4 $ vsep ["o = handler(lambda x:x, state)"]
                            ,"finally:"
-                           ,indent 4 $ "del state[-1]"]
+                           ,indent 4 $ "del state[-1]"
+                           ,"return o"]
           ,"def "<> funcN proxy "resume(k, s, a):"
           ,indent 4 $ "return k(s[-1]['____resumed_k'](a))"
           ,"unit = None"
