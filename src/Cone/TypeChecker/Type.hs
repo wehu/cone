@@ -694,7 +694,7 @@ isSubType s t = do
 
 -- | Test if post-order type pair
 isAmbiguous :: (Has EnvEff sig m) => Type -> Type -> m Bool
-isAmbiguous a b = return False
+isAmbiguous a b = return $ aeq a b
 
 -- | Set a function implementation
 setFuncImpl :: (Has EnvEff sig m) => ImplFuncDef -> m ()
