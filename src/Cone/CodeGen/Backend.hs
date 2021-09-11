@@ -174,8 +174,8 @@ class Backend t where
     where genArgs = encloseSep emptyDoc emptyDoc comma $ "____k":"____state_unused":(map (funcN proxy) $ _elamArgs ^..traverse._1)
           genBody e = case e of
                        Just e -> do es <- genExpr proxy e
-                                    return $ parens $ "lambda" <+> genArgs <> colon <+> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es)
-                       Nothing -> return $ "lambda" <+> genArgs <> colon <+> "pass"
+                                    return $ "____k2(" <> (parens $ "lambda" <+> genArgs <> colon <+> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es)) <> ")"
+                       Nothing -> throwError $ "lambda expected a expression"
           callCpsWithclearedVars es = encloseSep lparen rparen comma $ 
                  "____k":"____state":(encloseSep lbracket rbracket comma $ map (\n -> "\"" <> funcN proxy n <> "\"") $ _elamArgs ^..traverse._1):[es]
   genExpr proxy EWhile{..} = do
@@ -259,7 +259,7 @@ class Backend t where
   genPrologue proxy = 
     return $
      vsep ["def "<> funcN proxy "print(k, s, a):"
-          ,indent 4 $ vsep ["print(s)", "k(print(a))"]
+          ,indent 4 $ vsep ["k(print(a))"]
           ,"def ____lookup_var(state, k):"
           ,indent 4 $ vsep ["for s in reversed(state):"
                            ,indent 4 $ vsep ["if k in s:"
