@@ -259,7 +259,7 @@ class Backend t where
   genPrologue proxy = 
     return $
      vsep ["def "<> funcN proxy "print(k, s, a):"
-          ,indent 4 $ vsep ["k(print(a))"]
+          ,indent 4 $ vsep ["return k(print(a))"]
           ,"def ____lookup_var(state, k):"
           ,indent 4 $ vsep ["for s in reversed(state):"
                            ,indent 4 $ vsep ["if k in s:"

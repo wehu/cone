@@ -16,7 +16,7 @@ fun test2(a:i32) : i32 {
    a + 1
 }
 
-fun test_branch(a:i32) : nodet<i32> i32 {
+fun test_branch(a:i32) : [nodet<i32>] i32 {
    if (branch(a)) {
       a + 1
    } else {
@@ -52,13 +52,13 @@ fun main() : io unit {
         }
         fun set(v:i32) {
            a = v
-           //print(a)
+           print(a)
            resume(unit)
         }
      }
   } with {
      fun branch(a:i32) {
-        //print("yyyy")
+        print("yyyy")
         //1111
         //1111
         resume(false) + resume(true)
