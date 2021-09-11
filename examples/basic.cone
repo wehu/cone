@@ -41,24 +41,26 @@ fun main() : io unit {
   })
 
   print(handle nodet<i32> {
-    // handle state<i32> {
-    //    test()
-    //    test()
-    //    test()
-       test_branch(50)
-    // } with {
-    //    fun get() {
-    //       resume(a)
-    //    }
-    //    fun set(v:i32) {
-    //       a = v
-    //       print(a)
-    //       resume(unit)
-    //    }
-    // }
+     handle state<i32> {
+        test()
+        test()
+        test()
+        test_branch(50)
+     } with {
+        fun get() {
+           resume(a)
+        }
+        fun set(v:i32) {
+           a = v
+           //print(a)
+           resume(unit)
+        }
+     }
   } with {
      fun branch(a:i32) {
         //print("yyyy")
+        //1111
+        //1111
         resume(false) + resume(true)
      }
   })
