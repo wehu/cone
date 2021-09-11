@@ -313,4 +313,4 @@ checkType m env id = run . runError . (runState env) . runFresh id $ do
   checkEffIntfDefs m
   checkFuncDefs m
   checkImplFuncDefs m
-  return m
+  selectFuncImpls m

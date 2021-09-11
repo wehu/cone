@@ -421,3 +421,24 @@ setupEffIntfType f = do
   mapM_
     (\(n, t) -> setFuncType n t)
     (f ^. funcArgs)
+
+selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
+selectFuncImpl e = transformM selectImpl e
+  where selectImpl e@(EAnn EApp{..} t loc) = do
+          impls <- getEnv funcImpls
+          case _eappFunc of
+            EVar{..} -> do
+              let fn = _evarName
+              case impls ^. at fn of
+                Nothing -> return e
+                Just is -> do
+                  case is ^. at t of
+                    Just l -> return $ EAnn (EApp l _eappTypeArgs _eappArgs _eloc) t loc
+                    Nothing -> return e
+            _ -> return e 
+        selectImpl e = return e
+
+selectFuncImpls :: (Has EnvEff sig m) => Module -> m Module
+selectFuncImpls m =
+  transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) selectFuncImpl m
+  >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) selectFuncImpl
