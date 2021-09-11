@@ -704,7 +704,9 @@ setFuncImpl impl = do
   let funcD = impl ^. implFunDef
       fn = funcD ^. funcName
       loc = funcD ^. funcLoc
-      t = TFunc (funcD ^.. funcArgs . traverse . _2) (funcD ^. funcEffectType) (funcD ^. funcResultType) loc
+      t = bindTypeEffVar (funcD ^. funcBoundEffVars) $
+            bindType (funcD ^. funcBoundVars) $
+              TFunc (funcD ^.. funcArgs . traverse . _2) (funcD ^. funcEffectType) (funcD ^. funcResultType) loc
   ft <- getEnv $ funcs . at fn
   case ft of
     Nothing -> throwError $ "cannot find general function definition: " ++ fn ++ ppr loc
