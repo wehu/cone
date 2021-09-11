@@ -379,16 +379,19 @@ class Backend t where
           indent 4 $
             vsep
               [ "state.append({})",
+                "def k3(o):",
+                indent 4 $ vsep ["del state[-1]"
+                                 ,"cond(k2, state)"],
                 "def k2(o):",
                 indent 4 $
                   vsep
                     [ "if o:",
-                      indent 4 $ vsep ["body(lambda k: cond(k2, state), state)"],
+                      indent 4 $ vsep ["state.append({})"
+                                      ,"body(k3, state)"],
                       "else:",
                       indent 4 $
                         vsep
-                          [ "del state[-1]",
-                            "k(o)"
+                          [ "k(o)"
                           ]
                     ],
                 "return cond(k2, state)"
