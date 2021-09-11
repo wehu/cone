@@ -248,12 +248,8 @@ class Backend t where
             e <- genExpr proxy (_eappArgs !! 1)
             return $
               exprToCps $
-                e
-                  <> encloseSep
-                    lparen
-                    rparen
-                    comma
-                    ["lambda ____e : ____k(____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^. evarName) <> "\"," <+> "____e))", "____state"]
+                callWithCps e
+                  ("lambda ____e : ____k(____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^. evarName) <> "\"," <+> "____e))")
           "inline_python" -> return $ exprToCps $ "____k(" <> (pretty $ (read ((_eappArgs !! 0) ^. lit) :: String)) <> ")"
           _ -> do
             f <- genExpr proxy _eappFunc
