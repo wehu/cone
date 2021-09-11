@@ -100,16 +100,12 @@ importModules cache paths m loaded = do
             let g1 = mapMaybeMissing $ \k v -> Just v
                 g2 = mapMaybeMissing $ \k v -> Just v
                 f = zipWithMaybeMatched $ \k v1 v2 -> Just v1
-            let as = i ^. importAlias . non ""
-                addPrefix = \m ->
-                  let pre = if as == "" then "" else as ++ "/"
-                   in M.mapKeys (pre ++) m
             return
               ( oldEnv
-                  { _types = (merge g1 g2 f (oldEnv ^. types) $ addPrefix (env ^. types)),
-                    _effs = (merge g1 g2 f (oldEnv ^. effs) $ addPrefix (env ^. effs)),
-                    _effIntfs = (merge g1 g2 f (oldEnv ^. effIntfs) $ addPrefix (env ^. effIntfs)),
-                    _funcs = (merge g1 g2 f (oldEnv ^. funcs) $ addPrefix (env ^. funcs))
+                  { _types = (merge g1 g2 f (oldEnv ^. types) (env ^. types)),
+                    _effs = (merge g1 g2 f (oldEnv ^. effs) (env ^. effs)),
+                    _effIntfs = (merge g1 g2 f (oldEnv ^. effIntfs) (env ^. effIntfs)),
+                    _funcs = (merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs))
                   },
                 id,
                 m,
