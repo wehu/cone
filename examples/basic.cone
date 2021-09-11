@@ -17,11 +17,13 @@ fun test2(a:i32) : i32 {
 }
 
 fun test_branch(a:i32) : [nodet<i32>] i32 {
+   var b = 10
    if (branch(a)) {
-      a + 1
+      b = b + a + 1
    } else {
-      a + 2
+      b = b + a + 2
    }
+   b
 }
 
 fun test_inline() : io unit {

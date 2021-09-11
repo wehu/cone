@@ -192,7 +192,7 @@ class Backend t where
     foldM
       ( \doc e -> do
           e' <- genExpr proxy e
-          return $ exprToCps $ e' <> encloseSep lparen rparen comma ["lambda ____unused: " <> callWithCps doc, "____state"]
+          return $ exprToCps $ callWithCps e' ("lambda ____unused: " <> callWithCps doc "____k")
       )
       e'
       es
@@ -226,7 +226,7 @@ class Backend t where
   genExpr proxy ELet {..} = do
     e <- genExpr proxy _eletExpr
     p <- genPatternMatch proxy _eletPattern
-    return $ exprToCps $ e <> encloseSep lparen rparen comma ["lambda ____e: ____k(" <> p <> parens "____e" <> ")", "____state"]
+    return $ exprToCps $ callWithCps e ("lambda ____e: ____k(" <> p <> parens "____e" <> ")")
   genExpr proxy EAnn {..} = genExpr proxy _eannExpr
   genExpr proxy EApp {..} =
     let fn = _eappFunc ^. evarName
@@ -263,7 +263,7 @@ class Backend t where
               exprToCps $
                 foldl'
                   ( \s (e, n) ->
-                      parens $ e <> encloseSep lparen rparen comma ["lambda " <> n <> ": " <> s, "____state"]
+                      parens $ callWithCps e ("lambda " <> n <> ": " <> s)
                   )
                   ("____f" <> (encloseSep lparen rparen comma ("____k" : "____state" : argNames)))
                   [(e, n) | e <- f : args | n <- "____f" : argNames]
@@ -274,12 +274,8 @@ class Backend t where
         rhs <- genExpr proxy (_eappArgs !! 1)
         return $
           exprToCps $
-            rhs
-              <> encloseSep
-                lparen
-                rparen
-                comma
-                [lhs <> encloseSep lparen rparen comma [("lambda ____lhs: (lambda ____rhs : ____k(____lhs" <+> pretty op <+> "____rhs))"), "____state"], "____state"]
+            callWithCps rhs $
+              callWithCps lhs ("lambda ____lhs: (lambda ____rhs : ____k(____lhs" <+> pretty op <+> "____rhs))")
   genExpr proxy EHandle {..} = do
     scope <- genExpr proxy _ehandleScope
     handlers <-
@@ -322,7 +318,7 @@ class Backend t where
   genPatternMatch proxy PVar {..} =
     return $ parens $ "lambda ____e: [____add_var(____state, \"" <> funcN proxy _pvar <> "\"" <> comma <+> "____e), True][-1]"
   genPatternMatch proxy PExpr {..} = do
-    p <- (\e -> e <> encloseSep lparen rparen comma ["lambda x : x", "____state"]) <$> genExpr proxy _pExpr
+    p <- (\e -> callWithCps e "lambda x : x") <$> genExpr proxy _pExpr
     return $ parens $ "lambda ____e:" <+> p <+> "== ____e"
   genPatternMatch proxy PApp {..} = do
     bindings <-
@@ -466,12 +462,8 @@ exprToCps :: Doc a -> Doc a
 exprToCps e = parens $ "lambda" <+> "____k" <> comma <+> "____state" <> colon <+> e
 
 -- | Call a cps function
-callWithCps :: Doc a -> Doc a
-callWithCps e = parens $ e <> (encloseSep lparen rparen comma $ "____k" : "____state" : [])
-
--- | Call a cps function with cloned state
-callWithCpsNewState :: Doc a -> Doc a
-callWithCpsNewState e = parens $ e <> lparen <> "____k" <> comma <+> "(____state + [{}])" <> rparen
+callWithCps :: Doc a -> Doc a -> Doc a
+callWithCps e k = parens $ e <> (encloseSep lparen rparen comma $ (parens k) : "____state" : [])
 
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
 genImplFuncDef proxy ImplFuncDef {..} = genFuncDef proxy _implFunDef
