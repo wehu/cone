@@ -20,6 +20,7 @@ import Control.Lens.Plated
 import Control.Monad
 import qualified Data.Map as M
 import Debug.Trace
+import Data.Maybe
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
@@ -33,12 +34,16 @@ type EffIntfs = M.Map String [String]
 
 type ExprTypes = M.Map String Type
 
+type FuncImpls = M.Map String (M.Map Type Expr)
+
 -- | The environment
 data Env = Env
   { -- ^ the type-kind bindings
     _types :: TypeKinds,
     -- ^ the function-type bindings
     _funcs :: ExprTypes,
+    -- ^ the function implementations
+    _funcImpls :: FuncImpls,
     -- ^ the effect-kind bindings
     _effs :: EffKinds,
     -- ^ the effect-intefaces bindings
@@ -54,6 +59,7 @@ initialEnv =
   Env
     { _types = M.empty,
       _funcs = M.empty,
+      _funcImpls = M.empty,
       _effs = M.empty,
       _effIntfs = M.empty,
       _localState = M.empty

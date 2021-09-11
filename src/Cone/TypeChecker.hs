@@ -274,6 +274,15 @@ checkFuncDef f = underScope $ do
 checkFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 checkFuncDefs m = mapM_ checkFuncDef $ m ^.. topStmts . traverse . _FDef
 
+-- | Init a function implementation
+initImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ()
+initImplFuncDef f = setFuncImpl f
+
+-- | Init function implementations
+-- | Check all function implementations
+initImplFuncDefs :: (Has EnvEff sig m) => Module -> m ()
+initImplFuncDefs m = mapM_ initImplFuncDef $ m ^.. topStmts . traverse . _ImplFDef
+
 -- | Check a function implementation
 checkImplFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
 checkImplFuncDef f = underScope $ do
@@ -301,6 +310,7 @@ initModule m env id = run . runError . (runState env) . runFresh id $ do
   initTypeConDefs m
   initEffIntfDefs m
   initFuncDefs m
+  initImplFuncDefs m
   return m
 
 -- | Type checking a module

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Cone.TypeChecker.Type where
 
@@ -679,3 +680,53 @@ toTensorType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 toTensorType t shape = do
   shape' <- toTensorShape shape
   return $ TApp (s2n "tensor") [t, shape'] (_tloc t)
+
+-- | Test if a type is a subtype of another type
+isSubType :: (Has EnvEff sig m) => Type -> Type -> m Bool
+isSubType bs bt = do
+  s <- unbindType bs
+  t <- unbindType bt
+  catchError (
+    if aeq s t then return False
+    else do
+      binds <- collectVarBindings t s
+      checkVarBindings binds
+      return True
+    ) (\(e::String) -> return False)
+
+-- | Test if post-order type pair
+isAmbiguous :: (Has EnvEff sig m) => Type -> Type -> m Bool
+isAmbiguous a b = do
+  s0 <- isSubType a b
+  s1 <- isSubType a b
+  return $ not s0 && not s1
+
+-- | Set a function implementation
+setFuncImpl :: (Has EnvEff sig m) => ImplFuncDef -> m ()
+setFuncImpl impl = do
+  let funcD = impl ^. implFunDef
+      fn = funcD ^. funcName
+      loc = funcD ^. funcLoc
+      t = TFunc (funcD ^.. funcArgs . traverse . _2) (funcD ^. funcEffectType) (funcD ^. funcResultType) loc
+  ft <- getEnv $ funcs . at fn
+  case ft of
+    Nothing -> throwError $ "cannot find general function definition: " ++ fn ++ ppr loc
+    Just ft -> do
+      isSubT <- isSubType t ft
+      if isSubT then return ()
+      else throwError $ "implementation type is not subtype of general type: "
+          ++ ppr t ++ ppr loc ++ " vs " ++ ppr ft ++ ppr (_tloc ft)
+      is' <- getEnv $ funcImpls . at fn
+      forMOf _Nothing is' $ \_ ->
+        setEnv (Just M.empty) $ funcImpls . at fn
+      is' <- getEnv $ funcImpls . at fn
+      let is = fromJust is'
+          i = ELam (funcD ^. funcBoundVars) (funcD ^. funcBoundEffVars)
+               (funcD ^. funcArgs) (funcD ^. funcEffectType) (funcD ^. funcResultType)
+               (funcD ^. funcExpr) loc
+          oldImpl = is ^. at t
+      forM_ (M.toList is) $ \(it, ie) -> do 
+        isAmb <- isAmbiguous it t
+        if isAmb then throwError $ "implemention conflict: " ++ ppr it ++ ppr (_tloc it) ++ " vs " ++ ppr t ++ ppr (_tloc t)
+        else return ()
+      setEnv (Just $ is & at t ?~ i) $ funcImpls . at fn
