@@ -683,9 +683,7 @@ toTensorType t shape = do
 
 -- | Test if a type is a subtype of another type
 isSubType :: (Has EnvEff sig m) => Type -> Type -> m Bool
-isSubType bs bt = do
-  s <- unbindType bs
-  t <- unbindType bt
+isSubType s t = do
   catchError (
     if aeq s t then return False
     else do
