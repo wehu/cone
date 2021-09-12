@@ -15,6 +15,8 @@ import Control.Lens.Plated
 import Control.Monad
 import qualified Data.List as L
 import qualified Data.Map as M
+import Data.Digest.Pure.MD5
+import qualified Data.ByteString.Lazy.UTF8 as BLU
 import Data.Maybe
 import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
@@ -695,7 +697,7 @@ isSubType s t = do
 
 -- | Func implementation selector
 funcImplSelector :: Type -> String
-funcImplSelector t = ppr t
+funcImplSelector t = show $ md5 $ BLU.fromString $ ppr t
 
 uniqueFuncImplName :: String -> Type -> String
 uniqueFuncImplName fn t = fn ++ (funcImplSelector t)

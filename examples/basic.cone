@@ -12,7 +12,11 @@ fun test() : state<i32> unit {
    set(a+1)
 }
 
-fun test2(a:i32) : i32 {
+fun test2<a>(a: a) : a {
+   a
+}
+
+impl fun test2(a:i32) : i32 {
    a + 1
 }
 

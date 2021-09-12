@@ -37,6 +37,8 @@ dependencies:
 - split
 - optparse-applicative
 - process
+- pureMD5
+- utf8-string
 
 library:
   source-dirs: src
