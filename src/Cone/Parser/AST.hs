@@ -307,7 +307,7 @@ instance Pretty Expr where
   pretty ESeq {..} = vsep $ fmap pretty _eseq
   pretty ETC {..} = pretty _etc
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType
-  pretty EAnnMeta {..} = pretty _eannMetaExpr
+  pretty EAnnMeta {..} = parens $ pretty _eannMetaExpr <+> colon <+> pretty _eannMetaType
 
 data TypeDef = TypeDef
   { _typeName :: String,
