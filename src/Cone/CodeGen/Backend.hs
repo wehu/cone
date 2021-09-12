@@ -229,7 +229,7 @@ class Backend t where
     return $ exprToCps $ callWithCps e ("lambda ____e: ____k(" <> p <> parens "____e" <> ")")
   genExpr proxy EAnn {..} = genExpr proxy _eannExpr
   genExpr proxy EApp {..} =
-    let fn = _eappFunc ^. evarName
+    let fn = (removeAnn _eappFunc) ^. evarName
      in case fn of
           "____add" -> binary "+"
           "____sub" -> binary "-"
@@ -250,8 +250,8 @@ class Backend t where
               exprToCps $
                 callWithCps
                   e
-                  ("lambda ____e : ____k(____update_state(____state, \"" <> (funcN proxy $ _eappArgs !! 0 ^. evarName) <> "\"," <+> "____e))")
-          "inline_python" -> return $ exprToCps $ "____k(" <> (pretty $ (read ((_eappArgs !! 0) ^. lit) :: String)) <> ")"
+                  ("lambda ____e : ____k(____update_state(____state, \"" <> (funcN proxy $ removeAnn (_eappArgs !! 0) ^. evarName) <> "\"," <+> "____e))")
+          "inline_python" -> return $ exprToCps $ "____k(" <> (pretty $ (read (removeAnn (_eappArgs !! 0) ^. lit) :: String)) <> ")"
           _ -> do
             f <- genExpr proxy _eappFunc
             args <- mapM (genExpr proxy) _eappArgs
@@ -273,6 +273,9 @@ class Backend t where
           exprToCps $
             callWithCps rhs $
               callWithCps lhs ("lambda ____lhs: (lambda ____rhs : ____k(____lhs" <+> pretty op <+> "____rhs))")
+      removeAnn EAnn{..} = _eannExpr
+      removeAnn EAnnMeta{..} = _eannMetaExpr
+      removeAnn e = e
   genExpr proxy EHandle {..} = do
     scope <- genExpr proxy _ehandleScope
     handlers <-

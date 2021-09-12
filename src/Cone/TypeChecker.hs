@@ -336,8 +336,8 @@ selectFuncImpls :: (Has EnvEff sig m) => Module -> m Module
 selectFuncImpls m = return m
   -- >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) selectFuncImpl
   -- >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) selectFuncImpl
-  >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta
-  >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta
+  -- >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta
+  -- >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
