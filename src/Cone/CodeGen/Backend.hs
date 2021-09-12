@@ -155,7 +155,7 @@ class Backend t where
       ctrFuncWrapper fn =
         vsep
           [ "def" <+> fn <> "_w" <> genArgs [] <> ":",
-            indent 4 ("return" <+> (fn <> genArgs ["lambda x:x", "[{}]", "[{}]"]))
+            indent 4 ("return" <+> (fn <> genArgs ["lambda x:x", "[{}]", "[]"]))
           ]
 
   genEffectDef :: (Has EnvEff sig m) => t Target -> EffectDef -> m (Doc a)
@@ -173,7 +173,7 @@ class Backend t where
         [ "def" <+> funcN proxy _funcName <> genArgs ["____k", "____state", "____effs"] <> colon,
           indent 4 body,
           "def" <+> funcN proxy _funcName <> "_w" <> genArgs [] <> colon,
-          indent 4 $ "return" <+> funcN proxy _funcName <> genArgs ["lambda x:x", "[{}]", "[{}]"]
+          indent 4 $ "return" <+> funcN proxy _funcName <> genArgs ["lambda x:x", "[{}]", "[]"]
         ]
     where
       genArgs init = encloseSep lparen rparen comma $ init ++ (map (funcN proxy) $ _funcArgs ^.. traverse . _1)
@@ -378,7 +378,7 @@ class Backend t where
           indent 4 $
             vsep
               [ "state = copy.deepcopy(state)",
-                "effs = [{}]",
+                "effs = []",
                 "for s in state:",
                 indent 4 $
                   vsep
