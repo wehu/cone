@@ -78,7 +78,7 @@ inferExprType a@EApp {..} = do
   -- infer the result type
   (t, ft) <- inferAppResultType appFuncType _eappTypeArgs argTypes
   t <- inferType t
-  appFunc <- selectFuncImpl appFunc{_eannMetaType=ft}
+  appFunc <- selectFuncImpl appFunc{_eannMetaType=bindTypeEffVar [] $ bindType [] ft}
   return $ annotateExpr a{_eappFunc=appFunc, _eappArgs=args} t
 inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
