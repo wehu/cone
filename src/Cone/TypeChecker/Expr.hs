@@ -22,10 +22,10 @@ import Unbound.Generics.LocallyNameless.Unsafe
 
 -- | Annotate expression with type
 annotateExpr :: Expr -> Type -> Expr
-annotateExpr e t = EAnn e t (_eloc e)
+annotateExpr e t = EAnnMeta e t (_eloc e)
 
 typeOfExpr :: (Has EnvEff sig m) => Expr -> m Type
-typeOfExpr (EAnn _ t _) = return t
+typeOfExpr (EAnnMeta _ t _) = return t
 typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr e
 
 -- | Infer expression's type
@@ -226,6 +226,7 @@ inferExprType etc@(ETC e@TCApp {..} _) = do
     else do 
       t <- inferTCExprType v e >>= inferType
       return $ annotateExpr etc t
+inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
 -- | Collect the tensor informations
@@ -378,6 +379,7 @@ inferExprEffType :: (Has EnvEff sig m) => Expr -> m EffectType
 inferExprEffType EVar {..} = return $ EffList [] _eloc
 inferExprEffType ELit {..} = return $ EffList [] _eloc
 inferExprEffType EAnn {..} = inferExprEffType _eannExpr
+inferExprEffType EAnnMeta {..} = inferExprEffType _eannMetaExpr
 inferExprEffType l@ELam {..} = do
   forMOf _Nothing _elamExpr $ \_ ->
     throwError $ "expected an expression for lambda" ++ ppr _eloc
@@ -458,7 +460,7 @@ setupEffIntfType f = do
 
 selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
 selectFuncImpl e = transformM selectImpl e
-  where selectImpl e@(EApp (EAnn (EVar fn _) t _) targs args loc) = do
+  where selectImpl e@(EApp (EAnnMeta (EVar fn _) t _) targs args loc) = do
           impls <- getEnv funcImpls
           case impls ^. at fn of
             Nothing -> return e

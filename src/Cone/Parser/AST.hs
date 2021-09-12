@@ -274,6 +274,7 @@ data Expr
   | ESeq {_eseq :: [Expr], _eloc :: Location}
   | ETC {_etc :: TCExpr, _eloc :: Location}
   | EAnn {_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
+  | EAnnMeta {_eannMetaExpr :: Expr, _eannMetaType :: Type, _eloc :: Location}
   deriving
     ( -- | BoundExpr{_exprBound :: Bind [TVar] Expr}
       Eq,
@@ -305,7 +306,8 @@ instance Pretty Expr where
                         <+> "with" <+> bracesList _ehandleBindings
   pretty ESeq {..} = vsep $ fmap pretty _eseq
   pretty ETC {..} = pretty _etc
-  pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType 
+  pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType
+  pretty EAnnMeta {..} = pretty _eannMetaExpr
 
 data TypeDef = TypeDef
   { _typeName :: String,
