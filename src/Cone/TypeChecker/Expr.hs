@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Cone.TypeChecker.Expr where
 
@@ -32,13 +33,17 @@ typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr 
 -- | Select a function implementation based on type
 selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
 selectFuncImpl e@(EAnnMeta (EVar fn _) t loc) = do
-  impls <- getEnv funcImpls
-  case impls ^. at fn of
-    Nothing -> return e
-    Just is -> do
-      case is ^. at (funcImplSelector t) of
-        Just l -> return $ EAnnMeta l t loc
-        Nothing -> return e
+  catchError (do
+      getFuncType loc fn
+      return e)
+    (\(_::String) -> do
+        impls <- getEnv funcImpls
+        case impls ^. at fn of
+          Nothing -> return e
+          Just is -> do
+            case is ^. at (funcImplSelector t) of
+              Just l -> return $ EAnnMeta l t loc
+              Nothing -> return e)
 selectFuncImpl e = return e
 
 -- | Infer expression's type
