@@ -304,8 +304,8 @@ removeAnnMeta e = transform removeAnn e
 
 removeAnnMetas :: Module -> Module
 removeAnnMetas m =
-  let m' = transformOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta m
-   in transformOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta m'
+  transformOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta $
+  transformOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta m
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
