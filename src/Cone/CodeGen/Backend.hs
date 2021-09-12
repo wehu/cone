@@ -116,7 +116,7 @@ class Backend t where
     where
       constructor =
         vsep
-          [ "def" <+> "__init__" <> genArgs ["self", "____k", "____state"] <> colon,
+          [ "def" <+> "__init__" <> genArgs ["self", "____k", "____state", "____effs"] <> colon,
             indent 4 $ vsep genFields
           ]
       hash =
@@ -142,20 +142,20 @@ class Backend t where
               ( \s e ->
                   let i = length s
                       f = "self.f" ++ show i
-                      a = "t" ++ show (i + 3)
+                      a = "t" ++ show (i + 4)
                    in s ++ [pretty f <+> "=" <+> pretty a]
               )
               []
               _typeConArgs
       ctrFunc fn tn =
         vsep
-          [ "def" <+> fn <> genArgs ["____k", "____state"] <> ":",
-            indent 4 ("return" <+> ("____k" <> parens (tn <> genArgs ["____k", "____state"])))
+          [ "def" <+> fn <> genArgs ["____k", "____state", "____effs"] <> ":",
+            indent 4 ("return" <+> ("____k" <> parens (tn <> genArgs ["____k", "____state", "____effs"])))
           ]
       ctrFuncWrapper fn =
         vsep
           [ "def" <+> fn <> "_w" <> genArgs [] <> ":",
-            indent 4 ("return" <+> (fn <> genArgs ["lambda x:x", "[{}]"]))
+            indent 4 ("return" <+> (fn <> genArgs ["lambda x:x", "[{}]", "[{}]"]))
           ]
 
   genEffectDef :: (Has EnvEff sig m) => t Target -> EffectDef -> m (Doc a)
@@ -166,26 +166,25 @@ class Backend t where
     body <- case _funcExpr of
       Just e -> do
         es <- genExpr proxy e
-        return $ "return" <+> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es)
+        return $ "return" <+> parens (es <> parens "____k, [{}], ____effs")
       Nothing -> return $ "raise Exception(\"" <> pretty _funcName <> " is not implemented\")"
     return $
       vsep
-        [ "def" <+> funcN proxy _funcName <> genArgs ["____k", "____state"] <> colon,
+        [ "def" <+> funcN proxy _funcName <> genArgs ["____k", "____state", "____effs"] <> colon,
           indent 4 body,
           "def" <+> funcN proxy _funcName <> "_w" <> genArgs [] <> colon,
-          indent 4 $ "return" <+> funcN proxy _funcName <> genArgs ["lambda x:x", "[{}]"]
+          indent 4 $ "return" <+> funcN proxy _funcName <> genArgs ["lambda x:x", "[{}]", "[{}]"]
         ]
     where
       genArgs init = encloseSep lparen rparen comma $ init ++ (map (funcN proxy) $ _funcArgs ^.. traverse . _1)
-      callCpsWithclearedVars es =
-        encloseSep lparen rparen comma $
-          "____k" : "____state" : (encloseSep lbracket rbracket comma $ map (\n -> "\"" <> funcN proxy n <> "\"") $ _funcArgs ^.. traverse . _1) : [es]
 
   genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m (Doc a)
   genExpr proxy EVar {..} =
     let fn = funcN proxy _evarName
         fnQ = "\"" <> fn <> "\""
-     in return $ exprToCps $ "____k(____lookup_var(____state, " <> fnQ <> ") if" <+> "____lookup_var(____state, " <> fnQ <+> ") != None else" <+> fn <> ")"
+     in return $ exprToCps $ 
+         "____k(____lookup_eff(____effs, " <> fnQ <> ") if " <> "____lookup_eff(____effs, " <> fnQ <> ") != None" <+>
+         "else (____lookup_var(____state, " <> fnQ <> ") if" <+> "____lookup_var(____state, " <> fnQ <> ") != None else" <+> fn <> "))"
   genExpr proxy ESeq {..} = do
     let e : es = (reverse _eseq)
     e' <- genExpr proxy e
@@ -208,9 +207,9 @@ class Backend t where
             )
   genExpr proxy ELam {..} = do
     es <- genBody _elamExpr
-    return $ parens $ "lambda ____k2, ____state" <> colon <+> es
+    return $ parens $ "lambda ____k2, ____state, ____effs" <> colon <+> es
     where
-      genArgs = encloseSep emptyDoc emptyDoc comma $ "____k" : "____state_unused" : (map (funcN proxy) $ _elamArgs ^.. traverse . _1)
+      genArgs = encloseSep emptyDoc emptyDoc comma $ "____k" : "____state_unused" : "____effs": (map (funcN proxy) $ _elamArgs ^.. traverse . _1)
       genBody e = case e of
         Just e -> do
           es <- genExpr proxy e
@@ -218,11 +217,11 @@ class Backend t where
         Nothing -> throwError $ "lambda expected a expression"
       callCpsWithclearedVars es =
         encloseSep lparen rparen comma $
-          "____k" : "____state" : (encloseSep lbracket rbracket comma $ map (\n -> "\"" <> funcN proxy n <> "\"") $ _elamArgs ^.. traverse . _1) : [es]
+          "____k" : "____state" : "____effs": (encloseSep lbracket rbracket comma $ map (\n -> "\"" <> funcN proxy n <> "\"") $ _elamArgs ^.. traverse . _1) : [es]
   genExpr proxy EWhile {..} = do
     c <- genExpr proxy _ewhileCond
     es <- genExpr proxy _ewhileBody
-    return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["____k", "____state", c, es]
+    return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["____k", "____state", "____effs", c, es]
   genExpr proxy ELet {..} = do
     e <- genExpr proxy _eletExpr
     p <- genPatternMatch proxy _eletPattern
@@ -262,7 +261,7 @@ class Backend t where
                   ( \s (e, n) ->
                       parens $ callWithCps e ("lambda " <> n <> ": " <> s)
                   )
-                  ("____f" <> (encloseSep lparen rparen comma ("____k" : "____state" : argNames)))
+                  ("____f" <> (encloseSep lparen rparen comma ("____k" : "____state" : "____effs" : argNames)))
                   [(e, n) | e <- f : args | n <- "____f" : argNames]
     where
       binary :: (Has EnvEff sig m) => String -> m (Doc a)
@@ -283,18 +282,18 @@ class Backend t where
         ( \intf -> do
             e <- genExpr proxy (fromJust $ _funcExpr intf)
             let n = funcN proxy $ _funcName intf
-                args = encloseSep emptyDoc emptyDoc comma $ "____k" : "____state_unused" : (map (\(n, _) -> funcN proxy n) (_funcArgs intf))
+                args = encloseSep emptyDoc emptyDoc comma $ "____k" : "____state_unused" : "____effs" : (map (\(n, _) -> funcN proxy n) (_funcArgs intf))
             return $
               "\"" <> n <> "\" :"
                 <+> parens
                   ( "lambda" <+> args <> colon
-                      <+> "____call_with_resumed_k(____k, ____state, " <> e <> ")"
+                      <+> "____call_with_resumed_k(____k, ____state, ____effs, " <> e <> ")"
                   )
         )
         _ehandleBindings
     return $
       exprToCps $
-        "____handle(____k, ____state, " <> scope <> comma
+        "____handle(____k, ____state, ____effs, " <> scope <> comma
           <+> (encloseSep lbrace rbrace comma handlers) <> ")"
   genExpr proxy ECase {..} = do
     c <- genExpr proxy _ecaseExpr
@@ -307,10 +306,10 @@ class Backend t where
             lparen
             rparen
             comma
-            [ "lambda ____c: ____case(____k, ____state, ____c" <> comma
+            [ "lambda ____c: ____case(____k, ____state, ____effs, ____c" <> comma
                 <+> encloseSep lbracket rbracket comma cs <> comma
                 <+> encloseSep lbracket rbracket comma es <> ")",
-              "____state"
+              "____state", "____effs"
             ]
   genExpr proxy EAnnMeta {..} = genExpr proxy _eannMetaExpr
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
@@ -335,12 +334,23 @@ class Backend t where
   genPrologue proxy =
     return $
       vsep
-        [ "def " <> funcN proxy "print(k, s, a):",
+        [ "def " <> funcN proxy "print(k, s, effs, a):",
           indent 4 $ vsep ["return k(print(a))"],
           "def ____lookup_var(state, k):",
           indent 4 $
             vsep
               [ "for s in reversed(state):",
+                indent 4 $
+                  vsep
+                    [ "if k in s:",
+                      indent 4 $ vsep ["return s[k]"]
+                    ]
+              ],
+          indent 4 $ "return None",
+          "def ____lookup_eff(effs, k):",
+          indent 4 $
+            vsep
+              [ "for s in reversed(effs):",
                 indent 4 $
                   vsep
                     [ "if k in s:",
@@ -364,7 +374,7 @@ class Backend t where
                           ]
                     ]
               ],
-          "def ____call_cps_with_cleared_vars(k, state, ks, e):",
+          "def ____call_cps_with_cleared_vars(k, state, effs, ks, e):",
           indent 4 $
             vsep
               [ "state = copy.deepcopy(state)",
@@ -378,9 +388,9 @@ class Backend t where
                             indent 4 "del s[k_]"
                           ]
                     ],
-                "return e(k, state)"
+                "return e(k, state, effs)"
               ],
-          "def ____while(k, state, cond, body):",
+          "def ____while(k, state, effs, cond, body):",
           indent 4 $
             vsep
               [ "state.append({})",
@@ -388,7 +398,7 @@ class Backend t where
                 indent 4 $
                   vsep
                     [ "del state[-1]",
-                      "cond(k2, state)"
+                      "cond(k2, state, effs)"
                     ],
                 "def k2(o):",
                 indent 4 $
@@ -397,7 +407,7 @@ class Backend t where
                       indent 4 $
                         vsep
                           [ "state.append({})",
-                            "body(k3, state)"
+                            "body(k3, state, effs)"
                           ],
                       "else:",
                       indent 4 $
@@ -405,9 +415,9 @@ class Backend t where
                           [ "k(o)"
                           ]
                     ],
-                "return cond(k2, state)"
+                "return cond(k2, state, effs)"
               ],
-          "def ____case(k, state, ce, conds, exprs):",
+          "def ____case(k, state, effs, ce, conds, exprs):",
           indent 4 $
             vsep
               [ "for (p, e) in zip(conds, exprs):",
@@ -421,36 +431,37 @@ class Backend t where
                             "return k(o)"
                           ],
                       "if p(ce):",
-                      indent 4 $ vsep ["return e(k2, state)"],
+                      indent 4 $ vsep ["return e(k2, state, effs)"],
                       "del state[-1]"
                     ]
               ],
-          "def ____handle(k, state, scope, handlers):",
+          "def ____handle(k, state, effs, scope, handlers):",
           indent 4 $
             vsep
               [ "state.append({})",
+                "effs.append({})",
                 "try:",
                 indent 4 $
                   vsep
-                    [ "state[-1].update(handlers)",
-                      "o = scope(lambda x: x, state)"
+                    [ "effs[-1].update(handlers)",
+                      "o = scope(lambda x: x, state, effs)"
                     ],
                 "finally:",
-                indent 4 $ "del state[-1]",
+                indent 4 $ vsep ["del state[-1]", "del effs[-1]"],
                 "return k(o)"
               ],
-          "def ____call_with_resumed_k(k, state, handler):",
+          "def ____call_with_resumed_k(k, state, effs, handler):",
           indent 4 $
             vsep
               [ "state.append({})",
                 "state[-1]['____resumed_k'] = k",
                 "try:",
-                indent 4 $ vsep ["o = handler(lambda x: x, state)"],
+                indent 4 $ vsep ["o = handler(lambda x: x, state, effs)"],
                 "finally:",
                 indent 4 $ "del state[-1]",
                 "return o"
               ],
-          "def " <> funcN proxy "resume(k, s, a):",
+          "def " <> funcN proxy "resume(k, s, effs, a):",
           indent 4 $ vsep ["return k(s[-1]['____resumed_k'](a))"],
           "unit = None",
           "true = True",
@@ -469,11 +480,11 @@ class Backend t where
 
 -- | Convert a experision to cps
 exprToCps :: Doc a -> Doc a
-exprToCps e = parens $ "lambda" <+> "____k" <> comma <+> "____state" <> colon <+> e
+exprToCps e = parens $ "lambda" <+> "____k" <> comma <+> "____state" <> comma <+> "____effs" <> colon <+> e
 
 -- | Call a cps function
 callWithCps :: Doc a -> Doc a -> Doc a
-callWithCps e k = parens $ e <> (encloseSep lparen rparen comma $ (parens k) : "____state" : [])
+callWithCps e k = parens $ e <> (encloseSep lparen rparen comma $ (parens k) : "____state" : ["____effs"])
 
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
 genImplFuncDef proxy ImplFuncDef {..} = genFuncDef proxy _implFunDef
