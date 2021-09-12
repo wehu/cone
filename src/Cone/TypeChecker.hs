@@ -234,7 +234,7 @@ initFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 initFuncDefs m = mapM_ initFuncDef $ m ^.. topStmts . traverse . _FDef
 
 -- | Check a function type
-checkFuncType :: (Has EnvEff sig m) => FuncDef -> m ()
+checkFuncType :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 checkFuncType f = underScope $ do
   let pos = f ^. funcLoc
       btvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
@@ -250,19 +250,20 @@ checkFuncType f = underScope $ do
   case f ^. funcExpr of
     Just e -> do
       -- infer function expression type
-      eType <- inferExprType e >>= typeOfExpr
+      eWithType <- inferExprType e
+      eType <- typeOfExpr eWithType
       resultType <- inferType $ f ^. funcResultType
       checkTypeMatch eType resultType
       effType <- inferExprEffType e
       let fEff = f ^. funcEffectType 
       restEffs <- removeEff effType fEff
       -- check if all effects are handled or not
-      if aeq restEffs (EffList [] pos) then return ()
+      if aeq restEffs (EffList [] pos) then return f{_funcExpr=Just eWithType}
       else throwError $ "func result effs mismatch: " ++ ppr effType ++ " vs " ++ ppr fEff ++ ppr pos
-    Nothing -> return ()
+    Nothing -> return f
 
 -- | Check a function definiton
-checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
+checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 checkFuncDef f = underScope $ do
   let pos = f ^. funcLoc
       ft = funcDefType f
@@ -284,7 +285,7 @@ initImplFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 initImplFuncDefs m = mapM_ initImplFuncDef $ m ^.. topStmts . traverse . _ImplFDef
 
 -- | Check a function implementation
-checkImplFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
+checkImplFuncDef :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 checkImplFuncDef f = underScope $ do
   let ft = funcDefType f
   k <- inferTypeKind ft
