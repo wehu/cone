@@ -280,7 +280,6 @@ initImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ()
 initImplFuncDef f = setFuncImpl f
 
 -- | Init function implementations
--- | Check all function implementations
 initImplFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 initImplFuncDefs m = mapM_ initImplFuncDef $ m ^.. topStmts . traverse . _ImplFDef
 
