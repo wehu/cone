@@ -720,15 +720,10 @@ setFuncImpl impl = do
       if isSubT then return ()
       else throwError $ "implementation type is not subtype of general type: "
           ++ ppr t ++ ppr loc ++ " vs " ++ ppr ft ++ ppr (_tloc ft)
-      is' <- getEnv $ funcImpls . at fn
-      forMOf _Nothing is' $ \_ ->
-        setEnv (Just M.empty) $ funcImpls . at fn
-      is' <- getEnv $ funcImpls . at fn
-      let is = fromJust is'
-          i = EVar (uniqueFuncImplName fn t) loc
-          sel = funcImplSelector t
-          oldImpl = is ^. at sel
-      forM_ (M.toList is) $ \(it, ie) -> do 
-        if it == sel then throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
-        else return ()
-      setEnv (Just $ is & at sel ?~ i) $ funcImpls . at fn
+      impls <- getEnv $ funcImpls
+      let sel = uniqueFuncImplName fn t
+          i = EVar sel loc
+          oldImpl = impls ^. at sel
+      forMOf _Just oldImpl $ \it -> do 
+        throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
+      setEnv (Just i) $ funcImpls . at sel

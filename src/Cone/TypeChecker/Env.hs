@@ -34,7 +34,7 @@ type EffIntfs = M.Map String [String]
 
 type ExprTypes = M.Map String Type
 
-type FuncImpls = M.Map String (M.Map String Expr)
+type FuncImpls = M.Map String Expr
 
 -- | The environment
 data Env = Env

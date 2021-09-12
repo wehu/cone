@@ -37,13 +37,11 @@ selectFuncImpl e@(EAnnMeta (EVar fn _) t loc) = do
       getFuncType loc fn
       return e)
     (\(_::String) -> do
+        let sel = uniqueFuncImplName fn t
         impls <- getEnv funcImpls
-        case impls ^. at fn of
+        case impls ^. at sel of
           Nothing -> return e
-          Just is -> do
-            case is ^. at (funcImplSelector t) of
-              Just l -> return $ EAnnMeta l t loc
-              Nothing -> return e)
+          Just l -> return $ EAnnMeta l t loc)
 selectFuncImpl e = return e
 
 -- | Infer expression's type
