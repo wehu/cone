@@ -297,15 +297,15 @@ checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m [ImplFuncDef]
 checkImplFuncDefs m = mapM (\f -> ImplFuncDef <$> checkImplFuncDef f) $ m ^.. topStmts . traverse . _ImplFDef . implFunDef
 
 -- | Remove meta annotation
-removeAnnMeta :: (Has EnvEff sig m) => Expr -> m Expr
-removeAnnMeta e = transformM removeAnn e
-  where removeAnn a@(EAnnMeta e t _) = return e
-        removeAnn e = return e
+removeAnnMeta :: Expr -> Expr
+removeAnnMeta e = transform removeAnn e
+  where removeAnn a@(EAnnMeta e t _) = e
+        removeAnn e = e
 
-removeAnnMetas :: (Has EnvEff sig m) => Module -> m Module
-removeAnnMetas m = return m
-  >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta
-  >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta
+removeAnnMetas :: Module -> Module
+removeAnnMetas m =
+  let m' = transformOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta m
+   in transformOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta m'
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
@@ -327,4 +327,4 @@ checkType m env id = run . runError . (runState env) . runFresh id $ do
       es = map EDef $ m ^.. topStmts . traverse . _EDef
   fs <- map FDef <$> checkFuncDefs m
   ifs <- map ImplFDef <$> checkImplFuncDefs m
-  removeAnnMetas m{_topStmts=ts ++ es ++ fs ++ ifs}
+  return $ removeAnnMetas m{_topStmts=ts ++ es ++ fs ++ ifs}
