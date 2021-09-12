@@ -697,6 +697,9 @@ isSubType s t = do
 funcImplSelector :: Type -> String
 funcImplSelector t = ppr t
 
+uniqueFuncImplName :: String -> Type -> String
+uniqueFuncImplName fn t = fn ++ (funcImplSelector t)
+
 -- | Set a function implementation
 setFuncImpl :: (Has EnvEff sig m) => ImplFuncDef -> m ()
 setFuncImpl impl = do
@@ -719,9 +722,7 @@ setFuncImpl impl = do
         setEnv (Just M.empty) $ funcImpls . at fn
       is' <- getEnv $ funcImpls . at fn
       let is = fromJust is'
-          i = ELam (funcD ^. funcBoundVars) (funcD ^. funcBoundEffVars)
-               (funcD ^. funcArgs) (funcD ^. funcEffectType) (funcD ^. funcResultType)
-               (funcD ^. funcExpr) loc
+          i = EVar (uniqueFuncImplName fn t) loc
           oldImpl = is ^. at (funcImplSelector t)
       forM_ (M.toList is) $ \(it, ie) -> do 
         if it == (funcImplSelector t) then throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
