@@ -250,7 +250,7 @@ checkFuncType f = underScope $ do
   case f ^. funcExpr of
     Just e -> do
       -- infer function expression type
-      eType <- inferExprType e
+      eType <- inferExprType e >>= typeOfExpr
       resultType <- inferType $ f ^. funcResultType
       checkTypeMatch eType resultType
       effType <- inferExprEffType e

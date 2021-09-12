@@ -20,10 +20,19 @@ import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
+-- | Annotate expression with type
+annotateExpr :: Expr -> Type -> Expr
+annotateExpr e t = EAnn e t (_eloc e)
+
+typeOfExpr :: (Has EnvEff sig m) => Expr -> m Type
+typeOfExpr (EAnn _ t _) = return t
+typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr e
+
 -- | Infer expression's type
-inferExprType :: (Has EnvEff sig m) => Expr -> m Type
-inferExprType EVar {..} = do
-  getFuncType _eloc _evarName
+inferExprType :: (Has EnvEff sig m) => Expr -> m Expr
+inferExprType e@EVar {..} = do
+  t <- getFuncType _eloc _evarName
+  return $ annotateExpr e t
 inferExprType a@EApp {..} = do
   -- check assign variable
   if _eappFunc ^. evarName == "____assign"
@@ -45,14 +54,15 @@ inferExprType a@EApp {..} = do
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
   -- infer app function type
-  appFuncType <- inferExprType _eappFunc
+  appFuncType <- inferExprType _eappFunc >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _eappTypeArgs >>= unbindType
   -- infer all arguments' types
-  argTypes <- mapM inferExprType _eappArgs
+  argTypes <- mapM (\e -> inferExprType e >>= typeOfExpr) _eappArgs
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
   -- infer the result type
-  inferAppResultType appFuncType _eappTypeArgs argTypes >>= inferType
+  t <- inferAppResultType appFuncType _eappTypeArgs argTypes >>= inferType
+  return $ annotateExpr a t
 inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
   setEnv M.empty localState
@@ -85,37 +95,42 @@ inferExprType l@ELam {..} = underScope $ do
         Just e -> return ()
         Nothing -> throwError $ "expected an expression for lambda" ++ ppr _eloc
       -- infer the lambda's expression type
-      eType <- inferExprType $ fromJust _elamExpr
+      eType <- (inferExprType $ fromJust _elamExpr) >>= typeOfExpr
       -- infer the lambda's result type
       k <- inferTypeKind _elamResultType
       checkTypeKind k
       checkTypeMatch eType _elamResultType
       -- return the lambda type
-      inferType $ bindTypeEffVar evs $ bindType bvs $ TFunc args _elamEffType eType _eloc
+      t <- inferType $ bindTypeEffVar evs $ bindType bvs $ TFunc args _elamEffType eType _eloc
+      return $ annotateExpr l t
     _ -> throwError $ "should not be here"
 inferExprType a@EAnn {..} = do
-  t <- inferExprType _eannExpr
+  t <- inferExprType _eannExpr >>= typeOfExpr
   k <- inferTypeKind _eannType
   checkTypeKind k
   checkTypeMatch t _eannType
-  inferType _eannType
-inferExprType ELit {..} = do
+  t <- inferType _eannType
+  return $ annotateExpr a t
+inferExprType l@ELit {..} = do
   k <- inferTypeKind _litType
   checkTypeKind k
-  inferType _litType
-inferExprType ESeq {..} = do
-  ts <- mapM inferExprType _eseq
-  inferType $ last ts
-inferExprType ELet {..} =
-  bindPatternVarTypes _eletState _eletPattern _eletExpr >>= inferType
-inferExprType ECase {..} = do
+  t <- inferType _litType
+  return $ annotateExpr l t
+inferExprType s@ESeq {..} = do
+  ts <- mapM (\e -> inferExprType e >>= typeOfExpr) _eseq
+  t <- inferType $ last ts
+  return $ annotateExpr s t
+inferExprType l@ELet {..} = do
+  t <- bindPatternVarTypes _eletState _eletPattern _eletExpr >>= inferType
+  return $ annotateExpr l t
+inferExprType c@ECase {..} = do
   -- infer case condition expression's type
-  ct <- inferExprType _ecaseExpr
+  ct <- inferExprType _ecaseExpr >>= typeOfExpr
   -- infer all case patterns' types
   ts <- forM _ecaseBody $ \c -> underScope $ do
     bindPatternVarTypes False (c ^. casePattern) _ecaseExpr
     pt <- inferPatternType $ c ^. casePattern
-    et <- inferExprType $ c ^. caseExpr
+    et <- (inferExprType $ c ^. caseExpr) >>= typeOfExpr
     return (pt, et)
   let t : rest = ts
   -- check if condition's type match with case exprs' type or not
@@ -125,25 +140,26 @@ inferExprType ECase {..} = do
   forM_ (ts ^.. traverse . _1) $ \e ->
     checkTypeMatch ct e
   -- return case's type
-  inferType $ (last ts) ^. _2
-inferExprType EWhile {..} = do
+  t <- inferType $ (last ts) ^. _2
+  return $ annotateExpr c t
+inferExprType w@EWhile {..} = do
   -- infer while condition's type
-  t <- inferExprType _ewhileCond
+  t <- inferExprType _ewhileCond >>= typeOfExpr
   if aeq t (TPrim Pred _eloc)
-    then return t
+    then return ()
     else throwError $ "while expected a bool as condition, but got " ++ ppr t ++ ppr _eloc
   -- infer while's body type
   underScope $ do
-    t <- inferExprType _ewhileBody
+    t <- inferExprType _ewhileBody >>= typeOfExpr
     k <- inferTypeKind t
     checkTypeKind k
-  return $ TPrim Unit _eloc
-inferExprType EHandle {..} = underScope $ do
+  return $ annotateExpr w (TPrim Unit _eloc)
+inferExprType h@EHandle {..} = underScope $ do
   -- infer handle's effect kind
   ek <- inferEffKind _ehandleEff
   checkEffKind ek
   -- infer handle's expression's type
-  resT <- inferExprType _ehandleScope
+  resT <- inferExprType _ehandleScope >>= typeOfExpr
   btk <- inferTypeKind resT
   checkTypeKind btk
   forM_ _ehandleBindings $ \intf -> underScope $ do
@@ -172,19 +188,20 @@ inferExprType EHandle {..} = underScope $ do
       checkVarBindings binds
 
       -- check expression result type
-      intfResT <- inferExprType $ fromJust $ _funcExpr intf
+      intfResT <- (inferExprType $ fromJust $ _funcExpr intf) >>= typeOfExpr
       checkTypeMatch intfResT resT
 
       return handleT'
 
     -- check scope expr again
     setEnv (Just handleT') $ funcs . at fn
-    t <- inferExprType _ehandleScope
+    t <- inferExprType _ehandleScope >>= typeOfExpr
     k <- inferTypeKind t
     checkTypeKind k
 
-  inferType resT
-inferExprType (ETC e@TCApp {..} _) = do
+  t <- inferType resT
+  return $ annotateExpr h t
+inferExprType etc@(ETC e@TCApp {..} _) = do
   let v : e : [] = _tcAppArgs
   if _tcAppName /= "=" && _tcAppName /= "+="
     && _tcAppName /= "-="
@@ -192,7 +209,9 @@ inferExprType (ETC e@TCApp {..} _) = do
     && _tcAppName /= "/="
     && _tcAppName /= "%="
     then throwError $ "unsupported tc assign operator " ++ _tcAppName ++ ppr _tcloc
-    else inferTCExprType v e >>= inferType
+    else do 
+      t <- inferTCExprType v e >>= inferType
+      return $ annotateExpr etc t
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
 -- | Collect the tensor informations
@@ -268,20 +287,20 @@ inferTCExprType t0 t1 = throwError $ "unsupported tc expr: " ++ ppr t0 ++ " and 
 
 -- | Infer a pattern's type
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
-inferPatternType PVar {..} = inferExprType $ EVar _pvar _ploc
+inferPatternType PVar {..} = (inferExprType $ EVar _pvar _ploc) >>= typeOfExpr
 inferPatternType PApp {..} = do
   args <- mapM inferPatternType _pappArgs
   appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
-  appFuncType <- inferExprType (EVar _pappName _ploc)
+  appFuncType <- inferExprType (EVar _pappName _ploc) >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   inferAppResultType appFuncType _pappTypeArgs args
-inferPatternType PExpr {..} = inferExprType _pExpr
+inferPatternType PExpr {..} = inferExprType _pExpr >>= typeOfExpr
 
 -- | Bind a pattern's variables with real types
 bindPatternVarTypes :: (Has EnvEff sig m) => Bool -> Pattern -> Expr -> m Type
 bindPatternVarTypes isState p e = do
-  eType <- inferExprType e
+  eType <- inferExprType e >>= typeOfExpr
   typeBindings <- extracePatternVarTypes p eType
   foldM
     ( \bs (v, t) -> do
@@ -306,7 +325,7 @@ extracePatternVarTypes PExpr {..} t = return []
 extracePatternVarTypes a@PApp {..} t = underScope $ do
   appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
-  appFuncType <- inferExprType (EVar _pappName _ploc)
+  appFuncType <- inferExprType (EVar _pappName _ploc) >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   let cntr =
         ( \arg ->
@@ -369,10 +388,10 @@ inferExprEffType EWhile {..} = do
 inferExprEffType EApp {..} = do
   appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
-  appFuncType <- inferExprType _eappFunc
+  appFuncType <- inferExprType _eappFunc >>= typeOfExpr
   inferExprEffType _eappFunc
   appFuncType <- applyTypeArgs appFuncType _eappTypeArgs >>= unbindType
-  argTypes <- mapM inferExprType _eappArgs
+  argTypes <- mapM (\e -> inferExprType e >>= typeOfExpr) _eappArgs
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
   mapM_ inferExprEffType _eappArgs
