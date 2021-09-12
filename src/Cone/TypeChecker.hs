@@ -272,8 +272,8 @@ checkFuncDef f = underScope $ do
   checkFuncType f
 
 -- | Check all function definitons
-checkFuncDefs :: (Has EnvEff sig m) => Module -> m ()
-checkFuncDefs m = mapM_ checkFuncDef $ m ^.. topStmts . traverse . _FDef
+checkFuncDefs :: (Has EnvEff sig m) => Module -> m [FuncDef]
+checkFuncDefs m = mapM checkFuncDef $ m ^.. topStmts . traverse . _FDef
 
 -- | Init a function implementation
 initImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ()
@@ -293,8 +293,8 @@ checkImplFuncDef f = underScope $ do
   checkFuncType f
 
 -- | Check all function implementations
-checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m ()
-checkImplFuncDefs m = mapM_ checkImplFuncDef $ m ^.. topStmts . traverse . _ImplFDef . implFunDef
+checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m [ImplFuncDef]
+checkImplFuncDefs m = mapM (\f -> ImplFuncDef <$> checkImplFuncDef f) $ m ^.. topStmts . traverse . _ImplFDef . implFunDef
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
@@ -312,6 +312,8 @@ checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 checkType m env id = run . runError . (runState env) . runFresh id $ do
   checkTypeConDefs m
   checkEffIntfDefs m
-  checkFuncDefs m
-  checkImplFuncDefs m
-  selectFuncImpls m
+  let ts = map TDef $ m ^.. topStmts . traverse . _TDef 
+      es = map EDef $ m ^.. topStmts . traverse . _EDef
+  fs <- map FDef <$> checkFuncDefs m
+  ifs <- map ImplFDef <$> checkImplFuncDefs m
+  selectFuncImpls m{_topStmts=ts ++ es ++ fs ++ ifs}

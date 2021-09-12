@@ -470,7 +470,14 @@ selectFuncImpl e = transformM selectImpl e
                 Nothing -> return e
         selectImpl e = return e
 
+removeAnnMeta :: (Has EnvEff sig m) => Expr -> m Expr
+removeAnnMeta e = transformM removeAnn e
+  where removeAnn a@(EAnnMeta e t _) = return e
+        removeAnn e = return e
+
 selectFuncImpls :: (Has EnvEff sig m) => Module -> m Module
 selectFuncImpls m =
   transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) selectFuncImpl m
   >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) selectFuncImpl
+  >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta
+  >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta

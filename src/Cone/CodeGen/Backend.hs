@@ -309,6 +309,7 @@ class Backend t where
                 <+> encloseSep lbracket rbracket comma es <> ")",
               "____state"
             ]
+  genExpr proxy EAnnMeta {..} = genExpr proxy _eannMetaExpr
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
 
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
