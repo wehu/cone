@@ -167,7 +167,7 @@ class Backend t where
       Just e -> do
         es <- genExpr proxy e
         return $ "return" <+> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es)
-      Nothing -> return "pass"
+      Nothing -> return $ "raise Exception(\"" <> pretty _funcName <> " is not implemented\")"
     return $
       vsep
         [ "def" <+> funcN proxy _funcName <> genArgs ["____k", "____state"] <> colon,
