@@ -34,7 +34,7 @@ selectFuncImpl e@(EAnnMeta (EVar fn _) t loc) = do
   case impls ^. at fn of
     Nothing -> return e
     Just is -> do
-      case is ^. at (ppr t) of
+      case is ^. at (funcImplSelector t) of
         Just l -> return $ EAnnMeta l t loc
         Nothing -> return e
 selectFuncImpl e = return e

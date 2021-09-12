@@ -697,6 +697,9 @@ isSubType s t = do
 isAmbiguous :: (Has EnvEff sig m) => Type -> Type -> m Bool
 isAmbiguous a b = return $ aeq a b
 
+funcImplSelector :: Type -> String
+funcImplSelector t = ppr t
+
 -- | Set a function implementation
 setFuncImpl :: (Has EnvEff sig m) => ImplFuncDef -> m ()
 setFuncImpl impl = do
@@ -722,9 +725,9 @@ setFuncImpl impl = do
           i = ELam (funcD ^. funcBoundVars) (funcD ^. funcBoundEffVars)
                (funcD ^. funcArgs) (funcD ^. funcEffectType) (funcD ^. funcResultType)
                (funcD ^. funcExpr) loc
-          oldImpl = is ^. at (ppr t)
+          oldImpl = is ^. at (funcImplSelector t)
       -- forM_ (M.toList is) $ \(it, ie) -> do 
       --   isAmb <- isAmbiguous it t
       --   if isAmb then throwError $ "implementation conflict: " ++ ppr it ++ ppr (_tloc it) ++ " vs " ++ ppr t ++ ppr (_tloc t)
       --   else return ()
-      setEnv (Just $ is & at (ppr t) ?~ i) $ funcImpls . at fn
+      setEnv (Just $ is & at (funcImplSelector t) ?~ i) $ funcImpls . at fn
