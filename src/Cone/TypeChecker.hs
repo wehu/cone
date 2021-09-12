@@ -309,8 +309,8 @@ removeAnnMetas m =
   transformOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta m
 
 -- | Rename func implementation names
-uniqueFuncImplNames :: Module -> Module
-uniqueFuncImplNames m =
+convertFuncImplToFuncs :: Module -> Module
+convertFuncImplToFuncs m =
   let tops = (m ^..  topStmts . traverse)
       fs = map
             (\f ->
@@ -324,7 +324,7 @@ uniqueFuncImplNames m =
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m' env id = run . runError . (runState env) . runFresh id $ do
-  let m = uniqueFuncImplNames m'
+  let m = convertFuncImplToFuncs m'
   initTypeDefs m
   initEffTypeDefs m
   initTypeConDefs m
