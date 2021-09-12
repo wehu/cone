@@ -726,8 +726,9 @@ setFuncImpl impl = do
       is' <- getEnv $ funcImpls . at fn
       let is = fromJust is'
           i = EVar (uniqueFuncImplName fn t) loc
-          oldImpl = is ^. at (funcImplSelector t)
+          sel = funcImplSelector t
+          oldImpl = is ^. at sel
       forM_ (M.toList is) $ \(it, ie) -> do 
-        if it == (funcImplSelector t) then throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
+        if it == sel then throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
         else return ()
-      setEnv (Just $ is & at (funcImplSelector t) ?~ i) $ funcImpls . at fn
+      setEnv (Just $ is & at sel ?~ i) $ funcImpls . at fn
