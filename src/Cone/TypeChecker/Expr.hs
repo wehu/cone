@@ -63,8 +63,9 @@ inferExprType a@EApp {..} = do
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
   -- infer the result type
-  t <- inferAppResultType appFuncType _eappTypeArgs argTypes >>= inferType
-  return $ annotateExpr a{_eappFunc=appFunc, _eappArgs=args} t
+  (t, ft) <- inferAppResultType appFuncType _eappTypeArgs argTypes
+  t <- inferType t
+  return $ annotateExpr a{_eappFunc=appFunc{_eannMetaType=bindTypeEffVar [] $ bindType [] ft}, _eappArgs=args} t
 inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
   setEnv M.empty localState
@@ -309,7 +310,8 @@ inferPatternType PApp {..} = do
   mapM_ checkTypeKind appTypeArgKinds
   appFuncType <- inferExprType (EVar _pappName _ploc) >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
-  inferAppResultType appFuncType _pappTypeArgs args
+  (t, _) <- inferAppResultType appFuncType _pappTypeArgs args
+  return t
 inferPatternType PExpr {..} = inferExprType _pExpr >>= typeOfExpr
 
 -- | Bind a pattern's variables with real types
@@ -365,7 +367,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
                   _ -> newTVar
         )
   argTypes <- mapM cntr (appFuncType ^. tfuncArgs)
-  appResT <- inferAppResultType appFuncType _pappTypeArgs argTypes
+  (appResT, ft) <- inferAppResultType appFuncType _pappTypeArgs argTypes
   bindings <- collectVarBindings appResT t
   foldM
     ( \s e ->

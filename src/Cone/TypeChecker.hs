@@ -298,33 +298,18 @@ checkImplFuncDefs m = mapM (\f -> ImplFuncDef <$> checkImplFuncDef f) $ m ^.. to
 
 -- | Select func implementation
 selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
-selectFuncImpl e = transformM selectImpl e
-  where selectImpl e@(EApp (EAnnMeta (EVar fn _) t _) targs args loc) = do
-          t' <- unbindType t
-          st <- case t' of
-            TFunc{} -> do
-              -- infer app function type
-              appFuncType <- applyTypeArgs t targs >>= unbindType
-              -- infer all arguments' types
-              let argTypes = map (\(EAnnMeta _ t _) -> t) args
-                  fArgTypes = _tfuncArgs t'
-              bindings <-
-               foldM
-                 (\s e -> (++) <$> return s <*> e)
-                 []
-                 [collectVarBindings a b | a <- fArgTypes | b <- argTypes]
-              checkVarBindings bindings
-              return $ bindTypeEffVar [] $ bindType [] $ substs bindings t'
-            _ -> return t
-          impls <- getEnv funcImpls
+selectFuncImpl e = do
+  impls <- getEnv funcImpls
+  transformM (selectImpl impls) e
+  where selectImpl :: (Has EnvEff sig m) => FuncImpls -> Expr -> m Expr
+        selectImpl impls e@(EAnnMeta (EVar fn _) t _) = do
           case impls ^. at fn of
             Nothing -> return e
             Just is -> do
-              case is ^. at st of
-                Just l -> do
-                  return $ EApp l targs args loc
+              case is ^. at (ppr t) of
+                Just l -> return l
                 Nothing -> return e
-        selectImpl e = return e
+        selectImpl _ e = return e
 
 -- | Remove meta annotation
 removeAnnMeta :: (Has EnvEff sig m) => Expr -> m Expr
@@ -334,10 +319,10 @@ removeAnnMeta e = transformM removeAnn e
 
 selectFuncImpls :: (Has EnvEff sig m) => Module -> m Module
 selectFuncImpls m = return m
-  -- >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) selectFuncImpl
-  -- >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) selectFuncImpl
-  -- >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta
-  -- >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta
+  >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) selectFuncImpl
+  >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) selectFuncImpl
+  >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta
+  >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))

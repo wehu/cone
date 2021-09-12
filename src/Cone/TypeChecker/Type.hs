@@ -296,7 +296,7 @@ applyTypeArgs t args = do
       return $ bindTypeEffVar ets $ bindType (L.drop argsLen bts) $ substs binds tt
 
 -- | Infer a result type of application type
-inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m Type
+inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m (Type, Type)
 inferAppResultType f@TFunc {} bargs args = do
   let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
@@ -308,8 +308,9 @@ inferAppResultType f@TFunc {} bargs args = do
       []
       [collectVarBindings a b | a <- fArgTypes | b <- args]
   checkVarBindings bindings
-  return $ substs bindings $ _tfuncResult f
-inferAppResultType t _ [] = return t
+  let ft = substs bindings f
+  return (_tfuncResult ft, ft)
+inferAppResultType t _ [] = return (t, t)
 inferAppResultType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
 
 -- | Infer the result effect type of application type
@@ -721,9 +722,9 @@ setFuncImpl impl = do
           i = ELam (funcD ^. funcBoundVars) (funcD ^. funcBoundEffVars)
                (funcD ^. funcArgs) (funcD ^. funcEffectType) (funcD ^. funcResultType)
                (funcD ^. funcExpr) loc
-          oldImpl = is ^. at t
-      forM_ (M.toList is) $ \(it, ie) -> do 
-        isAmb <- isAmbiguous it t
-        if isAmb then throwError $ "implementation conflict: " ++ ppr it ++ ppr (_tloc it) ++ " vs " ++ ppr t ++ ppr (_tloc t)
-        else return ()
-      setEnv (Just $ is & at t ?~ i) $ funcImpls . at fn
+          oldImpl = is ^. at (ppr t)
+      -- forM_ (M.toList is) $ \(it, ie) -> do 
+      --   isAmb <- isAmbiguous it t
+      --   if isAmb then throwError $ "implementation conflict: " ++ ppr it ++ ppr (_tloc it) ++ " vs " ++ ppr t ++ ppr (_tloc t)
+      --   else return ()
+      setEnv (Just $ is & at (ppr t) ?~ i) $ funcImpls . at fn
