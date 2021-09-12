@@ -697,6 +697,7 @@ isSubType s t = do
 
 -- | Func implementation selector
 funcImplSelector :: Type -> String
+-- TODO md5 is not good, better just replace the special chars
 funcImplSelector t = show $ md5 $ BLU.fromString $ ppr t
 
 uniqueFuncImplName :: String -> Type -> String
