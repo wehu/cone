@@ -726,8 +726,7 @@ setFuncImpl impl = do
                (funcD ^. funcArgs) (funcD ^. funcEffectType) (funcD ^. funcResultType)
                (funcD ^. funcExpr) loc
           oldImpl = is ^. at (funcImplSelector t)
-      -- forM_ (M.toList is) $ \(it, ie) -> do 
-      --   isAmb <- isAmbiguous it t
-      --   if isAmb then throwError $ "implementation conflict: " ++ ppr it ++ ppr (_tloc it) ++ " vs " ++ ppr t ++ ppr (_tloc t)
-      --   else return ()
+      forM_ (M.toList is) $ \(it, ie) -> do 
+        if it == (funcImplSelector t) then throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
+        else return ()
       setEnv (Just $ is & at (funcImplSelector t) ?~ i) $ funcImpls . at fn
