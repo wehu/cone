@@ -378,6 +378,7 @@ class Backend t where
           indent 4 $
             vsep
               [ "state = copy.deepcopy(state)",
+                "effs = [{}]",
                 "for s in state:",
                 indent 4 $
                   vsep
