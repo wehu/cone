@@ -693,10 +693,7 @@ isSubType s t = do
       return True
     ) (\(e::String) -> return False)
 
--- | Test if post-order type pair
-isAmbiguous :: (Has EnvEff sig m) => Type -> Type -> m Bool
-isAmbiguous a b = return $ aeq a b
-
+-- | Func implementation selector
 funcImplSelector :: Type -> String
 funcImplSelector t = ppr t
 

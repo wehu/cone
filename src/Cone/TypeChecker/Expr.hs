@@ -24,10 +24,12 @@ import Unbound.Generics.LocallyNameless.Unsafe
 annotateExpr :: Expr -> Type -> Expr
 annotateExpr e t = EAnnMeta e t (_eloc e)
 
+-- | Return the type in annotation meta
 typeOfExpr :: (Has EnvEff sig m) => Expr -> m Type
 typeOfExpr (EAnnMeta _ t _) = return t
 typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr e
 
+-- | Select a function implementation based on type
 selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
 selectFuncImpl e@(EAnnMeta (EVar fn _) t loc) = do
   impls <- getEnv funcImpls

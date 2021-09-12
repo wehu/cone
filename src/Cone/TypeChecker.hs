@@ -302,6 +302,7 @@ removeAnnMeta e = transform removeAnn e
   where removeAnn a@(EAnnMeta e t _) = e
         removeAnn e = e
 
+-- | Remove all meta annotations
 removeAnnMetas :: Module -> Module
 removeAnnMetas m =
   transformOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta $
