@@ -28,6 +28,17 @@ typeOfExpr :: (Has EnvEff sig m) => Expr -> m Type
 typeOfExpr (EAnnMeta _ t _) = return t
 typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr e
 
+selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
+selectFuncImpl e@(EAnnMeta (EVar fn _) t loc) = do
+  impls <- getEnv funcImpls
+  case impls ^. at fn of
+    Nothing -> return e
+    Just is -> do
+      case is ^. at (ppr t) of
+        Just l -> return $ EAnnMeta l t loc
+        Nothing -> return e
+selectFuncImpl e = return e
+
 -- | Infer expression's type
 inferExprType :: (Has EnvEff sig m) => Expr -> m Expr
 inferExprType e@EVar {..} = do
@@ -65,7 +76,8 @@ inferExprType a@EApp {..} = do
   -- infer the result type
   (t, ft) <- inferAppResultType appFuncType _eappTypeArgs argTypes
   t <- inferType t
-  return $ annotateExpr a{_eappFunc=appFunc{_eannMetaType=bindTypeEffVar [] $ bindType [] ft}, _eappArgs=args} t
+  appFunc <- selectFuncImpl appFunc{_eannMetaType=ft}
+  return $ annotateExpr a{_eappFunc=appFunc, _eappArgs=args} t
 inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
   setEnv M.empty localState

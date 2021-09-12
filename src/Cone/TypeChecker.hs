@@ -296,31 +296,14 @@ checkImplFuncDef f = underScope $ do
 checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m [ImplFuncDef]
 checkImplFuncDefs m = mapM (\f -> ImplFuncDef <$> checkImplFuncDef f) $ m ^.. topStmts . traverse . _ImplFDef . implFunDef
 
--- | Select func implementation
-selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
-selectFuncImpl e = do
-  impls <- getEnv funcImpls
-  transformM (selectImpl impls) e
-  where selectImpl :: (Has EnvEff sig m) => FuncImpls -> Expr -> m Expr
-        selectImpl impls e@(EAnnMeta (EVar fn _) t _) = do
-          case impls ^. at fn of
-            Nothing -> return e
-            Just is -> do
-              case is ^. at (ppr t) of
-                Just l -> return l
-                Nothing -> return e
-        selectImpl _ e = return e
-
 -- | Remove meta annotation
 removeAnnMeta :: (Has EnvEff sig m) => Expr -> m Expr
 removeAnnMeta e = transformM removeAnn e
   where removeAnn a@(EAnnMeta e t _) = return e
         removeAnn e = return e
 
-selectFuncImpls :: (Has EnvEff sig m) => Module -> m Module
-selectFuncImpls m = return m
-  >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) selectFuncImpl
-  >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) selectFuncImpl
+removeAnnMetas :: (Has EnvEff sig m) => Module -> m Module
+removeAnnMetas m = return m
   >>= transformMOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnnMeta
   >>= transformMOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnnMeta
 
@@ -344,4 +327,4 @@ checkType m env id = run . runError . (runState env) . runFresh id $ do
       es = map EDef $ m ^.. topStmts . traverse . _EDef
   fs <- map FDef <$> checkFuncDefs m
   ifs <- map ImplFDef <$> checkImplFuncDefs m
-  selectFuncImpls m{_topStmts=ts ++ es ++ fs ++ ifs}
+  removeAnnMetas m{_topStmts=ts ++ es ++ fs ++ ifs}
