@@ -386,7 +386,7 @@ removeTypeBindingsForExprs m =
       let (_, f) = unsafeUnbind b
        in removeBindingsForFDef f
     removeBindingsForFDef fdef = 
-     let expr = fmap (transform removeBindingsForExpr) $ _funcExpr fdef
+     let expr = fmap removeBindingsForExpr $ _funcExpr fdef
       in fdef{_funcExpr = expr}
     removeBindingsForExpr (EBoundTypeVars b _) =
       let (_, e) = unsafeUnbind b
@@ -394,6 +394,28 @@ removeTypeBindingsForExprs m =
     removeBindingsForExpr (EBoundEffTypeVars b _) =
       let (_, e) = unsafeUnbind b
        in removeBindingsForExpr e
+    removeBindingsForExpr l@ELam {..} =
+      l{_elamExpr = fmap removeBindingsForExpr _elamExpr}
+    removeBindingsForExpr e@ECase {..} =
+      e{_ecaseExpr=removeBindingsForExpr _ecaseExpr,
+        _ecaseBody=over (traverse . caseExpr) removeBindingsForExpr _ecaseBody}
+    removeBindingsForExpr w@EWhile {..} =
+      w{_ewhileCond=removeBindingsForExpr _ewhileCond,
+        _ewhileBody=removeBindingsForExpr _ewhileBody}
+    removeBindingsForExpr a@EApp {..} =
+      a{_eappFunc=removeBindingsForExpr _eappFunc,
+        _eappArgs=over traverse removeBindingsForExpr _eappArgs}
+    removeBindingsForExpr l@ELet {..} =
+      l{_eletExpr=removeBindingsForExpr _eletExpr}
+    removeBindingsForExpr h@EHandle {..} =
+      h{_ehandleScope=removeBindingsForExpr _ehandleScope,
+        _ehandleBindings=map removeBindingsForFDef _ehandleBindings}
+    removeBindingsForExpr s@ESeq {..} =
+      s{_eseq=map removeBindingsForExpr _eseq}
+    removeBindingsForExpr e@EAnn {..} =
+      e{_eannExpr=removeBindingsForExpr _eannExpr}
+    removeBindingsForExpr e@EAnnMeta {..} =
+      e{_eannMetaExpr=removeBindingsForExpr _eannMetaExpr}
     removeBindingsForExpr expr = expr
 
 addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module
