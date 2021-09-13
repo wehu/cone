@@ -457,7 +457,7 @@ checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 checkType m env id = run . runError . (runState env) . runFresh id $ do
   checkTypeConDefs m
   checkEffIntfDefs m
-  removeAnns <$>
-     (return m >>= checkFuncDefs
-               >>= checkImplFuncDefs)
+  return m >>= checkFuncDefs
+           >>= checkImplFuncDefs
+           >>= (return . removeAnns)
   
