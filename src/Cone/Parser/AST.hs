@@ -202,7 +202,7 @@ instance Pretty EffectType where
 data Pattern
   = PVar {_pvar :: NamePath, _ploc :: Location}
   | PApp
-      { _pappName :: NamePath,
+      { _pappName :: Expr,
         _pappTypeArgs :: [Type],
         _pappArgs :: [Pattern],
         _ploc :: Location
@@ -244,8 +244,10 @@ instance Pretty TCExpr where
   pretty TCApp {..} = parens $ pretty _tcAppName <+> parensList _tcAppArgs
   pretty TCVar {..} = pretty _tcVarName
 
+type EVar = Name Expr
+
 data Expr
-  = EVar {_evarName :: NamePath, _eloc :: Location}
+  = EVar {_evarName :: EVar, _eloc :: Location}
   | ELit {_lit :: String, _litType :: Type, _eloc :: Location}
   | ELam
       { _elamBoundVars :: [TVar],

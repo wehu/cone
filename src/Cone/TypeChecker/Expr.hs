@@ -32,7 +32,8 @@ typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr 
 
 -- | Select a function implementation based on type
 selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
-selectFuncImpl e@(EAnnMeta (EVar fn _) t loc) = do
+selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
+  let fn = name2String fn'
   catchError (do
       getFuncType loc fn
       return e)
@@ -47,11 +48,11 @@ selectFuncImpl e = return e
 -- | Infer expression's type
 inferExprType :: (Has EnvEff sig m) => Expr -> m Expr
 inferExprType e@EVar {..} = do
-  t <- getFuncType _eloc _evarName
+  t <- getFuncType _eloc $ name2String _evarName
   return $ annotateExpr e t
 inferExprType a@EApp {..} = do
   -- check assign variable
-  if _eappFunc ^. evarName == "____assign"
+  if (name2String $ _eappFunc ^. evarName) == "____assign"
     then do
       if L.length _eappArgs /= 2
         then throwError $ "expected 2 arguments: " ++ ppr a ++ ppr _eloc
@@ -60,7 +61,7 @@ inferExprType a@EApp {..} = do
             then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs) ++ ppr _eloc
             else -- first argument is the assigned variable which should be in local state
             do
-              let vn = (head _eappArgs) ^. evarName
+              let vn = name2String $ (head _eappArgs) ^. evarName
               v <- getEnv $ localState . at vn
               case v of
                 Just v -> return ()
@@ -320,12 +321,12 @@ inferTCExprType t0 t1 = throwError $ "unsupported tc expr: " ++ ppr t0 ++ " and 
 
 -- | Infer a pattern's type
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
-inferPatternType PVar {..} = (inferExprType $ EVar _pvar _ploc) >>= typeOfExpr
+inferPatternType PVar {..} = (inferExprType $ EVar (s2n _pvar) _ploc) >>= typeOfExpr
 inferPatternType PApp {..} = do
   args <- mapM inferPatternType _pappArgs
   appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
-  appFuncType <- inferExprType (EVar _pappName _ploc) >>= typeOfExpr
+  appFuncType <- inferExprType _pappName >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   (t, _) <- inferAppResultType appFuncType _pappTypeArgs args
   return t
@@ -360,7 +361,7 @@ extracePatternVarTypes PExpr {..} t = return []
 extracePatternVarTypes a@PApp {..} t = underScope $ do
   appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
   mapM_ checkTypeKind appTypeArgKinds
-  appFuncType <- inferExprType (EVar _pappName _ploc) >>= typeOfExpr
+  appFuncType <- inferExprType _pappName >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   let cntr =
         ( \arg ->

@@ -26,6 +26,7 @@ import Data.List.Split
 import Data.Maybe
 import Data.Proxy
 import Prettyprinter
+import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Debug.Trace
 
 type Eff s e = Fresh :+: State s :+: Error e
@@ -181,7 +182,7 @@ class Backend t where
 
   genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m (Doc a)
   genExpr proxy EVar {..} =
-    let fn = funcN proxy _evarName
+    let fn = funcN proxy (name2String _evarName)
         fnQ = "\"" <> fn <> "\""
      in return $ exprToCps $ 
          "____k(____lookup_eff(____effs, " <> fnQ <> ") if " <> "____lookup_eff(____effs, " <> fnQ <> ") != None" <+>
@@ -229,7 +230,7 @@ class Backend t where
     return $ exprToCps $ callWithCps e ("lambda ____e: ____k(" <> p <> parens "____e" <> ")")
   genExpr proxy EAnn {..} = genExpr proxy _eannExpr
   genExpr proxy EApp {..} =
-    let fn = (removeAnn _eappFunc) ^. evarName
+    let fn = name2String $ (removeAnn _eappFunc) ^. evarName
      in case fn of
           "____add" -> binary "+"
           "____sub" -> binary "-"
@@ -250,7 +251,8 @@ class Backend t where
               exprToCps $
                 callWithCps
                   e
-                  ("lambda ____e : ____k(____update_state(____state, \"" <> (funcN proxy $ removeAnn (_eappArgs !! 0) ^. evarName) <> "\"," <+> "____e))")
+                  ("lambda ____e : ____k(____update_state(____state, \"" <> 
+                  (funcN proxy $ name2String $ removeAnn (_eappArgs !! 0) ^. evarName) <> "\"," <+> "____e))")
           "inline_python" -> return $ exprToCps $ "____k(" <> (pretty $ (read (removeAnn (_eappArgs !! 0) ^. lit) :: String)) <> ")"
           _ -> do
             f <- genExpr proxy _eappFunc
@@ -326,7 +328,8 @@ class Backend t where
       mapM
         ( \(p, ee) -> do
             b <- genPatternMatch proxy p
-            return $ parens $ "isinstance(____e" <> comma <+> typeN proxy _pappName <> ") and " <> b <> parens ee
+            return $ parens $ "isinstance(____e" <> comma <+> 
+              typeN proxy (name2String $ _evarName _pappName) <> ") and " <> b <> parens ee
         )
         [(arg, parens $ "____e" <> ".f" <> pretty id) | arg <- _pappArgs | id <- [0 :: Int ..]]
     return $ parens $ "lambda ____e: all(" <> encloseSep lbracket rbracket comma bindings <> ")"

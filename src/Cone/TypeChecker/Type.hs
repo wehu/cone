@@ -721,7 +721,7 @@ setFuncImpl impl = do
           ++ ppr t ++ ppr loc ++ " vs " ++ ppr ft ++ ppr (_tloc ft)
       impls <- getEnv $ funcImpls
       let sel = uniqueFuncImplName fn t
-          i = EVar sel loc
+          i = EVar (s2n sel) loc
           oldImpl = impls ^. at sel
       forMOf _Just oldImpl $ \it -> do 
         throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)

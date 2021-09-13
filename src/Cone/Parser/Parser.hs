@@ -439,7 +439,7 @@ exprTable =
 exprPrefix op name = PE.Prefix $ do
   op
   pos <- getPos
-  return $ \i -> A.EApp (A.EVar name pos) [] [i] pos
+  return $ \i -> A.EApp (A.EVar (s2n name) pos) [] [i] pos
 
 exprBinary op name assoc =
   PE.Infix
@@ -449,15 +449,17 @@ exprBinary op name assoc =
         return $
           \a b ->
             let args = a : b : []
-             in A.EApp (A.EVar name pos) [] args pos
+             in A.EApp (A.EVar (s2n name) pos) [] args pos
     )
     assoc
 
 pat :: Parser A.Pattern
 pat =
   parens pat
-    P.<|> ((P.try (A.PApp <$> namePath <*> (angles (P.sepBy1 type_ comma) P.<|> return []) <*> parens (P.sepBy1 pat comma) <*> getPos)) P.<?> "pattern application")
-    P.<|> ((P.try (A.PApp <$> namePath <*> angles (P.sepBy1 type_ comma) <*> return [] <*> getPos)) P.<?> "pattern application")
+    P.<|> ((P.try (A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos) 
+       <*> (angles (P.sepBy1 type_ comma) P.<|> return []) <*> parens (P.sepBy1 pat comma) <*> getPos)) P.<?> "pattern application")
+    P.<|> ((P.try (A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+       <*> angles (P.sepBy1 type_ comma) <*> return [] <*> getPos)) P.<?> "pattern application")
     P.<|> (A.PVar <$> ident <*> getPos P.<?> "pattern variable")
     P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal")
 
@@ -519,8 +521,8 @@ term =
         ]
         pos
     varOrAssign v e pos = case e of
-      Nothing -> A.EVar v pos
-      Just e -> A.EApp (A.EVar "____assign" pos) [] [A.EVar v pos, e] pos
+      Nothing -> A.EVar (s2n v) pos
+      Just e -> A.EApp (A.EVar (s2n "____assign") pos) [] [A.EVar (s2n v) pos, e] pos
 
 handle :: Parser A.FuncDef
 handle = do
