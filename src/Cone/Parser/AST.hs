@@ -310,8 +310,8 @@ instance Pretty Expr where
   pretty ETC {..} = pretty _etc
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType
   pretty EAnnMeta {..} = parens $ pretty _eannMetaExpr <+> colon <+> pretty _eannMetaType
-  pretty (EBoundTypeVars (B _ e) _) = pretty e
-  pretty (EBoundEffTypeVars (B _ e) _) = pretty e
+  pretty (EBoundTypeVars (B bs e) _) = anglesList bs <+> pretty e
+  pretty (EBoundEffTypeVars (B bs e) _) = bracketsList bs <+> pretty e
 
 data TypeDef = TypeDef
   { _typeName :: String,

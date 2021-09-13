@@ -26,6 +26,7 @@ import Data.List.Split
 import Data.Maybe
 import Data.Proxy
 import Prettyprinter
+import Debug.Trace
 
 type Eff s e = Fresh :+: State s :+: Error e
 
