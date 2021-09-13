@@ -49,7 +49,7 @@ initTypeDef prefix t = do
 
 -- | Initialize all type definitions
 initTypeDefs :: (Has EnvEff sig m) => Module -> m Module
-initTypeDefs m = transformMOn (topStmts . traverse . _TDef) (initTypeDef $ m ^. moduleName) m
+initTypeDefs m = mapMOf (topStmts . traverse . _TDef) (initTypeDef $ m ^. moduleName) m
 
 -- | Initialize a constructor in type definition
 initTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
@@ -137,7 +137,7 @@ initEffTypeDef prefix e = do
 
 -- | Initialize all effect type difinitions
 initEffTypeDefs :: (Has EnvEff sig m) => Module -> m Module
-initEffTypeDefs m = transformMOn (topStmts . traverse . _EDef) (initEffTypeDef $ m ^. moduleName) m 
+initEffTypeDefs m = mapMOf (topStmts . traverse . _EDef) (initEffTypeDef $ m ^. moduleName) m 
 
 -- | Initialize effect inteface definitions
 initEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
@@ -274,8 +274,8 @@ checkFuncDef f = underScope $ do
   checkFuncType f
 
 -- | Check all function definitons
-checkFuncDefs :: (Has EnvEff sig m) => Module -> m [FuncDef]
-checkFuncDefs m = mapM checkFuncDef $ m ^.. topStmts . traverse . _FDef
+checkFuncDefs :: (Has EnvEff sig m) => Module -> m Module
+checkFuncDefs m = mapMOf (topStmts . traverse . _FDef) checkFuncDef m
 
 -- | Init a function implementation
 initImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ()
@@ -286,16 +286,17 @@ initImplFuncDefs :: (Has EnvEff sig m) => Module -> m ()
 initImplFuncDefs m = mapM_ initImplFuncDef $ m ^.. topStmts . traverse . _ImplFDef
 
 -- | Check a function implementation
-checkImplFuncDef :: (Has EnvEff sig m) => FuncDef -> m FuncDef
-checkImplFuncDef f = underScope $ do
+checkImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ImplFuncDef
+checkImplFuncDef i = underScope $ do
+  let f = i ^. implFunDef
   let ft = funcDefType f
   k <- inferTypeKind ft
   checkTypeKind k
-  checkFuncType f
+  ImplFuncDef <$> checkFuncType f
 
 -- | Check all function implementations
-checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m [ImplFuncDef]
-checkImplFuncDefs m = mapM (\f -> ImplFuncDef <$> checkImplFuncDef f) $ m ^.. topStmts . traverse . _ImplFDef . implFunDef
+checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m Module
+checkImplFuncDefs m = mapMOf (topStmts . traverse . _ImplFDef) checkImplFuncDef m
 
 -- | Remove meta annotation
 removeAnn :: Expr -> Expr
@@ -307,8 +308,8 @@ removeAnn e = transform remove e
 -- | Remove all meta annotations
 removeAnns :: Module -> Module
 removeAnns m =
-  transformOn (topStmts . traverse . _FDef . funcExpr . _Just) removeAnn $
-  transformOn (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnn m
+  over (topStmts . traverse . _FDef . funcExpr . _Just) removeAnn $
+  over (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnn m
 
 -- | Rename func implementation names
 convertFuncImplToFuncs :: Module -> Module
@@ -456,8 +457,7 @@ checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 checkType m env id = run . runError . (runState env) . runFresh id $ do
   checkTypeConDefs m
   checkEffIntfDefs m
-  let ts = map TDef $ m ^.. topStmts . traverse . _TDef 
-      es = map EDef $ m ^.. topStmts . traverse . _EDef
-  fs <- map FDef <$> checkFuncDefs m
-  ifs <- map ImplFDef <$> checkImplFuncDefs m
-  return $ removeAnns m{_topStmts=ts ++ es ++ fs ++ ifs}
+  removeAnns <$>
+     (return m >>= checkFuncDefs
+               >>= checkImplFuncDefs)
+  
