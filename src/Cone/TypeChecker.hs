@@ -330,7 +330,7 @@ addTypeBindingsForEffIntfs m =
   where bindIntfs eff = 
          let boundVars = eff ^.. effectArgs . traverse . _1
              intfs = map (\intf -> 
-                           intf{_intfBoundVars=(_intfBoundVars intf) ++ boundVars})
+                           intf{_intfBoundVars=(reverse . L.nub . reverse) $ (_intfBoundVars intf) ++ boundVars})
                          $ eff ^. effectIntfs 
           in eff{_effectIntfs=intfs}
 
@@ -372,13 +372,13 @@ removeTypeBindingsForExprs m =
 addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForTypes m' = do
   let m = addTypeBindingsForEffIntfs $ addTypeBindingsForExprs m'
-  let allGlobalVars = (m ^.. fv) :: [TVar]
-      allGlobalEffVars = (m ^.. fv) :: [EffVar]
+  let allGlobalVars = (reverse . L.nub . reverse) (m ^.. fv) :: [TVar]
+      allGlobalEffVars = (reverse . L.nub . reverse) (m ^.. fv) :: [EffVar]
       prefixes = (m ^. moduleName ++ "/") :
                  "core/prelude/" : 
                  (map (\i -> i ^.importPath ++ "/") $ m ^. imports)
       loc = m ^. moduleLoc
-  trace (show allGlobalEffVars) $ return ()
+  -- trace (show allGlobalVars) $ return ()
   ts <- getEnv types
   es <- getEnv effs
   bindTs <- foldM (
