@@ -324,8 +324,8 @@ convertFuncImplToFuncs m =
                (m ^.. topStmts . traverse . _ImplFDef . implFunDef)
     in m{_topStmts=tops ++ fs}
 
-addTypeBindingsForExprs :: Module -> Module
-addTypeBindingsForExprs m =
+addTypeBindings :: Module -> Module
+addTypeBindings m =
   over (topStmts . traverse. _EDef) bindEDef $
   over (topStmts . traverse. _TDef) bindTDef $
   over (topStmts . traverse. _FDef) bindFDef $
@@ -356,8 +356,8 @@ addTypeBindingsForExprs m =
              EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind boundVars e) _eloc) _eloc) _elamExpr}
     bindExpr expr = expr
 
-removeTypeBindingsForExprs :: Module -> Module
-removeTypeBindingsForExprs m =
+removeTypeBindings :: Module -> Module
+removeTypeBindings m =
   over (topStmts . traverse. _EDef) removeBindingsForEDef $
   over (topStmts . traverse. _TDef) removeBindingsForTDef $
   over (topStmts . traverse. _FDef) removeBindingsForFDef $
@@ -420,7 +420,7 @@ removeTypeBindingsForExprs m =
 
 addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForTypes m' = do
-  let m = addTypeBindingsForExprs m'
+  let m = addTypeBindings m'
   let allGlobalVars = L.nub (m ^.. fv) :: [TVar]
       allGlobalEffVars = L.nub (m ^.. fv) :: [EffVar]
       prefixes = (m ^. moduleName ++ "/") :
@@ -459,7 +459,7 @@ addPrefixForTypes m' = do
         else if L.length found == 1 then return $ s ++ found
              else throwError $ "found more than one eff type for " ++ ppr v ++ ppr found
       ) [] allGlobalEffVars
-  return $ removeTypeBindingsForExprs $ substs bindEffs $ substs bindTs m
+  return $ removeTypeBindings $ substs bindEffs $ substs bindTs m
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
