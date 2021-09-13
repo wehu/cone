@@ -258,14 +258,15 @@ typeBinary op name assoc =
         return $
           \a b ->
             let args = a : b : []
-             in A.TApp (s2n name) args pos
+             in A.TApp (A.TVar (s2n name) pos) args pos
     )
     assoc
 
 typeTerm :: Parser A.Type
 typeTerm =
   ( tann
-      <$> ( ( P.try ((A.TApp <$> (s2n <$> namePath) <*> angles (P.sepBy1 type_ comma)) P.<?> "application type")
+      <$> ( ( P.try ((A.TApp <$> ((\n pos -> A.TVar (s2n n) pos) <$> namePath <*> getPos) <*>
+                            angles (P.sepBy1 type_ comma)) P.<?> "application type")
                 P.<|> P.try
                   ( tfunc
                       <$> boundTVars <*> boundEffVars
@@ -292,7 +293,7 @@ typeTerm =
       Just k' -> A.TAnn t k' pos
       _ -> t
     tList (t : []) pos = t
-    tList (t : ts) pos = A.TApp (s2n "____pair") [t, (tList ts pos)] pos
+    tList (t : ts) pos = A.TApp (A.TVar (s2n "____pair") pos) [t, (tList ts pos)] pos
 
 type_ :: Parser A.Type
 type_ = PE.buildExpressionParser typeTable typeTerm

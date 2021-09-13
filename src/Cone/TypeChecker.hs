@@ -86,7 +86,7 @@ initTypeConDef t = do
           rt =
             if tvars == []
               then TVar (s2n tn) pos
-              else TApp (s2n tn) (fmap (\t -> TVar t pos) tvars) pos
+              else TApp (TVar (s2n tn) pos) (fmap (\t -> TVar t pos) tvars) pos
           bt =
             bindType tvars $
               if targs == []
