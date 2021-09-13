@@ -325,10 +325,14 @@ convertFuncImplToFuncs m =
 
 addTypeBindingsForExprs :: Module -> Module
 addTypeBindingsForExprs m =
+  transformOn (topStmts . traverse. _EDef) bindEDef $
   transformOn (topStmts . traverse. _TDef) bindTDef $
   transformOn (topStmts . traverse. _FDef) bindFDef $
   transformOn (topStmts . traverse. _ImplFDef . implFunDef) bindFDef m
   where
+    bindEDef edef =
+      let boundVars = edef ^.. effectArgs . traverse . _1
+       in BoundEffectDef (bind boundVars edef) (_effectLoc edef)
     bindTDef tdef = 
      let boundVars = tdef ^.. typeArgs . traverse . _1
       in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef) 
@@ -347,10 +351,15 @@ addTypeBindingsForExprs m =
 
 removeTypeBindingsForExprs :: Module -> Module
 removeTypeBindingsForExprs m =
+  transformOn (topStmts . traverse. _EDef) removeBindingsForEDef $
   transformOn (topStmts . traverse. _TDef) removeBindingsForTDef $
   transformOn (topStmts . traverse. _FDef) removeBindingsForFDef $
   transformOn (topStmts . traverse. _ImplFDef . implFunDef) removeBindingsForFDef m
   where
+    removeBindingsForEDef (BoundEffectDef b _) =
+      let (_, e) = unsafeUnbind b
+       in removeBindingsForEDef e
+    removeBindingsForEDef e = e
     removeBindingsForTDef (BoundTypeDef b _) =
       let (_, t) = unsafeUnbind b
        in removeBindingsForTDef t
