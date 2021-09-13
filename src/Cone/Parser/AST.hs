@@ -275,6 +275,8 @@ data Expr
   | ETC {_etc :: TCExpr, _eloc :: Location}
   | EAnn {_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
   | EAnnMeta {_eannMetaExpr :: Expr, _eannMetaType :: Type, _eloc :: Location}
+  | EBoundTypeVars {_eboundTypeVars :: Bind [TVar] Expr, _eloc :: Location}
+  | EBoundEffTypeVars {_eboundEffTypeVars :: Bind [EffVar] Expr, _eloc :: Location}
   deriving
     ( -- | BoundExpr{_exprBound :: Bind [TVar] Expr}
       Eq,
@@ -308,6 +310,8 @@ instance Pretty Expr where
   pretty ETC {..} = pretty _etc
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType
   pretty EAnnMeta {..} = parens $ pretty _eannMetaExpr <+> colon <+> pretty _eannMetaType
+  pretty (EBoundTypeVars (B _ e) _) = pretty e
+  pretty (EBoundEffTypeVars (B _ e) _) = pretty e
 
 data TypeDef = TypeDef
   { _typeName :: String,
