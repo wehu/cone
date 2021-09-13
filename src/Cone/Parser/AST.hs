@@ -279,6 +279,7 @@ data Expr
   | EAnnMeta {_eannMetaExpr :: Expr, _eannMetaType :: Type, _eloc :: Location}
   | EBoundTypeVars {_eboundTypeVars :: Bind [TVar] Expr, _eloc :: Location}
   | EBoundEffTypeVars {_eboundEffTypeVars :: Bind [EffVar] Expr, _eloc :: Location}
+  | EBoundVars {_eboundVars :: Bind [EVar] Expr, _eloc :: Location}
   deriving
     ( -- | BoundExpr{_exprBound :: Bind [TVar] Expr}
       Eq,
@@ -314,6 +315,7 @@ instance Pretty Expr where
   pretty EAnnMeta {..} = parens $ pretty _eannMetaExpr <+> colon <+> pretty _eannMetaType
   pretty (EBoundTypeVars (B bs e) _) = anglesList bs <+> pretty e
   pretty (EBoundEffTypeVars (B bs e) _) = bracketsList bs <+> pretty e
+  pretty (EBoundVars (B bs e) _) = bracesList bs <+> pretty e
 
 data TypeDef = TypeDef
   { _typeName :: String,
