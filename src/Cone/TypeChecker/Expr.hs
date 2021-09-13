@@ -14,6 +14,7 @@ import Control.Effect.State
 import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
+import Data.List.Split
 import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Maybe
@@ -194,7 +195,8 @@ inferExprType h@EHandle {..} = underScope $ do
   btk <- inferTypeKind resT
   checkTypeKind btk
   bs <- forM _ehandleBindings $ \intf -> underScope $ do
-    let fn = (intf ^. funcName)
+    let effN = name2String $ _ehandleEff ^. effAppName . effVar
+        fn = join $ L.intersperse "/" $ (init $ splitOn "/" effN) ++ [(intf ^. funcName)]
         emptyEff = EffList [] _eloc
         unit = TPrim Unit _eloc
 
@@ -454,9 +456,11 @@ inferExprEffType EHandle {..} = underScope $ do
           then return $ name2String $ _effVar $ _effAppName _ehandleEff
           else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
   intfs <- getEnv $ effIntfs . at effName
+  let effN = name2String $ _ehandleEff ^. effAppName . effVar
+      prefix = (join $ L.intersperse "/" $ (init $ splitOn "/" effN)) ++ "/"
   case intfs of
     Just ifs -> do
-      let intfNames = map (\e -> e ^. funcName) _ehandleBindings
+      let intfNames = map (\e -> prefix ++ e ^. funcName) _ehandleBindings
       if L.sort ifs == L.sort intfNames
         then return ()
         else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames ++ ppr _eloc

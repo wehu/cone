@@ -703,10 +703,10 @@ uniqueFuncImplName :: String -> Type -> String
 uniqueFuncImplName fn t = fn ++ (funcImplSelector t)
 
 -- | Set a function implementation
-setFuncImpl :: (Has EnvEff sig m) => ImplFuncDef -> m ()
-setFuncImpl impl = do
+setFuncImpl :: (Has EnvEff sig m) => String -> ImplFuncDef -> m ImplFuncDef
+setFuncImpl prefix impl = do
   let funcD = impl ^. implFunDef
-      fn = funcD ^. funcName
+      fn = prefix ++ "/" ++ funcD ^. funcName
       loc = funcD ^. funcLoc
       t = bindTypeEffVar (funcD ^. funcBoundEffVars) $
             bindType (funcD ^. funcBoundVars) $
@@ -726,3 +726,4 @@ setFuncImpl impl = do
       forMOf _Just oldImpl $ \it -> do 
         throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
       setEnv (Just i) $ funcImpls . at sel
+  return impl{_implFunDef=funcD{_funcName=fn}}

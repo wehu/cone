@@ -52,11 +52,11 @@ initTypeDefs :: (Has EnvEff sig m) => Module -> m Module
 initTypeDefs m = mapMOf (topStmts . traverse . _TDef) (initTypeDef $ m ^. moduleName) m
 
 -- | Initialize a constructor in type definition
-initTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
-initTypeConDef t = do
+initTypeConDef :: (Has EnvEff sig m) => String -> TypeDef -> m TypeDef
+initTypeConDef prefix t = do
   globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
-  forM_ (t ^. typeCons) $ \c -> do
-    let cn = c ^. typeConName
+  mapMOf (typeCons . traverse) (\c -> do
+    let cn = prefix ++ "/" ++ c ^. typeConName
         cargs = c ^. typeConArgs
         pos = c ^. typeConLoc
         -- find all free type variables
@@ -78,6 +78,7 @@ initTypeConDef t = do
     -- record the constructor's type
     let bt = tconType c t
     setEnv (Just bt) $ funcs . at cn
+    return c{_typeConName=cn}) t
   where
     tconType c t =
       let targs = c ^. typeConArgs
@@ -96,8 +97,8 @@ initTypeConDef t = do
        in bindTypeEffVar [] bt
 
 -- | Initialize all type constructors
-initTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
-initTypeConDefs m = mapM_ initTypeConDef $ m ^.. topStmts . traverse . _TDef
+initTypeConDefs :: (Has EnvEff sig m) => Module -> m Module
+initTypeConDefs m = mapMOf (topStmts . traverse . _TDef) (initTypeConDef $ m ^. moduleName) m
 
 -- | Check the type constructor's type
 checkTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
@@ -140,13 +141,13 @@ initEffTypeDefs :: (Has EnvEff sig m) => Module -> m Module
 initEffTypeDefs m = mapMOf (topStmts . traverse . _EDef) (initEffTypeDef $ m ^. moduleName) m 
 
 -- | Initialize effect inteface definitions
-initEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
-initEffIntfDef e = do
+initEffIntfDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
+initEffIntfDef prefix e = do
   globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
   let is = e ^. effectIntfs
       en = e ^. effectName
       f = \i -> do
-        let intfn = i ^. intfName
+        let intfn = prefix ++ "/" ++ i ^. intfName
             iargs = i ^. intfArgs
             iresult = _intfResultType i
             pos = i ^. intfLoc
@@ -181,7 +182,8 @@ initEffIntfDef e = do
         --  add effect type to interface's effect list
         let bt = intfType i e effs
         setEnv (Just bt) $ funcs . at intfn
-  mapM_ f is
+        return i{_intfName=intfn}
+  mapMOf (effectIntfs . traverse) f e
   where
     intfType i e eff =
       let iargs = i ^. intfArgs
@@ -195,8 +197,8 @@ initEffIntfDef e = do
               bindType bvars $ TFunc iargs eff iresult pos
 
 -- | Initialize all effect interfaces
-initEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
-initEffIntfDefs m = mapM_ initEffIntfDef $ m ^.. topStmts . traverse . _EDef
+initEffIntfDefs :: (Has EnvEff sig m) => Module -> m Module
+initEffIntfDefs m = mapMOf (topStmts . traverse . _EDef) (initEffIntfDef $ m ^. moduleName) $ m
 
 -- | Check an effect interface
 checkEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
@@ -219,10 +221,10 @@ checkEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
 checkEffIntfDefs m = mapM_ checkEffIntfDef $ m ^.. topStmts . traverse . _EDef
 
 -- | Initializa function definition
-initFuncDef :: (Has EnvEff sig m) => FuncDef -> m ()
-initFuncDef f = do
+initFuncDef :: (Has EnvEff sig m) => String -> FuncDef -> m FuncDef
+initFuncDef prefix f = do
   let pos = f ^. funcLoc
-      fn = f ^. funcName
+      fn = prefix ++ "/" ++ f ^. funcName
       ft = funcDefType f
   k <- inferTypeKind ft
   checkTypeKind k
@@ -230,10 +232,11 @@ initFuncDef f = do
   forMOf _Just oft $ \oft ->
     throwError $ "function redefine: " ++ fn ++ ppr pos
   setEnv (Just ft) $ funcs . at fn
+  return f{_funcName=fn}
 
 -- | Initialize all function definitons
-initFuncDefs :: (Has EnvEff sig m) => Module -> m ()
-initFuncDefs m = mapM_ initFuncDef $ m ^.. topStmts . traverse . _FDef
+initFuncDefs :: (Has EnvEff sig m) => Module -> m Module
+initFuncDefs m = mapMOf (topStmts . traverse . _FDef) (initFuncDef $ m ^. moduleName) m
 
 -- | Check a function type
 checkFuncType :: (Has EnvEff sig m) => FuncDef -> m FuncDef
@@ -278,12 +281,12 @@ checkFuncDefs :: (Has EnvEff sig m) => Module -> m Module
 checkFuncDefs m = mapMOf (topStmts . traverse . _FDef) checkFuncDef m
 
 -- | Init a function implementation
-initImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ()
-initImplFuncDef f = setFuncImpl f
+initImplFuncDef :: (Has EnvEff sig m) => String -> ImplFuncDef -> m ImplFuncDef
+initImplFuncDef prefix f = setFuncImpl prefix f
 
 -- | Init function implementations
-initImplFuncDefs :: (Has EnvEff sig m) => Module -> m ()
-initImplFuncDefs m = mapM_ initImplFuncDef $ m ^.. topStmts . traverse . _ImplFDef
+initImplFuncDefs :: (Has EnvEff sig m) => Module -> m Module
+initImplFuncDefs m = mapMOf (topStmts . traverse . _ImplFDef) (initImplFuncDef $ m ^. moduleName) m
 
 -- | Check a function implementation
 checkImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ImplFuncDef
@@ -552,15 +555,15 @@ addPrefixForExprs m' = do
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id = run . runError . (runState env) . runFresh id $ do
-  m <- (return $ convertFuncImplToFuncs m)
-       >>= initTypeDefs
-       >>= initEffTypeDefs
-       >>= addPrefixForTypes
-  initTypeConDefs m
-  initEffIntfDefs m
-  initFuncDefs m
-  initImplFuncDefs m
-  return m
+  (return $ convertFuncImplToFuncs m)
+  >>= initTypeDefs
+  >>= initEffTypeDefs
+  >>= addPrefixForTypes
+  >>= initTypeConDefs
+  >>= initEffIntfDefs
+  >>= initFuncDefs
+  >>= initImplFuncDefs
+  >>= addPrefixForExprs
 
 -- | Type checking a module
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
