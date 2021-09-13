@@ -500,6 +500,8 @@ instance Subst Type Attr
 
 instance Subst EffectType Attr
 
+instance Subst Expr Attr
+
 makeLenses ''Attr
 
 makePrisms ''Attr
@@ -533,6 +535,8 @@ instance Subst Type Location
 
 instance Subst EffectType Location
 
+instance Subst Expr Location
+
 makeLenses ''Location
 
 makePrisms ''Location
@@ -547,6 +551,8 @@ instance Alpha PrimType
 instance Subst Type PrimType
 
 instance Subst EffectType PrimType
+
+instance Subst Expr PrimType
 
 makeLenses ''PrimType
 
@@ -565,6 +571,8 @@ instance Subst Type Type where
 
 instance Subst EffectType Type
 
+instance Subst Expr Type
+
 makeLenses ''Type
 
 makePrisms ''Type
@@ -580,6 +588,8 @@ instance Subst Type Kind
 
 instance Subst EffectType Kind
 
+instance Subst Expr Kind
+
 makeLenses ''Kind
 
 makePrisms ''Kind
@@ -594,6 +604,8 @@ instance Alpha EffKind
 instance Subst Type EffKind
 
 instance Subst EffectType EffKind
+
+instance Subst Expr EffKind
 
 makeLenses ''EffKind
 
@@ -612,6 +624,8 @@ instance Subst EffectType EffectType where
 
 instance Subst Type EffectType
 
+instance Subst Expr EffectType
+
 makeLenses ''EffectType
 
 makePrisms ''EffectType
@@ -626,6 +640,8 @@ instance Alpha Pattern
 instance Subst Type Pattern
 
 instance Subst EffectType Pattern
+
+instance Subst Expr Pattern
 
 makeLenses ''Pattern
 
@@ -642,6 +658,8 @@ instance Subst Type TCExpr
 
 instance Subst EffectType TCExpr
 
+instance Subst Expr TCExpr
+
 makeLenses ''TCExpr
 
 makePrisms ''TCExpr
@@ -656,6 +674,10 @@ instance Alpha Expr
 instance Subst Type Expr
 
 instance Subst EffectType Expr
+
+instance Subst Expr Expr where
+  isvar (EVar x _) = Just (SubstName x)
+  isvar _ = Nothing
 
 makeLenses ''Expr
 
@@ -672,6 +694,8 @@ instance Subst Type Case
 
 instance Subst EffectType Case
 
+instance Subst Expr Case
+
 makeLenses ''Case
 
 makePrisms ''Case
@@ -686,6 +710,8 @@ instance Alpha TypeDef
 instance Subst Type TypeDef
 
 instance Subst EffectType TypeDef
+
+instance Subst Expr TypeDef
 
 makeLenses ''TypeDef
 
@@ -702,6 +728,8 @@ instance Subst Type TypeCon
 
 instance Subst EffectType TypeCon
 
+instance Subst Expr TypeCon
+
 makeLenses ''TypeCon
 
 makePrisms ''TypeCon
@@ -716,6 +744,8 @@ instance Alpha EffectDef
 instance Subst Type EffectDef
 
 instance Subst EffectType EffectDef
+
+instance Subst Expr EffectDef
 
 makeLenses ''EffectDef
 
@@ -732,6 +762,8 @@ instance Subst Type ImportStmt
 
 instance Subst EffectType ImportStmt
 
+instance Subst Expr ImportStmt
+
 makeLenses ''ImportStmt
 
 makePrisms ''ImportStmt
@@ -746,6 +778,8 @@ instance Alpha FuncIntf
 instance Subst Type FuncIntf
 
 instance Subst EffectType FuncIntf
+
+instance Subst Expr FuncIntf
 
 makeLenses ''FuncIntf
 
@@ -762,6 +796,8 @@ instance Subst Type FuncDef
 
 instance Subst EffectType FuncDef
 
+instance Subst Expr FuncDef
+
 makeLenses ''FuncDef
 
 makePrisms ''FuncDef
@@ -776,6 +812,8 @@ instance Alpha ImplFuncDef
 instance Subst Type ImplFuncDef
 
 instance Subst EffectType ImplFuncDef
+
+instance Subst Expr ImplFuncDef
 
 makeLenses ''ImplFuncDef
 
@@ -792,6 +830,8 @@ instance Subst Type TopStmt
 
 instance Subst EffectType TopStmt
 
+instance Subst Expr TopStmt
+
 makeLenses ''TopStmt
 
 makePrisms ''TopStmt
@@ -806,6 +846,8 @@ instance Alpha Module
 instance Subst Type Module
 
 instance Subst EffectType Module
+
+instance Subst Expr Module
 
 makeLenses ''Module
 
