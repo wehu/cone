@@ -321,6 +321,41 @@ convertFuncImplToFuncs m =
                (m ^.. topStmts . traverse . _ImplFDef . implFunDef)
     in m{_topStmts=tops ++ fs}
 
+addTypeBindingsForExprs :: Module -> Module
+addTypeBindingsForExprs m =
+  transformOn (topStmts . traverse. _FDef) bindFDef $
+  transformOn (topStmts . traverse. _ImplFDef . implFunDef) bindFDef m
+  where
+    bindFDef fdef = 
+     let boundVars = fdef ^. funcBoundVars
+         boundEffVars = fdef ^. funcBoundEffVars
+         loc = fdef ^. funcLoc
+         expr = fmap (transform bindExpr) $ fdef ^. funcExpr
+      in fdef{_funcExpr = fmap (\e -> 
+             EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind boundVars e) loc) loc) expr}
+    bindExpr l@ELam{..} = 
+      let boundVars = _elamBoundVars
+          boundEffVars = _elamBoundEffVars
+       in l{_elamExpr = fmap (\e -> 
+             EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind boundVars e) _eloc) _eloc) _elamExpr}
+    bindExpr expr = expr
+
+removeTypeBindingsForExprs :: Module -> Module
+removeTypeBindingsForExprs m =
+  transformOn (topStmts . traverse. _FDef) removeBindingsForFDef $
+  transformOn (topStmts . traverse. _ImplFDef . implFunDef) removeBindingsForFDef m
+  where
+    removeBindingsForFDef fdef = 
+     let expr = fmap (transform removeBindingsForExpr) $ fdef ^. funcExpr
+      in fdef{_funcExpr = expr}
+    removeBindingsForExpr (EBoundTypeVars b _) =
+      let (_, e) = unsafeUnbind b
+       in removeBindingsForExpr e
+    removeBindingsForExpr (EBoundEffTypeVars b _) =
+      let (_, e) = unsafeUnbind b
+       in removeBindingsForExpr e
+    removeBindingsForExpr expr = expr
+
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m' env id = run . runError . (runState env) . runFresh id $ do
