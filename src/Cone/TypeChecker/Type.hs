@@ -636,7 +636,7 @@ funcDefType f =
 -- | Extract a tensor type's shape
 extractTensorShape :: (Has EnvEff sig m) => Type -> m [Type]
 extractTensorShape t@TApp {..} = do
-  if name2String (_tvar _tappName) /= "____pair"
+  if name2String (_tvar _tappName) /= "core/prelude/____pair"
     then throwError $ "expected a pair type, but got " ++ ppr t ++ ppr _tloc
     else
       if L.length _tappArgs /= 2
@@ -653,7 +653,7 @@ extractTensorShape t = throwError $ "expected a pair type, but got " ++ ppr t ++
 -- | Extract a tensor type's information
 extractTensorInfo :: (Has EnvEff sig m) => Type -> m (Type, [Type])
 extractTensorInfo t@TApp {..} =
-  if name2String (_tvar _tappName) /= "tensor"
+  if name2String (_tvar _tappName) /= "core/prelude/tensor"
     then throwError $ "expected a tensor type, but got " ++ ppr t ++ ppr _tloc
     else
       if L.length _tappArgs /= 2
@@ -670,19 +670,19 @@ toTensorShape :: (Has EnvEff sig m) => [Type] -> m Type
 toTensorShape t@(d0 : d1 : []) = do
   if isn't _TNum d0 || isn't _TNum d1
     then throwError $ "expected tnum, but got " ++ ppr d0 ++ ppr (_tloc d0) ++ " or " ++ ppr d1 ++ ppr (_tloc d1)
-    else return $ TApp (TVar (s2n "____pair") (_tloc d0)) [d0, d1] (_tloc d0)
+    else return $ TApp (TVar (s2n "core/prelude/____pair") (_tloc d0)) [d0, d1] (_tloc d0)
 toTensorShape t@(d0 : ds) = do
   ds' <- toTensorShape ds
   if isn't _TNum d0
     then throwError $ "expected tnum, but got " ++ ppr d0 ++ ppr (_tloc d0)
-    else return $ TApp (TVar (s2n "____pair") (_tloc d0)) [d0, ds'] (_tloc d0)
+    else return $ TApp (TVar (s2n "core/prelude/____pair") (_tloc d0)) [d0, ds'] (_tloc d0)
 toTensorShape ds = throwError $ "unsupported dims " ++ ppr ds
 
 -- | Construct a tensor type based on number list type
 toTensorType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
 toTensorType t shape = do
   shape' <- toTensorShape shape
-  return $ TApp (TVar (s2n "tensor") (_tloc t)) [t, shape'] (_tloc t)
+  return $ TApp (TVar (s2n "core/prelude/tensor") (_tloc t)) [t, shape'] (_tloc t)
 
 -- | Test if a type is a subtype of another type
 isSubType :: (Has EnvEff sig m) => Type -> Type -> m Bool

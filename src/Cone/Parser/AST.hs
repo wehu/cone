@@ -456,6 +456,7 @@ instance Pretty TopStmt where
   pretty FDef {..} = pretty _fdef
   pretty TDef {..} = pretty _tdef
   pretty EDef {..} = pretty _edef
+  pretty ImplFDef {..} = pretty _implFdef
 
 data Module = Module
   { _moduleName :: NamePath,

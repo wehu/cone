@@ -26,9 +26,9 @@ import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
 -- | Initialize type definition and add the kind for the type into env
-initTypeDef :: (Has EnvEff sig m) => TypeDef -> m ()
-initTypeDef t = do
-  let tn = t ^. typeName
+initTypeDef :: (Has EnvEff sig m) => String -> TypeDef -> m TypeDef
+initTypeDef prefix t = do
+  let tn = prefix ++ "/" ++ t ^. typeName
   ot <- getEnv $ types . at tn
   -- check if it exists or not
   forMOf _Just ot $ \ot ->
@@ -37,6 +37,7 @@ initTypeDef t = do
   -- record the kind of type
   let k = Just $ typeKindOf t
   setEnv k $ types . at tn
+  return t{_typeName = tn}
   where
     typeKindOf t =
       let loc = _typeLoc t
@@ -47,8 +48,8 @@ initTypeDef t = do
             else KFunc (args ^.. traverse . _2 . non star) star loc
 
 -- | Initialize all type definitions
-initTypeDefs :: (Has EnvEff sig m) => Module -> m ()
-initTypeDefs m = mapM_ initTypeDef $ m ^.. topStmts . traverse . _TDef
+initTypeDefs :: (Has EnvEff sig m) => Module -> m Module
+initTypeDefs m = transformMOn (topStmts . traverse . _TDef) (initTypeDef $ m ^. moduleName) m
 
 -- | Initialize a constructor in type definition
 initTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
@@ -115,14 +116,15 @@ checkTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
 checkTypeConDefs m = mapM_ checkTypeConDef $ m ^.. topStmts . traverse . _TDef
 
 -- | Initializa effect type definition
-initEffTypeDef :: (Has EnvEff sig m) => EffectDef -> m ()
-initEffTypeDef e = do
-  let en = e ^. effectName
+initEffTypeDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
+initEffTypeDef prefix e = do
+  let en = prefix ++ "/" ++ e ^. effectName
   oe <- getEnv $ effs . at en
   forMOf _Just oe $ \oe ->
     throwError $
       "redefine an effect: " ++ en ++ " vs " ++ ppr oe ++ (ppr $ _effectLoc e)
   setEnv (Just $ effKind e) $ effs . at en
+  return e{_effectName=en}
   where
     effKind e =
       let loc = _effectLoc e
@@ -134,8 +136,8 @@ initEffTypeDef e = do
             else EKFunc (args ^.. traverse . _2 . non star) estar loc
 
 -- | Initialize all effect type difinitions
-initEffTypeDefs :: (Has EnvEff sig m) => Module -> m ()
-initEffTypeDefs m = mapM_ initEffTypeDef $ m ^.. topStmts . traverse . _EDef
+initEffTypeDefs :: (Has EnvEff sig m) => Module -> m Module
+initEffTypeDefs m = transformMOn (topStmts . traverse . _EDef) (initEffTypeDef $ m ^. moduleName) m 
 
 -- | Initialize effect inteface definitions
 initEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
@@ -321,6 +323,17 @@ convertFuncImplToFuncs m =
                (m ^.. topStmts . traverse . _ImplFDef . implFunDef)
     in m{_topStmts=tops ++ fs}
 
+
+addTypeBindingsForEffIntfs :: Module -> Module
+addTypeBindingsForEffIntfs m =
+  transformOn (topStmts . traverse . _EDef) bindIntfs m
+  where bindIntfs eff = 
+         let boundVars = eff ^.. effectArgs . traverse . _1
+             intfs = map (\intf -> 
+                           intf{_intfBoundVars=(_intfBoundVars intf) ++ boundVars})
+                         $ eff ^. effectIntfs 
+          in eff{_effectIntfs=intfs}
+
 addTypeBindingsForExprs :: Module -> Module
 addTypeBindingsForExprs m =
   transformOn (topStmts . traverse. _FDef) bindFDef $
@@ -358,11 +371,14 @@ removeTypeBindingsForExprs m =
 
 addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForTypes m' = do
-  let m = addTypeBindingsForExprs m'
+  let m = addTypeBindingsForEffIntfs $ addTypeBindingsForExprs m'
   let allGlobalVars = (m ^.. fv) :: [TVar]
       allGlobalEffVars = (m ^.. fv) :: [EffVar]
-      prefixes = (m ^. moduleName ++ "/") : (map (\i -> i ^.importPath ++ "/") $ m ^. imports)
+      prefixes = (m ^. moduleName ++ "/") :
+                 "core/prelude/" : 
+                 (map (\i -> i ^.importPath ++ "/") $ m ^. imports)
       loc = m ^. moduleLoc
+  trace (show allGlobalEffVars) $ return ()
   ts <- getEnv types
   es <- getEnv effs
   bindTs <- foldM (
@@ -376,7 +392,7 @@ addPrefixForTypes m' = do
                     )
                     []
                     prefixes
-        if found == [] then return []
+        if found == [] then return s
         else if L.length found == 1 then return $ s ++ found
              else throwError $ "found more than one type for " ++ ppr v ++ ppr found
       ) [] allGlobalVars
@@ -391,7 +407,7 @@ addPrefixForTypes m' = do
                     )
                     []
                     prefixes
-        if found == [] then return []
+        if found == [] then return s
         else if L.length found == 1 then return $ s ++ found
              else throwError $ "found more than one eff type for " ++ ppr v ++ ppr found
       ) [] allGlobalEffVars
@@ -399,10 +415,11 @@ addPrefixForTypes m' = do
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
-initModule m' env id = run . runError . (runState env) . runFresh id $ do
-  let m = convertFuncImplToFuncs m'
-  initTypeDefs m
-  initEffTypeDefs m
+initModule m env id = run . runError . (runState env) . runFresh id $ do
+  m <- (return $ convertFuncImplToFuncs m)
+       >>= initTypeDefs
+       >>= initEffTypeDefs
+       >>= addPrefixForTypes
   initTypeConDefs m
   initEffIntfDefs m
   initFuncDefs m
