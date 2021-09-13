@@ -322,7 +322,8 @@ effKind =
 effType :: Parser A.EffectType
 effType =
   parens effType
-    P.<|> ( ( (P.try (A.EffApp <$> namePath <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"))
+    P.<|> ( ( (P.try (A.EffApp <$> ((\n pos -> (A.EffVar (s2n n) pos)) <$> namePath <*> getPos)
+                 <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"))
                 P.<|> ((brackets (A.EffList <$> (P.sepBy effType comma))) P.<?> "eff type list")
                 P.<|> (A.EffVar <$> (s2n <$> ident) P.<?> "eff var")
             )

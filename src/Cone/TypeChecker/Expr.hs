@@ -450,7 +450,7 @@ inferExprEffType EHandle {..} = underScope $ do
       then return $ name2String $ _ehandleEff ^. effVar
       else
         if not $ isn't _EffApp _ehandleEff
-          then return $ _ehandleEff ^. effAppName
+          then return $ name2String $ _effVar $ _effAppName _ehandleEff
           else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
   intfs <- getEnv $ effIntfs . at effName
   case intfs of

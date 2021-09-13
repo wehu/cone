@@ -187,7 +187,7 @@ type EffVar = Name EffectType
 data EffectType
   = EffVar { _effVar :: EffVar, _effLoc :: Location}
   | EffApp
-      { _effAppName :: NamePath,
+      { _effAppName :: EffectType,
         _effAppArgs :: [Type],
         _effLoc :: Location
       }

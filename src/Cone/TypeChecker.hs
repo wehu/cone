@@ -173,7 +173,7 @@ initEffIntfDef e = do
             if e ^. effectArgs  == []
             then EffVar (s2n $ e ^. effectName) pos
             else EffApp
-                  (e ^. effectName)
+                  (EffVar (s2n $ e ^. effectName) pos)
                   (map (\v -> TVar v pos) $ e ^.. effectArgs . traverse . _1)
                   pos
         --  add effect type to interface's effect list

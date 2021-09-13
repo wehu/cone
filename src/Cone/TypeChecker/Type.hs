@@ -133,7 +133,7 @@ inferEffKind v@EffVar {..} = do
     Just k -> return k
     Nothing -> throwError $ "cannot find eff variable: " ++ ppr v ++ ppr _effLoc
 inferEffKind a@EffApp {..} = do
-  k <- getEnv $ effs . at _effAppName
+  k <- getEnv $ effs . at (name2String $ _effVar _effAppName)
   forMOf _Nothing k $ \k ->
     throwError $ "cannot find type: " ++ ppr a ++ ppr _effLoc
   let ak = fromJust k
@@ -425,7 +425,7 @@ collectVarBindingsInEff :: (Has EnvEff sig m) => EffectType -> EffectType -> m [
 collectVarBindingsInEff s@EffVar {} _ = return []
 collectVarBindingsInEff a@EffApp {} b@EffApp {} =
   if L.length (a ^. effAppArgs) /= L.length (b ^. effAppArgs)
-    || a ^. effAppName /= b ^. effAppName
+    || not (aeq (_effAppName a) (_effAppName b))
     then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
     else
       foldM
@@ -468,7 +468,7 @@ collectEffVarBindings ev@EffVar {..} e = do
     else return []
 collectEffVarBindings a@EffApp {} b@EffApp {} = do
   if L.length (a ^. effAppArgs) /= L.length (b ^. effAppArgs)
-    || a ^. effAppName /= b ^. effAppName
+    || not (aeq (_effAppName a) (_effAppName b))
     then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
     else do
       bindings <-
