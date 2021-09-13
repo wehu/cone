@@ -623,9 +623,9 @@ funcDefType :: FuncDef -> Type
 funcDefType f =
   let pos = f ^. funcLoc
       argTypes = f ^. funcArgs ^.. traverse . _2
-      effType = f ^. funcEffectType
-      resultType = f ^. funcResultType
-      bvs = f ^. funcBoundVars
+      effType = _funcEffectType f
+      resultType = _funcResultType f
+      bvs = _funcBoundVars f
       ft =
         bindType bvs $
           TFunc argTypes effType resultType pos
@@ -711,7 +711,7 @@ setFuncImpl impl = do
       loc = funcD ^. funcLoc
       t = bindTypeEffVar (funcD ^. funcBoundEffVars) $
             bindType (funcD ^. funcBoundVars) $
-              TFunc (funcD ^.. funcArgs . traverse . _2) (funcD ^. funcEffectType) (funcD ^. funcResultType) loc
+              TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
   ft <- getEnv $ funcs . at fn
   case ft of
     Nothing -> throwError $ "cannot find general function definition: " ++ fn ++ ppr loc

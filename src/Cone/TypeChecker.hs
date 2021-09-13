@@ -148,7 +148,7 @@ initEffIntfDef e = do
       f = \i -> do
         let intfn = i ^. intfName
             iargs = i ^. intfArgs
-            iresult = i ^. intfResultType
+            iresult = _intfResultType i
             pos = i ^. intfLoc
             bvars = (i ^. intfBoundVars)
             targs = (e ^.. effectArgs . traverse . _1) ++ globalTypes
@@ -169,7 +169,7 @@ initEffIntfDef e = do
           throwError $
             "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t ++ ppr pos
         -- get effect type
-        let eff = i ^. intfEffectType
+        let eff = _intfEffectType i
         effs <- 
           mergeEffs eff $
             if e ^. effectArgs  == []
@@ -185,7 +185,7 @@ initEffIntfDef e = do
   where
     intfType i e eff =
       let iargs = i ^. intfArgs
-          iresult = i ^. intfResultType
+          iresult = _intfResultType i
           intfn = i ^. intfName
           bvars = i ^. intfBoundVars
           pos = i ^. intfLoc
@@ -249,15 +249,15 @@ checkFuncType f = underScope $ do
   mapM_
     (\(n, t) -> setFuncType n t)
     (f ^. funcArgs)
-  case f ^. funcExpr of
+  case _funcExpr f of
     Just e -> do
       -- infer function expression type
       eWithType <- inferExprType e
       eType <- typeOfExpr eWithType
-      resultType <- inferType $ f ^. funcResultType
+      resultType <- inferType $ _funcResultType f
       checkTypeMatch eType resultType
       effType <- inferExprEffType e
-      let fEff = f ^. funcEffectType 
+      let fEff = _funcEffectType f
       restEffs <- removeEff effType fEff
       -- check if all effects are handled or not
       if aeq restEffs (EffList [] pos) then return f{_funcExpr=Just eWithType}
@@ -323,29 +323,21 @@ convertFuncImplToFuncs m =
                (m ^.. topStmts . traverse . _ImplFDef . implFunDef)
     in m{_topStmts=tops ++ fs}
 
-
-addTypeBindingsForEffIntfs :: Module -> Module
-addTypeBindingsForEffIntfs m =
-  transformOn (topStmts . traverse . _EDef) bindIntfs m
-  where bindIntfs eff = 
-         let boundVars = eff ^.. effectArgs . traverse . _1
-             intfs = map (\intf -> 
-                           intf{_intfBoundVars=(reverse . L.nub . reverse) $ (_intfBoundVars intf) ++ boundVars})
-                         $ eff ^. effectIntfs 
-          in eff{_effectIntfs=intfs}
-
 addTypeBindingsForExprs :: Module -> Module
 addTypeBindingsForExprs m =
+  transformOn (topStmts . traverse. _TDef) bindTDef $
   transformOn (topStmts . traverse. _FDef) bindFDef $
   transformOn (topStmts . traverse. _ImplFDef . implFunDef) bindFDef m
   where
+    bindTDef tdef = 
+     let boundVars = tdef ^.. typeArgs . traverse . _1
+      in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef) 
     bindFDef fdef = 
      let boundVars = fdef ^. funcBoundVars
          boundEffVars = fdef ^. funcBoundEffVars
          loc = fdef ^. funcLoc
-         expr = fmap (transform bindExpr) $ fdef ^. funcExpr
-      in fdef{_funcExpr = fmap (\e -> 
-             EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind boundVars e) loc) loc) expr}
+         expr = fmap (transform bindExpr) $ _funcExpr fdef
+      in BoundFuncDef (bind boundVars fdef{_funcExpr = expr}) loc
     bindExpr l@ELam{..} = 
       let boundVars = _elamBoundVars
           boundEffVars = _elamBoundEffVars
@@ -355,11 +347,22 @@ addTypeBindingsForExprs m =
 
 removeTypeBindingsForExprs :: Module -> Module
 removeTypeBindingsForExprs m =
+  transformOn (topStmts . traverse. _TDef) removeBindingsForTDef $
   transformOn (topStmts . traverse. _FDef) removeBindingsForFDef $
   transformOn (topStmts . traverse. _ImplFDef . implFunDef) removeBindingsForFDef m
   where
+    removeBindingsForTDef (BoundTypeDef b _) =
+      let (_, t) = unsafeUnbind b
+       in removeBindingsForTDef t
+    removeBindingsForTDef t = t
+    removeBindingsForFDef (BoundFuncDef b _) = 
+      let (_, f) = unsafeUnbind b
+       in removeBindingsForFDef f
+    removeBindingsForFDef (BoundEffFuncDef b _) = 
+      let (_, f) = unsafeUnbind b
+       in removeBindingsForFDef f
     removeBindingsForFDef fdef = 
-     let expr = fmap (transform removeBindingsForExpr) $ fdef ^. funcExpr
+     let expr = fmap (transform removeBindingsForExpr) $ _funcExpr fdef
       in fdef{_funcExpr = expr}
     removeBindingsForExpr (EBoundTypeVars b _) =
       let (_, e) = unsafeUnbind b
@@ -371,7 +374,7 @@ removeTypeBindingsForExprs m =
 
 addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForTypes m' = do
-  let m = addTypeBindingsForEffIntfs $ addTypeBindingsForExprs m'
+  let m = addTypeBindingsForExprs m'
   let allGlobalVars = (reverse . L.nub . reverse) (m ^.. fv) :: [TVar]
       allGlobalEffVars = (reverse . L.nub . reverse) (m ^.. fv) :: [EffVar]
       prefixes = (m ^. moduleName ++ "/") :

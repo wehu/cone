@@ -319,6 +319,7 @@ data TypeDef = TypeDef
     _typeCons :: [TypeCon],
     _typeLoc :: Location
   }
+  | BoundTypeDef {_tbound :: Bind [TVar] TypeDef, _typeLoc :: Location}
   deriving
     ( -- | BoundTypeDef{_typeBound :: Bind [TVar] TypeDef}
       Eq,
@@ -335,6 +336,7 @@ instance Pretty TypeDef where
     "type" <+> pretty _typeName
       <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _typeArgs)
       <+> bracesList _typeCons
+  pretty (BoundTypeDef (B _ t) _) = pretty t
 
 data TypeCon = TypeCon
   { _typeConName :: String,
@@ -355,6 +357,8 @@ data FuncIntf = FuncIntf
     _intfResultType :: Type,
     _intfLoc :: Location
   }
+  | BoundFuncIntf {_boundFuncIntf :: Bind [TVar] FuncIntf, _intfLoc :: Location}
+  | BoundEffFuncIntf {_boundEffFuncIntf :: Bind [EffVar] FuncIntf, _intfLoc :: Location}
   deriving
     ( -- | BoundFuncIntf{_intfBound :: Bind [TVar] FuncIntf}
       Eq,
@@ -373,6 +377,8 @@ instance Pretty FuncIntf where
       <+> colon
       <+> pretty _intfEffectType
       <+> pretty _intfResultType
+  pretty (BoundFuncIntf (B _ f) _) = pretty f
+  pretty (BoundEffFuncIntf (B _ f) _) = pretty f
 
 data EffectDef = EffectDef
   { _effectName :: String,
@@ -380,6 +386,8 @@ data EffectDef = EffectDef
     _effectIntfs :: [FuncIntf],
     _effectLoc :: Location
   }
+  | BoundEffectDef {_boundEffDef :: Bind [TVar] EffectDef, _effectLoc :: Location}
+  | BoundEffEffectDef {_boundEffEffDef :: Bind [EffVar] EffectDef, _effectLoc :: Location}
   deriving
     ( -- | BoundEffectDef{_effectBound :: Bind [TVar] EffectDef}
       Eq,
@@ -396,6 +404,8 @@ instance Pretty EffectDef where
     "effect" <+> pretty _effectName
       <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _effectArgs)
       <+> bracesList _effectIntfs
+  pretty (BoundEffectDef (B _ e) _) = pretty e
+  pretty (BoundEffEffectDef (B _ e) _) = pretty e
 
 data ImportStmt = ImportStmt
   { _importPath :: NamePath,
@@ -421,8 +431,10 @@ data FuncDef = FuncDef
     _funcExpr :: Maybe Expr,
     _funcLoc :: Location
   }
+  | BoundFuncDef {_boundFuncDef :: Bind [TVar] FuncDef, _funcLoc :: Location}
+  | BoundEffFuncDef {_boundEffFuncDef :: Bind [EffVar] FuncDef, _funcLoc :: Location}
   deriving
-    ( -- | BoundFuncDef{_funcBound :: Bind [TVar] FuncDef}
+    (
       Eq,
       Ord,
       Show,
@@ -438,6 +450,8 @@ instance Pretty FuncDef where
      parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _funcArgs) <+> colon <+> pretty _funcEffectType
       <+> pretty _funcResultType
       <+> bracesList [_funcExpr]
+  pretty (BoundFuncDef (B _ f) _) = pretty f
+  pretty (BoundEffFuncDef (B _ f) _) = pretty f
 
 data ImplFuncDef = ImplFuncDef {_implFunDef :: FuncDef}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
