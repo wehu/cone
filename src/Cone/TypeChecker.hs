@@ -356,6 +356,47 @@ removeTypeBindingsForExprs m =
        in removeBindingsForExpr e
     removeBindingsForExpr expr = expr
 
+addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module
+addPrefixForTypes m' = do
+  let m = addTypeBindingsForExprs m'
+  let allGlobalVars = (m ^.. fv) :: [TVar]
+      allGlobalEffVars = (m ^.. fv) :: [EffVar]
+      prefixes = (m ^. moduleName ++ "/") : (map (\i -> i ^.importPath ++ "/") $ m ^. imports)
+      loc = m ^. moduleLoc
+  ts <- getEnv types
+  es <- getEnv effs
+  bindTs <- foldM (
+      \s v -> do
+        found <- foldM (
+                    \f p -> do
+                      let vn = p ++ (name2String v)
+                      case ts ^. at vn of
+                        Just _ -> return $ f ++ [(v, TVar (s2n vn) loc)]
+                        Nothing -> return f
+                    )
+                    []
+                    prefixes
+        if found == [] then return []
+        else if L.length found == 1 then return $ s ++ found
+             else throwError $ "found more than one type for " ++ ppr v ++ ppr found
+      ) [] allGlobalVars
+  bindEffs <- foldM (
+      \s v -> do
+        found <- foldM (
+                    \f p -> do
+                      let vn = p ++ (name2String v)
+                      case es ^. at vn of
+                        Just _ -> return $ f ++ [(v, EffVar (s2n vn) loc)]
+                        Nothing -> return f
+                    )
+                    []
+                    prefixes
+        if found == [] then return []
+        else if L.length found == 1 then return $ s ++ found
+             else throwError $ "found more than one eff type for " ++ ppr v ++ ppr found
+      ) [] allGlobalEffVars
+  return $ removeTypeBindingsForExprs $ substs bindEffs $ substs bindTs m
+
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m' env id = run . runError . (runState env) . runFresh id $ do
