@@ -468,6 +468,87 @@ addPrefixForTypes m' = do
       ) [] allGlobalEffVars
   return $ removeTypeBindings $ substs bindEffs $ substs bindTs m
 
+addVarBindings :: Module -> Module
+addVarBindings m =
+  over (topStmts . traverse. _FDef) bindFDef $
+  over (topStmts . traverse. _ImplFDef . implFunDef) bindFDef m
+  where
+    bindFDef fdef = 
+     let boundVars = map s2n $ L.nub $ fdef ^.. funcArgs . traverse . _1
+         loc = fdef ^. funcLoc
+         expr = fmap (transform bindExpr) $ _funcExpr fdef
+      in fdef{_funcExpr=fmap (\e -> EBoundVars (bind boundVars e) loc) expr}
+    bindExpr l@ELam{..} = 
+      let boundVars = map s2n $ L.nub $ _elamArgs ^.. traverse . _1
+          loc = _eloc
+       in l{_elamExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) _elamExpr}
+    bindExpr expr = expr
+
+removeVarBindings :: Module -> Module
+removeVarBindings m =
+  over (topStmts . traverse. _FDef . funcExpr . _Just) removeBindingsForExpr $
+  over (topStmts . traverse. _ImplFDef . implFunDef . funcExpr . _Just) removeBindingsForExpr m
+  where
+    removeBindingsForExpr (EBoundVars b _) =
+      let (_, e) = unsafeUnbind b
+       in removeBindingsForExpr e
+    removeBindingsForExpr l@ELam {..} =
+      l{_elamExpr = fmap removeBindingsForExpr _elamExpr}
+    removeBindingsForExpr e@ECase {..} =
+      e{_ecaseExpr=removeBindingsForExpr _ecaseExpr,
+        _ecaseBody=over traverse removeBindingsForCase _ecaseBody}
+    removeBindingsForExpr w@EWhile {..} =
+      w{_ewhileCond=removeBindingsForExpr _ewhileCond,
+        _ewhileBody=removeBindingsForExpr _ewhileBody}
+    removeBindingsForExpr a@EApp {..} =
+      a{_eappFunc=removeBindingsForExpr _eappFunc,
+        _eappArgs=over traverse removeBindingsForExpr _eappArgs}
+    removeBindingsForExpr l@ELet {..} =
+      l{_eletExpr=removeBindingsForExpr _eletExpr,
+        _eletPattern=removeBindingsForPattern _eletPattern}
+    removeBindingsForExpr h@EHandle {..} =
+      h{_ehandleScope=removeBindingsForExpr _ehandleScope,
+        _ehandleBindings=over (traverse . funcExpr . _Just) removeBindingsForExpr _ehandleBindings}
+    removeBindingsForExpr s@ESeq {..} =
+      s{_eseq=map removeBindingsForExpr _eseq}
+    removeBindingsForExpr e@EAnn {..} =
+      e{_eannExpr=removeBindingsForExpr _eannExpr}
+    removeBindingsForExpr e@EAnnMeta {..} =
+      e{_eannMetaExpr=removeBindingsForExpr _eannMetaExpr}
+    removeBindingsForExpr expr = expr
+    removeBindingsForPattern p@PExpr{..} = 
+      p{_pExpr=removeBindingsForExpr _pExpr}
+    removeBindingsForPattern p = p
+    removeBindingsForCase c@Case{..} =
+      c{_caseExpr=removeBindingsForExpr _caseExpr,
+        _casePattern=removeBindingsForPattern _casePattern}
+
+addPrefixForExprs :: (Has EnvEff sig m) => Module -> m Module
+addPrefixForExprs m' = do
+  let m = addVarBindings m'
+  let allGlobalVars = L.nub (m ^.. fv) :: [EVar]
+      prefixes = (m ^. moduleName ++ "/") :
+                 "core/prelude/" : 
+                 (map (\i -> i ^.importPath ++ "/") $ m ^. imports)
+      loc = m ^. moduleLoc
+  fs <- getEnv funcs
+  binds <- foldM (
+      \s v -> do
+        found <- foldM (
+                    \f p -> do
+                      let vn = p ++ (name2String v)
+                      case fs ^. at vn of
+                        Just _ -> return $ f ++ [(v, EVar (s2n vn) loc)]
+                        Nothing -> return f
+                    )
+                    []
+                    prefixes
+        if found == [] then return s
+        else if L.length found == 1 then return $ s ++ found
+             else throwError $ "found more than one variable for " ++ ppr v ++ ppr found
+      ) [] allGlobalVars
+  return $ removeVarBindings $ substs binds m
+
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id = run . runError . (runState env) . runFresh id $ do
