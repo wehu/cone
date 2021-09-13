@@ -20,7 +20,6 @@ import qualified Data.ByteString.Lazy.UTF8 as BLU
 import Data.Maybe
 import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
-import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Unsafe
 
 -- | Infer type's kind
@@ -104,11 +103,11 @@ inferType a@TAnn {..} = do
   t <- inferType _tannType
   return a {_tannType = t}
 inferType b@BoundType {..} = do
-  let (B bts t) = _boundType
+  let (bts, t) = unsafeUnbind _boundType
   t <- inferType t
   return $ bindType bts t
 inferType b@BoundEffVarType {..} = do
-  let (B ets t) = _boundEffVarType
+  let (ets, t) = unsafeUnbind _boundEffVarType
   t <- inferType t
   return $ bindTypeEffVar ets t
 inferType f@TFunc {..} = do

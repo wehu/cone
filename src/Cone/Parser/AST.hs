@@ -387,7 +387,6 @@ data EffectDef = EffectDef
     _effectLoc :: Location
   }
   | BoundEffectDef {_boundEffDef :: Bind [TVar] EffectDef, _effectLoc :: Location}
-  | BoundEffEffectDef {_boundEffEffDef :: Bind [EffVar] EffectDef, _effectLoc :: Location}
   deriving
     ( -- | BoundEffectDef{_effectBound :: Bind [TVar] EffectDef}
       Eq,
@@ -405,7 +404,6 @@ instance Pretty EffectDef where
       <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _effectArgs)
       <+> bracesList _effectIntfs
   pretty (BoundEffectDef (B _ e) _) = pretty e
-  pretty (BoundEffEffectDef (B _ e) _) = pretty e
 
 data ImportStmt = ImportStmt
   { _importPath :: NamePath,
