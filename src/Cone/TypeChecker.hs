@@ -102,9 +102,9 @@ initTypeConDefs :: (Has EnvEff sig m) => Module -> m Module
 initTypeConDefs m = mapMOf (topStmts . traverse . _TDef) (initTypeConDef $ m ^. moduleName) m
 
 -- | Check the type constructor's type
-checkTypeConDef :: (Has EnvEff sig m) => TypeDef -> m ()
+checkTypeConDef :: (Has EnvEff sig m) => TypeDef -> m TypeDef
 checkTypeConDef t =
-  forM_ (t ^. typeCons) $ \c -> do
+  forMOf (typeCons . traverse) t $ \c -> do
     let cn = c ^. typeConName
     tt <- getEnv $ funcs . at cn
     forMOf _Nothing tt $ \_ ->
@@ -112,10 +112,11 @@ checkTypeConDef t =
         "cannot find type constructor : " ++ cn ++ (ppr $ _typeLoc t)
     k <- underScope $ inferTypeKind $ fromJust tt
     checkTypeKind k
+    return c
 
 -- | Check all type constructor's types
-checkTypeConDefs :: (Has EnvEff sig m) => Module -> m ()
-checkTypeConDefs m = mapM_ checkTypeConDef $ m ^.. topStmts . traverse . _TDef
+checkTypeConDefs :: (Has EnvEff sig m) => Module -> m Module
+checkTypeConDefs m = mapMOf (topStmts . traverse . _TDef) checkTypeConDef m
 
 -- | Initializa effect type definition
 initEffTypeDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
@@ -202,11 +203,10 @@ initEffIntfDefs :: (Has EnvEff sig m) => Module -> m Module
 initEffIntfDefs m = mapMOf (topStmts . traverse . _EDef) (initEffIntfDef $ m ^. moduleName) $ m
 
 -- | Check an effect interface
-checkEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m ()
+checkEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m EffectDef
 checkEffIntfDef e = do
   globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
-  let is = e ^. effectIntfs
-      en = e ^. effectName
+  let en = e ^. effectName
       f = \i -> do
         let intfn = i ^. intfName
         t <- getEnv $ funcs . at intfn
@@ -215,11 +215,12 @@ checkEffIntfDef e = do
             "cannot find eff interface: " ++ intfn ++ ppr (_effectLoc e)
         k <- underScope $ inferTypeKind $ fromJust t
         checkTypeKind k
-  mapM_ f is
+        return i
+  mapMOf (effectIntfs . traverse) f e
 
 -- | Check all effect interfaces
-checkEffIntfDefs :: (Has EnvEff sig m) => Module -> m ()
-checkEffIntfDefs m = mapM_ checkEffIntfDef $ m ^.. topStmts . traverse . _EDef
+checkEffIntfDefs :: (Has EnvEff sig m) => Module -> m Module
+checkEffIntfDefs m = mapMOf (topStmts . traverse . _EDef) checkEffIntfDef m
 
 -- | Initializa function definition
 initFuncDef :: (Has EnvEff sig m) => String -> FuncDef -> m FuncDef
@@ -594,9 +595,10 @@ initModule m env id = run . runError . (runState env) . runFresh id $ do
 -- | Type checking a module
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 checkType m env id = run . runError . (runState env) . runFresh id $ do
-  checkTypeConDefs m
-  checkEffIntfDefs m
-  return m >>= checkFuncDefs
-           >>= checkImplFuncDefs
-           >>= (return . removeAnns)
+  return m 
+  >>= checkTypeConDefs
+  >>= checkEffIntfDefs
+  >>= checkFuncDefs
+  >>= checkImplFuncDefs
+  >>= (return . removeAnns)
   
