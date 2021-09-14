@@ -216,6 +216,7 @@ class Backend t where
             ( case _litType of
                 TPrim Pred _ -> if _lit == "true" then "True" else "False"
                 TPrim Unit _ -> "None"
+                TPrim Str _ -> pretty (read _lit :: String)
                 _ -> pretty _lit
             )
   genExpr proxy ELam {..} = do
