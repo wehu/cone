@@ -503,6 +503,12 @@ addVarBindings m =
       let boundVars = map s2n $ L.nub $ _elamArgs ^.. traverse . _1
           loc = _eloc
        in l{_elamExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) _elamExpr}
+    bindExpr s@ESeq{..} =
+      let vs = map (s2n . name2String) ((s ^.. fv) :: [PVar])
+       in EBoundVars (bind vs s) _eloc
+    bindExpr c@ECase{..} =
+      let vs = map (s2n . name2String) ((c ^.. fv) :: [PVar])
+       in EBoundVars (bind vs c) _eloc
     bindExpr expr = expr
 
 removeVarBindings :: Module -> Module
@@ -570,7 +576,6 @@ addPrefixForExprs m' = do
         else if L.length found == 1 then return $ s ++ found
              else throwError $ "found more than one variable for " ++ ppr v ++ ppr found
       ) [] allGlobalVars
-  trace (show allGlobalVars) $ return ()
   return $ removeVarBindings $ substs binds m
 
 -- | Initialize a module
