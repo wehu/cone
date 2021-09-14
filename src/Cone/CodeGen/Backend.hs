@@ -25,9 +25,9 @@ import Data.List
 import Data.List.Split
 import Data.Maybe
 import Data.Proxy
+import Debug.Trace
 import Prettyprinter
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
-import Debug.Trace
 
 type Eff s e = Fresh :+: State s :+: Error e
 
@@ -73,7 +73,7 @@ class Backend t where
   typeN :: t Target -> String -> String -> Doc a
   typeN proxy prefix n' =
     let prefixLen = length prefix
-        n = if prefix == (take prefixLen n') then (drop (prefixLen+1) n') else n'
+        n = if prefix == (take prefixLen n') then (drop (prefixLen + 1) n') else n'
         ns = splitOn "/" n
         ps = init ns
         tn = "Cone__" ++ last ns
@@ -82,7 +82,7 @@ class Backend t where
   funcN :: t Target -> String -> String -> Doc a
   funcN proxy prefix n' =
     let prefixLen = length prefix
-        n = if prefix == (take prefixLen n') then (drop (prefixLen+1) n') else n'
+        n = if prefix == (take prefixLen n') then (drop (prefixLen + 1) n') else n'
         ns = splitOn "/" n
         ps = init ns
         fn = "cone__" ++ last ns
@@ -93,8 +93,8 @@ class Backend t where
     return $
       ( -- case _importAlias of
         --  Just a -> "import" <+> namePath proxy _importPath <+> "as" <+> pretty a
-        --  Nothing -> 
-            "import" <+> namePath proxy _importPath
+        --  Nothing ->
+        "import" <+> namePath proxy _importPath
       )
         <+> line
 
@@ -192,9 +192,12 @@ class Backend t where
     prefix <- getEnv currentModuleName
     let fn = funcN proxy prefix (name2String _evarName)
         fnQ = "\"" <> fn <> "\""
-     in return $ exprToCps $ 
-         "____k(____lookup_eff(____effs, " <> fnQ <> ") if " <> "____lookup_eff(____effs, " <> fnQ <> ") != None" <+>
-         "else (____lookup_var(____state, " <> fnQ <> ") if" <+> "____lookup_var(____state, " <> fnQ <> ") != None else" <+> fn <> "))"
+     in return $
+          exprToCps $
+            "____k(____lookup_eff(____effs, " <> fnQ <> ") if " <> "____lookup_eff(____effs, " <> fnQ <> ") != None"
+              <+> "else (____lookup_var(____state, " <> fnQ <> ") if"
+              <+> "____lookup_var(____state, " <> fnQ <> ") != None else"
+              <+> fn <> "))"
   genExpr proxy ESeq {..} = do
     let e : es = (reverse _eseq)
     e' <- genExpr proxy e
@@ -219,7 +222,7 @@ class Backend t where
     es <- genBody _elamExpr
     return $ parens $ "lambda ____k2, ____state, ____effs" <> colon <+> es
     where
-      genArgs prefix = encloseSep emptyDoc emptyDoc comma $ "____k" : "____state_unused" : "____effs": (map (funcN proxy prefix) $ _elamArgs ^.. traverse . _1)
+      genArgs prefix = encloseSep emptyDoc emptyDoc comma $ "____k" : "____state_unused" : "____effs" : (map (funcN proxy prefix) $ _elamArgs ^.. traverse . _1)
       genBody e = do
         prefix <- getEnv currentModuleName
         case e of
@@ -229,7 +232,7 @@ class Backend t where
           Nothing -> throwError $ "lambda expected a expression"
       callCpsWithclearedVars es prefix =
         encloseSep lparen rparen comma $
-          "____k" : "____state" : "____effs": (encloseSep lbracket rbracket comma $ map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1) : [es]
+          "____k" : "____state" : "____effs" : (encloseSep lbracket rbracket comma $ map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1) : [es]
   genExpr proxy EWhile {..} = do
     c <- genExpr proxy _ewhileCond
     es <- genExpr proxy _ewhileBody
@@ -262,8 +265,10 @@ class Backend t where
               exprToCps $
                 callWithCps
                   e
-                  ("lambda ____e : ____k(____update_state(____state, \"" <> 
-                  (funcN proxy prefix $ name2String $ removeAnn (_eappArgs !! 0) ^. evarName) <> "\"," <+> "____e))")
+                  ( "lambda ____e : ____k(____update_state(____state, \""
+                      <> (funcN proxy prefix $ name2String $ removeAnn (_eappArgs !! 0) ^. evarName)
+                      <> "\"," <+> "____e))"
+                  )
           "core/prelude/inline_python" -> return $ exprToCps $ "____k(" <> (pretty $ (read (removeAnn (_eappArgs !! 0) ^. lit) :: String)) <> ")"
           _ -> do
             f <- genExpr proxy _eappFunc
@@ -286,8 +291,8 @@ class Backend t where
           exprToCps $
             callWithCps rhs $
               callWithCps lhs ("lambda ____lhs: (lambda ____rhs : ____k(____lhs" <+> pretty op <+> "____rhs))")
-      removeAnn EAnn{..} = _eannExpr
-      removeAnn EAnnMeta{..} = _eannMetaExpr
+      removeAnn EAnn {..} = _eannExpr
+      removeAnn EAnnMeta {..} = _eannMetaExpr
       removeAnn e = e
   genExpr proxy EHandle {..} = do
     prefix <- getEnv currentModuleName
@@ -297,8 +302,12 @@ class Backend t where
         ( \intf -> do
             e <- genExpr proxy (fromJust $ _funcExpr intf)
             let n = funcN proxy prefix $ _funcName intf
-                args = encloseSep emptyDoc emptyDoc comma $ "____k" : "____state_unused" : "____effs" :
-                   (map (\(n, _) -> funcN proxy prefix n) (_funcArgs intf))
+                args =
+                  encloseSep emptyDoc emptyDoc comma $
+                    "____k" :
+                    "____state_unused" :
+                    "____effs" :
+                    (map (\(n, _) -> funcN proxy prefix n) (_funcArgs intf))
             return $
               "\"" <> n <> "\" :"
                 <+> parens
@@ -325,7 +334,8 @@ class Backend t where
             [ "lambda ____c: ____case(____k, ____state, ____effs, ____c" <> comma
                 <+> encloseSep lbracket rbracket comma cs <> comma
                 <+> encloseSep lbracket rbracket comma es <> ")",
-              "____state", "____effs"
+              "____state",
+              "____effs"
             ]
   genExpr proxy EAnnMeta {..} = genExpr proxy _eannMetaExpr
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
@@ -333,8 +343,11 @@ class Backend t where
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
   genPatternMatch proxy PVar {..} = do
     prefix <- getEnv currentModuleName
-    return $ parens $ "lambda ____e: [____add_var(____state, \"" <> funcN proxy prefix (name2String _pvar)
-     <> "\"" <> comma <+> "____e), True][-1]"
+    return $
+      parens $
+        "lambda ____e: [____add_var(____state, \"" <> funcN proxy prefix (name2String _pvar)
+          <> "\""
+          <> comma <+> "____e), True][-1]"
   genPatternMatch proxy PExpr {..} = do
     p <- (\e -> callWithCps e "lambda x : x") <$> genExpr proxy _pExpr
     return $ parens $ "lambda ____e:" <+> p <+> "== ____e"
@@ -344,8 +357,10 @@ class Backend t where
       mapM
         ( \(p, ee) -> do
             b <- genPatternMatch proxy p
-            return $ parens $ "isinstance(____e" <> comma <+> 
-              typeN proxy prefix (name2String $ _evarName _pappName) <> ") and " <> b <> parens ee
+            return $
+              parens $
+                "isinstance(____e" <> comma
+                  <+> typeN proxy prefix (name2String $ _evarName _pappName) <> ") and " <> b <> parens ee
         )
         [(arg, parens $ "____e" <> ".f" <> pretty id) | arg <- _pappArgs | id <- [0 :: Int ..]]
     return $ parens $ "lambda ____e: all(" <> encloseSep lbracket rbracket comma bindings <> ")"
@@ -494,9 +509,10 @@ class Backend t where
   genEpilogue proxy = do
     prefix <- getEnv currentModuleName
     return $
-      vsep [ "if __name__ == \"__main__\":",
-               indent 4 $ funcN proxy prefix "main_w()" <+> line
-             ]
+      vsep
+        [ "if __name__ == \"__main__\":",
+          indent 4 $ funcN proxy prefix "main_w()" <+> line
+        ]
 
 -- | Convert a experision to cps
 exprToCps :: Doc a -> Doc a
