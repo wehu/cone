@@ -18,6 +18,7 @@ import Control.Effect.Sum
 import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
+import Data.List.Split
 import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Maybe
@@ -428,12 +429,27 @@ removeTypeBindings m =
       c{_caseExpr=removeBindingsForExpr _caseExpr,
         _casePattern=removeBindingsForPattern _casePattern}
 
+getNamePath :: (Has EnvEff sig m) => Module -> String -> m String
+getNamePath m n = do
+  let aliases = 
+        L.foldl' (\s i -> 
+          case i ^. importAlias of
+            Just alias -> s & at alias ?~ i ^. importPath
+            Nothing -> s
+          ) M.empty $ m ^. imports
+      n' = last $ splitOn "/" n
+      ns = join $ L.intersperse "/" $ L.init $ splitOn "/" n
+  case aliases ^. at ns of
+    Just prefix -> return $ prefix ++ "/" ++ n'
+    Nothing -> return n
+
 addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForTypes m' = do
   let m = addTypeBindings m'
   let allGlobalVars = L.nub (m ^.. fv) :: [TVar]
       allGlobalEffVars = L.nub (m ^.. fv) :: [EffVar]
-      prefixes = (m ^. moduleName ++ "/") :
+      prefixes = "" :
+                 (m ^. moduleName ++ "/") :
                  "core/prelude/" : 
                  (map (\i -> i ^.importPath ++ "/") $ m ^. imports)
       loc = m ^. moduleLoc
@@ -441,9 +457,10 @@ addPrefixForTypes m' = do
   es <- getEnv effs
   bindTs <- foldM (
       \s v -> do
+        vn' <- getNamePath m (name2String v)
         found <- foldM (
                     \f p -> do
-                      let vn = p ++ (name2String v)
+                      let vn = p ++ vn'
                       case ts ^. at vn of
                         Just _ -> return $ f ++ [(v, TVar (s2n vn) loc)]
                         Nothing -> return f
@@ -456,9 +473,10 @@ addPrefixForTypes m' = do
       ) [] allGlobalVars
   bindEffs <- foldM (
       \s v -> do
+        vn' <- getNamePath m (name2String v)
         found <- foldM (
                     \f p -> do
-                      let vn = p ++ (name2String v)
+                      let vn = p ++ vn'
                       case es ^. at vn of
                         Just _ -> return $ f ++ [(v, EffVar (s2n vn) loc)]
                         Nothing -> return f
@@ -530,16 +548,18 @@ addPrefixForExprs :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForExprs m' = do
   let m = addVarBindings m'
   let allGlobalVars = L.nub (m ^.. fv) :: [EVar]
-      prefixes = (m ^. moduleName ++ "/") :
+      prefixes = "":
+                 (m ^. moduleName ++ "/") :
                  "core/prelude/" : 
                  (map (\i -> i ^.importPath ++ "/") $ m ^. imports)
       loc = m ^. moduleLoc
   fs <- getEnv funcs
   binds <- foldM (
       \s v -> do
+        vn' <- getNamePath m (name2String v)
         found <- foldM (
                     \f p -> do
-                      let vn = p ++ (name2String v)
+                      let vn = p ++ vn'
                       case fs ^. at vn of
                         Just _ -> return $ f ++ [(v, EVar (s2n vn) loc)]
                         Nothing -> return f

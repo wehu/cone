@@ -91,9 +91,10 @@ class Backend t where
   genImport :: (Has EnvEff sig m) => t Target -> ImportStmt -> m (Doc a)
   genImport proxy ImportStmt {..} =
     return $
-      ( case _importAlias of
-          Just a -> "import" <+> namePath proxy _importPath <+> "as" <+> pretty a
-          Nothing -> "import" <+> namePath proxy _importPath
+      ( -- case _importAlias of
+        --  Just a -> "import" <+> namePath proxy _importPath <+> "as" <+> pretty a
+        --  Nothing -> 
+            "import" <+> namePath proxy _importPath
       )
         <+> line
 

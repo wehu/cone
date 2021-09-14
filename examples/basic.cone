@@ -1,6 +1,6 @@
 module example
 
-import data/list
+import data/list as l
 
 type A {
    A(i32)
@@ -38,9 +38,9 @@ fun main() : io unit {
   var a = 0
   val A(b) = A(2)
 
-  val l = Cons(3, Cons(2, Cons(1, Nil<i32>)))
+  val l = l/Cons(3, l/Cons(2, l/Cons(1, l/Nil<i32>)))
 
-  val ll = map(l, fn(a:i32) : io i32{
+  val ll = l/map(l, fn(a:i32) : io i32{
      print(a)
      a + 1
   })
