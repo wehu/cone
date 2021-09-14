@@ -143,7 +143,7 @@ data Type
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Type where
-  pretty TPrim {..} = pretty _tprim 
+  pretty TPrim {..} = pretty _tprim
   pretty TVar {..} = pretty _tvar
   pretty TNum {..} =
     ( case _tnum of
@@ -185,7 +185,7 @@ instance Pretty EffKind where
 type EffVar = Name EffectType
 
 data EffectType
-  = EffVar { _effVar :: EffVar, _effLoc :: Location}
+  = EffVar {_effVar :: EffVar, _effLoc :: Location}
   | EffApp
       { _effAppName :: EffectType,
         _effAppArgs :: [Type],
@@ -229,7 +229,7 @@ instance Pretty Case where
   pretty Case {..} =
     parens $
       pretty _casePattern -- <+> "|"
-        -- <+> pretty _caseGuard
+      -- <+> pretty _caseGuard
         <+> "->"
         <+> pretty _caseExpr
 
@@ -238,7 +238,7 @@ type IndexVar = Name TCExpr
 data TCExpr
   = TCAccess {_tcVarName :: NamePath, _tcIndices :: [IndexVar], _tcloc :: Location}
   | TCApp {_tcAppName :: NamePath, _tcAppArgs :: [TCExpr], _tcloc :: Location}
-  | TCVar {_tcVarName :: NamePath, _tcloc:: Location}
+  | TCVar {_tcVarName :: NamePath, _tcloc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty TCExpr where
@@ -262,7 +262,7 @@ data Expr
       }
   | ECase {_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
   | EWhile {_ewhileCond :: Expr, _ewhileBody :: Expr, _eloc :: Location}
-  | EApp {_eappFunc :: Expr, _eappTypeArgs:: [Type], _eappArgs :: [Expr], _eloc :: Location}
+  | EApp {_eappFunc :: Expr, _eappTypeArgs :: [Type], _eappArgs :: [Expr], _eloc :: Location}
   | ELet
       { _eletPattern :: Pattern,
         _eletExpr :: Expr,
@@ -305,12 +305,19 @@ instance Pretty Expr where
         <+> pretty _elamResultType
         <+> pretty _elamExpr
   pretty EWhile {..} = parens $ "while" <+> pretty _ewhileCond <+> braces (pretty _ewhileBody)
-  pretty ECase {..} = parens $ "case" <+> pretty _ecaseExpr <+> bracesList _ecaseBody 
-  pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs 
-  pretty ELet {..} = parens $ (if _eletState then "var" else "val") 
-       <+> pretty _eletPattern <+> "=" <+> pretty _eletExpr
-  pretty EHandle {..} = parens $ "handle" <+> pretty _ehandleEff <+> braces (pretty _ehandleScope)
-                        <+> "with" <+> bracesList _ehandleBindings
+  pretty ECase {..} = parens $ "case" <+> pretty _ecaseExpr <+> bracesList _ecaseBody
+  pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs
+  pretty ELet {..} =
+    parens $
+      (if _eletState then "var" else "val")
+        <+> pretty _eletPattern
+        <+> "="
+        <+> pretty _eletExpr
+  pretty EHandle {..} =
+    parens $
+      "handle" <+> pretty _ehandleEff <+> braces (pretty _ehandleScope)
+        <+> "with"
+        <+> bracesList _ehandleBindings
   pretty ESeq {..} = vsep $ fmap pretty _eseq
   pretty ETC {..} = pretty _etc
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType
@@ -319,12 +326,13 @@ instance Pretty Expr where
   pretty (EBoundEffTypeVars (B bs e) _) = bracketsList bs <+> pretty e
   pretty (EBoundVars (B bs e) _) = bracesList bs <+> pretty e
 
-data TypeDef = TypeDef
-  { _typeName :: String,
-    _typeArgs :: [(TVar, Maybe Kind)],
-    _typeCons :: [TypeCon],
-    _typeLoc :: Location
-  }
+data TypeDef
+  = TypeDef
+      { _typeName :: String,
+        _typeArgs :: [(TVar, Maybe Kind)],
+        _typeCons :: [TypeCon],
+        _typeLoc :: Location
+      }
   | BoundTypeDef {_tbound :: Bind [TVar] TypeDef, _typeLoc :: Location}
   deriving
     ( -- | BoundTypeDef{_typeBound :: Bind [TVar] TypeDef}
@@ -354,15 +362,16 @@ data TypeCon = TypeCon
 instance Pretty TypeCon where
   pretty TypeCon {..} = pretty _typeConName <+> parensList _typeConArgs
 
-data FuncIntf = FuncIntf
-  { _intfName :: String,
-    _intfBoundVars :: [TVar],
-    _intfBoundEffVars :: [EffVar],
-    _intfArgs :: [Type],
-    _intfEffectType :: EffectType,
-    _intfResultType :: Type,
-    _intfLoc :: Location
-  }
+data FuncIntf
+  = FuncIntf
+      { _intfName :: String,
+        _intfBoundVars :: [TVar],
+        _intfBoundEffVars :: [EffVar],
+        _intfArgs :: [Type],
+        _intfEffectType :: EffectType,
+        _intfResultType :: Type,
+        _intfLoc :: Location
+      }
   | BoundFuncIntf {_boundFuncIntf :: Bind [TVar] FuncIntf, _intfLoc :: Location}
   | BoundEffFuncIntf {_boundEffFuncIntf :: Bind [EffVar] FuncIntf, _intfLoc :: Location}
   deriving
@@ -386,12 +395,13 @@ instance Pretty FuncIntf where
   pretty (BoundFuncIntf (B _ f) _) = pretty f
   pretty (BoundEffFuncIntf (B _ f) _) = pretty f
 
-data EffectDef = EffectDef
-  { _effectName :: String,
-    _effectArgs :: [(TVar, Maybe Kind)],
-    _effectIntfs :: [FuncIntf],
-    _effectLoc :: Location
-  }
+data EffectDef
+  = EffectDef
+      { _effectName :: String,
+        _effectArgs :: [(TVar, Maybe Kind)],
+        _effectIntfs :: [FuncIntf],
+        _effectLoc :: Location
+      }
   | BoundEffectDef {_boundEffDef :: Bind [TVar] EffectDef, _effectLoc :: Location}
   deriving
     ( -- | BoundEffectDef{_effectBound :: Bind [TVar] EffectDef}
@@ -420,26 +430,28 @@ data ImportStmt = ImportStmt
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty ImportStmt where
-  pretty ImportStmt {..} = "import" <+> pretty _importPath <+> 
-     (case _importAlias of
-       Just a -> "as" <+> pretty a
-       Nothing -> emptyDoc)
+  pretty ImportStmt {..} =
+    "import" <+> pretty _importPath
+      <+> ( case _importAlias of
+              Just a -> "as" <+> pretty a
+              Nothing -> emptyDoc
+          )
 
-data FuncDef = FuncDef
-  { _funcName :: String,
-    _funcBoundVars :: [TVar],
-    _funcBoundEffVars :: [EffVar],
-    _funcArgs :: [(String, Type)],
-    _funcEffectType :: EffectType,
-    _funcResultType :: Type,
-    _funcExpr :: Maybe Expr,
-    _funcLoc :: Location
-  }
+data FuncDef
+  = FuncDef
+      { _funcName :: String,
+        _funcBoundVars :: [TVar],
+        _funcBoundEffVars :: [EffVar],
+        _funcArgs :: [(String, Type)],
+        _funcEffectType :: EffectType,
+        _funcResultType :: Type,
+        _funcExpr :: Maybe Expr,
+        _funcLoc :: Location
+      }
   | BoundFuncDef {_boundFuncDef :: Bind [TVar] FuncDef, _funcLoc :: Location}
   | BoundEffFuncDef {_boundEffFuncDef :: Bind [EffVar] FuncDef, _funcLoc :: Location}
   deriving
-    (
-      Eq,
+    ( Eq,
       Ord,
       Show,
       Read,
@@ -450,8 +462,10 @@ data FuncDef = FuncDef
 
 instance Pretty FuncDef where
   pretty FuncDef {..} =
-    "fun" <+> pretty _funcName <+> anglesList _funcBoundVars <+> bracketsList _funcBoundEffVars <+>
-     parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _funcArgs) <+> colon <+> pretty _funcEffectType
+    "fun" <+> pretty _funcName <+> anglesList _funcBoundVars <+> bracketsList _funcBoundEffVars
+      <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _funcArgs)
+      <+> colon
+      <+> pretty _funcEffectType
       <+> pretty _funcResultType
       <+> bracesList [_funcExpr]
   pretty (BoundFuncDef (B _ f) _) = pretty f

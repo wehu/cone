@@ -265,11 +265,16 @@ typeBinary op name assoc =
 typeTerm :: Parser A.Type
 typeTerm =
   ( tann
-      <$> ( ( P.try ((A.TApp <$> ((\n pos -> A.TVar (s2n n) pos) <$> namePath <*> getPos) <*>
-                            angles (P.sepBy1 type_ comma)) P.<?> "application type")
+      <$> ( ( P.try
+                ( ( A.TApp <$> ((\n pos -> A.TVar (s2n n) pos) <$> namePath <*> getPos)
+                      <*> angles (P.sepBy1 type_ comma)
+                  )
+                    P.<?> "application type"
+                )
                 P.<|> P.try
                   ( tfunc
-                      <$> boundTVars <*> boundEffVars
+                      <$> boundTVars
+                      <*> boundEffVars
                       <*> parens (P.sepBy type_ comma) <* arrow
                       <*> resultType P.<?> "function type"
                   )
@@ -322,8 +327,11 @@ effKind =
 effType :: Parser A.EffectType
 effType =
   parens effType
-    P.<|> ( ( (P.try (A.EffApp <$> ((\n pos -> (A.EffVar (s2n n) pos)) <$> namePath <*> getPos)
-                 <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"))
+    P.<|> ( ( ( P.try
+                  ( A.EffApp <$> ((\n pos -> (A.EffVar (s2n n) pos)) <$> namePath <*> getPos)
+                      <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"
+                  )
+              )
                 P.<|> ((brackets (A.EffList <$> (P.sepBy effType comma))) P.<?> "eff type list")
                 P.<|> (A.EffVar <$> (s2n <$> ident) P.<?> "eff var")
             )
@@ -456,10 +464,24 @@ exprBinary op name assoc =
 pat :: Parser A.Pattern
 pat =
   parens pat
-    P.<|> ((P.try (A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos) 
-       <*> (angles (P.sepBy1 type_ comma) P.<|> return []) <*> parens (P.sepBy1 pat comma) <*> getPos)) P.<?> "pattern application")
-    P.<|> ((P.try (A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-       <*> angles (P.sepBy1 type_ comma) <*> return [] <*> getPos)) P.<?> "pattern application")
+    P.<|> ( ( P.try
+                ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+                    <*> (angles (P.sepBy1 type_ comma) P.<|> return [])
+                    <*> parens (P.sepBy1 pat comma)
+                    <*> getPos
+                )
+            )
+              P.<?> "pattern application"
+          )
+    P.<|> ( ( P.try
+                ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+                    <*> angles (P.sepBy1 type_ comma)
+                    <*> return []
+                    <*> getPos
+                )
+            )
+              P.<?> "pattern application"
+          )
     P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
     P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal")
 
@@ -528,7 +550,10 @@ handle :: Parser A.FuncDef
 handle = do
   pos <- getPos
   A.FuncDef <$ kFunc <*> ident <*> boundTVars <*> boundEffVars <*> parens funcArgs
-         <*> return (A.EffList [] pos) <*> return (A.TPrim A.Unit pos) <*> braces (Just <$> exprSeq) <*> getPos
+    <*> return (A.EffList [] pos)
+    <*> return (A.TPrim A.Unit pos)
+    <*> braces (Just <$> exprSeq)
+    <*> getPos
 
 expr :: Parser A.Expr
 expr = PE.buildExpressionParser exprTable term
