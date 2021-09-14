@@ -460,7 +460,7 @@ pat =
        <*> (angles (P.sepBy1 type_ comma) P.<|> return []) <*> parens (P.sepBy1 pat comma) <*> getPos)) P.<?> "pattern application")
     P.<|> ((P.try (A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
        <*> angles (P.sepBy1 type_ comma) <*> return [] <*> getPos)) P.<?> "pattern application")
-    P.<|> (A.PVar <$> ident <*> getPos P.<?> "pattern variable")
+    P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
     P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal")
 
 literal =

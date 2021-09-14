@@ -570,6 +570,7 @@ addPrefixForExprs m' = do
         else if L.length found == 1 then return $ s ++ found
              else throwError $ "found more than one variable for " ++ ppr v ++ ppr found
       ) [] allGlobalVars
+  trace (show allGlobalVars) $ return ()
   return $ removeVarBindings $ substs binds m
 
 -- | Initialize a module

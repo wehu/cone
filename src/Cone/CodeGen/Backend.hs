@@ -333,7 +333,8 @@ class Backend t where
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
   genPatternMatch proxy PVar {..} = do
     prefix <- getEnv currentModuleName
-    return $ parens $ "lambda ____e: [____add_var(____state, \"" <> funcN proxy prefix _pvar <> "\"" <> comma <+> "____e), True][-1]"
+    return $ parens $ "lambda ____e: [____add_var(____state, \"" <> funcN proxy prefix (name2String _pvar)
+     <> "\"" <> comma <+> "____e), True][-1]"
   genPatternMatch proxy PExpr {..} = do
     p <- (\e -> callWithCps e "lambda x : x") <$> genExpr proxy _pExpr
     return $ parens $ "lambda ____e:" <+> p <+> "== ____e"

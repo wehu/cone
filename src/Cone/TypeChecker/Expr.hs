@@ -326,7 +326,7 @@ inferTCExprType t0 t1 = throwError $ "unsupported tc expr: " ++ ppr t0 ++ " and 
 
 -- | Infer a pattern's type
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
-inferPatternType PVar {..} = (inferExprType $ EVar (s2n _pvar) _ploc) >>= typeOfExpr
+inferPatternType PVar {..} = (inferExprType $ EVar (s2n $ name2String _pvar) _ploc) >>= typeOfExpr
 inferPatternType PApp {..} = do
   args <- mapM inferPatternType _pappArgs
   appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
@@ -361,7 +361,7 @@ bindPatternVarTypes isState p e = do
   return eWithType
 
 extracePatternVarTypes :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
-extracePatternVarTypes PVar {..} t = return [(s2n _pvar, t)]
+extracePatternVarTypes PVar {..} t = return [(s2n $ name2String _pvar, t)]
 extracePatternVarTypes PExpr {..} t = return []
 extracePatternVarTypes a@PApp {..} t = underScope $ do
   appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs

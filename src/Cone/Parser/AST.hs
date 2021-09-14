@@ -199,8 +199,10 @@ instance Pretty EffectType where
   pretty EffApp {..} = parens $ pretty _effAppName <+> parensList _effAppArgs
   pretty EffList {..} = bracketsList _effList
 
+type PVar = Name Pattern
+
 data Pattern
-  = PVar {_pvar :: NamePath, _ploc :: Location}
+  = PVar {_pvar :: PVar, _ploc :: Location}
   | PApp
       { _pappName :: Expr,
         _pappTypeArgs :: [Type],
