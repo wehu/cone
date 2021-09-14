@@ -340,6 +340,7 @@ convertFuncImplToFuncs m =
           (m ^.. topStmts . traverse . _ImplFDef . implFunDef)
    in m {_topStmts = tops ++ fs}
 
+-- | Add type bindings
 addTypeBindings :: Module -> Module
 addTypeBindings m =
   over (topStmts . traverse . _EDef) bindEDef $
@@ -378,6 +379,7 @@ addTypeBindings m =
             }
     bindExpr expr = expr
 
+-- | Remove type bindings
 removeTypeBindings :: Module -> Module
 removeTypeBindings m =
   over (topStmts . traverse . _EDef) removeBindingsForEDef $
@@ -459,6 +461,7 @@ removeTypeBindings m =
           _casePattern = removeBindingsForPattern _casePattern
         }
 
+-- | Get real name if there is alias prefix
 getNamePath :: (Has EnvEff sig m) => Module -> String -> m String
 getNamePath m n = do
   let aliases =
@@ -476,6 +479,7 @@ getNamePath m n = do
     Just prefix -> return $ prefix ++ "/" ++ n'
     Nothing -> return n
 
+-- | Add module path for all types
 addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForTypes m' = do
   let m = addTypeBindings m'
@@ -537,6 +541,7 @@ addPrefixForTypes m' = do
       allGlobalEffVars
   return $ removeTypeBindings $ substs bindEffs $ substs bindTs m
 
+-- | Add variable bindings
 addVarBindings :: Module -> Module
 addVarBindings m =
   over (topStmts . traverse . _FDef) bindFDef $
@@ -559,6 +564,7 @@ addVarBindings m =
        in EBoundVars (bind vs c) _eloc
     bindExpr expr = expr
 
+-- | Remove variable bindings
 removeVarBindings :: Module -> Module
 removeVarBindings m =
   over (topStmts . traverse . _FDef . funcExpr . _Just) removeBindingsForExpr $
@@ -610,6 +616,7 @@ removeVarBindings m =
           _casePattern = removeBindingsForPattern _casePattern
         }
 
+-- | Add module path for expersions
 addPrefixForExprs :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForExprs m' = do
   let m = addVarBindings m'
