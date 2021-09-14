@@ -438,7 +438,8 @@ removeTypeBindings m =
     removeBindingsForExpr l@ELet {..} =
       l
         { _eletExpr = removeBindingsForExpr _eletExpr,
-          _eletPattern = removeBindingsForPattern _eletPattern
+          _eletPattern = removeBindingsForPattern _eletPattern,
+          _eletBody = removeBindingsForExpr _eletBody
         }
     removeBindingsForExpr h@EHandle {..} =
       h
@@ -556,9 +557,9 @@ addVarBindings m =
       let boundVars = map s2n $ L.nub $ _elamArgs ^.. traverse . _1
           loc = _eloc
        in l {_elamExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) _elamExpr}
-    bindExpr s@ESeq {..} =
-      let vs = map (s2n . name2String) ((s ^.. fv) :: [PVar])
-       in EBoundVars (bind vs s) _eloc
+    bindExpr l@ELet {..} =
+      let vs = map (s2n . name2String) ((l ^.. fv) :: [PVar])
+       in EBoundVars (bind vs l) _eloc
     bindExpr c@ECase {..} =
       let ps = map (\p -> 
                     let vs = map (s2n . name2String) ((p ^.. fv) :: [PVar])
@@ -595,7 +596,8 @@ removeVarBindings m =
     removeBindingsForExpr l@ELet {..} =
       l
         { _eletExpr = removeBindingsForExpr _eletExpr,
-          _eletPattern = removeBindingsForPattern _eletPattern
+          _eletPattern = removeBindingsForPattern _eletPattern,
+          _eletBody = removeBindingsForExpr _eletBody
         }
     removeBindingsForExpr h@EHandle {..} =
       h

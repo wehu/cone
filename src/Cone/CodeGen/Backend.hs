@@ -240,7 +240,8 @@ class Backend t where
   genExpr proxy ELet {..} = do
     e <- genExpr proxy _eletExpr
     p <- genPatternMatch proxy _eletPattern
-    return $ exprToCps $ callWithCps e ("lambda ____e: ____k(" <> p <> parens "____e" <> ")")
+    b <- genExpr proxy _eletBody
+    return $ exprToCps $ callWithCps (exprToCps $ callWithCps e ("lambda ____e: ____k(" <> p <> parens "____e" <> ")")) ("lambda ____unused: " <> callWithCps b "____k")
   genExpr proxy EAnn {..} = genExpr proxy _eannExpr
   genExpr proxy EApp {..} =
     let fn = name2String $ (removeAnn _eappFunc) ^. evarName

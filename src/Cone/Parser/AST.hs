@@ -268,6 +268,7 @@ data Expr
   | ELet
       { _eletPattern :: Pattern,
         _eletExpr :: Expr,
+        _eletBody :: Expr,
         _eletState :: Bool,
         _eloc :: Location
       }
@@ -315,6 +316,7 @@ instance Pretty Expr where
         <+> pretty _eletPattern
         <+> "="
         <+> pretty _eletExpr
+        <+> braces (pretty _eletBody)
   pretty EHandle {..} =
     parens $
       "handle" <+> pretty _ehandleEff <+> braces (pretty _ehandleScope)

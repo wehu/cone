@@ -150,8 +150,9 @@ inferExprType s@ESeq {..} = do
   return $ annotateExpr s {_eseq = es} t
 inferExprType l@ELet {..} = do
   et <- bindPatternVarTypes _eletState _eletPattern _eletExpr
-  t <- typeOfExpr et >>= inferType
-  return $ annotateExpr l {_eletExpr = et} t
+  bt <- inferExprType _eletBody
+  t <- typeOfExpr bt >>= inferType
+  return $ annotateExpr l {_eletExpr = et, _eletBody=bt} t
 inferExprType c@ECase {..} = do
   -- infer case condition expression's type
   ce <- inferExprType _ecaseExpr
@@ -417,7 +418,9 @@ inferExprEffType l@ELam {..} = do
   return $ EffList [] _eloc
 inferExprEffType ELet {..} = do
   bindPatternVarTypes _eletState _eletPattern _eletExpr
-  inferExprEffType _eletExpr
+  e0 <- inferExprEffType _eletExpr
+  e1 <- inferExprEffType _eletBody
+  mergeEffs e0 e1
 inferExprEffType ECase {..} = do
   ce <- inferExprEffType _ecaseExpr
   cse <- forM _ecaseBody $ \c -> underScope $ do
