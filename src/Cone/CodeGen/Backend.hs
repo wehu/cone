@@ -77,7 +77,7 @@ class Backend t where
         ns = splitOn "/" n
         ps = init ns
         tn = "Cone__" ++ last ns
-     in pretty $ join $ intersperse "." $ {-ps ++ -} [tn]
+     in pretty $ join $ intersperse "." $ ps ++ [tn]
 
   funcN :: t Target -> String -> String -> Doc a
   funcN proxy prefix n' =
@@ -86,14 +86,14 @@ class Backend t where
         ns = splitOn "/" n
         ps = init ns
         fn = "cone__" ++ last ns
-     in pretty $ join $ intersperse "." $ {-ps ++-} [fn]
+     in pretty $ join $ intersperse "." $ ps ++ [fn]
 
   genImport :: (Has EnvEff sig m) => t Target -> ImportStmt -> m (Doc a)
   genImport proxy ImportStmt {..} =
     return $
       ( case _importAlias of
           Just a -> "import" <+> namePath proxy _importPath <+> "as" <+> pretty a
-          Nothing -> "from" <+> namePath proxy _importPath <+> "import *"
+          Nothing -> "import" <+> namePath proxy _importPath
       )
         <+> line
 
@@ -517,7 +517,7 @@ genModule proxy Module {..} = do
   return $
     vsep $
       -- [ "module" <+> namePath proxy _moduleName <+> line]
-      [ "from core.prelude import *",
+      [ "import core.prelude",
         "import copy"
       ]
         ++ imps

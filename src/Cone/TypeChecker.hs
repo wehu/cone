@@ -259,7 +259,7 @@ checkFuncType f = underScope $ do
       eType <- typeOfExpr eWithType
       resultType <- inferType $ _funcResultType f
       checkTypeMatch eType resultType
-      effType <- inferExprEffType e
+      effType <- inferExprEffType eWithType
       let fEff = _funcEffectType f
       restEffs <- removeEff effType fEff
       -- check if all effects are handled or not

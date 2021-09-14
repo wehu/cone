@@ -32,7 +32,7 @@ checkAndCompileImport :: [FilePath] -> String -> String -> CompileEnv ()
 checkAndCompileImport paths i target = do
   userDataDir <- liftIO $ coneUserDataDir
   let fn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) $ targetEx target)
-      initFn = userDataDir </> target </> (addExtension "__init__" (targetEx target))
+      
       d = takeDirectory fn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
   liftIO $ createDirectoryIfMissing True d
@@ -44,13 +44,24 @@ checkAndCompileImport paths i target = do
     then do
       (o, _, _) <- compile' paths coneFn target
       liftIO $ writeFile fn o
-      liftIO $ writeFile initFn ""
+      addInitFile userDataDir i
     else
       return ()
   else do
     (o, _, _) <- compile' paths coneFn target
     liftIO $ writeFile fn o
-    liftIO $ writeFile initFn ""
+    addInitFile userDataDir i
+  where
+    addInitFile userDataDir i = do
+      let ds = splitOn "/" i
+      foldM
+        (\s d -> do
+          let initFn = userDataDir </> joinPath s </> (addExtension "__init__" (targetEx target))
+          liftIO $ writeFile initFn ""
+          return $ s ++ [d])
+        [target]
+        ds
+      return ()
 
 checkAndCompileImports :: [FilePath] -> Module -> String -> CompileEnv ()
 checkAndCompileImports paths m target = do

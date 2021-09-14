@@ -196,7 +196,10 @@ inferExprType h@EHandle {..} = underScope $ do
   checkTypeKind btk
   bs <- forM _ehandleBindings $ \intf -> underScope $ do
     let effN = name2String $ _ehandleEff ^. effAppName . effVar
-        fn = join $ L.intersperse "/" $ (init $ splitOn "/" effN) ++ [(intf ^. funcName)]
+        prefix = join $ L.intersperse "/" $ (init $ splitOn "/" effN) 
+        fn = if prefix == (take (L.length prefix) (intf ^. funcName)) 
+             then (intf ^. funcName)
+             else prefix ++ "/" ++ (intf ^. funcName)
         emptyEff = EffList [] _eloc
         unit = TPrim Unit _eloc
 
@@ -225,7 +228,7 @@ inferExprType h@EHandle {..} = underScope $ do
       intfResT <- typeOfExpr intfE
       checkTypeMatch intfResT resT
 
-      return (handleT', intf{_funcExpr=Just intfE})
+      return (handleT', intf{_funcExpr=Just intfE, _funcName=fn})
 
     -- check scope expr again
     setEnv (Just handleT') $ funcs . at fn
@@ -457,10 +460,9 @@ inferExprEffType EHandle {..} = underScope $ do
           else throwError $ "expected an eff variable or application, but got " ++ ppr _ehandleEff ++ ppr _eloc
   intfs <- getEnv $ effIntfs . at effName
   let effN = name2String $ _ehandleEff ^. effAppName . effVar
-      prefix = (join $ L.intersperse "/" $ (init $ splitOn "/" effN)) ++ "/"
   case intfs of
     Just ifs -> do
-      let intfNames = map (\e -> prefix ++ e ^. funcName) _ehandleBindings
+      let intfNames = map _funcName _ehandleBindings
       if L.sort ifs == L.sort intfNames
         then return ()
         else throwError $ "eff interfaces mismatch: " ++ ppr ifs ++ " vs " ++ ppr intfNames ++ ppr _eloc
