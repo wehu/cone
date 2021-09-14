@@ -190,7 +190,7 @@ inferExprType w@EWhile {..} = do
     return e
   return $ annotateExpr w {_ewhileCond = c, _ewhileBody = b} (TPrim Unit _eloc)
 inferExprType h@EHandle {..} = underScope $ do
-  if (isn't _EffApp _ehandleEff) 
+  if not (isn't _EffList _ehandleEff)
   then throwError $ "expected an eff application, but got " ++ ppr _ehandleEff ++ ppr _eloc
   else return ()
   -- infer handle's effect kind
@@ -202,7 +202,7 @@ inferExprType h@EHandle {..} = underScope $ do
   btk <- inferTypeKind resT
   checkTypeKind btk
   bs <- forM _ehandleBindings $ \intf -> underScope $ do
-    let effN = name2String $ _ehandleEff ^. effAppName . effVar
+    let effN = name2String $ if isn't _EffVar _ehandleEff then _ehandleEff ^. effAppName . effVar else _ehandleEff ^. effVar
         prefix = join $ L.intersperse "/" $ (init $ splitOn "/" effN)
         fn =
           if prefix == (take (L.length prefix) (intf ^. funcName))
