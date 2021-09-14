@@ -158,9 +158,9 @@ inferExprType c@ECase {..} = do
   ct <- typeOfExpr ce
   -- infer all case patterns' types
   ts <- forM _ecaseBody $ \c -> underScope $ do
-    bindPatternVarTypes False (c ^. casePattern) _ecaseExpr
-    pt <- inferPatternType $ c ^. casePattern
-    e <- inferExprType $ c ^. caseExpr
+    bindPatternVarTypes False (_casePattern c) _ecaseExpr
+    pt <- inferPatternType $ _casePattern c
+    e <- inferExprType $ _caseExpr c
     et <- typeOfExpr e
     return (pt, et, c {_caseExpr = e})
   let t : rest = ts
@@ -421,8 +421,8 @@ inferExprEffType ELet {..} = do
 inferExprEffType ECase {..} = do
   ce <- inferExprEffType _ecaseExpr
   cse <- forM _ecaseBody $ \c -> underScope $ do
-    bindPatternVarTypes False (c ^. casePattern) _ecaseExpr
-    inferExprEffType $ c ^. caseExpr
+    bindPatternVarTypes False (_casePattern c) _ecaseExpr
+    inferExprEffType $ _caseExpr c
   let le : _ = cse
   forM_ cse $ checkEffTypeMatch le
   mergeEffs ce le

@@ -560,8 +560,10 @@ addVarBindings m =
       let vs = map (s2n . name2String) ((s ^.. fv) :: [PVar])
        in EBoundVars (bind vs s) _eloc
     bindExpr c@ECase {..} =
-      let vs = map (s2n . name2String) ((c ^.. fv) :: [PVar])
-       in EBoundVars (bind vs c) _eloc
+      let ps = map (\p -> 
+                    let vs = map (s2n . name2String) ((p ^.. fv) :: [PVar])
+                     in BoundCase (bind vs p) (_caseLoc p)) _ecaseBody
+       in c{_ecaseBody=ps}
     bindExpr expr = expr
 
 -- | Remove variable bindings
@@ -610,6 +612,9 @@ removeVarBindings m =
     removeBindingsForPattern p@PExpr {..} =
       p {_pExpr = removeBindingsForExpr _pExpr}
     removeBindingsForPattern p = p
+    removeBindingsForCase BoundCase{..} =
+      let (_, c) = unsafeUnbind _boundCase
+       in removeBindingsForCase c
     removeBindingsForCase c@Case {..} =
       c
         { _caseExpr = removeBindingsForExpr _caseExpr,

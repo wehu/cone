@@ -223,6 +223,7 @@ data Case = Case
     _caseExpr :: Expr,
     _caseLoc :: Location
   }
+  | BoundCase {_boundCase :: Bind [PVar] Case, _caseLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Case where
@@ -232,6 +233,7 @@ instance Pretty Case where
       -- <+> pretty _caseGuard
         <+> "->"
         <+> pretty _caseExpr
+  pretty (BoundCase (B _ c) _) = pretty c
 
 type IndexVar = Name TCExpr
 
