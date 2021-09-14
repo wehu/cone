@@ -190,6 +190,9 @@ inferExprType w@EWhile {..} = do
     return e
   return $ annotateExpr w {_ewhileCond = c, _ewhileBody = b} (TPrim Unit _eloc)
 inferExprType h@EHandle {..} = underScope $ do
+  if (isn't _EffApp _ehandleEff) 
+  then throwError $ "expected an eff application, but got " ++ ppr _ehandleEff ++ ppr _eloc
+  else return ()
   -- infer handle's effect kind
   ek <- inferEffKind _ehandleEff
   checkEffKind ek
