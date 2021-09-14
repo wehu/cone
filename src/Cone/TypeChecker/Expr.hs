@@ -14,8 +14,8 @@ import Control.Effect.State
 import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
-import Data.List.Split
 import qualified Data.List as L
+import Data.List.Split
 import qualified Data.Map as M
 import Data.Maybe
 import Debug.Trace
@@ -35,15 +35,18 @@ typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr 
 selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
 selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
   let fn = name2String fn'
-  catchError (do
-      getFuncType loc fn
-      return e)
-    (\(_::String) -> do
+  catchError
+    ( do
+        getFuncType loc fn
+        return e
+    )
+    ( \(_ :: String) -> do
         let sel = uniqueFuncImplName fn t
         impls <- getEnv funcImpls
         case impls ^. at sel of
           Nothing -> return e
-          Just l -> return $ EAnnMeta l t loc)
+          Just l -> return $ EAnnMeta l t loc
+    )
 selectFuncImpl e = return e
 
 -- | Infer expression's type
@@ -83,8 +86,8 @@ inferExprType a@EApp {..} = do
   -- infer the result type
   (t, ft) <- inferAppResultType appFuncType _eappTypeArgs argTypes
   t <- inferType t
-  appFunc <- selectFuncImpl appFunc{_eannMetaType=bindTypeEffVar [] $ bindType [] ft}
-  return $ annotateExpr a{_eappFunc=appFunc, _eappArgs=args} t
+  appFunc <- selectFuncImpl appFunc {_eannMetaType = bindTypeEffVar [] $ bindType [] ft}
+  return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t
 inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
   setEnv M.empty localState
@@ -117,7 +120,7 @@ inferExprType l@ELam {..} = underScope $ do
         Just e -> return ()
         Nothing -> throwError $ "expected an expression for lambda" ++ ppr _eloc
       -- infer the lambda's expression type
-      lamE <- (inferExprType $ fromJust _elamExpr) 
+      lamE <- (inferExprType $ fromJust _elamExpr)
       eType <- typeOfExpr lamE
       -- infer the lambda's result type
       k <- inferTypeKind _elamResultType
@@ -125,7 +128,7 @@ inferExprType l@ELam {..} = underScope $ do
       checkTypeMatch eType _elamResultType
       -- return the lambda type
       t <- inferType $ bindTypeEffVar evs $ bindType bvs $ TFunc args _elamEffType eType _eloc
-      return $ annotateExpr l{_elamExpr=Just lamE} t
+      return $ annotateExpr l {_elamExpr = Just lamE} t
     _ -> throwError $ "should not be here"
 inferExprType a@EAnn {..} = do
   et <- inferExprType _eannExpr
@@ -134,7 +137,7 @@ inferExprType a@EAnn {..} = do
   checkTypeKind k
   checkTypeMatch t _eannType
   t <- inferType _eannType
-  return $ annotateExpr a{_eannExpr=et} t
+  return $ annotateExpr a {_eannExpr = et} t
 inferExprType l@ELit {..} = do
   k <- inferTypeKind _litType
   checkTypeKind k
@@ -144,14 +147,14 @@ inferExprType s@ESeq {..} = do
   es <- mapM inferExprType _eseq
   ts <- mapM typeOfExpr es
   t <- inferType $ last ts
-  return $ annotateExpr s{_eseq=es} t
+  return $ annotateExpr s {_eseq = es} t
 inferExprType l@ELet {..} = do
   et <- bindPatternVarTypes _eletState _eletPattern _eletExpr
   t <- typeOfExpr et >>= inferType
-  return $ annotateExpr l{_eletExpr=et} t
+  return $ annotateExpr l {_eletExpr = et} t
 inferExprType c@ECase {..} = do
   -- infer case condition expression's type
-  ce <- inferExprType _ecaseExpr 
+  ce <- inferExprType _ecaseExpr
   ct <- typeOfExpr ce
   -- infer all case patterns' types
   ts <- forM _ecaseBody $ \c -> underScope $ do
@@ -159,7 +162,7 @@ inferExprType c@ECase {..} = do
     pt <- inferPatternType $ c ^. casePattern
     e <- inferExprType $ c ^. caseExpr
     et <- typeOfExpr e
-    return (pt, et, c{_caseExpr=e})
+    return (pt, et, c {_caseExpr = e})
   let t : rest = ts
   -- check if condition's type match with case exprs' type or not
   forM_ (rest ^.. traverse . _2) $ \et ->
@@ -169,37 +172,38 @@ inferExprType c@ECase {..} = do
     checkTypeMatch ct e
   -- return case's type
   t <- inferType $ (last ts) ^. _2
-  return $ annotateExpr c{_ecaseExpr=ce, _ecaseBody=ts ^..traverse._3} t
+  return $ annotateExpr c {_ecaseExpr = ce, _ecaseBody = ts ^.. traverse . _3} t
 inferExprType w@EWhile {..} = do
   -- infer while condition's type
-  c <- inferExprType _ewhileCond 
+  c <- inferExprType _ewhileCond
   t <- typeOfExpr c
   if aeq t (TPrim Pred _eloc)
     then return ()
     else throwError $ "while expected a bool as condition, but got " ++ ppr t ++ ppr _eloc
   -- infer while's body type
   b <- underScope $ do
-    e <- inferExprType _ewhileBody 
+    e <- inferExprType _ewhileBody
     t <- typeOfExpr e
     k <- inferTypeKind t
     checkTypeKind k
     return e
-  return $ annotateExpr w{_ewhileCond=c, _ewhileBody=b} (TPrim Unit _eloc)
+  return $ annotateExpr w {_ewhileCond = c, _ewhileBody = b} (TPrim Unit _eloc)
 inferExprType h@EHandle {..} = underScope $ do
   -- infer handle's effect kind
   ek <- inferEffKind _ehandleEff
   checkEffKind ek
   -- infer handle's expression's type
-  scopeE <- inferExprType _ehandleScope 
+  scopeE <- inferExprType _ehandleScope
   resT <- typeOfExpr scopeE
   btk <- inferTypeKind resT
   checkTypeKind btk
   bs <- forM _ehandleBindings $ \intf -> underScope $ do
     let effN = name2String $ _ehandleEff ^. effAppName . effVar
-        prefix = join $ L.intersperse "/" $ (init $ splitOn "/" effN) 
-        fn = if prefix == (take (L.length prefix) (intf ^. funcName)) 
-             then (intf ^. funcName)
-             else prefix ++ "/" ++ (intf ^. funcName)
+        prefix = join $ L.intersperse "/" $ (init $ splitOn "/" effN)
+        fn =
+          if prefix == (take (L.length prefix) (intf ^. funcName))
+            then (intf ^. funcName)
+            else prefix ++ "/" ++ (intf ^. funcName)
         emptyEff = EffList [] _eloc
         unit = TPrim Unit _eloc
 
@@ -228,7 +232,7 @@ inferExprType h@EHandle {..} = underScope $ do
       intfResT <- typeOfExpr intfE
       checkTypeMatch intfResT resT
 
-      return (handleT', intf{_funcExpr=Just intfE, _funcName=fn})
+      return (handleT', intf {_funcExpr = Just intfE, _funcName = fn})
 
     -- check scope expr again
     setEnv (Just handleT') $ funcs . at fn
@@ -238,7 +242,7 @@ inferExprType h@EHandle {..} = underScope $ do
     return intfWithT
 
   t <- inferType resT
-  return $ annotateExpr h{_ehandleScope=scopeE, _ehandleBindings=bs} t
+  return $ annotateExpr h {_ehandleScope = scopeE, _ehandleBindings = bs} t
 inferExprType etc@(ETC e@TCApp {..} _) = do
   let v : e : [] = _tcAppArgs
   if _tcAppName /= "=" && _tcAppName /= "+="
@@ -247,7 +251,7 @@ inferExprType etc@(ETC e@TCApp {..} _) = do
     && _tcAppName /= "/="
     && _tcAppName /= "%="
     then throwError $ "unsupported tc assign operator " ++ _tcAppName ++ ppr _tcloc
-    else do 
+    else do
       t <- inferTCExprType v e >>= inferType
       return $ annotateExpr etc t
 inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
@@ -386,7 +390,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
                   tp@TApp {..} -> do
                     as <- mapM cntr _tappArgs
                     return $ tp {_tappArgs = as}
-                  t@TPrim{..} -> return t
+                  t@TPrim {..} -> return t
                   _ -> newTVar
         )
   argTypes <- mapM cntr (appFuncType ^. tfuncArgs)

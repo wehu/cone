@@ -13,10 +13,10 @@ import Control.Effect.State
 import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
+import qualified Data.ByteString.Lazy.UTF8 as BLU
+import Data.Digest.Pure.MD5
 import qualified Data.List as L
 import qualified Data.Map as M
-import Data.Digest.Pure.MD5
-import qualified Data.ByteString.Lazy.UTF8 as BLU
 import Data.Maybe
 import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
@@ -330,12 +330,14 @@ inferAppResultEffType f@TFunc {} targs args = do
   resEff <- toEffList $ _tfuncEff f
   funcEff <- toEffList $ _tfuncEff f
   let eff = substs bindings resEff
-  effBindings <- (++) <$>
-    (foldM
-      (\s e -> (++) <$> return s <*> e)
-      []
-      [collectEffVarBindingsInType a b | a <- fArgTypes | b <- args])
-    <*> collectEffVarBindings funcEff resEff
+  effBindings <-
+    (++)
+      <$> ( foldM
+              (\s e -> (++) <$> return s <*> e)
+              []
+              [collectEffVarBindingsInType a b | a <- fArgTypes | b <- args]
+          )
+      <*> collectEffVarBindings funcEff resEff
   checkEffVarBindings effBindings
   toEffList $ substs effBindings eff
 inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
@@ -436,21 +438,24 @@ collectVarBindingsInEff a@EffList {} b@EffList {} = do
   let bl = b ^. effList
   let error = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
   if L.length al > L.length bl
-    then if L.length al == (L.length bl) + 1
-      then do is <- isEffVar $ last al
-              if is then return ()
-              else error
-      else error
+    then
+      if L.length al == (L.length bl) + 1
+        then do
+          is <- isEffVar $ last al
+          if is
+            then return ()
+            else error
+        else error
     else return ()
   if L.length al < L.length bl
     then do
       if al == []
-      then error
-      else do
-        is <- isEffVar $ last al
-        if not is
-          then error
-          else return ()
+        then error
+        else do
+          is <- isEffVar $ last al
+          if not is
+            then error
+            else return ()
     else return ()
   foldM
     (\s e -> (++) <$> return s <*> e)
@@ -482,39 +487,42 @@ collectEffVarBindings a@EffList {} b@EffList {} = do
   let bl = b ^. effList
   let error = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
   if L.length al > L.length bl
-    then if L.length al == (L.length bl) + 1
-      then do is <- isEffVar $ last al
-              if is then return ()
-              else error
-      else error
+    then
+      if L.length al == (L.length bl) + 1
+        then do
+          is <- isEffVar $ last al
+          if is
+            then return ()
+            else error
+        else error
     else return ()
   if L.length al < L.length bl
     then
       if al == []
-      then error
-      else do
-        is <- isEffVar $ last al
-        if not is
-          then error
-          else return ()
+        then error
+        else do
+          is <- isEffVar $ last al
+          if not is
+            then error
+            else return ()
     else return ()
   if L.length al < L.length bl
-  then do 
-    bindings <-
-      foldM
-        (\s e -> (++) <$> return s <*> e)
-        []
-        [collectEffVarBindings aarg barg | aarg <- init al | barg <- bl]
-    return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
-  else do
-    bindings <-
-      foldM
-        (\s e -> (++) <$> return s <*> e)
-        []
-        [collectEffVarBindings aarg barg | aarg <- al | barg <- bl]
-    if L.length al == (L.length bl) + 1
-    then return $ bindings ++ [(_effVar (last al), EffList [] (_effLoc b))]
-    else return bindings
+    then do
+      bindings <-
+        foldM
+          (\s e -> (++) <$> return s <*> e)
+          []
+          [collectEffVarBindings aarg barg | aarg <- init al | barg <- bl]
+      return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
+    else do
+      bindings <-
+        foldM
+          (\s e -> (++) <$> return s <*> e)
+          []
+          [collectEffVarBindings aarg barg | aarg <- al | barg <- bl]
+      if L.length al == (L.length bl) + 1
+        then return $ bindings ++ [(_effVar (last al), EffList [] (_effLoc b))]
+        else return bindings
 collectEffVarBindings a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
 collectEffVarBindingsInType :: (Has EnvEff sig m) => Type -> Type -> m [(EffVar, EffectType)]
@@ -588,14 +596,14 @@ checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
 checkVarBindings bindings = do
   foldM_
     ( \b (n, t) -> do
-      if aeq (TVar n $ _tloc t) t
-      then return b
-      else case b ^. at n of
-          Nothing -> return $ at n ?~ t $ b
-          Just ot ->
-            if aeq t ot
-              then return b
-              else throwError $ "type var binding conflict: " ++ ppr t ++ ppr (_tloc t) ++ " vs " ++ ppr ot ++ ppr (_tloc ot)
+        if aeq (TVar n $ _tloc t) t
+          then return b
+          else case b ^. at n of
+            Nothing -> return $ at n ?~ t $ b
+            Just ot ->
+              if aeq t ot
+                then return b
+                else throwError $ "type var binding conflict: " ++ ppr t ++ ppr (_tloc t) ++ " vs " ++ ppr ot ++ ppr (_tloc ot)
     )
     M.empty
     bindings
@@ -605,14 +613,14 @@ checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m ()
 checkEffVarBindings bindings = do
   foldM_
     ( \b (n, t) -> do
-      if aeq (EffVar n $ _effLoc t) t
-      then return b
-      else case b ^. at n of
-          Nothing -> return $ at n ?~ t $ b
-          Just ot ->
-            if aeq t ot
-              then return b
-              else throwError $ "eff type var binding conflict: " ++ ppr t ++ ppr (_effLoc t) ++ " vs " ++ ppr ot ++ ppr (_effLoc ot)
+        if aeq (EffVar n $ _effLoc t) t
+          then return b
+          else case b ^. at n of
+            Nothing -> return $ at n ?~ t $ b
+            Just ot ->
+              if aeq t ot
+                then return b
+                else throwError $ "eff type var binding conflict: " ++ ppr t ++ ppr (_effLoc t) ++ " vs " ++ ppr ot ++ ppr (_effLoc ot)
     )
     M.empty
     bindings
@@ -686,13 +694,15 @@ toTensorType t shape = do
 -- | Test if a type is a subtype of another type
 isSubType :: (Has EnvEff sig m) => Type -> Type -> m Bool
 isSubType s t = do
-  catchError (
-    if aeq s t then return False
-    else do
-      binds <- collectVarBindings t s
-      checkVarBindings binds
-      return True
-    ) (\(e::String) -> return False)
+  catchError
+    ( if aeq s t
+        then return False
+        else do
+          binds <- collectVarBindings t s
+          checkVarBindings binds
+          return True
+    )
+    (\(e :: String) -> return False)
 
 -- | Func implementation selector
 funcImplSelector :: Type -> String
@@ -708,22 +718,30 @@ setFuncImpl prefix impl = do
   let funcD = impl ^. implFunDef
       fn = prefix ++ "/" ++ funcD ^. funcName
       loc = funcD ^. funcLoc
-      t = bindTypeEffVar (funcD ^. funcBoundEffVars) $
-            bindType (funcD ^. funcBoundVars) $
-              TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
+      t =
+        bindTypeEffVar (funcD ^. funcBoundEffVars) $
+          bindType (funcD ^. funcBoundVars) $
+            TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
   ft <- getEnv $ funcs . at fn
   case ft of
     Nothing -> throwError $ "cannot find general function definition: " ++ fn ++ ppr loc
     Just ft -> do
       isSubT <- isSubType t ft
-      if isSubT then return ()
-      else throwError $ "implementation type is not subtype of general type: "
-          ++ ppr t ++ ppr loc ++ " vs " ++ ppr ft ++ ppr (_tloc ft)
+      if isSubT
+        then return ()
+        else
+          throwError $
+            "implementation type is not subtype of general type: "
+              ++ ppr t
+              ++ ppr loc
+              ++ " vs "
+              ++ ppr ft
+              ++ ppr (_tloc ft)
       impls <- getEnv $ funcImpls
       let sel = uniqueFuncImplName fn t
           i = EVar (s2n sel) loc
           oldImpl = impls ^. at sel
-      forMOf _Just oldImpl $ \it -> do 
+      forMOf _Just oldImpl $ \it -> do
         throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
       setEnv (Just i) $ funcImpls . at sel
-  return impl{_implFunDef=funcD{_funcName=fn}}
+  return impl {_implFunDef = funcD {_funcName = fn}}

@@ -6,8 +6,8 @@ module Cone.TypeChecker (Env (..), types, funcs, effs, effIntfs, funcImpls, init
 
 import Cone.Parser.AST
 import Cone.TypeChecker.Env
-import Cone.TypeChecker.Type
 import Cone.TypeChecker.Expr
+import Cone.TypeChecker.Type
 import Control.Carrier.Error.Either
 import Control.Carrier.Fresh.Strict
 import Control.Carrier.State.Strict
@@ -18,8 +18,8 @@ import Control.Effect.Sum
 import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
-import Data.List.Split
 import qualified Data.List as L
+import Data.List.Split
 import qualified Data.Map as M
 import Data.Maybe
 import Debug.Trace
@@ -38,13 +38,13 @@ initTypeDef prefix t = do
   -- record the kind of type
   let k = Just $ typeKindOf t
   setEnv k $ types . at tn
-  return t{_typeName = tn}
+  return t {_typeName = tn}
   where
     typeKindOf t =
       let loc = _typeLoc t
           args = t ^. typeArgs
           star = KStar loc
-       in if args == []  -- if no arguments, it is just a simple enum
+       in if args == [] -- if no arguments, it is just a simple enum
             then star
             else KFunc (args ^.. traverse . _2 . non star) star loc
 
@@ -56,30 +56,34 @@ initTypeDefs m = mapMOf (topStmts . traverse . _TDef) (initTypeDef $ m ^. module
 initTypeConDef :: (Has EnvEff sig m) => String -> TypeDef -> m TypeDef
 initTypeConDef prefix t = do
   globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
-  mapMOf (typeCons . traverse) (\c -> do
-    let cn = prefix ++ "/" ++ c ^. typeConName
-        cargs = c ^. typeConArgs
-        pos = c ^. typeConLoc
-        -- find all free type variables
-        targs = (t ^.. typeArgs . traverse . _1) ++ globalTypes
-        b = bind targs cargs
-        fvars = (b ^.. fv) :: [TVar]
-    if fvars /= [] -- if there are any free type variable, it failed
-      then
-        throwError $
-          "type constructor's type variables should "
-            ++ "only exists in type arguments: "
-            ++ ppr fvars
-      else return ()
-    -- check if the type constructor exists or not
-    ot <- getEnv $ funcs . at cn
-    forMOf _Just ot $ \t ->
-      throwError $
-        "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t ++ ppr pos
-    -- record the constructor's type
-    let bt = tconType c t
-    setEnv (Just bt) $ funcs . at cn
-    return c{_typeConName=cn}) t
+  mapMOf
+    (typeCons . traverse)
+    ( \c -> do
+        let cn = prefix ++ "/" ++ c ^. typeConName
+            cargs = c ^. typeConArgs
+            pos = c ^. typeConLoc
+            -- find all free type variables
+            targs = (t ^.. typeArgs . traverse . _1) ++ globalTypes
+            b = bind targs cargs
+            fvars = (b ^.. fv) :: [TVar]
+        if fvars /= [] -- if there are any free type variable, it failed
+          then
+            throwError $
+              "type constructor's type variables should "
+                ++ "only exists in type arguments: "
+                ++ ppr fvars
+          else return ()
+        -- check if the type constructor exists or not
+        ot <- getEnv $ funcs . at cn
+        forMOf _Just ot $ \t ->
+          throwError $
+            "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t ++ ppr pos
+        -- record the constructor's type
+        let bt = tconType c t
+        setEnv (Just bt) $ funcs . at cn
+        return c {_typeConName = cn}
+    )
+    t
   where
     tconType c t =
       let targs = c ^. typeConArgs
@@ -127,7 +131,7 @@ initEffTypeDef prefix e = do
     throwError $
       "redefine an effect: " ++ en ++ " vs " ++ ppr oe ++ (ppr $ _effectLoc e)
   setEnv (Just $ effKind e) $ effs . at en
-  return e{_effectName=en}
+  return e {_effectName = en}
   where
     effKind e =
       let loc = _effectLoc e
@@ -140,7 +144,7 @@ initEffTypeDef prefix e = do
 
 -- | Initialize all effect type difinitions
 initEffTypeDefs :: (Has EnvEff sig m) => Module -> m Module
-initEffTypeDefs m = mapMOf (topStmts . traverse . _EDef) (initEffTypeDef $ m ^. moduleName) m 
+initEffTypeDefs m = mapMOf (topStmts . traverse . _EDef) (initEffTypeDef $ m ^. moduleName) m
 
 -- | Initialize effect inteface definitions
 initEffIntfDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
@@ -164,7 +168,8 @@ initEffIntfDef prefix e = do
             throwError $
               "eff interfaces's type variables should "
                 ++ "only exists in eff type arguments: "
-                ++ ppr fvars ++ ppr pos
+                ++ ppr fvars
+                ++ ppr pos
           else return ()
         -- check if inteface exists or not
         ot <- getEnv $ funcs . at intfn
@@ -173,18 +178,19 @@ initEffIntfDef prefix e = do
             "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t ++ ppr pos
         -- get effect type
         let eff = _intfEffectType i
-        effs <- 
+        effs <-
           mergeEffs eff $
-            if e ^. effectArgs  == []
-            then EffVar (s2n $ e ^. effectName) pos
-            else EffApp
+            if e ^. effectArgs == []
+              then EffVar (s2n $ e ^. effectName) pos
+              else
+                EffApp
                   (EffVar (s2n $ e ^. effectName) pos)
                   (map (\v -> TVar v pos) $ e ^.. effectArgs . traverse . _1)
                   pos
         --  add effect type to interface's effect list
         let bt = intfType i e effs
         setEnv (Just bt) $ funcs . at intfn
-        return i{_intfName=intfn}
+        return i {_intfName = intfn}
   mapMOf (effectIntfs . traverse) f e
   where
     intfType i e eff =
@@ -195,7 +201,8 @@ initEffIntfDef prefix e = do
           pos = i ^. intfLoc
           tvars = e ^.. effectArgs . traverse . _1
           evars = i ^. intfBoundEffVars
-       in bindTypeEffVar evars $ bindType tvars $
+       in bindTypeEffVar evars $
+            bindType tvars $
               bindType bvars $ TFunc iargs eff iresult pos
 
 -- | Initialize all effect interfaces
@@ -234,7 +241,7 @@ initFuncDef prefix f = do
   forMOf _Just oft $ \oft ->
     throwError $ "function redefine: " ++ fn ++ ppr pos
   setEnv (Just ft) $ funcs . at fn
-  return f{_funcName=fn}
+  return f {_funcName = fn}
 
 -- | Initialize all function definitons
 initFuncDefs :: (Has EnvEff sig m) => Module -> m Module
@@ -265,8 +272,9 @@ checkFuncType f = underScope $ do
       let fEff = _funcEffectType f
       restEffs <- removeEff effType fEff
       -- check if all effects are handled or not
-      if aeq restEffs (EffList [] pos) then return f{_funcExpr=Just eWithType}
-      else throwError $ "func result effs mismatch: " ++ ppr effType ++ " vs " ++ ppr fEff ++ ppr pos
+      if aeq restEffs (EffList [] pos)
+        then return f {_funcExpr = Just eWithType}
+        else throwError $ "func result effs mismatch: " ++ ppr effType ++ " vs " ++ ppr fEff ++ ppr pos
     Nothing -> return f
 
 -- | Check a function definiton
@@ -306,35 +314,38 @@ checkImplFuncDefs m = mapMOf (topStmts . traverse . _ImplFDef) checkImplFuncDef 
 -- | Remove meta annotation
 removeAnn :: Expr -> Expr
 removeAnn e = transform remove e
-  where remove (EAnnMeta e _ _) = e
-        remove (EAnn e _ _) = e
-        remove e = e
+  where
+    remove (EAnnMeta e _ _) = e
+    remove (EAnn e _ _) = e
+    remove e = e
 
 -- | Remove all meta annotations
 removeAnns :: Module -> Module
 removeAnns m =
   over (topStmts . traverse . _FDef . funcExpr . _Just) removeAnn $
-  over (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnn m
+    over (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeAnn m
 
 -- | Rename func implementation names
 convertFuncImplToFuncs :: Module -> Module
 convertFuncImplToFuncs m =
-  let tops = (m ^..  topStmts . traverse)
-      fs = map
-            (\f ->
+  let tops = (m ^.. topStmts . traverse)
+      fs =
+        map
+          ( \f ->
               let fn = f ^. funcName
                   ft = funcDefType f
                   n = uniqueFuncImplName fn ft
-               in FDef f{_funcName = n})
-               (m ^.. topStmts . traverse . _ImplFDef . implFunDef)
-    in m{_topStmts=tops ++ fs}
+               in FDef f {_funcName = n}
+          )
+          (m ^.. topStmts . traverse . _ImplFDef . implFunDef)
+   in m {_topStmts = tops ++ fs}
 
 addTypeBindings :: Module -> Module
 addTypeBindings m =
-  over (topStmts . traverse. _EDef) bindEDef $
-  over (topStmts . traverse. _TDef) bindTDef $
-  over (topStmts . traverse. _FDef) bindFDef $
-  over (topStmts . traverse. _ImplFDef . implFunDef) bindFDef m
+  over (topStmts . traverse . _EDef) bindEDef $
+    over (topStmts . traverse . _TDef) bindTDef $
+      over (topStmts . traverse . _FDef) bindFDef $
+        over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef m
   where
     bindEDef edef =
       let boundVars = L.nub $ edef ^.. effectArgs . traverse . _1
@@ -344,34 +355,40 @@ addTypeBindings m =
       let boundVars = L.nub $ bvs ++ intf ^. intfBoundVars
           boundEffVars = L.nub $ intf ^. intfBoundEffVars
           loc = intf ^. intfLoc
-        in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind boundVars intf) loc) loc
-    bindTDef tdef = 
-     let boundVars = L.nub $ tdef ^.. typeArgs . traverse . _1
-      in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef) 
-    bindFDef fdef = 
-     let boundVars = L.nub $ fdef ^. funcBoundVars
-         boundEffVars = L.nub $ fdef ^. funcBoundEffVars
-         loc = fdef ^. funcLoc
-         expr = fmap (transform bindExpr) $ _funcExpr fdef
-      in BoundEffFuncDef (bind boundEffVars $ BoundFuncDef (bind boundVars fdef{_funcExpr = expr}) loc) loc
-    bindExpr l@ELam{..} = 
+       in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind boundVars intf) loc) loc
+    bindTDef tdef =
+      let boundVars = L.nub $ tdef ^.. typeArgs . traverse . _1
+       in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef)
+    bindFDef fdef =
+      let boundVars = L.nub $ fdef ^. funcBoundVars
+          boundEffVars = L.nub $ fdef ^. funcBoundEffVars
+          loc = fdef ^. funcLoc
+          expr = fmap (transform bindExpr) $ _funcExpr fdef
+       in BoundEffFuncDef (bind boundEffVars $ BoundFuncDef (bind boundVars fdef {_funcExpr = expr}) loc) loc
+    bindExpr l@ELam {..} =
       let boundVars = L.nub $ _elamBoundVars
           boundEffVars = L.nub $ _elamBoundEffVars
-       in l{_elamExpr = fmap (\e -> 
-             EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind boundVars e) _eloc) _eloc) _elamExpr}
+       in l
+            { _elamExpr =
+                fmap
+                  ( \e ->
+                      EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind boundVars e) _eloc) _eloc
+                  )
+                  _elamExpr
+            }
     bindExpr expr = expr
 
 removeTypeBindings :: Module -> Module
 removeTypeBindings m =
-  over (topStmts . traverse. _EDef) removeBindingsForEDef $
-  over (topStmts . traverse. _TDef) removeBindingsForTDef $
-  over (topStmts . traverse. _FDef) removeBindingsForFDef $
-  over (topStmts . traverse. _ImplFDef . implFunDef) removeBindingsForFDef m
+  over (topStmts . traverse . _EDef) removeBindingsForEDef $
+    over (topStmts . traverse . _TDef) removeBindingsForTDef $
+      over (topStmts . traverse . _FDef) removeBindingsForFDef $
+        over (topStmts . traverse . _ImplFDef . implFunDef) removeBindingsForFDef m
   where
     removeBindingsForEDef (BoundEffectDef b _) =
       let (_, e) = unsafeUnbind b
        in removeBindingsForEDef e
-    removeBindingsForEDef e = 
+    removeBindingsForEDef e =
       over (effectIntfs . traverse) removeBindingsForIntf e
     removeBindingsForIntf (BoundFuncIntf b _) =
       let (_, i) = unsafeUnbind b
@@ -384,15 +401,15 @@ removeTypeBindings m =
       let (_, t) = unsafeUnbind b
        in removeBindingsForTDef t
     removeBindingsForTDef t = t
-    removeBindingsForFDef (BoundFuncDef b _) = 
+    removeBindingsForFDef (BoundFuncDef b _) =
       let (_, f) = unsafeUnbind b
        in removeBindingsForFDef f
-    removeBindingsForFDef (BoundEffFuncDef b _) = 
+    removeBindingsForFDef (BoundEffFuncDef b _) =
       let (_, f) = unsafeUnbind b
        in removeBindingsForFDef f
-    removeBindingsForFDef fdef = 
-     let expr = fmap removeBindingsForExpr $ _funcExpr fdef
-      in fdef{_funcExpr = expr}
+    removeBindingsForFDef fdef =
+      let expr = fmap removeBindingsForExpr $ _funcExpr fdef
+       in fdef {_funcExpr = expr}
     removeBindingsForExpr (EBoundTypeVars b _) =
       let (_, e) = unsafeUnbind b
        in removeBindingsForExpr e
@@ -400,44 +417,59 @@ removeTypeBindings m =
       let (_, e) = unsafeUnbind b
        in removeBindingsForExpr e
     removeBindingsForExpr l@ELam {..} =
-      l{_elamExpr = fmap removeBindingsForExpr _elamExpr}
+      l {_elamExpr = fmap removeBindingsForExpr _elamExpr}
     removeBindingsForExpr e@ECase {..} =
-      e{_ecaseExpr=removeBindingsForExpr _ecaseExpr,
-        _ecaseBody=over traverse removeBindingsForCase _ecaseBody}
+      e
+        { _ecaseExpr = removeBindingsForExpr _ecaseExpr,
+          _ecaseBody = over traverse removeBindingsForCase _ecaseBody
+        }
     removeBindingsForExpr w@EWhile {..} =
-      w{_ewhileCond=removeBindingsForExpr _ewhileCond,
-        _ewhileBody=removeBindingsForExpr _ewhileBody}
+      w
+        { _ewhileCond = removeBindingsForExpr _ewhileCond,
+          _ewhileBody = removeBindingsForExpr _ewhileBody
+        }
     removeBindingsForExpr a@EApp {..} =
-      a{_eappFunc=removeBindingsForExpr _eappFunc,
-        _eappArgs=over traverse removeBindingsForExpr _eappArgs}
+      a
+        { _eappFunc = removeBindingsForExpr _eappFunc,
+          _eappArgs = over traverse removeBindingsForExpr _eappArgs
+        }
     removeBindingsForExpr l@ELet {..} =
-      l{_eletExpr=removeBindingsForExpr _eletExpr,
-        _eletPattern=removeBindingsForPattern _eletPattern}
+      l
+        { _eletExpr = removeBindingsForExpr _eletExpr,
+          _eletPattern = removeBindingsForPattern _eletPattern
+        }
     removeBindingsForExpr h@EHandle {..} =
-      h{_ehandleScope=removeBindingsForExpr _ehandleScope,
-        _ehandleBindings=map removeBindingsForFDef _ehandleBindings}
+      h
+        { _ehandleScope = removeBindingsForExpr _ehandleScope,
+          _ehandleBindings = map removeBindingsForFDef _ehandleBindings
+        }
     removeBindingsForExpr s@ESeq {..} =
-      s{_eseq=map removeBindingsForExpr _eseq}
+      s {_eseq = map removeBindingsForExpr _eseq}
     removeBindingsForExpr e@EAnn {..} =
-      e{_eannExpr=removeBindingsForExpr _eannExpr}
+      e {_eannExpr = removeBindingsForExpr _eannExpr}
     removeBindingsForExpr e@EAnnMeta {..} =
-      e{_eannMetaExpr=removeBindingsForExpr _eannMetaExpr}
+      e {_eannMetaExpr = removeBindingsForExpr _eannMetaExpr}
     removeBindingsForExpr expr = expr
-    removeBindingsForPattern p@PExpr{..} = 
-      p{_pExpr=removeBindingsForExpr _pExpr}
+    removeBindingsForPattern p@PExpr {..} =
+      p {_pExpr = removeBindingsForExpr _pExpr}
     removeBindingsForPattern p = p
-    removeBindingsForCase c@Case{..} =
-      c{_caseExpr=removeBindingsForExpr _caseExpr,
-        _casePattern=removeBindingsForPattern _casePattern}
+    removeBindingsForCase c@Case {..} =
+      c
+        { _caseExpr = removeBindingsForExpr _caseExpr,
+          _casePattern = removeBindingsForPattern _casePattern
+        }
 
 getNamePath :: (Has EnvEff sig m) => Module -> String -> m String
 getNamePath m n = do
-  let aliases = 
-        L.foldl' (\s i -> 
-          case i ^. importAlias of
-            Just alias -> s & at alias ?~ i ^. importPath
-            Nothing -> s
-          ) M.empty $ m ^. imports
+  let aliases =
+        L.foldl'
+          ( \s i ->
+              case i ^. importAlias of
+                Just alias -> s & at alias ?~ i ^. importPath
+                Nothing -> s
+          )
+          M.empty
+          $ m ^. imports
       n' = last $ splitOn "/" n
       ns = join $ L.intersperse "/" $ L.init $ splitOn "/" n
   case aliases ^. at ns of
@@ -449,156 +481,194 @@ addPrefixForTypes m' = do
   let m = addTypeBindings m'
   let allGlobalVars = L.nub (m ^.. fv) :: [TVar]
       allGlobalEffVars = L.nub (m ^.. fv) :: [EffVar]
-      prefixes = "" :
-                 (m ^. moduleName ++ "/") :
-                 "core/prelude/" : 
-                 (map (\i -> i ^.importPath ++ "/") $ m ^. imports)
+      prefixes =
+        "" :
+        (m ^. moduleName ++ "/") :
+        "core/prelude/" :
+        (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
       loc = m ^. moduleLoc
   ts <- getEnv types
   es <- getEnv effs
-  bindTs <- foldM (
-      \s v -> do
-        vn' <- getNamePath m (name2String v)
-        found <- foldM (
-                    \f p -> do
-                      let vn = p ++ vn'
-                      case ts ^. at vn of
-                        Just _ -> return $ f ++ [(v, TVar (s2n vn) loc)]
-                        Nothing -> return f
-                    )
-                    []
-                    prefixes
-        if found == [] then return s
-        else if L.length found == 1 then return $ s ++ found
-             else throwError $ "found more than one type for " ++ ppr v ++ ppr found
-      ) [] allGlobalVars
-  bindEffs <- foldM (
-      \s v -> do
-        vn' <- getNamePath m (name2String v)
-        found <- foldM (
-                    \f p -> do
-                      let vn = p ++ vn'
-                      case es ^. at vn of
-                        Just _ -> return $ f ++ [(v, EffVar (s2n vn) loc)]
-                        Nothing -> return f
-                    )
-                    []
-                    prefixes
-        if found == [] then return s
-        else if L.length found == 1 then return $ s ++ found
-             else throwError $ "found more than one eff type for " ++ ppr v ++ ppr found
-      ) [] allGlobalEffVars
+  bindTs <-
+    foldM
+      ( \s v -> do
+          vn' <- getNamePath m (name2String v)
+          found <-
+            foldM
+              ( \f p -> do
+                  let vn = p ++ vn'
+                  case ts ^. at vn of
+                    Just _ -> return $ f ++ [(v, TVar (s2n vn) loc)]
+                    Nothing -> return f
+              )
+              []
+              prefixes
+          if found == []
+            then return s
+            else
+              if L.length found == 1
+                then return $ s ++ found
+                else throwError $ "found more than one type for " ++ ppr v ++ ppr found
+      )
+      []
+      allGlobalVars
+  bindEffs <-
+    foldM
+      ( \s v -> do
+          vn' <- getNamePath m (name2String v)
+          found <-
+            foldM
+              ( \f p -> do
+                  let vn = p ++ vn'
+                  case es ^. at vn of
+                    Just _ -> return $ f ++ [(v, EffVar (s2n vn) loc)]
+                    Nothing -> return f
+              )
+              []
+              prefixes
+          if found == []
+            then return s
+            else
+              if L.length found == 1
+                then return $ s ++ found
+                else throwError $ "found more than one eff type for " ++ ppr v ++ ppr found
+      )
+      []
+      allGlobalEffVars
   return $ removeTypeBindings $ substs bindEffs $ substs bindTs m
 
 addVarBindings :: Module -> Module
 addVarBindings m =
-  over (topStmts . traverse. _FDef) bindFDef $
-  over (topStmts . traverse. _ImplFDef . implFunDef) bindFDef m
+  over (topStmts . traverse . _FDef) bindFDef $
+    over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef m
   where
-    bindFDef fdef = 
-     let boundVars = map s2n $ L.nub $ fdef ^.. funcArgs . traverse . _1
-         loc = fdef ^. funcLoc
-         expr = fmap (transform bindExpr) $ _funcExpr fdef
-      in fdef{_funcExpr=fmap (\e -> EBoundVars (bind boundVars e) loc) expr}
-    bindExpr l@ELam{..} = 
+    bindFDef fdef =
+      let boundVars = map s2n $ L.nub $ fdef ^.. funcArgs . traverse . _1
+          loc = fdef ^. funcLoc
+          expr = fmap (transform bindExpr) $ _funcExpr fdef
+       in fdef {_funcExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) expr}
+    bindExpr l@ELam {..} =
       let boundVars = map s2n $ L.nub $ _elamArgs ^.. traverse . _1
           loc = _eloc
-       in l{_elamExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) _elamExpr}
-    bindExpr s@ESeq{..} =
+       in l {_elamExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) _elamExpr}
+    bindExpr s@ESeq {..} =
       let vs = map (s2n . name2String) ((s ^.. fv) :: [PVar])
        in EBoundVars (bind vs s) _eloc
-    bindExpr c@ECase{..} =
+    bindExpr c@ECase {..} =
       let vs = map (s2n . name2String) ((c ^.. fv) :: [PVar])
        in EBoundVars (bind vs c) _eloc
     bindExpr expr = expr
 
 removeVarBindings :: Module -> Module
 removeVarBindings m =
-  over (topStmts . traverse. _FDef . funcExpr . _Just) removeBindingsForExpr $
-  over (topStmts . traverse. _ImplFDef . implFunDef . funcExpr . _Just) removeBindingsForExpr m
+  over (topStmts . traverse . _FDef . funcExpr . _Just) removeBindingsForExpr $
+    over (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeBindingsForExpr m
   where
     removeBindingsForExpr (EBoundVars b _) =
       let (_, e) = unsafeUnbind b
        in removeBindingsForExpr e
     removeBindingsForExpr l@ELam {..} =
-      l{_elamExpr = fmap removeBindingsForExpr _elamExpr}
+      l {_elamExpr = fmap removeBindingsForExpr _elamExpr}
     removeBindingsForExpr e@ECase {..} =
-      e{_ecaseExpr=removeBindingsForExpr _ecaseExpr,
-        _ecaseBody=over traverse removeBindingsForCase _ecaseBody}
+      e
+        { _ecaseExpr = removeBindingsForExpr _ecaseExpr,
+          _ecaseBody = over traverse removeBindingsForCase _ecaseBody
+        }
     removeBindingsForExpr w@EWhile {..} =
-      w{_ewhileCond=removeBindingsForExpr _ewhileCond,
-        _ewhileBody=removeBindingsForExpr _ewhileBody}
+      w
+        { _ewhileCond = removeBindingsForExpr _ewhileCond,
+          _ewhileBody = removeBindingsForExpr _ewhileBody
+        }
     removeBindingsForExpr a@EApp {..} =
-      a{_eappFunc=removeBindingsForExpr _eappFunc,
-        _eappArgs=over traverse removeBindingsForExpr _eappArgs}
+      a
+        { _eappFunc = removeBindingsForExpr _eappFunc,
+          _eappArgs = over traverse removeBindingsForExpr _eappArgs
+        }
     removeBindingsForExpr l@ELet {..} =
-      l{_eletExpr=removeBindingsForExpr _eletExpr,
-        _eletPattern=removeBindingsForPattern _eletPattern}
+      l
+        { _eletExpr = removeBindingsForExpr _eletExpr,
+          _eletPattern = removeBindingsForPattern _eletPattern
+        }
     removeBindingsForExpr h@EHandle {..} =
-      h{_ehandleScope=removeBindingsForExpr _ehandleScope,
-        _ehandleBindings=over (traverse . funcExpr . _Just) removeBindingsForExpr _ehandleBindings}
+      h
+        { _ehandleScope = removeBindingsForExpr _ehandleScope,
+          _ehandleBindings = over (traverse . funcExpr . _Just) removeBindingsForExpr _ehandleBindings
+        }
     removeBindingsForExpr s@ESeq {..} =
-      s{_eseq=map removeBindingsForExpr _eseq}
+      s {_eseq = map removeBindingsForExpr _eseq}
     removeBindingsForExpr e@EAnn {..} =
-      e{_eannExpr=removeBindingsForExpr _eannExpr}
+      e {_eannExpr = removeBindingsForExpr _eannExpr}
     removeBindingsForExpr e@EAnnMeta {..} =
-      e{_eannMetaExpr=removeBindingsForExpr _eannMetaExpr}
+      e {_eannMetaExpr = removeBindingsForExpr _eannMetaExpr}
     removeBindingsForExpr expr = expr
-    removeBindingsForPattern p@PExpr{..} = 
-      p{_pExpr=removeBindingsForExpr _pExpr}
+    removeBindingsForPattern p@PExpr {..} =
+      p {_pExpr = removeBindingsForExpr _pExpr}
     removeBindingsForPattern p = p
-    removeBindingsForCase c@Case{..} =
-      c{_caseExpr=removeBindingsForExpr _caseExpr,
-        _casePattern=removeBindingsForPattern _casePattern}
+    removeBindingsForCase c@Case {..} =
+      c
+        { _caseExpr = removeBindingsForExpr _caseExpr,
+          _casePattern = removeBindingsForPattern _casePattern
+        }
 
 addPrefixForExprs :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForExprs m' = do
   let m = addVarBindings m'
   let allGlobalVars = L.nub (m ^.. fv) :: [EVar]
-      prefixes = "":
-                 (m ^. moduleName ++ "/") :
-                 "core/prelude/" : 
-                 (map (\i -> i ^.importPath ++ "/") $ m ^. imports)
+      prefixes =
+        "" :
+        (m ^. moduleName ++ "/") :
+        "core/prelude/" :
+        (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
       loc = m ^. moduleLoc
   fs <- getEnv funcs
-  binds <- foldM (
-      \s v -> do
-        vn' <- getNamePath m (name2String v)
-        found <- foldM (
-                    \f p -> do
-                      let vn = p ++ vn'
-                      case fs ^. at vn of
-                        Just _ -> return $ f ++ [(v, EVar (s2n vn) loc)]
-                        Nothing -> return f
-                    )
-                    []
-                    prefixes
-        if found == [] then return s
-        else if L.length found == 1 then return $ s ++ found
-             else throwError $ "found more than one variable for " ++ ppr v ++ ppr found
-      ) [] allGlobalVars
+  binds <-
+    foldM
+      ( \s v -> do
+          vn' <- getNamePath m (name2String v)
+          found <-
+            foldM
+              ( \f p -> do
+                  let vn = p ++ vn'
+                  case fs ^. at vn of
+                    Just _ -> return $ f ++ [(v, EVar (s2n vn) loc)]
+                    Nothing -> return f
+              )
+              []
+              prefixes
+          if found == []
+            then return s
+            else
+              if L.length found == 1
+                then return $ s ++ found
+                else throwError $ "found more than one variable for " ++ ppr v ++ ppr found
+      )
+      []
+      allGlobalVars
   return $ removeVarBindings $ substs binds m
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
-initModule m env id = run . runError . (runState env) . runFresh id $ do
-  (return $ convertFuncImplToFuncs m)
-  >>= initTypeDefs
-  >>= initEffTypeDefs
-  >>= addPrefixForTypes
-  >>= initTypeConDefs
-  >>= initEffIntfDefs
-  >>= initFuncDefs
-  >>= initImplFuncDefs
-  >>= addPrefixForExprs
+initModule m env id =
+  run . runError . (runState env) . runFresh id $
+    do
+      (return $ convertFuncImplToFuncs m)
+      >>= initTypeDefs
+      >>= initEffTypeDefs
+      >>= addPrefixForTypes
+      >>= initTypeConDefs
+      >>= initEffIntfDefs
+      >>= initFuncDefs
+      >>= initImplFuncDefs
+      >>= addPrefixForExprs
 
 -- | Type checking a module
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
-checkType m env id = run . runError . (runState env) . runFresh id $ do
-  return m 
-  >>= checkTypeConDefs
-  >>= checkEffIntfDefs
-  >>= checkFuncDefs
-  >>= checkImplFuncDefs
-  >>= (return . removeAnns)
-  
+checkType m env id =
+  run . runError . (runState env) . runFresh id $
+    do
+      return m
+      >>= checkTypeConDefs
+      >>= checkEffIntfDefs
+      >>= checkFuncDefs
+      >>= checkImplFuncDefs
+      >>= (return . removeAnns)

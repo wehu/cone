@@ -61,11 +61,11 @@ loadModule' cache paths f' loaded = do
                 Left e -> throwError e
                 Right (env, (id, m)) -> do
                   case checkType m env id of
-                   Left err -> throwError err
-                   Right (env, (id, m)) -> do
-                     let res = (env, id, m, imports)
-                     liftIO $ modifyIORef cache $ at f ?~ res
-                     return res
+                    Left err -> throwError err
+                    Right (env, (id, m)) -> do
+                      let res = (env, id, m, imports)
+                      liftIO $ modifyIORef cache $ at f ?~ res
+                      return res
 
 coneEx = "cone"
 
@@ -113,7 +113,7 @@ importModules cache paths m loaded = do
                 imports ++ is
               )
     )
-    (initialEnv, 0, m, preloadedModules ++ (is ^.. traverse. importPath))
+    (initialEnv, 0, m, preloadedModules ++ (is ^.. traverse . importPath))
     ((map (\f -> ImportStmt f Nothing [] (m ^. moduleLoc)) preloadedModules) ++ is)
 
 -- | Load a module
@@ -121,4 +121,3 @@ loadModule :: [FilePath] -> FilePath -> LoadEnv
 loadModule paths f = do
   cache <- liftIO $ newIORef M.empty
   loadModule' cache paths f M.empty
-
