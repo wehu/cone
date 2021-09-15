@@ -51,6 +51,7 @@ library
     , base >=4.7 && <5
     , conduit
     , containers
+    , data-default-class
     , directory
     , filepath
     , fused-effects
@@ -80,6 +81,7 @@ executable cone-exe
     , conduit
     , cone
     , containers
+    , data-default-class
     , directory
     , filepath
     , fused-effects
@@ -112,6 +114,7 @@ test-suite cone-test
     , conduit
     , cone
     , containers
+    , data-default-class
     , directory
     , filepath
     , fused-effects

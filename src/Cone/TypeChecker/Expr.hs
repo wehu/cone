@@ -15,11 +15,14 @@ import Control.Effect.State
 import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
+import Control.Monad.ST
 import qualified Data.List as L
 import Data.List.Split
 import qualified Data.Map as M
 import qualified ToySolver.Data.LA as LA
 import ToySolver.Arith.Simplex
+import Data.Default.Class (def)
+import GHC.Real
 import Conduit
 import Data.Maybe
 import Debug.Trace
@@ -265,19 +268,19 @@ inferExprType etc@(ETC e@TCApp {..} _) = do
 inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
-collectIndexVariables :: (PrimMonad m) => GenericSolverM m Rational -> TCExpr -> m (M.Map IndexVar Var)
+collectIndexVariables :: GenericSolverM (ST s) Rational -> TCExpr -> ST s (M.Map IndexVar Var)
 collectIndexVariables solver tc = do
   let vars = (tc ^.. fv) :: [IndexVar]
   M.fromList <$> mapM (\v -> (v,) <$> newVar solver) vars
 
-addIndexAtom :: (PrimMonad m) => GenericSolverM m Rational -> M.Map IndexVar Var -> IndexExpr -> Int -> m ()
+addIndexAtom :: GenericSolverM (ST s) Rational -> M.Map IndexVar Var -> IndexExpr -> Int -> ST s ()
 addIndexAtom solver varBindings indexE upper = do
   let ts = map (\(i, x) -> (fromIntegral i, fromJust $ varBindings ^. at x) ) $ indexE ^. indexExpr
   assertAtom solver (LA.fromTerms ts .<. LA.constant (fromIntegral upper))
   assertAtom solver (LA.fromTerms ts .>=. LA.constant 0)
 
 -- | Collect the tensor informations
-collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(String, Type)])
+collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(IndexExpr, Int)])
 collectTCExprTypeInfo TCAccess {..} = do
   v <- getFuncType _tcloc _tcVarName
   (t, shape) <- extractTensorInfo v
@@ -288,7 +291,7 @@ collectTCExprTypeInfo TCAccess {..} = do
           ++ " vs "
           ++ ppr _tcIndices
           ++ ppr _tcloc
-    else return (t, [(name2String $ (_indexExpr n) !! 0 ^. _2, d) | n <- _tcIndices | d <- shape])
+    else return (t, [(n, d) | n <- _tcIndices | d <- shape])
 collectTCExprTypeInfo TCApp {..} = do
   args' <- mapM collectTCExprTypeInfo _tcAppArgs
   let arg : args = args'
@@ -316,32 +319,39 @@ collectTCExprTypeInfo TCVar {..} = do
   t <- getFuncType _tcloc _tcVarName
   return (t, [])
 
+inferTCExprIndices :: (Has EnvEff sig m) => [IndexVar] -> TCExpr -> m (Type, [(IndexVar, Int)])
+inferTCExprIndices is tc = do
+  (t, indices) <- collectTCExprTypeInfo tc
+  let resolveIndex =
+       (\index -> do
+         solver <- newSolver
+         varBindings <- collectIndexVariables solver tc
+         forM_ indices $ \(i, u) ->
+           addIndexAtom solver varBindings i u
+         forM_ is $ \i -> do
+           assertAtom solver (LA.var (fromJust $ varBindings ^.at i) .>=. LA.constant 0)
+         let objs = map (\i -> (-1, fromJust $ varBindings ^.at i)) [index]
+         setObj solver (LA.fromTerms objs)
+         o <- optimize solver def
+         getValue solver $ objs !! 0 ^. _2)
+  (t,) <$> mapM (\i -> do
+         let d = runST (resolveIndex i)
+         return (i, fromInteger $ numerator d)) is
+
 -- | Infer a tensor comprehensive expression's type
 inferTCExprType :: (Has EnvEff sig m) => TCExpr -> TCExpr -> m Type
 inferTCExprType a@TCAccess {..} e = do
-  info <- collectTCExprTypeInfo e
-  let (t, indices) = info
-  dims <-
-    foldM
-      ( \s (n, t) -> do
-          case s ^. at n of
-            Just ot ->
-              if aeq ot t
-                then return $ s & at n ?~ t
-                else throwError $ "dim size conflict for " ++ n ++ " : " ++ ppr ot ++ ppr (_tloc ot) ++ " vs " ++ ppr t ++ ppr (_tloc t)
-            Nothing -> return $ s & at n ?~ t
-      )
-      M.empty
-      indices
+  let outputIndices = map (\i -> (i ^. indexExpr) !! 0 ^. _2) _tcIndices
+  (t, dims) <- inferTCExprIndices outputIndices e
   shape <-
     foldM
       ( \s i -> do
-          case dims ^. at (name2String $ (_indexExpr i) !! 0 ^. _2) of
+          case (M.fromList dims) ^. at i of
             Just t -> return $ s ++ [t]
             Nothing -> throwError $ "cannot index var: " ++ ppr i ++ ppr _tcloc
       )
       []
-      _tcIndices
+      outputIndices
   tt <- toTensorType t shape
   setFuncType _tcVarName tt
   return tt

@@ -41,6 +41,7 @@ dependencies:
 - utf8-string
 - toysolver
 - conduit
+- data-default-class
 
 library:
   source-dirs: src

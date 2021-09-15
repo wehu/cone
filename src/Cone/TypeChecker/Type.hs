@@ -641,7 +641,7 @@ funcDefType f =
    in bft
 
 -- | Extract a tensor type's shape
-extractTensorShape :: (Has EnvEff sig m) => Type -> m [Type]
+extractTensorShape :: (Has EnvEff sig m) => Type -> m [Int]
 extractTensorShape t@TApp {..} = do
   if name2String (_tvar _tappName) /= "core/prelude/____pair"
     then throwError $ "expected a pair type, but got " ++ ppr t ++ ppr _tloc
@@ -651,14 +651,20 @@ extractTensorShape t@TApp {..} = do
         else do
           let a : b : [] = _tappArgs
           case a of
-            TNum {..} -> case b of
-              TNum {..} -> return [a, b]
-              _ -> ((:) a) <$> extractTensorShape b
+            TNum {..} -> 
+              case _tnum of
+                Just a ->
+                  case b of
+                    TNum {..} -> case _tnum of 
+                      Just b -> return [a, b]
+                      Nothing -> throwError $ "expected a static shape, but got " ++ ppr t ++ ppr _tloc
+                    _ -> ((:) a) <$> extractTensorShape b
+                Nothing -> throwError $ "expected a static shape, but got " ++ ppr t ++ ppr _tloc
             _ -> throwError $ "expected a tnum type, but got " ++ ppr t ++ ppr _tloc
 extractTensorShape t = throwError $ "expected a pair type, but got " ++ ppr t ++ ppr (_tloc t)
 
 -- | Extract a tensor type's information
-extractTensorInfo :: (Has EnvEff sig m) => Type -> m (Type, [Type])
+extractTensorInfo :: (Has EnvEff sig m) => Type -> m (Type, [Int])
 extractTensorInfo t@TApp {..} =
   if name2String (_tvar _tappName) /= "core/prelude/tensor"
     then throwError $ "expected a tensor type, but got " ++ ppr t ++ ppr _tloc
@@ -673,22 +679,18 @@ extractTensorInfo t@TApp {..} =
 extractTensorInfo t = throwError $ "expected a tensor type, but got " ++ ppr t ++ ppr (_tloc t)
 
 -- | Construct a number list type based on pair types
-toTensorShape :: (Has EnvEff sig m) => [Type] -> m Type
-toTensorShape t@(d0 : d1 : []) = do
-  if isn't _TNum d0 || isn't _TNum d1
-    then throwError $ "expected tnum, but got " ++ ppr d0 ++ ppr (_tloc d0) ++ " or " ++ ppr d1 ++ ppr (_tloc d1)
-    else return $ TApp (TVar (s2n "core/prelude/____pair") (_tloc d0)) [d0, d1] (_tloc d0)
-toTensorShape t@(d0 : ds) = do
-  ds' <- toTensorShape ds
-  if isn't _TNum d0
-    then throwError $ "expected tnum, but got " ++ ppr d0 ++ ppr (_tloc d0)
-    else return $ TApp (TVar (s2n "core/prelude/____pair") (_tloc d0)) [d0, ds'] (_tloc d0)
-toTensorShape ds = throwError $ "unsupported dims " ++ ppr ds
+toTensorShape :: (Has EnvEff sig m) => Location -> [Int] -> m Type
+toTensorShape loc t@(d0 : d1 : []) = do
+  return $ TApp (TVar (s2n "core/prelude/____pair") loc) [TNum (Just d0) loc, TNum (Just d1) loc] loc
+toTensorShape loc t@(d0 : ds) = do
+  ds' <- toTensorShape loc ds
+  return $ TApp (TVar (s2n "core/prelude/____pair") loc) [TNum (Just d0) loc, ds'] loc
+toTensorShape loc ds = throwError $ "unsupported dims " ++ ppr ds ++ ppr loc
 
 -- | Construct a tensor type based on number list type
-toTensorType :: (Has EnvEff sig m) => Type -> [Type] -> m Type
+toTensorType :: (Has EnvEff sig m) => Type -> [Int] -> m Type
 toTensorType t shape = do
-  shape' <- toTensorShape shape
+  shape' <- toTensorShape (_tloc t) shape
   return $ TApp (TVar (s2n "core/prelude/tensor") (_tloc t)) [t, shape'] (_tloc t)
 
 -- | Test if a type is a subtype of another type
