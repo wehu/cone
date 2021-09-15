@@ -235,7 +235,16 @@ instance Pretty Case where
         <+> pretty _caseExpr
   pretty (BoundCase (B _ c) _) = pretty c
 
-type IndexVar = Name TCExpr
+type IndexVar = Name IndexExpr
+
+data IndexExpr 
+  = IndexVar {_indexVar :: IndexVar, _indexLoc :: Location}
+  | IndexApp {_indexAppName :: NamePath, _indexAppArgs :: [IndexExpr], _indexLoc :: Location}
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty IndexExpr where
+  pretty IndexApp {..} = parens $ pretty _indexAppName <+> parensList _indexAppArgs
+  pretty IndexVar {..} = pretty _indexVar
 
 data TCExpr
   = TCAccess {_tcVarName :: NamePath, _tcIndices :: [IndexVar], _tcloc :: Location}
@@ -668,6 +677,23 @@ instance Subst Expr Pattern
 makeLenses ''Pattern
 
 makePrisms ''Pattern
+
+-------------------------------
+
+instance Plated IndexExpr where
+  plate = uniplate
+
+instance Alpha IndexExpr
+
+instance Subst Type IndexExpr
+
+instance Subst EffectType IndexExpr
+
+instance Subst Expr IndexExpr
+
+makeLenses ''IndexExpr
+
+makePrisms ''IndexExpr
 
 -------------------------------
 

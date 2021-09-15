@@ -39,6 +39,7 @@ dependencies:
 - process
 - pureMD5
 - utf8-string
+- toysolver
 
 library:
   source-dirs: src
