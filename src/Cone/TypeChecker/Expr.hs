@@ -333,7 +333,7 @@ inferTCExprIndices is tc = do
                       ++ map (\i -> LA.var (fromJust $ varBindings ^.at i) .>=. LA.constant 0) is
              initBounds = IM.fromList [(i, I.whole) | i <- M.elems varBindings]
              iVars = IS.fromList $ M.elems varBindings
-             bounds = inferBounds initBounds atoms iVars 100
+             bounds = inferBounds initBounds atoms iVars 1000
          return [fromJust $ IM.lookup (fromJust $ varBindings ^.at i) bounds | i <- is]
       ds = runST resolveIndex
   (t,) <$> mapM (\(i, d) -> return (i, fromInteger $ floor $ I.width d)) [(i, d) | i <- is | d <- ds]
