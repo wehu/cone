@@ -273,7 +273,7 @@ collectTCExprTypeInfo TCAccess {..} = do
           ++ " vs "
           ++ ppr _tcIndices
           ++ ppr _tcloc
-    else return (t, [(name2String n, d) | n <- _tcIndices | d <- shape])
+    else return (t, [(name2String $ _indexVar n, d) | n <- _tcIndices | d <- shape])
 collectTCExprTypeInfo TCApp {..} = do
   args' <- mapM collectTCExprTypeInfo _tcAppArgs
   let arg : args = args'
@@ -321,7 +321,7 @@ inferTCExprType a@TCAccess {..} e = do
   shape <-
     foldM
       ( \s i -> do
-          case dims ^. at (name2String i) of
+          case dims ^. at (name2String $ _indexVar i) of
             Just t -> return $ s ++ [t]
             Nothing -> throwError $ "cannot index var: " ++ ppr i ++ ppr _tcloc
       )

@@ -247,7 +247,7 @@ instance Pretty IndexExpr where
   pretty IndexVar {..} = pretty _indexVar
 
 data TCExpr
-  = TCAccess {_tcVarName :: NamePath, _tcIndices :: [IndexVar], _tcloc :: Location}
+  = TCAccess {_tcVarName :: NamePath, _tcIndices :: [IndexExpr], _tcloc :: Location}
   | TCApp {_tcAppName :: NamePath, _tcAppArgs :: [TCExpr], _tcloc :: Location}
   | TCVar {_tcVarName :: NamePath, _tcloc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)

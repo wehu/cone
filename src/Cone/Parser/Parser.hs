@@ -357,6 +357,42 @@ exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr) <*> getP
 
 funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
 
+indexExprTable =
+  [ [indexExprPrefix sub "-"],
+    [ indexExprBinary star "*" PE.AssocLeft,
+      indexExprBinary div_ "/" PE.AssocLeft,
+      indexExprBinary mod_ "%" PE.AssocLeft
+    ],
+    [ indexExprBinary add "+" PE.AssocLeft,
+      indexExprBinary sub "/" PE.AssocLeft
+    ]
+  ]
+
+indexExprPrefix op name = PE.Prefix $ do
+  op
+  pos <- getPos
+  return $ \i -> A.IndexApp name [i] pos
+
+indexExprBinary op name assoc =
+  PE.Infix
+    ( do
+        op
+        pos <- getPos
+        return $
+          \a b ->
+            let args = a : b : []
+             in A.IndexApp name args pos
+    )
+    assoc
+
+indexTerm =
+  parens indexExpr
+    P.<|> P.try (A.IndexApp <$> ident <*> parens (P.sepBy1 indexExpr comma) <*> getPos P.<?> "index application")
+    P.<|> (A.IndexVar <$> (s2n <$> ident) <*> getPos P.<?> "index variable")
+
+indexExpr :: Parser A.IndexExpr
+indexExpr = PE.buildExpressionParser indexExprTable indexTerm 
+
 tcExprTable =
   [ [tcExprPrefix sub "-"],
     [ tcExprBinary star "*" PE.AssocLeft,
@@ -397,13 +433,13 @@ tcExprBinary op name assoc =
     )
     assoc
 
-tcAccess = A.TCAccess <$> ident <*> brackets (P.sepBy1 (s2n <$> ident) comma) <*> getPos P.<?> "tc access"
+tcAccess = A.TCAccess <$> ident <*> brackets (P.sepBy1 indexExpr comma) <*> getPos P.<?> "tc access"
 
 tcTerm =
   parens tc
     P.<|> P.try tcAccess
     P.<|> P.try (A.TCApp <$> ident <*> parens (P.sepBy1 tc comma) <*> getPos P.<?> "tc application")
-    P.<|> (A.TCVar <$> ident <*> getPos P.<?> "variable")
+    P.<|> (A.TCVar <$> ident <*> getPos P.<?> "tc variable")
 
 tc :: Parser A.TCExpr
 tc =
