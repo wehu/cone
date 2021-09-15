@@ -276,8 +276,8 @@ collectIndexVariables solver tc = do
 addIndexAtom :: GenericSolverM (ST s) Rational -> M.Map IndexVar Var -> IndexExpr -> Int -> ST s ()
 addIndexAtom solver varBindings indexE upper = do
   let ts = map (\(i, x) -> (fromIntegral i, fromJust $ varBindings ^. at x) ) $ indexE ^. indexExpr
-  assertAtom solver (LA.fromTerms ts .<=. LA.constant (fromIntegral upper))
-  assertAtom solver (LA.fromTerms ts .>=. LA.constant 1)
+  assertAtom solver (LA.fromTerms ts .<=. LA.constant (fromIntegral upper-1))
+  assertAtom solver (LA.fromTerms ts .>=. LA.constant 0)
 
 -- | Collect the tensor informations
 collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(IndexExpr, Int)])
@@ -329,14 +329,14 @@ inferTCExprIndices is tc = do
          forM_ indices $ \(i, u) ->
            addIndexAtom solver varBindings i u
          forM_ is $ \i -> do
-           assertAtom solver (LA.var (fromJust $ varBindings ^.at i) .>=. LA.constant 1)
+           assertAtom solver (LA.var (fromJust $ varBindings ^.at i) .>=. LA.constant 0)
          let objs = map (\i -> (-1, fromJust $ varBindings ^.at i)) [index]
          setObj solver (LA.fromTerms objs)
          o <- optimize solver def
          getValue solver $ objs !! 0 ^. _2)
   (t,) <$> mapM (\i -> do
          let d = runST (resolveIndex i)
-         return (i, fromInteger $ ceiling d)) is
+         return (i, fromInteger $ floor d)) is
 
 -- | Infer a tensor comprehensive expression's type
 inferTCExprType :: (Has EnvEff sig m) => TCExpr -> TCExpr -> m Type
@@ -347,7 +347,7 @@ inferTCExprType a@TCAccess {..} e = do
     foldM
       ( \s i -> do
           case (M.fromList dims) ^. at i of
-            Just t -> return $ s ++ [t]
+            Just t -> return $ s ++ [t+1]
             Nothing -> throwError $ "cannot index var: " ++ ppr i ++ ppr _tcloc
       )
       []
