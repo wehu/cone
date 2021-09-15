@@ -54,6 +54,7 @@ library
     , data-default-class
     , data-interval
     , directory
+    , extended-reals
     , filepath
     , fused-effects
     , lens
@@ -85,6 +86,7 @@ executable cone-exe
     , data-default-class
     , data-interval
     , directory
+    , extended-reals
     , filepath
     , fused-effects
     , lens
@@ -119,6 +121,7 @@ test-suite cone-test
     , data-default-class
     , data-interval
     , directory
+    , extended-reals
     , filepath
     , fused-effects
     , hspec

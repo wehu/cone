@@ -43,6 +43,7 @@ dependencies:
 - conduit
 - data-default-class
 - data-interval
+- extended-reals
 
 library:
   source-dirs: src

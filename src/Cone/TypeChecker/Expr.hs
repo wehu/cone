@@ -26,6 +26,7 @@ import qualified Data.Interval as I
 import Data.Default.Class (def)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
+import qualified Data.ExtendedReal as E
 import GHC.Real
 import Conduit
 import Data.Maybe
@@ -272,16 +273,6 @@ inferExprType etc@(ETC e@TCApp {..} _) = do
 inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
-collectIndexVariables :: GenericSolverM (ST s) Rational -> TCExpr -> ST s (M.Map IndexVar Var)
-collectIndexVariables solver tc = do
-  let vars = (tc ^.. fv) :: [IndexVar]
-  M.fromList <$> mapM (\v -> (v,) <$> if name2String v == "*" then return LA.unitVar else newVar solver) vars
-
-addIndexAtom :: M.Map IndexVar Var -> IndexExpr -> Int -> [Atom Rational]
-addIndexAtom varBindings indexE upper = 
-  let ts = map (\(i, x) -> (fromIntegral i, fromJust $ varBindings ^. at x) ) $ indexE ^. indexExpr
-   in [LA.fromTerms ts .<=. LA.constant (fromIntegral upper-1), LA.fromTerms ts .>=. LA.constant 0]
-
 -- | Collect the tensor informations
 collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(IndexExpr, Int)])
 collectTCExprTypeInfo TCAccess {..} = do
@@ -322,6 +313,16 @@ collectTCExprTypeInfo TCVar {..} = do
   t <- getFuncType _tcloc _tcVarName
   return (t, [])
 
+collectIndexVariables :: GenericSolverM (ST s) Rational -> TCExpr -> ST s (M.Map IndexVar Var)
+collectIndexVariables solver tc = do
+  let vars = (tc ^.. fv) :: [IndexVar]
+  M.fromList <$> mapM (\v -> (v,) <$> if name2String v == "*" then return LA.unitVar else newVar solver) vars
+
+addIndexAtom :: M.Map IndexVar Var -> IndexExpr -> Int -> [Atom Rational]
+addIndexAtom varBindings indexE upper = 
+  let ts = map (\(i, x) -> (fromIntegral i, fromJust $ varBindings ^. at x) ) $ indexE ^. indexExpr
+   in [LA.fromTerms ts .<=. LA.constant (fromIntegral upper-1), LA.fromTerms ts .>=. LA.constant 0]
+
 inferTCExprIndices :: (Has EnvEff sig m) => [IndexVar] -> TCExpr -> m (Type, [(IndexVar, Int)])
 inferTCExprIndices is tc = do
   (t, indices) <- collectTCExprTypeInfo tc
@@ -334,9 +335,15 @@ inferTCExprIndices is tc = do
              initBounds = IM.fromList [(i, I.whole) | i <- M.elems varBindings]
              iVars = IS.fromList $ M.elems varBindings
              bounds = inferBounds initBounds atoms iVars 1000
-         return [fromJust $ IM.lookup (fromJust $ varBindings ^.at i) bounds | i <- is]
+         return [(i, fromJust $ IM.lookup (fromJust $ varBindings ^.at i) bounds) | i <- is]
       ds = runST resolveIndex
-  (t,) <$> mapM (\(i, d) -> return (i, fromInteger $ floor $ I.width d)) [(i, d) | i <- is | d <- ds]
+  forM_ ds $ \(i, d) ->
+    if E.isInfinite $ I.lowerBound d
+      then throwError $ "lowerbound is infinite: " ++ ppr i
+      else if E.isInfinite $ I.upperBound d
+        then throwError $ "upperbound is infinite: " ++ ppr i
+        else return ()
+  (t,) <$> mapM (\(i, d) -> return (i, fromInteger $ floor $ 1 + I.width d)) ds
 
 -- | Infer a tensor comprehensive expression's type
 inferTCExprType :: (Has EnvEff sig m) => TCExpr -> TCExpr -> m Type
@@ -347,7 +354,7 @@ inferTCExprType a@TCAccess {..} e = do
     foldM
       ( \s i -> do
           case (M.fromList dims) ^. at i of
-            Just t -> return $ s ++ [t+1]
+            Just d -> return $ s ++ [d]
             Nothing -> throwError $ "cannot index var: " ++ ppr i ++ ppr _tcloc
       )
       []
