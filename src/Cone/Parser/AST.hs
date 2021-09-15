@@ -238,13 +238,11 @@ instance Pretty Case where
 type IndexVar = Name IndexExpr
 
 data IndexExpr 
-  = IndexVar {_indexVar :: IndexVar, _indexLoc :: Location}
-  | IndexApp {_indexAppName :: NamePath, _indexAppArgs :: [IndexExpr], _indexLoc :: Location}
+  = IndexExpr {_indexExpr :: [(Int, IndexVar)], _indexLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty IndexExpr where
-  pretty IndexApp {..} = parens $ pretty _indexAppName <+> parensList _indexAppArgs
-  pretty IndexVar {..} = pretty _indexVar
+  pretty IndexExpr {..} = parensList _indexExpr
 
 data TCExpr
   = TCAccess {_tcVarName :: NamePath, _tcIndices :: [IndexExpr], _tcloc :: Location}
