@@ -42,6 +42,7 @@ dependencies:
 - toysolver
 - conduit
 - data-default-class
+- data-interval
 
 library:
   source-dirs: src

@@ -21,7 +21,11 @@ import Data.List.Split
 import qualified Data.Map as M
 import qualified ToySolver.Data.LA as LA
 import ToySolver.Arith.Simplex
+import ToySolver.Arith.BoundsInference
+import qualified Data.Interval as I
 import Data.Default.Class (def)
+import qualified Data.IntMap.Strict as IM
+import qualified Data.IntSet as IS
 import GHC.Real
 import Conduit
 import Data.Maybe
@@ -273,11 +277,10 @@ collectIndexVariables solver tc = do
   let vars = (tc ^.. fv) :: [IndexVar]
   M.fromList <$> mapM (\v -> (v,) <$> newVar solver) vars
 
-addIndexAtom :: GenericSolverM (ST s) Rational -> M.Map IndexVar Var -> IndexExpr -> Int -> ST s ()
-addIndexAtom solver varBindings indexE upper = do
+addIndexAtom :: M.Map IndexVar Var -> IndexExpr -> Int -> [Atom Rational]
+addIndexAtom varBindings indexE upper = 
   let ts = map (\(i, x) -> (fromIntegral i, fromJust $ varBindings ^. at x) ) $ indexE ^. indexExpr
-  assertAtom solver (LA.fromTerms ts .<=. LA.constant (fromIntegral upper-1))
-  assertAtom solver (LA.fromTerms ts .>=. LA.constant 0)
+   in [LA.fromTerms ts .<=. LA.constant (fromIntegral upper-1), LA.fromTerms ts .>=. LA.constant 0]
 
 -- | Collect the tensor informations
 collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(IndexExpr, Int)])
@@ -323,20 +326,17 @@ inferTCExprIndices :: (Has EnvEff sig m) => [IndexVar] -> TCExpr -> m (Type, [(I
 inferTCExprIndices is tc = do
   (t, indices) <- collectTCExprTypeInfo tc
   let resolveIndex =
-       (\index -> do
+       do
          solver <- newSolver
          varBindings <- collectIndexVariables solver tc
-         forM_ indices $ \(i, u) ->
-           addIndexAtom solver varBindings i u
-         forM_ is $ \i -> do
-           assertAtom solver (LA.var (fromJust $ varBindings ^.at i) .>=. LA.constant 0)
-         let objs = map (\i -> (-1, fromJust $ varBindings ^.at i)) [index]
-         setObj solver (LA.fromTerms objs)
-         o <- optimize solver def
-         getValue solver $ objs !! 0 ^. _2)
-  (t,) <$> mapM (\i -> do
-         let d = runST (resolveIndex i)
-         return (i, fromInteger $ floor d)) is
+         let atoms = join (map (\(i, u) -> addIndexAtom varBindings i u) indices)
+                      ++ map (\i -> LA.var (fromJust $ varBindings ^.at i) .>=. LA.constant 0) is
+             initBounds = IM.fromList [(i, I.whole) | i <- M.elems varBindings]
+             iVars = IS.fromList $ M.elems varBindings
+             bounds = trace (show (IM.keys initBounds) ++ show iVars) inferBounds initBounds atoms iVars 100
+         return [fromJust $ IM.lookup (fromJust $ varBindings ^.at i) bounds | i <- is]
+      ds = runST resolveIndex
+  (t,) <$> mapM (\(i, d) -> return (i, fromInteger $ floor $ I.width d)) [(i, d) | i <- is | d <- ds]
 
 -- | Infer a tensor comprehensive expression's type
 inferTCExprType :: (Has EnvEff sig m) => TCExpr -> TCExpr -> m Type

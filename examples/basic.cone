@@ -45,10 +45,10 @@ fun main() : io unit {
      a + 1
   })
 
-  val t0 = tensor<i32, [2, 2]>
-  val t1 = tensor<i32, [2, 4]>
+  val t0 = tensor<i32, [4, 4]>
+  val t1 = tensor<i32, [4, 8]>
 
-  [t2[i, j] += t0[i, k] * t1[k, i+2*j]] : tensor<i32, [2, 2]>
+  [t2[i, j] += t0[i+r, j+s] * t1[r, s]] : tensor<i32, [2, 2]>
 
   print(handle nodet<i32> {
      handle state<i32> {
