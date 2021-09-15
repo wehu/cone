@@ -2,6 +2,7 @@
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 module Cone.TypeChecker.Expr where
 
@@ -17,6 +18,9 @@ import Control.Monad
 import qualified Data.List as L
 import Data.List.Split
 import qualified Data.Map as M
+import qualified ToySolver.Data.LA as LA
+import ToySolver.Arith.Simplex
+import Conduit
 import Data.Maybe
 import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
@@ -260,6 +264,17 @@ inferExprType etc@(ETC e@TCApp {..} _) = do
       return $ annotateExpr etc t
 inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
+
+collectIndexVariables :: (PrimMonad m) => GenericSolverM m Rational -> TCExpr -> m (M.Map IndexVar Var)
+collectIndexVariables solver tc = do
+  let vars = (tc ^.. fv) :: [IndexVar]
+  M.fromList <$> mapM (\v -> (v,) <$> newVar solver) vars
+
+addIndexAtom :: (PrimMonad m) => GenericSolverM m Rational -> M.Map IndexVar Var -> IndexExpr -> Int -> m ()
+addIndexAtom solver varBindings indexE upper = do
+  let ts = map (\(i, x) -> (fromIntegral i, fromJust $ varBindings ^. at x) ) $ indexE ^. indexExpr
+  assertAtom solver (LA.fromTerms ts .<. LA.constant (fromIntegral upper))
+  assertAtom solver (LA.fromTerms ts .>=. LA.constant 0)
 
 -- | Collect the tensor informations
 collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(String, Type)])

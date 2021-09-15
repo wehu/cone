@@ -49,6 +49,7 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , conduit
     , containers
     , directory
     , filepath
@@ -76,6 +77,7 @@ executable cone-exe
   build-depends:
       array
     , base >=4.7 && <5
+    , conduit
     , cone
     , containers
     , directory
@@ -107,6 +109,7 @@ test-suite cone-test
   build-depends:
       array
     , base >=4.7 && <5
+    , conduit
     , cone
     , containers
     , directory
