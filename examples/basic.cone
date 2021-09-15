@@ -48,7 +48,7 @@ fun main() : io unit {
   val t0 = tensor<i32, [4, 4]>
   val t1 = tensor<i32, [2, 2]>
 
-  [t2[i, j] += t0[i+r+1, j+s+2] * t1[r, s]] : tensor<i32, [2, 2]>
+  //[t2[i, j] += t0[i+3*r+1, j+s*2+2] * t1[r, s]] : tensor<i32, [2, 2]>
 
   print(handle nodet<i32> {
      handle state<i32> {

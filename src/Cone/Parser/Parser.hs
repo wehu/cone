@@ -359,7 +359,9 @@ funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
 
 indexExpr :: Parser A.IndexExpr
 indexExpr = A.IndexExpr <$> (P.sepBy1 
-                 (P.try ((,) <$> ((read <$> literalInt <* star) P.<|> return (1::Int)) <*> (s2n <$> ident))
+                 (P.try ((,) <$> (read <$> literalInt) <* star <*> (s2n <$> ident))
+                  P.<|> P.try ((\a b -> (b,a)) <$> (s2n <$> ident) <* star <*> (read <$> literalInt))
+                  P.<|> P.try ((,) <$> return 1 <*> (s2n <$> ident))
                   P.<|> ((,) <$> (read <$> literalInt) <*> return (s2n "*"))) add) <*> getPos P.<?> "index expr"
 
 tcExprTable =
