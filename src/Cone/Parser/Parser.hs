@@ -433,18 +433,17 @@ tcExprBinary op name assoc =
     )
     assoc
 
-tcAccess = A.TCAccess <$> ident <*> brackets (P.sepBy1 indexExpr comma) <*> getPos P.<?> "tc access"
-
 tcTerm =
   parens tc
-    P.<|> P.try tcAccess
+    P.<|> P.try (A.TCAccess <$> ident <*> brackets (P.sepBy1 indexExpr comma) <*> getPos P.<?> "tc access")
     P.<|> P.try (A.TCApp <$> ident <*> parens (P.sepBy1 tc comma) <*> getPos P.<?> "tc application")
     P.<|> (A.TCVar <$> ident <*> getPos P.<?> "tc variable")
 
 tc :: Parser A.TCExpr
 tc =
   brackets $
-    f <$> tcAccess
+    f <$> (A.TCAccess <$> ident <*> brackets 
+             (P.sepBy1 (A.IndexVar <$> (s2n <$> ident) <*> getPos) comma) <*> getPos P.<?> "tc access")
       <*> ( assign_ *> return "="
               P.<|> addAssign *> return "+="
               P.<|> subAssign *> return "-="
