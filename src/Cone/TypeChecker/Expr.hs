@@ -275,7 +275,7 @@ inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 collectIndexVariables :: GenericSolverM (ST s) Rational -> TCExpr -> ST s (M.Map IndexVar Var)
 collectIndexVariables solver tc = do
   let vars = (tc ^.. fv) :: [IndexVar]
-  M.fromList <$> mapM (\v -> (v,) <$> newVar solver) vars
+  M.fromList <$> mapM (\v -> (v,) <$> if name2String v == "*" then return LA.unitVar else newVar solver) vars
 
 addIndexAtom :: M.Map IndexVar Var -> IndexExpr -> Int -> [Atom Rational]
 addIndexAtom varBindings indexE upper = 

@@ -358,8 +358,9 @@ exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr) <*> getP
 funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
 
 indexExpr :: Parser A.IndexExpr
-indexExpr = A.IndexExpr <$> (P.sepBy1 ((,) <$> 
-     ((read <$> literalInt <* star) P.<|> return (1::Int)) <*> (s2n <$> ident)) add) <*> getPos P.<?> "index expr"
+indexExpr = A.IndexExpr <$> (P.sepBy1 
+                 (P.try ((,) <$> ((read <$> literalInt <* star) P.<|> return (1::Int)) <*> (s2n <$> ident))
+                  P.<|> ((,) <$> (read <$> literalInt) <*> return (s2n "*"))) add) <*> getPos P.<?> "index expr"
 
 tcExprTable =
   [ [tcExprPrefix sub "-"],
