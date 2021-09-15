@@ -371,7 +371,7 @@ tcExprTable =
       tcExprBinary mod_ "%" PE.AssocLeft
     ],
     [ tcExprBinary add "+" PE.AssocLeft,
-      tcExprBinary sub "/" PE.AssocLeft
+      tcExprBinary sub "-" PE.AssocLeft
     ],
     [ tcExprBinary less "<" PE.AssocLeft,
       tcExprBinary greater ">" PE.AssocLeft,
