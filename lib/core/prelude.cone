@@ -55,6 +55,10 @@ type list<a> {
   Cons(a, list<a>)
 }
 
+type pair<a, b> {
+  Pair(a, b)
+}
+
 // tensor types
 
 type tensor<t, shape:[num]> {

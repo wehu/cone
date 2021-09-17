@@ -287,6 +287,7 @@ typeTerm =
                 P.<|> (A.TNum <$> (Just . read <$> literalInt) P.<?> "number type")
                 P.<|> (A.TNum Nothing <$ question P.<?> "unknown number type")
                 P.<|> (A.TList <$> brackets (P.sepBy1 type_ comma) P.<?> "type list")
+                P.<|> P.try (ttuple <$> parens (P.sepBy1 type_ comma) P.<?> "type tuple")
             )
               <*> getPos
           )
@@ -301,6 +302,8 @@ typeTerm =
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
+    ttuple (t0:t1:ts) pos = A.TApp (A.TVar (s2n "pair") pos) [t0, ttuple (t1:ts) pos] pos
+    ttuple (t:[]) pos = t
 
 type_ :: Parser A.Type
 type_ = PE.buildExpressionParser typeTable typeTerm
@@ -471,7 +474,7 @@ exprBinary op name assoc =
 
 pat :: Parser A.Pattern
 pat =
-  parens pat
+  P.try (parens pat)
     P.<|> ( ( P.try
                 ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
                     <*> (angles (P.sepBy1 type_ comma) P.<|> return [])
@@ -490,8 +493,11 @@ pat =
             )
               P.<?> "pattern application"
           )
+    P.<|> (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
     P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
     P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal")
+  where ptuple (p0:p1:ps) pos = A.PApp (A.EVar (s2n "Pair") pos) [] [p0, ptuple (p1:ps) pos] pos
+        ptuple (p:[]) pos = p
 
 literal =
   ( A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
@@ -508,7 +514,7 @@ term :: Parser A.Expr
 term =
   eapp
     <$> ( eann
-            <$> ( parens expr
+            <$> ( P.try (parens expr)
                     P.<|> ( ( ( (\((pos, bts, bes, args, (effT, resT)), e) -> A.ELam bts bes args effT resT e)
                                   <$ kFn <*> funcDef P.<?> "lambda expression"
                               )
@@ -524,7 +530,8 @@ term =
                                 P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
                                 P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "var or assign expression")
                                 P.<|> (A.ETC <$> tc P.<?> "tc expression")
-                                P.<|> (elist <$> angles type_ <*> brackets (P.sepBy expr comma) P.<?> "list")
+                                P.<|> (elist <$> angles type_ <*> brackets (P.sepBy expr comma) P.<?> "list expression")
+                                P.<|> (etuple <$> parens (P.sepBy1 expr comma) P.<?> "tuple expression")
                             )
                               <*> getPos
                           )
@@ -556,6 +563,8 @@ term =
       Just e -> A.EApp (A.EVar (s2n "____assign") pos) [] [A.EVar (s2n v) pos, e] pos
     elist t (e:es) pos = A.EApp (A.EVar (s2n "Cons") pos) [t] [e, elist t es pos] pos
     elist t [] pos = A.EApp (A.EVar (s2n "Nil") pos) [t] [] pos
+    etuple (e0:e1:es) pos = A.EApp (A.EVar (s2n "Pair") pos) [] [e0, etuple (e1:es) pos] pos
+    etuple (e:[]) pos = e
 
 handle :: Parser A.FuncDef
 handle = do
