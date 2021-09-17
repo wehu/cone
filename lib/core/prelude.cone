@@ -36,21 +36,19 @@ fun ____assign<a>(a: a, b:a) : unit
 
 // builtin types
 
-type ____add<a, a>
+type ____add<a:num, a:num>
 
-type ____sub<a, a>
+type ____sub<a:num, a:num>
 
-type ____mul<a, a>
+type ____mul<a:num, a:num>
 
-type ____div<a, a>
+type ____div<a:num, a:num>
 
-type ____mod<a, a>
+type ____mod<a:num, a:num>
 
-type ____pair<a, b>
+type max<a:num, a:num>
 
-type max<a, a>
-
-type min<a, a>
+type min<a:num, a:num>
 
 // tensor types
 
