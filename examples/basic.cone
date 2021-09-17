@@ -40,7 +40,7 @@ fun main() : io unit {
 
   val l = <i32>[1, 2, 3] //Cons(3, Cons(2, Cons(1, Nil<i32>)))
 
-  val t = (2, "string") : (i32, str)
+  val t = (2, "string", 0.2) : (i32, str, f32)
 
   val ll = l/map(l, fn(a:i32) : io i32{
      print(a)
