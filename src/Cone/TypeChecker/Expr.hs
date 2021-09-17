@@ -85,6 +85,7 @@ inferExprType a@EApp {..} = do
     else return ()
   -- infer all type arguments
   mapM_ inferTypeKind _eappTypeArgs
+  typeArgs <- mapM inferType _eappTypeArgs
   -- infer app function type
   appFunc <- inferExprType _eappFunc
   appFuncType <- typeOfExpr appFunc
@@ -95,7 +96,7 @@ inferExprType a@EApp {..} = do
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
   -- infer the result type
-  (t, ft) <- inferAppResultType appFuncType _eappTypeArgs argTypes
+  (t, ft) <- inferAppResultType appFuncType typeArgs argTypes
   t <- inferType t
   appFunc <- selectFuncImpl appFunc {_eannMetaType = bindTypeEffVar [] $ bindType [] ft}
   return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t
@@ -369,7 +370,8 @@ inferPatternType PApp {..} = do
   mapM_ inferTypeKind _pappTypeArgs
   appFuncType <- inferExprType _pappName >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
-  (t, _) <- inferAppResultType appFuncType _pappTypeArgs args
+  typeArgs <- mapM inferType _pappTypeArgs
+  (t, _) <- inferAppResultType appFuncType typeArgs args
   return t
 inferPatternType PExpr {..} = inferExprType _pExpr >>= typeOfExpr
 
@@ -401,6 +403,7 @@ extracePatternVarTypes PVar {..} t = return [(s2n $ name2String _pvar, t)]
 extracePatternVarTypes PExpr {..} t = return []
 extracePatternVarTypes a@PApp {..} t = underScope $ do
   mapM_ inferTypeKind _pappTypeArgs
+  typeArgs <- mapM inferType _pappTypeArgs
   appFuncType <- inferExprType _pappName >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   let cntr =
@@ -425,7 +428,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
                   _ -> newTVar
         )
   argTypes <- mapM cntr (appFuncType ^. tfuncArgs)
-  (appResT, ft) <- inferAppResultType appFuncType _pappTypeArgs argTypes
+  (appResT, ft) <- inferAppResultType appFuncType typeArgs argTypes
   bindings <- collectVarBindings appResT t
   foldM
     ( \s e ->
@@ -474,7 +477,8 @@ inferExprEffType EApp {..} = do
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
   mapM_ inferExprEffType _eappArgs
-  inferAppResultEffType appFuncType _eappTypeArgs argTypes
+  typeArgs <- mapM inferType _eappTypeArgs
+  inferAppResultEffType appFuncType typeArgs argTypes
 inferExprEffType ESeq {..} =
   -- merge effects
   foldM
