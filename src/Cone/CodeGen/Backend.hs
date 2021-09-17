@@ -282,7 +282,7 @@ class Backend t where
                       parens $ callWithCps e ("lambda " <> n <> ": " <> s)
                   )
                   ("____f" <> (encloseSep lparen rparen comma ("____k" : "____state" : "____effs" : argNames)))
-                  [(e, n) | e <- f : (reverse args) | n <- "____f" : (reverse argNames)]
+                  [(e, n) | e <- (reverse $ f : args) | n <- (reverse $ "____f" : argNames)]
     where
       binary :: (Has EnvEff sig m) => String -> m (Doc a)
       binary op = do
