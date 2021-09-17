@@ -653,25 +653,13 @@ funcDefType f =
 
 -- | Extract a tensor type's shape
 extractTensorShape :: (Has EnvEff sig m) => Type -> m [Int]
-extractTensorShape t@TApp {..} = do
-  if name2String (_tvar _tappName) /= "core/prelude/____pair"
-    then throwError $ "expected a pair type, but got " ++ ppr t ++ ppr _tloc
-    else
-      if L.length _tappArgs /= 2
-        then throwError $ "expected 2 arguments, but got " ++ ppr t ++ ppr _tloc
-        else do
-          let a : b : [] = _tappArgs
-          case a of
-            TNum {..} -> 
-              case _tnum of
-                Just a ->
-                  case b of
-                    TNum {..} -> case _tnum of 
-                      Just b -> return [a, b]
-                      Nothing -> throwError $ "expected a static shape, but got " ++ ppr t ++ ppr _tloc
-                    _ -> ((:) a) <$> extractTensorShape b
-                Nothing -> throwError $ "expected a static shape, but got " ++ ppr t ++ ppr _tloc
-            _ -> throwError $ "expected a tnum type, but got " ++ ppr t ++ ppr _tloc
+extractTensorShape t@TList {..} = 
+  foldM (\s e -> do
+    case e of
+      TNum d _ -> case d of 
+                    Just d -> return $ s ++ [d]
+                    Nothing -> throwError $ "expected a static shape, but got " ++ ppr e ++ ppr (e ^.tloc)
+      _ -> throwError $ "expected a number type, but got " ++ ppr e ++ ppr (e ^. tloc)) [] _tlist
 extractTensorShape t = throwError $ "expected a pair type, but got " ++ ppr t ++ ppr (_tloc t)
 
 -- | Extract a tensor type's information
@@ -691,12 +679,7 @@ extractTensorInfo t = throwError $ "expected a tensor type, but got " ++ ppr t +
 
 -- | Construct a number list type based on pair types
 toTensorShape :: (Has EnvEff sig m) => Location -> [Int] -> m Type
-toTensorShape loc t@(d0 : d1 : []) = do
-  return $ TApp (TVar (s2n "core/prelude/____pair") loc) [TNum (Just d0) loc, TNum (Just d1) loc] loc
-toTensorShape loc t@(d0 : ds) = do
-  ds' <- toTensorShape loc ds
-  return $ TApp (TVar (s2n "core/prelude/____pair") loc) [TNum (Just d0) loc, ds'] loc
-toTensorShape loc ds = throwError $ "unsupported dims " ++ ppr ds ++ ppr loc
+toTensorShape loc l = return $ TList [TNum (Just e) loc | e <- l] loc
 
 -- | Construct a tensor type based on number list type
 toTensorType :: (Has EnvEff sig m) => Type -> [Int] -> m Type
