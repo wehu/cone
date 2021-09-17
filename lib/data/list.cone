@@ -20,7 +20,7 @@ fun map<a, b>[e](l : list<a>, f : (a) -> e b) : e list<b> {
   if l == Nil<a> {
     Nil<b>
   } else {
-  val Cons(e, r) = l
+    val Cons(e, r) = l
     if r == Nil<a> {
       Cons(f(e), Nil<b>)
     } else {
