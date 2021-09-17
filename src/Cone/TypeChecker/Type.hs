@@ -41,7 +41,6 @@ inferTypeKind a@TApp {..} = do
             $ \(a, b) -> do
               t <- inferTypeKind a
               checkKindMatch t b
-          checkTypeKind _kfuncResult
           return _kfuncResult
 inferTypeKind a@TAnn {..} = do
   k <- inferTypeKind _tannType
@@ -659,7 +658,7 @@ extractTensorShape t@TList {..} =
       TNum d _ -> case d of 
                     Just d -> return $ s ++ [d]
                     Nothing -> throwError $ "expected a static shape, but got " ++ ppr e ++ ppr (e ^.tloc)
-      _ -> throwError $ "expected a number type, but got " ++ ppr e ++ ppr (e ^. tloc)) [] _tlist
+      _ -> throwError $ "expected a number type, but got " ++ ppr e ++ ppr (e ^.tloc)) [] _tlist
 extractTensorShape t = throwError $ "expected a pair type, but got " ++ ppr t ++ ppr (_tloc t)
 
 -- | Extract a tensor type's information

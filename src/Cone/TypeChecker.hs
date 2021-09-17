@@ -44,9 +44,19 @@ initTypeDef prefix t = do
       let loc = _typeLoc t
           args = t ^. typeArgs
           star = KStar loc
+          num = KNum loc
+          resK = case (t ^. typeName) of
+                   "____add" -> num 
+                   "____sub" -> num 
+                   "____mul" -> num 
+                   "____div" -> num 
+                   "____mod" -> num 
+                   "max" -> num 
+                   "min" -> num 
+                   _ -> star
        in if args == [] -- if no arguments, it is just a simple enum
             then star
-            else KFunc (args ^.. traverse . _2 . non star) star loc
+            else KFunc (args ^.. traverse . _2 . non star) resK loc
 
 -- | Initialize all type definitions
 initTypeDefs :: (Has EnvEff sig m) => Module -> m Module
