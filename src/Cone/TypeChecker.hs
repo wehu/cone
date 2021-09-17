@@ -497,7 +497,7 @@ addPrefixForTypes m' = do
   let m = addTypeBindings m'
   let allGlobalVars = L.nub (m ^.. fv) :: [TVar]
       allGlobalEffVars = L.nub (m ^.. fv) :: [EffVar]
-      prefixes =
+      prefixes = L.nub $ 
         "" :
         (m ^. moduleName ++ "/") :
         "core/prelude/" :
@@ -639,7 +639,7 @@ addPrefixForExprs :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForExprs m' = do
   let m = addVarBindings m'
   let allGlobalVars = L.nub (m ^.. fv) :: [EVar]
-      prefixes =
+      prefixes = L.nub $
         "" :
         (m ^. moduleName ++ "/") :
         "core/prelude/" :

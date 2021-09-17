@@ -1,10 +1,5 @@
 module data/list
 
-type list<a> {
-  Nil
-  Cons(a, list<a>)
-}
-
 fun reverse<a>(l : list<a>) : list<a> {
   var rest = l
   var newl = Nil<a>

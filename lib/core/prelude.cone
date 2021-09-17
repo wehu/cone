@@ -50,6 +50,11 @@ type max<a:num, a:num>
 
 type min<a:num, a:num>
 
+type list<a> {
+  Nil
+  Cons(a, list<a>)
+}
+
 // tensor types
 
 type tensor<t, shape:[num]> {
