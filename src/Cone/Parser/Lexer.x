@@ -105,6 +105,7 @@ tokens :-
   "if"                                  { \p s -> (p, If) }
   "else"                                { \p s -> (p, Else) }
   "while"                               { \p s -> (p, While) }
+  "num"                                 { \p s -> (p, Num) }
   "unit"                                { \p s -> (p, Unit) }
   "true"                                { \p s -> (p, True_) }
   "false"                               { \p s -> (p, False_) }

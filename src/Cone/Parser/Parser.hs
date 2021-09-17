@@ -71,6 +71,8 @@ kElse = keyword L.Else
 
 kWhile = keyword L.While
 
+kNum = keyword L.Num
+
 semi = P.many1 $ symbol L.Semi
 
 lParen = symbol L.LParen
@@ -217,6 +219,8 @@ imports =
 kind :: Parser A.Kind
 kind =
   ( A.KStar <$ (star P.<?> "star kind")
+      P.<|> A.KNum <$ (kNum P.<?> "num kind")
+      P.<|> A.KList <$> (brackets kind P.<?> "list kind")
       P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind P.<?> "function kind")
   )
     <*> getPos
@@ -273,7 +277,7 @@ typeTerm =
                 )
                 P.<|> P.try
                   ( tfunc
-                      <$> boundTVars
+                      <$> ((map fst) <$> boundTVars)
                       <*> boundEffVars
                       <*> parens (P.sepBy type_ comma) <* arrow
                       <*> resultType P.<?> "function type"
@@ -303,9 +307,9 @@ typeTerm =
 type_ :: Parser A.Type
 type_ = PE.buildExpressionParser typeTable typeTerm
 
-boundTVars :: Parser [A.TVar]
+boundTVars :: Parser [(A.TVar, Maybe A.Kind)]
 boundTVars =
-  ((angles $ P.sepBy1 (s2n <$> ident) comma) P.<?> "type variable list")
+  ((angles $ P.sepBy1 ((,) <$> (s2n <$> ident) <*> (P.optionMaybe $ colon *> kind)) comma) P.<?> "type variable list")
     P.<|> return []
 
 boundEffVars :: Parser [A.EffVar]

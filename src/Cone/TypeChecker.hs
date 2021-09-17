@@ -157,7 +157,7 @@ initEffIntfDef prefix e = do
             iargs = i ^. intfArgs
             iresult = _intfResultType i
             pos = i ^. intfLoc
-            bvars = (i ^. intfBoundVars)
+            bvars = (i ^.. intfBoundVars. traverse . _1)
             targs = (e ^.. effectArgs . traverse . _1) ++ globalTypes
             b = bind (targs ++ bvars) $ iresult : iargs
             fvars = (b ^.. fv) :: [TVar]
@@ -197,7 +197,7 @@ initEffIntfDef prefix e = do
       let iargs = i ^. intfArgs
           iresult = _intfResultType i
           intfn = i ^. intfName
-          bvars = i ^. intfBoundVars
+          bvars = i ^.. intfBoundVars . traverse . _1
           pos = i ^. intfLoc
           tvars = e ^.. effectArgs . traverse . _1
           evars = i ^. intfBoundEffVars
@@ -251,7 +251,8 @@ initFuncDefs m = mapMOf (topStmts . traverse . _FDef) (initFuncDef $ m ^. module
 checkFuncType :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 checkFuncType f = underScope $ do
   let pos = f ^. funcLoc
-      btvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+      star = KStar pos
+      btvars = fmap (\t -> (name2String (t ^._1), t ^._2. non star)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
   -- add all bound type variables into env
   forM_ btvars $ \(n, k) -> setEnv (Just k) $ types . at n
@@ -349,14 +350,14 @@ addTypeBindings m =
         over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef m
   where
     bindEDef edef =
-      let boundVars = L.nub $ edef ^.. effectArgs . traverse . _1
+      let boundVars = L.nub $ edef ^.. effectArgs . traverse
           edef' = over (effectIntfs . traverse) (bindEffIntf boundVars) edef
-       in BoundEffectDef (bind boundVars edef') (_effectLoc edef)
+       in BoundEffectDef (bind (boundVars ^..traverse._1) edef') (_effectLoc edef)
     bindEffIntf bvs intf =
       let boundVars = L.nub $ bvs ++ intf ^. intfBoundVars
           boundEffVars = L.nub $ intf ^. intfBoundEffVars
           loc = intf ^. intfLoc
-       in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind boundVars intf) loc) loc
+       in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind (boundVars ^..traverse._1) intf) loc) loc
     bindTDef tdef =
       let boundVars = L.nub $ tdef ^.. typeArgs . traverse . _1
        in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef)
@@ -365,7 +366,7 @@ addTypeBindings m =
           boundEffVars = L.nub $ fdef ^. funcBoundEffVars
           loc = fdef ^. funcLoc
           expr = fmap (transform bindExpr) $ _funcExpr fdef
-       in BoundEffFuncDef (bind boundEffVars $ BoundFuncDef (bind boundVars fdef {_funcExpr = expr}) loc) loc
+       in BoundEffFuncDef (bind boundEffVars $ BoundFuncDef (bind (boundVars ^..traverse._1) fdef {_funcExpr = expr}) loc) loc
     bindExpr l@ELam {..} =
       let boundVars = L.nub $ _elamBoundVars
           boundEffVars = L.nub $ _elamBoundEffVars
@@ -373,7 +374,7 @@ addTypeBindings m =
             { _elamExpr =
                 fmap
                   ( \e ->
-                      EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind boundVars e) _eloc) _eloc
+                      EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind (boundVars ^..traverse._1) e) _eloc) _eloc
                   )
                   _elamExpr
             }

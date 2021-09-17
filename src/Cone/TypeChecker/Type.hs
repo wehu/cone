@@ -634,7 +634,7 @@ funcDefType f =
       resultType = _funcResultType f
       bvs = _funcBoundVars f
       ft =
-        bindType bvs $
+        bindType (bvs ^..traverse._1) $
           TFunc argTypes effType resultType pos
       bes = f ^. funcBoundEffVars
       bft = bindTypeEffVar bes ft
@@ -722,7 +722,7 @@ setFuncImpl prefix impl = do
       loc = funcD ^. funcLoc
       t =
         bindTypeEffVar (funcD ^. funcBoundEffVars) $
-          bindType (funcD ^. funcBoundVars) $
+          bindType (funcD ^.. funcBoundVars . traverse . _1) $
             TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
   ft <- getEnv $ funcs . at fn
   case ft of

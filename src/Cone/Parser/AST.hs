@@ -159,12 +159,14 @@ instance Pretty Type where
 data Kind
   = KStar {_kloc :: Location}
   | KNum {_kloc :: Location}
+  | KList {_kListElem :: Kind, _kloc :: Location}
   | KFunc {_kfuncArgs :: [Kind], _kfuncResult :: Kind, _kloc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty Kind where
   pretty KStar {..} = "*"
   pretty KNum {..} = "num"
+  pretty KList {..} = brackets $ pretty _kListElem
   pretty KFunc {..} = parens $ parensList _kfuncArgs <+> "->" <+> pretty _kfuncResult
 
 data EffKind
@@ -261,7 +263,7 @@ data Expr
   = EVar {_evarName :: EVar, _eloc :: Location}
   | ELit {_lit :: String, _litType :: Type, _eloc :: Location}
   | ELam
-      { _elamBoundVars :: [TVar],
+      { _elamBoundVars :: [(TVar, Maybe Kind)],
         _elamBoundEffVars :: [EffVar],
         _elamArgs :: [(String, Type)],
         _elamEffType :: EffectType,
@@ -376,7 +378,7 @@ instance Pretty TypeCon where
 data FuncIntf
   = FuncIntf
       { _intfName :: String,
-        _intfBoundVars :: [TVar],
+        _intfBoundVars :: [(TVar, Maybe Kind)],
         _intfBoundEffVars :: [EffVar],
         _intfArgs :: [Type],
         _intfEffectType :: EffectType,
@@ -451,7 +453,7 @@ instance Pretty ImportStmt where
 data FuncDef
   = FuncDef
       { _funcName :: String,
-        _funcBoundVars :: [TVar],
+        _funcBoundVars :: [(TVar, Maybe Kind)],
         _funcBoundEffVars :: [EffVar],
         _funcArgs :: [(String, Type)],
         _funcEffectType :: EffectType,

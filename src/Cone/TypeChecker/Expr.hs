@@ -104,7 +104,7 @@ inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
   setEnv M.empty localState
   -- refresh all bound variables
-  (bvs, newLam) <- refresh _elamBoundVars l
+  (bvs, newLam) <- refresh (_elamBoundVars ^..traverse._1) l
   (evs, newLam) <- refreshEffVar _elamBoundEffVars newLam
   case newLam of
     l@ELam {..} -> do
@@ -519,7 +519,7 @@ inferExprEffType ETC {..} = return $ EffList [] _eloc
 setupEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
 setupEffIntfType f = do
   let pos = f ^. funcLoc
-      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^. funcBoundVars
+      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^.. funcBoundVars.traverse._1
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
