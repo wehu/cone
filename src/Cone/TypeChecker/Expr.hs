@@ -109,7 +109,8 @@ inferExprType l@ELam {..} = underScope $ do
   case newLam of
     l@ELam {..} -> do
       -- add all bound type variables into env
-      mapM_ (\t -> setEnv (Just $ KStar _eloc) $ types . at (name2String t)) bvs
+      mapM_ (\(t, k) -> setEnv (Just $ k ^. non (KStar _eloc)) $ types . at (name2String t)) 
+         [(t,k) |t <- bvs | k <- _elamBoundVars ^..traverse._2]
       -- add all bound eff type variables into env
       mapM_ (\t -> setEnv (Just $ EKStar _eloc) $ effs . at (name2String t)) evs
       -- infer arguments
@@ -519,7 +520,7 @@ inferExprEffType ETC {..} = return $ EffList [] _eloc
 setupEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
 setupEffIntfType f = do
   let pos = f ^. funcLoc
-      bvars = fmap (\t -> (name2String t, KStar pos)) $ f ^.. funcBoundVars.traverse._1
+      bvars = fmap (\t -> (name2String (t ^._1), t ^._2 . non (KStar pos))) $ f ^.. funcBoundVars.traverse
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
