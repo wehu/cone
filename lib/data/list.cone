@@ -17,10 +17,14 @@ fun reverse<a>(l : list<a>) : list<a> {
 }
 
 fun map<a, b>[e](l : list<a>, f : (a) -> e b) : e list<b> {
-  val Cons(e, r) = l
-  if r == Nil<a> {
-    Cons(f(e), Nil<b>)
+  if l == Nil<a> {
+    Nil<b>
   } else {
-    Cons(f(e), map(r, f))
+  val Cons(e, r) = l
+    if r == Nil<a> {
+      Cons(f(e), Nil<b>)
+    } else {
+      Cons(f(e), map(r, f))
+    }
   }
 }

@@ -461,9 +461,10 @@ inferExprEffType ECase {..} = do
   cse <- forM _ecaseBody $ \c -> underScope $ do
     bindPatternVarTypes False (_casePattern c) _ecaseExpr
     inferExprEffType $ _caseExpr c
-  let le : _ = cse
-  forM_ cse $ checkEffTypeMatch le
-  mergeEffs ce le
+  --let le : _ = cse
+  --forM_ cse $ checkEffTypeMatch le
+  foldM mergeEffs ce cse
+  -- mergeEffs ce le
 inferExprEffType EWhile {..} = do
   ce <- inferExprEffType _ewhileCond
   be <- inferExprEffType _ewhileBody
