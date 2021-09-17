@@ -497,11 +497,13 @@ pat =
             )
               P.<?> "pattern application"
           )
-    P.<|> (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
+    P.<|> P.try (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
     P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
     P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal")
+    P.<|> P.try (parens (plist <$> pat <* colon <*> pat <*> getPos) P.<?> "pattern list")
   where ptuple (p0:p1:ps) pos = A.PApp (A.EVar (s2n "Pair") pos) [] [p0, ptuple (p1:ps) pos] pos
         ptuple (p:[]) pos = p
+        plist p ps pos = A.PApp (A.EVar (s2n "Cons") pos) [] [p, ps] pos
 
 literal =
   ( A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
