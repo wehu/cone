@@ -89,11 +89,11 @@ initTypeConDef prefix t = do
       let targs = c ^. typeConArgs
           tn = t ^. typeName
           pos = c ^. typeConLoc
-          tvars = t ^.. typeArgs . traverse . _1
+          tvars = t ^. typeArgs
           rt =
             if tvars == []
               then TVar (s2n tn) pos
-              else TApp (TVar (s2n tn) pos) (fmap (\t -> TVar t pos) tvars) pos
+              else TApp (TVar (s2n tn) pos) (fmap (\t -> TVar (t ^._1) pos) tvars) pos
           bt =
             bindType tvars $
               if targs == []
@@ -197,9 +197,9 @@ initEffIntfDef prefix e = do
       let iargs = i ^. intfArgs
           iresult = _intfResultType i
           intfn = i ^. intfName
-          bvars = i ^.. intfBoundVars . traverse . _1
+          bvars = i ^. intfBoundVars
           pos = i ^. intfLoc
-          tvars = e ^.. effectArgs . traverse . _1
+          tvars = e ^. effectArgs
           evars = i ^. intfBoundEffVars
        in bindTypeEffVar evars $
             bindType tvars $

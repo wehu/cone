@@ -141,7 +141,7 @@ closeEffType t =
    in bind fvars t
 
 -- | Bind a type with type variables
-bindType :: [TVar] -> Type -> Type
+bindType :: [(TVar, Maybe Kind)] -> Type -> Type
 bindType bvs t = BoundType (bind bvs t) (_tloc t)
 
 -- | Bind an effect type with type variables
@@ -168,7 +168,7 @@ unbindType b@BoundType {..} = do
   let (vs, t) = unsafeUnbind _boundType
       pos = _tloc
   nvs <- mapM (\_ -> freeVarName <$> fresh) vs
-  unbindType $ substs [(f, TVar t pos) | f <- vs | t <- nvs] t
+  unbindType $ substs [(f ^. _1, TVar t pos) | f <- vs | t <- nvs] t
 unbindType b@BoundEffVarType {..} = do
   let (vs, t) = unsafeUnbind _boundEffVarType
       pos = _tloc
@@ -177,7 +177,7 @@ unbindType b@BoundEffVarType {..} = do
 unbindType t = return t
 
 -- | Just simply unbind a type
-unbindTypeSimple :: Type -> ([TVar], [EffVar], Type)
+unbindTypeSimple :: Type -> ([(TVar, Maybe Kind)], [EffVar], Type)
 unbindTypeSimple b@BoundType {..} =
   let (bvs, t) = unsafeUnbind _boundType
       (bvs', evs, t') = unbindTypeSimple t

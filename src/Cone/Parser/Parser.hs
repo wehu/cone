@@ -277,7 +277,7 @@ typeTerm =
                 )
                 P.<|> P.try
                   ( tfunc
-                      <$> ((map fst) <$> boundTVars)
+                      <$> boundTVars
                       <*> boundEffVars
                       <*> parens (P.sepBy type_ comma) <* arrow
                       <*> resultType P.<?> "function type"
@@ -286,7 +286,7 @@ typeTerm =
                 P.<|> (A.TPrim <$> primType P.<?> "primitive type")
                 P.<|> (A.TNum <$> (Just . read <$> literalInt) P.<?> "number type")
                 P.<|> (A.TNum Nothing <$ question P.<?> "unknown number type")
-                P.<|> (tList <$> brackets (P.sepBy1 type_ comma) P.<?> "type list")
+                P.<|> (A.TList <$> brackets (P.sepBy1 type_ comma) P.<?> "type list")
             )
               <*> getPos
           )
@@ -301,8 +301,6 @@ typeTerm =
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
-    tList (t : []) pos = t
-    tList (t : ts) pos = A.TApp (A.TVar (s2n "____pair") pos) [t, (tList ts pos)] pos
 
 type_ :: Parser A.Type
 type_ = PE.buildExpressionParser typeTable typeTerm

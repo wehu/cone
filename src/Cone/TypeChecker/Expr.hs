@@ -84,8 +84,7 @@ inferExprType a@EApp {..} = do
                 Nothing -> throwError $ "cannot find local variable " ++ vn ++ ppr _eloc
     else return ()
   -- infer all type arguments
-  appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
-  mapM_ checkTypeKind appTypeArgKinds
+  mapM_ inferTypeKind _eappTypeArgs
   -- infer app function type
   appFunc <- inferExprType _eappFunc
   appFuncType <- typeOfExpr appFunc
@@ -140,7 +139,8 @@ inferExprType l@ELam {..} = underScope $ do
       checkTypeKind k
       checkTypeMatch eType _elamResultType
       -- return the lambda type
-      t <- inferType $ bindTypeEffVar evs $ bindType bvs $ TFunc args _elamEffType eType _eloc
+      t <- inferType $ bindTypeEffVar evs $ bindType 
+         [(t,k) |t <- bvs | k <- _elamBoundVars ^..traverse._2] $ TFunc args _elamEffType eType _eloc
       return $ annotateExpr l {_elamExpr = Just lamE} t
     _ -> throwError $ "should not be here"
 inferExprType a@EAnn {..} = do
@@ -299,10 +299,6 @@ collectTCExprTypeInfo TCApp {..} = do
           || an == "%" ->
         foldM
           ( \(t, is) (et, eis) -> do
-              k0 <- inferTypeKind t
-              checkTypeKind k0
-              k1 <- inferTypeKind et
-              checkTypeKind k1
               if aeq t et
                 then return (et, is ++ eis)
                 else throwError $ "+ expected same types, but got " ++ ppr t ++ " vs " ++ ppr et ++ ppr _tcloc
@@ -370,8 +366,7 @@ inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
 inferPatternType PVar {..} = (inferExprType $ EVar (s2n $ name2String _pvar) _ploc) >>= typeOfExpr
 inferPatternType PApp {..} = do
   args <- mapM inferPatternType _pappArgs
-  appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
-  mapM_ checkTypeKind appTypeArgKinds
+  mapM_ inferTypeKind _pappTypeArgs
   appFuncType <- inferExprType _pappName >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   (t, _) <- inferAppResultType appFuncType _pappTypeArgs args
@@ -405,8 +400,7 @@ extracePatternVarTypes :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Typ
 extracePatternVarTypes PVar {..} t = return [(s2n $ name2String _pvar, t)]
 extracePatternVarTypes PExpr {..} t = return []
 extracePatternVarTypes a@PApp {..} t = underScope $ do
-  appTypeArgKinds <- mapM inferTypeKind _pappTypeArgs
-  mapM_ checkTypeKind appTypeArgKinds
+  mapM_ inferTypeKind _pappTypeArgs
   appFuncType <- inferExprType _pappName >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   let cntr =
@@ -472,8 +466,7 @@ inferExprEffType EWhile {..} = do
   -- checkEffTypeMatch ce be
   mergeEffs ce be
 inferExprEffType EApp {..} = do
-  appTypeArgKinds <- mapM inferTypeKind _eappTypeArgs
-  mapM_ checkTypeKind appTypeArgKinds
+  mapM_ inferTypeKind _eappTypeArgs
   appFuncType <- inferExprType _eappFunc >>= typeOfExpr
   inferExprEffType _eappFunc
   appFuncType <- applyTypeArgs appFuncType _eappTypeArgs >>= unbindType

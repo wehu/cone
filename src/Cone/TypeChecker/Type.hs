@@ -19,6 +19,7 @@ import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Maybe
 import Debug.Trace
+import GHC.Stack
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
@@ -39,20 +40,17 @@ inferTypeKind a@TApp {..} = do
             [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
             $ \(a, b) -> do
               t <- inferTypeKind a
-              checkTypeKind t
-              checkTypeKind b
               checkKindMatch t b
           checkTypeKind _kfuncResult
           return _kfuncResult
 inferTypeKind a@TAnn {..} = do
   k <- inferTypeKind _tannType
-  checkTypeKind k
   checkKindMatch k _tannKind
   return _tannKind
 inferTypeKind b@BoundType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind $ _boundType
       star = KStar $ _tloc
-  mapM_ (\v -> setEnv (Just star) $ types . at (name2String v)) bvs
+  mapM_ (\(v, k) -> setEnv (Just $ k ^. non star) $ types . at (name2String v)) bvs
   inferTypeKind t
 inferTypeKind b@BoundEffVarType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind $ _boundEffVarType
@@ -73,7 +71,13 @@ inferTypeKind f@TFunc {..} = do
   rk <- inferTypeKind _tfuncResult
   checkTypeKind rk
   return $ KStar _tloc
-inferTypeKind n@TNum {..} = return $ KStar _tloc
+inferTypeKind n@TNum {..} = return $ KNum _tloc
+inferTypeKind l@TList {..} = do
+  es' <- mapM inferTypeKind _tlist
+  let e:es = es'
+  forM_ es $ \k ->
+    checkKindMatch e k
+  return $ KList e _tloc
 inferTypeKind t = return $ KStar $ _tloc t
 
 -- | Eval a type if there is number calc
@@ -115,6 +119,9 @@ inferType f@TFunc {..} = do
   eff <- inferEffectType _tfuncEff
   res <- inferType _tfuncResult
   return f {_tfuncArgs = args, _tfuncEff = eff, _tfuncResult = res}
+inferType l@TList{..} = do
+  es <- mapM inferType _tlist
+  return l {_tlist = es}
 inferType t = return t
 
 -- | Check a type kind
@@ -293,7 +300,11 @@ applyTypeArgs t args = do
           ++ ppr (_tloc t)
     else do
       let argsLen = L.length args
-          binds = [(n, t) | n <- L.take argsLen bts | t <- args]
+          binds = [(n ^. _1, t) | n <- L.take argsLen bts | t <- args]
+          ts = [(n ^. _2 . non (KStar (_tloc t)), t) | n <- L.take argsLen bts | t <- args]
+      forM_ ts $ \(k, t) -> do
+        tk <- inferTypeKind t
+        checkKindMatch k tk
       return $ bindTypeEffVar ets $ bindType (L.drop argsLen bts) $ substs binds tt
 
 -- | Infer a result type of application type
@@ -634,7 +645,7 @@ funcDefType f =
       resultType = _funcResultType f
       bvs = _funcBoundVars f
       ft =
-        bindType (bvs ^..traverse._1) $
+        bindType bvs $
           TFunc argTypes effType resultType pos
       bes = f ^. funcBoundEffVars
       bft = bindTypeEffVar bes ft
@@ -722,7 +733,7 @@ setFuncImpl prefix impl = do
       loc = funcD ^. funcLoc
       t =
         bindTypeEffVar (funcD ^. funcBoundEffVars) $
-          bindType (funcD ^.. funcBoundVars . traverse . _1) $
+          bindType (funcD ^. funcBoundVars) $
             TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
   ft <- getEnv $ funcs . at fn
   case ft of
