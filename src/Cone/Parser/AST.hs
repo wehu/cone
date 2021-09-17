@@ -151,7 +151,7 @@ instance Pretty Type where
         Just t -> pretty t
         Nothing -> "?"
     )
-  pretty TList {..} = brackets $ pretty _tlist
+  pretty TList {..} = pretty _tlist
   pretty TFunc {..} = parens $ parensList _tfuncArgs <+> "->" <+> pretty _tfuncEff <+> pretty _tfuncResult
   pretty TApp {..} = parens $ pretty _tappName <+> parensList _tappArgs
   pretty TAnn {..} = parens $ pretty _tannType <+> colon <+> pretty _tannKind

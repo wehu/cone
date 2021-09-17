@@ -94,13 +94,13 @@ inferType a@TApp {..} = do
   args <- mapM inferType _tappArgs
   let t = a {_tappArgs = args}
   case name2String (_tvar _tappName) of
-    "____add" -> return $ evalType t args (+)
-    "____sub" -> return $ evalType t args (-)
-    "____mul" -> return $ evalType t args (*)
-    "____div" -> return $ evalType t args div
-    "____mod" -> return $ evalType t args mod
-    "max" -> return $ evalType t args max
-    "min" -> return $ evalType t args min
+    "core/prelude/____add" -> return $ evalType t args (+)
+    "core/prelude/____sub" -> return $ evalType t args (-)
+    "core/prelude/____mul" -> return $ evalType t args (*)
+    "core/prelude/____div" -> return $ evalType t args div
+    "core/prelude/____mod" -> return $ evalType t args mod
+    "core/prelude/max" -> return $ evalType t args max
+    "core/prelude/min" -> return $ evalType t args min
     _ -> return t
 inferType a@TAnn {..} = do
   t <- inferType _tannType
@@ -183,7 +183,9 @@ checkEffKind k = do
 -- | Check if type match or not
 checkTypeMatch :: (Has EnvEff sig m) => Type -> Type -> m ()
 checkTypeMatch a b = do
-  if aeq a b
+  a' <- inferType a
+  b' <- inferType b
+  if aeq a' b'
     then return ()
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 
