@@ -38,7 +38,7 @@ fun main() : io unit {
   var a = 0
   val A(b) = A(2)
 
-  val l = Cons(3, Cons(2, Cons(1, Nil<i32>)))
+  val l = <i32>[1, 2, 3] //Cons(3, Cons(2, Cons(1, Nil<i32>)))
 
   val ll = l/map(l, fn(a:i32) : io i32{
      print(a)

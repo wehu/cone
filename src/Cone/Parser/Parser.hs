@@ -524,6 +524,7 @@ term =
                                 P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
                                 P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "var or assign expression")
                                 P.<|> (A.ETC <$> tc P.<?> "tc expression")
+                                P.<|> (elist <$> angles type_ <*> brackets (P.sepBy expr comma) P.<?> "list")
                             )
                               <*> getPos
                           )
@@ -553,6 +554,8 @@ term =
     varOrAssign v e pos = case e of
       Nothing -> A.EVar (s2n v) pos
       Just e -> A.EApp (A.EVar (s2n "____assign") pos) [] [A.EVar (s2n v) pos, e] pos
+    elist t (e:es) pos = A.EApp (A.EVar (s2n "Cons") pos) [t] [e, elist t es pos] pos
+    elist t [] pos = A.EApp (A.EVar (s2n "Nil") pos) [t] [] pos
 
 handle :: Parser A.FuncDef
 handle = do
