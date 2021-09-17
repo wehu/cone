@@ -389,6 +389,14 @@ collectVarBindings a@TFunc {} b@TFunc {} =
                 <*> collectVarBindings (_tfuncResult a) (_tfuncResult b)
             )
         <*> collectVarBindingsInEff al bl
+collectVarBindings a@TList {} b@TList {} =
+  if L.length (_tlist a) == L.length (_tlist b)
+    then
+      foldM
+        (\s e -> (++) <$> (return s) <*> e)
+        []
+        [collectVarBindings ae be | ae <- (a ^. tlist) | be <- (b ^. tlist)]
+    else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectVarBindings a@TApp {} b@TApp {} =
   -- not support higher kind so far
   if L.length (_tappArgs a) == L.length (_tappArgs b)
@@ -570,6 +578,14 @@ collectEffVarBindingsInType a@TFunc {} b@TFunc {} =
                 <*> collectEffVarBindingsInType (_tfuncResult a) (_tfuncResult b)
             )
         <*> collectEffVarBindings al bl
+collectEffVarBindingsInType a@TList {} b@TList {} =
+  if L.length (_tlist a) == L.length (_tlist b)
+    then
+      foldM
+        (\s e -> (++) <$> (return s) <*> e)
+        []
+        [collectEffVarBindingsInType ae be | ae <- (a ^. tlist) | be <- (b ^. tlist)]
+    else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType a@TApp {} b@TApp {} =
   -- not support higher kind so far
   if L.length (_tappArgs a) == L.length (_tappArgs b)
