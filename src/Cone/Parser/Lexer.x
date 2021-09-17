@@ -83,6 +83,7 @@ tokens :-
   "->"                                  { \p s -> (p, Arrow) }
   \*                                    { \p s -> (p, Star) }
   \?                                    { \p s -> (p, Question) }
+  \@                                    { \p s -> (p, At) }
   "i8"                                  { \p s -> (p, I8) }
   "i16"                                 { \p s -> (p, I16) }
   "i32"                                 { \p s -> (p, I32) }
@@ -157,6 +158,7 @@ data Tok =
     Not             |
     And             |
     Or              |
+    At              |
     Assign          |
     AddAssign       |
     SubAssign       |

@@ -61,7 +61,7 @@ type pair<a, b> {
 
 // tensor types
 
-type tensor<t, shape:[num]> {
+type tensor<t, shape:@[num]> {
   tensor
 }
 

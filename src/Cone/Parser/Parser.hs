@@ -135,6 +135,8 @@ backSlash = symbol L.Backslash
 
 question = symbol L.Question
 
+at_ = symbol L.At 
+
 arrow = symbol L.Arrow
 
 star = symbol L.Star
@@ -220,7 +222,7 @@ kind :: Parser A.Kind
 kind =
   ( A.KStar <$ (star P.<?> "star kind")
       P.<|> A.KNum <$ (kNum P.<?> "num kind")
-      P.<|> A.KList <$> (brackets kind P.<?> "list kind")
+      P.<|> A.KList <$ at_ <*> (brackets kind P.<?> "list kind")
       P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind P.<?> "function kind")
   )
     <*> getPos
@@ -286,7 +288,8 @@ typeTerm =
                 P.<|> (A.TPrim <$> primType P.<?> "primitive type")
                 P.<|> (A.TNum <$> (Just . read <$> literalInt) P.<?> "number type")
                 P.<|> (A.TNum Nothing <$ question P.<?> "unknown number type")
-                P.<|> (A.TList <$> brackets (P.sepBy1 type_ comma) P.<?> "type list")
+                P.<|> (A.TList <$ at_ <*> brackets (P.sepBy1 type_ comma) P.<?> "type list kind")
+                P.<|> (tlist <$> brackets type_ P.<?> "type list")
                 P.<|> P.try (ttuple <$> parens (P.sepBy1 type_ comma) P.<?> "type tuple")
             )
               <*> getPos
@@ -302,6 +305,7 @@ typeTerm =
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
+    tlist t pos = A.TApp (A.TVar (s2n "list") pos) [t] pos
     ttuple (t0:t1:ts) pos = A.TApp (A.TVar (s2n "pair") pos) [t0, ttuple (t1:ts) pos] pos
     ttuple (t:[]) pos = t
 
