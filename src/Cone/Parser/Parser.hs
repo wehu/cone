@@ -141,6 +141,8 @@ arrow = symbol L.Arrow
 
 star = symbol L.Star
 
+sharp = symbol L.Sharp
+
 i8 = keyword L.I8
 
 i16 = keyword L.I16
@@ -500,7 +502,7 @@ pat =
     P.<|> P.try (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
     P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
     P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal")
-    P.<|> P.try (parens (plist <$> pat <* colon <*> pat <*> getPos) P.<?> "pattern list")
+    P.<|> P.try (parens (plist <$> pat <* sharp <*> pat <*> getPos) P.<?> "pattern list")
   where ptuple (p0:p1:ps) pos = A.PApp (A.EVar (s2n "Pair") pos) [] [p0, ptuple (p1:ps) pos] pos
         ptuple (p:[]) pos = p
         plist p ps pos = A.PApp (A.EVar (s2n "Cons") pos) [] [p, ps] pos
@@ -537,6 +539,7 @@ term =
                                 P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "var or assign expression")
                                 P.<|> (A.ETC <$> tc P.<?> "tc expression")
                                 P.<|> (elist <$> angles type_ <*> brackets (P.sepBy expr comma) P.<?> "list expression")
+                                P.<|> P.try (parens (econs <$> expr <* sharp <*> expr) P.<?> "list cons expression")
                                 P.<|> (etuple <$> parens (P.sepBy1 expr comma) P.<?> "tuple expression")
                             )
                               <*> getPos
@@ -571,6 +574,7 @@ term =
     elist t [] pos = A.EApp (A.EVar (s2n "Nil") pos) [t] [] pos
     etuple (e0:e1:es) pos = A.EApp (A.EVar (s2n "Pair") pos) [] [e0, etuple (e1:es) pos] pos
     etuple (e:[]) pos = e
+    econs e0 e1 pos = A.EApp (A.EVar (s2n "Cons") pos) [] [e0, e1] pos
 
 handle :: Parser A.FuncDef
 handle = do

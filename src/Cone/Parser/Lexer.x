@@ -79,6 +79,7 @@ tokens :-
   "-"                                   { \p s -> (p, Sub) }
   "/"                                   { \p s -> (p, Div) }
   "%"                                   { \p s -> (p, Mod) }
+  "#"                                   { \p s -> (p, Sharp) }
   \\                                    { \p s -> (p, Backslash) }
   "->"                                  { \p s -> (p, Arrow) }
   \*                                    { \p s -> (p, Star) }
@@ -159,6 +160,7 @@ data Tok =
     And             |
     Or              |
     At              |
+    Sharp           |
     Assign          |
     AddAssign       |
     SubAssign       |
