@@ -36,15 +36,15 @@ fun ____assign<a>(a: a, b:a) : unit
 
 // builtin types
 
-type ____add<a:num, a:num>
+type add<a:num, a:num>
 
-type ____sub<a:num, a:num>
+type sub<a:num, a:num>
 
-type ____mul<a:num, a:num>
+type mul<a:num, a:num>
 
-type ____div<a:num, a:num>
+type div<a:num, a:num>
 
-type ____mod<a:num, a:num>
+type mod<a:num, a:num>
 
 type max<a:num, a:num>
 

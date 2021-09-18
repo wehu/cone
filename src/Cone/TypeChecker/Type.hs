@@ -94,11 +94,11 @@ inferType a@TApp {..} = do
   args <- mapM inferType _tappArgs
   let t = a {_tappArgs = args}
   case name2String (_tvar _tappName) of
-    "core/prelude/____add" -> return $ evalType t args (+)
-    "core/prelude/____sub" -> return $ evalType t args (-)
-    "core/prelude/____mul" -> return $ evalType t args (*)
-    "core/prelude/____div" -> return $ evalType t args div
-    "core/prelude/____mod" -> return $ evalType t args mod
+    "core/prelude/add" -> return $ evalType t args (+)
+    "core/prelude/sub" -> return $ evalType t args (-)
+    "core/prelude/mul" -> return $ evalType t args (*)
+    "core/prelude/div" -> return $ evalType t args div
+    "core/prelude/mod" -> return $ evalType t args mod
     "core/prelude/max" -> return $ evalType t args max
     "core/prelude/min" -> return $ evalType t args min
     _ -> return t

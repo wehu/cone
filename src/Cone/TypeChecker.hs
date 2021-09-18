@@ -46,11 +46,11 @@ initTypeDef prefix t = do
           star = KStar loc
           num = KNum loc
           resK = case (t ^. typeName) of
-                   "____add" -> num 
-                   "____sub" -> num 
-                   "____mul" -> num 
-                   "____div" -> num 
-                   "____mod" -> num 
+                   "add" -> num 
+                   "sub" -> num 
+                   "mul" -> num 
+                   "div" -> num 
+                   "mod" -> num 
                    "max" -> num 
                    "min" -> num 
                    _ -> star

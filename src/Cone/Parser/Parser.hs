@@ -249,12 +249,12 @@ primType =
     P.<|> (A.Unit <$ unit)
 
 typeTable =
-  [ [ typeBinary star "____mul" PE.AssocLeft,
-      typeBinary div_ "____div" PE.AssocLeft,
-      typeBinary mod_ "____mod" PE.AssocLeft
+  [ [ typeBinary star "mul" PE.AssocLeft,
+      typeBinary div_ "div" PE.AssocLeft,
+      typeBinary mod_ "mod" PE.AssocLeft
     ],
-    [ typeBinary add "____add" PE.AssocLeft,
-      typeBinary sub "____sub" PE.AssocLeft
+    [ typeBinary add "add" PE.AssocLeft,
+      typeBinary sub "sub" PE.AssocLeft
     ]
   ]
 
