@@ -401,7 +401,7 @@ bindPatternVarTypes isState p e = do
 extracePatternVarTypes :: (Has EnvEff sig m) => Pattern -> Type -> m [(TVar, Type)]
 extracePatternVarTypes PVar {..} t = return [(s2n $ name2String _pvar, t)]
 extracePatternVarTypes e@PExpr {..} t = do
-  et <- inferExprType _pExpr >>= typeOfExpr >>= inferType
+  et <- inferExprType _pExpr >>= typeOfExpr
   checkTypeMatch et t
   return []
 extracePatternVarTypes a@PApp {..} t = underScope $ do
