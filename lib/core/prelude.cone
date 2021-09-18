@@ -38,6 +38,8 @@ fun ____assign<a>(a: a, b:a) : unit
 
 // builtin types
 
+type neg<a:num>
+
 type add<a:num, a:num>
 
 type sub<a:num, a:num>

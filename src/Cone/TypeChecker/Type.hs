@@ -80,8 +80,16 @@ inferTypeKind l@TList {..} = do
 inferTypeKind t = return $ KStar $ _tloc t
 
 -- | Eval a type if there is number calc
-evalType :: Type -> [Type] -> (Int -> Int -> Int) -> Type
-evalType t args f =
+evalType1 :: Type -> [Type] -> (Int -> Int) -> Type
+evalType1 t args f =
+  if all (not . isn't _TNum) args
+    then
+      let arg : rest = fmap _tnum args
+       in TNum (fmap f arg) (_tloc t)
+    else t
+
+evalType2 :: Type -> [Type] -> (Int -> Int -> Int) -> Type
+evalType2 t args f =
   if all (not . isn't _TNum) args
     then
       let arg : rest = fmap _tnum args
@@ -94,13 +102,14 @@ inferType a@TApp {..} = do
   args <- mapM inferType _tappArgs
   let t = a {_tappArgs = args}
   case name2String (_tvar _tappName) of
-    "core/prelude/add" -> return $ evalType t args (+)
-    "core/prelude/sub" -> return $ evalType t args (-)
-    "core/prelude/mul" -> return $ evalType t args (*)
-    "core/prelude/div" -> return $ evalType t args div
-    "core/prelude/mod" -> return $ evalType t args mod
-    "core/prelude/max" -> return $ evalType t args max
-    "core/prelude/min" -> return $ evalType t args min
+    "core/prelude/neg" -> return $ evalType1 t args (\e -> (- e))
+    "core/prelude/add" -> return $ evalType2 t args (+)
+    "core/prelude/sub" -> return $ evalType2 t args (-)
+    "core/prelude/mul" -> return $ evalType2 t args (*)
+    "core/prelude/div" -> return $ evalType2 t args div
+    "core/prelude/mod" -> return $ evalType2 t args mod
+    "core/prelude/max" -> return $ evalType2 t args max
+    "core/prelude/min" -> return $ evalType2 t args min
     _ -> return t
 inferType a@TAnn {..} = do
   t <- inferType _tannType

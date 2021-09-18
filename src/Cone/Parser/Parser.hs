@@ -249,7 +249,8 @@ primType =
     P.<|> (A.Unit <$ unit)
 
 typeTable =
-  [ [ typeBinary star "mul" PE.AssocLeft,
+  [ [ typePrefix sub "neg"],
+    [ typeBinary star "mul" PE.AssocLeft,
       typeBinary div_ "div" PE.AssocLeft,
       typeBinary mod_ "mod" PE.AssocLeft
     ],
@@ -257,6 +258,11 @@ typeTable =
       typeBinary sub "sub" PE.AssocLeft
     ]
   ]
+
+typePrefix op name = PE.Prefix $ do
+  op
+  pos <- getPos
+  return $ \i -> A.TApp (A.TVar (s2n name) pos) [i] pos
 
 typeBinary op name assoc =
   PE.Infix
