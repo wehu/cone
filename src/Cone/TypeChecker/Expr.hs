@@ -221,10 +221,16 @@ inferExprType h@EHandle {..} = underScope $ do
   resT <- typeOfExpr scopeE
   btk <- inferTypeKind resT
   checkTypeKind btk
+
+  let effN = name2String $ if isn't _EffVar _ehandleEff then _ehandleEff ^. effAppName . effVar else _ehandleEff ^. effVar
+      prefix = join $ L.intersperse "/" $ (init $ splitOn "/" effN)
+  
+  if effN == "core/prelude/io" || effN == "core/prelude/python"
+    then throwError $ "io or python effect cannot be handled"
+    else return ()
+
   bs <- forM _ehandleBindings $ \intf -> underScope $ do
-    let effN = name2String $ if isn't _EffVar _ehandleEff then _ehandleEff ^. effAppName . effVar else _ehandleEff ^. effVar
-        prefix = join $ L.intersperse "/" $ (init $ splitOn "/" effN)
-        fn =
+    let fn =
           if prefix == (take (L.length prefix) (intf ^. funcName))
             then (intf ^. funcName)
             else prefix ++ "/" ++ (intf ^. funcName)
