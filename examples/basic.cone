@@ -40,9 +40,9 @@ fun main() : io unit {
 
   val l = <i32>[1, 2, 3]
 
-  val t = (2, "string", 0.2) : (i32, str, f32)
+  val t = (2, "string", 0.2, <i32>[]) : (i32, str, f32, [i32])
 
-  val (t0, t1, t2) = t
+  val (t0, t1, t2, t3) = t
 
   print(t2)
 
