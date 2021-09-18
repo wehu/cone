@@ -34,7 +34,7 @@ fun and<a>(a: bool, b:bool) : bool
 
 fun or<a>(a: bool, b:bool) : bool 
 
-fun ____assign<a>(a: a, b:a) : unit 
+fun assign<a>(a: a, b:a) : unit 
 
 // builtin types
 

@@ -259,7 +259,7 @@ class Backend t where
           "core/prelude/le" -> binary "<="
           "core/prelude/and" -> binary "and"
           "core/prelude/or" -> binary "or"
-          "core/prelude/____assign" -> do
+          "core/prelude/assign" -> do
             prefix <- getEnv currentModuleName
             e <- genExpr proxy (_eappArgs !! 1)
             return $

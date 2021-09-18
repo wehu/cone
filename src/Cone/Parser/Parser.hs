@@ -572,7 +572,7 @@ term =
         pos
     varOrAssign v e pos = case e of
       Nothing -> A.EVar (s2n v) pos
-      Just e -> A.EApp (A.EVar (s2n "____assign") pos) [] [A.EVar (s2n v) pos, e] pos
+      Just e -> A.EApp (A.EVar (s2n "assign") pos) [] [A.EVar (s2n v) pos, e] pos
     elist t (e:es) pos = A.EApp (A.EVar (s2n "cons") pos) [t] [e, elist t es pos] pos
     elist t [] pos = A.EApp (A.EVar (s2n "nil") pos) [t] [] pos
     etuple (e0:e1:es) pos = A.EApp (A.EVar (s2n "pair") pos) [] [e0, etuple (e1:es) pos] pos
