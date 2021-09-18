@@ -58,10 +58,8 @@ inferTypeKind b@BoundEffVarType {..} = underScope $ do
   inferTypeKind t
 inferTypeKind v@TVar {..} = do
   let tvn = name2String _tvar
-  k <- getEnv $ types . at tvn
-  forMOf _Nothing k $ \k ->
-    throwError $ "cannot find type: " ++ ppr v ++ ppr _tloc
-  return $ fromJust k
+      kstar = KStar _tloc
+  getEnv $ types . at tvn . non kstar
 inferTypeKind f@TFunc {..} = do
   ks <- mapM inferTypeKind _tfuncArgs
   mapM_ checkTypeKind ks

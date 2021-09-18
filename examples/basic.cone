@@ -38,13 +38,13 @@ fun main() : io unit {
   var a = 0
   val A(b) = A(2)
 
-  val l = <i32>[1, 2, 3]
+  val l = [1, 2, 3] :[i32]
 
-  val t = (2, "string", 0.2, <i32>[]) : (i32, str, f32, [i32])
+  val t = (2, "string", 0.2, []) : (i32, str, f32, [i32])
 
   val (t0, t1, t2, t3) = t
 
-  print(t2)
+  print(t3)
 
   val ll = l/map(l, fn(a:i32) : io i32{
      print(a)

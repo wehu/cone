@@ -563,8 +563,8 @@ term =
                                 P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 handle $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
                                 P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
                                 P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "var or assign expression")
-                                P.<|> (A.ETC <$> tc P.<?> "tc expression")
-                                P.<|> (elist <$> angles type_ <*> brackets (P.sepBy expr comma) P.<?> "list expression")
+                                P.<|> P.try (A.ETC <$> tc P.<?> "tc expression")
+                                P.<|> (elist <$> brackets (P.sepBy expr comma) P.<?> "list expression")
                                 P.<|> (etuple <$> parens (P.sepBy1 expr comma) P.<?> "tuple expression")
                             )
                               <*> getPos
@@ -595,8 +595,8 @@ term =
     varOrAssign v e pos = case e of
       Nothing -> A.EVar (s2n v) pos
       Just e -> A.EApp (A.EVar (s2n "____assign") pos) [] [A.EVar (s2n v) pos, e] pos
-    elist t (e : es) pos = A.EApp (A.EVar (s2n "cons") pos) [t] [e, elist t es pos] pos
-    elist t [] pos = A.EApp (A.EVar (s2n "nil") pos) [t] [] pos
+    elist (e : es) pos = A.EApp (A.EVar (s2n "cons") pos) [] [e, elist es pos] pos
+    elist [] pos = A.EApp (A.EVar (s2n "nil") pos) [] [] pos
     etuple (e0 : e1 : es) pos = A.EApp (A.EVar (s2n "pair") pos) [] [e0, etuple (e1 : es) pos] pos
     etuple (e : []) pos = e
     econs e0 e1 pos = A.EApp (A.EVar (s2n "cons") pos) [] [e0, e1] pos

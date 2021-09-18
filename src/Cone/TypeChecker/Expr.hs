@@ -154,9 +154,10 @@ inferExprType a@EAnn {..} = do
   t <- typeOfExpr et
   k <- inferTypeKind _eannType
   checkTypeKind k
-  checkTypeMatch t _eannType
-  t <- inferType _eannType
-  return $ annotateExpr a {_eannExpr = et} t
+  at <- inferType _eannType
+  bindings <- collectVarBindings t at >>= varBindings
+  let aet = substs bindings t
+  return $ annotateExpr a {_eannExpr = et} aet
 inferExprType l@ELit {..} = do
   k <- inferTypeKind _litType
   checkTypeKind k
