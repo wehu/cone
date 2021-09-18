@@ -440,7 +440,7 @@ tc =
 
 exprTable =
   [ [exprPrefix sub "____negative"],
-    [ exprBinary pipe_ "Cons" PE.AssocLeft],
+    [ exprBinary pipe_ "cons" PE.AssocLeft],
     [ exprBinary star "____mul" PE.AssocLeft,
       exprBinary div_ "____div" PE.AssocLeft,
       exprBinary mod_ "____mod" PE.AssocLeft
@@ -508,7 +508,7 @@ pat =
         ptuple (p:[]) pos = p
         pcons p ps pos = 
           case ps of
-            Just ps -> A.PApp (A.EVar (s2n "Cons") pos) [] [p, ps] pos
+            Just ps -> A.PApp (A.EVar (s2n "cons") pos) [] [p, ps] pos
             Nothing -> p
 
 literal =
@@ -573,11 +573,11 @@ term =
     varOrAssign v e pos = case e of
       Nothing -> A.EVar (s2n v) pos
       Just e -> A.EApp (A.EVar (s2n "____assign") pos) [] [A.EVar (s2n v) pos, e] pos
-    elist t (e:es) pos = A.EApp (A.EVar (s2n "Cons") pos) [t] [e, elist t es pos] pos
-    elist t [] pos = A.EApp (A.EVar (s2n "Nil") pos) [t] [] pos
+    elist t (e:es) pos = A.EApp (A.EVar (s2n "cons") pos) [t] [e, elist t es pos] pos
+    elist t [] pos = A.EApp (A.EVar (s2n "nil") pos) [t] [] pos
     etuple (e0:e1:es) pos = A.EApp (A.EVar (s2n "Pair") pos) [] [e0, etuple (e1:es) pos] pos
     etuple (e:[]) pos = e
-    econs e0 e1 pos = A.EApp (A.EVar (s2n "Cons") pos) [] [e0, e1] pos
+    econs e0 e1 pos = A.EApp (A.EVar (s2n "cons") pos) [] [e0, e1] pos
 
 handle :: Parser A.FuncDef
 handle = do

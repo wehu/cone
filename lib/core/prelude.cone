@@ -51,8 +51,8 @@ type max<a:num, a:num>
 type min<a:num, a:num>
 
 type list<a> {
-  Nil
-  Cons(a, list<a>)
+  nil
+  cons(a, list<a>)
 }
 
 type pair<a, b> {
