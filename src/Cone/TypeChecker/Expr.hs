@@ -406,29 +406,8 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
   typeArgs <- mapM inferType _pappTypeArgs
   appFuncType <- inferExprType _pappName >>= typeOfExpr
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
-  let cntr =
-        ( \arg ->
-            -- construct a type with type variables
-            let newTVar = do
-                  fvn <- fresh
-                  let vn = name2String $ freeVarName fvn
-                      t = TVar (s2n vn) _ploc
-                  setFuncType vn t
-                  return t
-             in case arg of
-                  TVar {..} -> do
-                    gt <- getEnv $ types . at (name2String _tvar)
-                    case gt of
-                      Just _ -> return arg
-                      Nothing -> newTVar
-                  tp@TApp {..} -> do
-                    as <- mapM cntr _tappArgs
-                    return $ tp {_tappArgs = as}
-                  t@TPrim {..} -> return t
-                  _ -> newTVar
-        )
-  argTypes <- mapM cntr (appFuncType ^. tfuncArgs)
-  (appResT, ft) <- inferAppResultType appFuncType typeArgs argTypes
+  let argTypes = appFuncType ^. tfuncArgs
+      appResT = _tfuncResult appFuncType
   bindings <- collectVarBindings appResT t
   foldM
     ( \s e ->

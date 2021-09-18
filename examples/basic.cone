@@ -42,6 +42,10 @@ fun main() : io unit {
 
   val t = (2, "string", 0.2) : (i32, str, f32)
 
+  val pair(t0, pair(t1, t2)) = t
+
+  print(t2)
+
   val ll = l/map(l, fn(a:i32) : io i32{
      print(a)
      a + 1
