@@ -504,7 +504,7 @@ pat =
     P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
     P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal"))
     <*> P.optionMaybe (pipe_ *> pat P.<?> "pattern list cons") <*> getPos
-  where ptuple (p0:p1:ps) pos = A.PApp (A.EVar (s2n "Pair") pos) [] [p0, ptuple (p1:ps) pos] pos
+  where ptuple (p0:p1:ps) pos = A.PApp (A.EVar (s2n "pair") pos) [] [p0, ptuple (p1:ps) pos] pos
         ptuple (p:[]) pos = p
         pcons p ps pos = 
           case ps of
@@ -575,7 +575,7 @@ term =
       Just e -> A.EApp (A.EVar (s2n "____assign") pos) [] [A.EVar (s2n v) pos, e] pos
     elist t (e:es) pos = A.EApp (A.EVar (s2n "cons") pos) [t] [e, elist t es pos] pos
     elist t [] pos = A.EApp (A.EVar (s2n "nil") pos) [t] [] pos
-    etuple (e0:e1:es) pos = A.EApp (A.EVar (s2n "Pair") pos) [] [e0, etuple (e1:es) pos] pos
+    etuple (e0:e1:es) pos = A.EApp (A.EVar (s2n "pair") pos) [] [e0, etuple (e1:es) pos] pos
     etuple (e:[]) pos = e
     econs e0 e1 pos = A.EApp (A.EVar (s2n "cons") pos) [] [e0, e1] pos
 

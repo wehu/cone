@@ -56,7 +56,7 @@ type list<a> {
 }
 
 type pair<a, b> {
-  Pair(a, b)
+  pair(a, b)
 }
 
 // tensor types
