@@ -16,10 +16,6 @@ fun map<a, b>[e](l : list<a>, f : (a) -> e b) : e list<b> {
     nil<b>
   } else {
     val e|r = l
-    if r == nil<a> {
-      f(e)|nil<b>
-    } else {
-      f(e)|map(r, f)
-    }
+    f(e)|map(r, f)
   }
 }
