@@ -225,7 +225,7 @@ kind =
   ( A.KStar <$ (star P.<?> "star kind")
       P.<|> A.KNum <$ (kNum P.<?> "num kind")
       P.<|> A.KList <$ at_ <*> (brackets kind P.<?> "list kind")
-      P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind P.<?> "function kind")
+      -- P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind P.<?> "function kind")
   )
     <*> getPos
     P.<|> parens kind
