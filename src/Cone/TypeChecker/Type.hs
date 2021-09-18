@@ -328,8 +328,7 @@ inferAppResultType f@TFunc {} bargs args = do
     foldM
       (\s e -> (++) <$> return s <*> e)
       []
-      [collectVarBindings a b | a <- fArgTypes | b <- args]
-  checkVarBindings bindings
+      [collectVarBindings a b | a <- fArgTypes | b <- args] >>= varBindings
   let ft = substs bindings f
   return (_tfuncResult ft, ft)
 inferAppResultType t _ [] = return (t, t)
@@ -346,20 +345,18 @@ inferAppResultEffType f@TFunc {} targs args = do
     foldM
       (\s e -> (++) <$> return s <*> e)
       []
-      [collectVarBindings a b | a <- fArgTypes | b <- args]
-  checkVarBindings bindings
+      [collectVarBindings a b | a <- fArgTypes | b <- args] >>= varBindings
   resEff <- toEffList $ _tfuncEff f
   funcEff <- toEffList $ _tfuncEff f
   let eff = substs bindings resEff
   effBindings <-
-    (++)
+    ((++)
       <$> ( foldM
               (\s e -> (++) <$> return s <*> e)
               []
               [collectEffVarBindingsInType a b | a <- fArgTypes | b <- args]
           )
-      <*> collectEffVarBindings funcEff resEff
-  checkEffVarBindings effBindings
+      <*> collectEffVarBindings funcEff resEff) >>= effVarBindings
   toEffList $ substs effBindings eff
 inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
@@ -504,12 +501,10 @@ collectEffVarBindings a@EffApp {} b@EffApp {} = do
     || not (aeq (_effAppName a) (_effAppName b))
     then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
     else do
-      bindings <-
         foldM
           (\s e -> (++) <$> return s <*> e)
           []
-          [collectVarBindings aarg barg | aarg <- (a ^. effAppArgs) | barg <- (b ^. effAppArgs)]
-      checkVarBindings bindings
+          [collectVarBindings aarg barg | aarg <- (a ^. effAppArgs) | barg <- (b ^. effAppArgs)] >>= varBindings
   return []
 collectEffVarBindings a@EffList {} b@EffList {} = do
   let al = a ^. effList
@@ -653,23 +648,6 @@ varBindings bindings = do
       else return [(_tvar v, t)| v <- vars, t <- nonVars]
   return $ join bs
 
-checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
-checkVarBindings bindings' = do
-  bindings <- varBindings bindings'
-  foldM_
-    ( \b (n, t) -> do
-        if aeq (TVar n $ _tloc t) t
-          then return b
-          else case b ^. at n of
-            Nothing -> return $ at n ?~ t $ b
-            Just ot ->
-              if aeq t ot
-                then return b
-                else throwError $ "type var binding conflict: " ++ ppr t ++ ppr (_tloc t) ++ " vs " ++ ppr ot ++ ppr (_tloc ot)
-    )
-    M.empty
-    bindings
-
 effVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m [(EffVar, EffectType)]
 effVarBindings bindings = do
   let groups = groupTypes $ map (\(v, t) -> ((EffVar v $ _effLoc t), t)) bindings
@@ -686,24 +664,6 @@ effVarBindings bindings = do
       then throwError $ "eff var bind conflicts: " ++ ppr vars ++ " to " ++ ppr [(v, loc) | v <- nonVars | loc <- nonVars ^..traverse.effLoc]
       else return [(_effVar v, t)| v <- vars, t <- nonVars]
   return $ join bs
-
--- | Check all effect variable bindings
-checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m ()
-checkEffVarBindings bindings' = do
-  bindings <- effVarBindings bindings'
-  foldM_
-    ( \b (n, t) -> do
-        if aeq (EffVar n $ _effLoc t) t
-          then return b
-          else case b ^. at n of
-            Nothing -> return $ at n ?~ t $ b
-            Just ot ->
-              if aeq t ot
-                then return b
-                else throwError $ "eff type var binding conflict: " ++ ppr t ++ ppr (_effLoc t) ++ " vs " ++ ppr ot ++ ppr (_effLoc ot)
-    )
-    M.empty
-    bindings
 
 -- | Get a function type from a function defintion
 funcDefType :: FuncDef -> Type
@@ -767,8 +727,7 @@ isSubType s t = do
     ( if aeq s t
         then return False
         else do
-          binds <- collectVarBindings t s
-          checkVarBindings binds
+          collectVarBindings t s >>= varBindings
           return True
     )
     (\(e :: String) -> return False)

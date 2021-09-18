@@ -247,8 +247,7 @@ inferExprType h@EHandle {..} = underScope $ do
       -- check if interface defintion match with implemention's or not
       let handleT' = handleT {_tfuncEff = emptyEff, _tfuncResult = unit}
           intfT' = intfT {_tfuncEff = emptyEff, _tfuncResult = unit}
-      binds <- collectVarBindings intfT' handleT'
-      checkVarBindings binds
+      collectVarBindings intfT' handleT' >>= varBindings
 
       -- check expression result type
       intfE <- inferExprType $ fromJust $ _funcExpr intf
