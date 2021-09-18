@@ -4,37 +4,37 @@ module core/prelude
 
 fun inline_python<a>(code:str) : a
 
-fun negative<a>(a: a) : a
+fun ____negative<a>(a: a) : a
 
-fun add<a>(a: a, b:a) : a 
+fun ____add<a>(a: a, b:a) : a 
 
-fun sub<a>(a: a, b:a) : a 
+fun ____sub<a>(a: a, b:a) : a 
 
-fun mul<a>(a: a, b:a) : a
+fun ____mul<a>(a: a, b:a) : a
 
-fun div<a>(a: a, b:a) : a
+fun ____div<a>(a: a, b:a) : a
 
-fun mod<a>(a: a, b:a) : a
+fun ____mod<a>(a: a, b:a) : a
 
-fun lt<a>(a: a, b:a) : bool
+fun ____lt<a>(a: a, b:a) : bool
 
-fun gt<a>(a: a, b:a) : bool 
+fun ____gt<a>(a: a, b:a) : bool 
 
-fun le<a>(a: a, b:a) : bool 
+fun ____le<a>(a: a, b:a) : bool 
 
-fun ge<a>(a: a, b:a) : bool 
+fun ____ge<a>(a: a, b:a) : bool 
 
-fun eq<a>(a: a, b:a) : bool
+fun ____eq<a>(a: a, b:a) : bool
 
-fun ne<a>(a: a, b:a) : bool 
+fun ____ne<a>(a: a, b:a) : bool 
 
-fun not<a>(a: bool) : bool 
+fun ____not<a>(a: bool) : bool 
 
-fun and<a>(a: bool, b:bool) : bool
+fun ____and<a>(a: bool, b:bool) : bool
 
-fun or<a>(a: bool, b:bool) : bool 
+fun ____or<a>(a: bool, b:bool) : bool 
 
-fun assign<a>(a: a, b:a) : unit 
+fun ____assign<a>(a: a, b:a) : unit 
 
 // builtin types
 
