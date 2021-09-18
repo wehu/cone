@@ -196,7 +196,7 @@ inferExprType c@ECase {..} = do
 inferExprType w@EWhile {..} = do
   -- infer while condition's type
   c <- inferExprType _ewhileCond
-  t <- typeOfExpr c
+  t <- typeOfExpr c >>= inferType
   if aeq t (TPrim Pred _eloc)
     then return ()
     else throwError $ "while expected a bool as condition, but got " ++ ppr t ++ ppr _eloc
