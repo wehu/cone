@@ -440,6 +440,7 @@ tc =
 
 exprTable =
   [ [exprPrefix sub "____negative"],
+    [ exprBinary pipe_ "Cons" PE.AssocLeft],
     [ exprBinary star "____mul" PE.AssocLeft,
       exprBinary div_ "____div" PE.AssocLeft,
       exprBinary mod_ "____mod" PE.AssocLeft
@@ -480,7 +481,7 @@ exprBinary op name assoc =
 
 pat :: Parser A.Pattern
 pat =
-  P.try (parens pat)
+  pcons <$> ((parens pat)
     P.<|> ( ( P.try
                 ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
                     <*> (angles (P.sepBy1 type_ comma) P.<|> return [])
@@ -501,11 +502,14 @@ pat =
           )
     P.<|> P.try (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
     P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
-    P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal")
-    P.<|> P.try (parens (plist <$> pat <* sharp <*> pat <*> getPos) P.<?> "pattern list")
+    P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal"))
+    <*> P.optionMaybe (pipe_ *> pat P.<?> "pattern list cons") <*> getPos
   where ptuple (p0:p1:ps) pos = A.PApp (A.EVar (s2n "Pair") pos) [] [p0, ptuple (p1:ps) pos] pos
         ptuple (p:[]) pos = p
-        plist p ps pos = A.PApp (A.EVar (s2n "Cons") pos) [] [p, ps] pos
+        pcons p ps pos = 
+          case ps of
+            Just ps -> A.PApp (A.EVar (s2n "Cons") pos) [] [p, ps] pos
+            Nothing -> p
 
 literal =
   ( A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
@@ -539,7 +543,6 @@ term =
                                 P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "var or assign expression")
                                 P.<|> (A.ETC <$> tc P.<?> "tc expression")
                                 P.<|> (elist <$> angles type_ <*> brackets (P.sepBy expr comma) P.<?> "list expression")
-                                P.<|> P.try (parens (econs <$> expr <* sharp <*> expr) P.<?> "list cons expression")
                                 P.<|> (etuple <$> parens (P.sepBy1 expr comma) P.<?> "tuple expression")
                             )
                               <*> getPos
