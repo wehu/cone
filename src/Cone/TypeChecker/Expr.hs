@@ -6,6 +6,7 @@
 
 module Cone.TypeChecker.Expr where
 
+import Conduit
 import Cone.Parser.AST
 import Cone.TypeChecker.Env
 import Cone.TypeChecker.Type
@@ -16,21 +17,20 @@ import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
 import Control.Monad.ST
+import Data.Default.Class (def)
+import qualified Data.ExtendedReal as E
+import qualified Data.IntMap.Strict as IM
+import qualified Data.IntSet as IS
+import qualified Data.Interval as I
 import qualified Data.List as L
 import Data.List.Split
 import qualified Data.Map as M
-import qualified ToySolver.Data.LA as LA
-import ToySolver.Arith.Simplex
-import ToySolver.Arith.BoundsInference
-import qualified Data.Interval as I
-import Data.Default.Class (def)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import qualified Data.ExtendedReal as E
-import GHC.Real
-import Conduit
 import Data.Maybe
 import Debug.Trace
+import GHC.Real
+import ToySolver.Arith.BoundsInference
+import ToySolver.Arith.Simplex
+import qualified ToySolver.Data.LA as LA
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
@@ -104,13 +104,14 @@ inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
   setEnv M.empty localState
   -- refresh all bound variables
-  (bvs, newLam) <- refresh (_elamBoundVars ^..traverse._1) l
+  (bvs, newLam) <- refresh (_elamBoundVars ^.. traverse . _1) l
   (evs, newLam) <- refreshEffVar _elamBoundEffVars newLam
   case newLam of
     l@ELam {..} -> do
       -- add all bound type variables into env
-      mapM_ (\(t, k) -> setEnv (Just $ k ^. non (KStar _eloc)) $ types . at (name2String t)) 
-         [(t,k) |t <- bvs | k <- _elamBoundVars ^..traverse._2]
+      mapM_
+        (\(t, k) -> setEnv (Just $ k ^. non (KStar _eloc)) $ types . at (name2String t))
+        [(t, k) | t <- bvs | k <- _elamBoundVars ^.. traverse . _2]
       -- add all bound eff type variables into env
       mapM_ (\t -> setEnv (Just $ EKStar _eloc) $ effs . at (name2String t)) evs
       -- infer arguments
@@ -140,8 +141,12 @@ inferExprType l@ELam {..} = underScope $ do
       checkTypeKind k
       checkTypeMatch eType _elamResultType
       -- return the lambda type
-      t <- inferType $ bindTypeEffVar evs $ bindType 
-         [(t,k) |t <- bvs | k <- _elamBoundVars ^..traverse._2] $ TFunc args _elamEffType eType _eloc
+      t <-
+        inferType $
+          bindTypeEffVar evs $
+            bindType
+              [(t, k) | t <- bvs | k <- _elamBoundVars ^.. traverse . _2]
+              $ TFunc args _elamEffType eType _eloc
       return $ annotateExpr l {_elamExpr = Just lamE} t
     _ -> throwError $ "should not be here"
 inferExprType a@EAnn {..} = do
@@ -166,7 +171,7 @@ inferExprType l@ELet {..} = do
   et <- bindPatternVarTypes _eletState _eletPattern _eletExpr
   bt <- inferExprType _eletBody
   t <- typeOfExpr bt >>= inferType
-  return $ annotateExpr l {_eletExpr = et, _eletBody=bt} t
+  return $ annotateExpr l {_eletExpr = et, _eletBody = bt} t
 inferExprType c@ECase {..} = do
   -- infer case condition expression's type
   ce <- inferExprType _ecaseExpr
@@ -205,8 +210,8 @@ inferExprType w@EWhile {..} = do
   return $ annotateExpr w {_ewhileCond = c, _ewhileBody = b} (TPrim Unit _eloc)
 inferExprType h@EHandle {..} = underScope $ do
   if not (isn't _EffList _ehandleEff)
-  then throwError $ "expected an eff application, but got " ++ ppr _ehandleEff ++ ppr _eloc
-  else return ()
+    then throwError $ "expected an eff application, but got " ++ ppr _ehandleEff ++ ppr _eloc
+    else return ()
   -- infer handle's effect kind
   ek <- inferEffKind _ehandleEff
   checkEffKind ek
@@ -317,30 +322,32 @@ collectIndexVariables solver tc = do
   M.fromList <$> mapM (\v -> (v,) <$> if name2String v == "*" then return LA.unitVar else newVar solver) vars
 
 addIndexAtom :: M.Map IndexVar Var -> IndexExpr -> Int -> [Atom Rational]
-addIndexAtom varBindings indexE upper = 
-  let ts = map (\(i, x) -> (fromIntegral i, fromJust $ varBindings ^. at x) ) $ indexE ^. indexExpr
-   in [LA.fromTerms ts .<=. LA.constant (fromIntegral upper-1), LA.fromTerms ts .>=. LA.constant 0]
+addIndexAtom varBindings indexE upper =
+  let ts = map (\(i, x) -> (fromIntegral i, fromJust $ varBindings ^. at x)) $ indexE ^. indexExpr
+   in [LA.fromTerms ts .<=. LA.constant (fromIntegral upper - 1), LA.fromTerms ts .>=. LA.constant 0]
 
 inferTCExprIndices :: (Has EnvEff sig m) => [IndexVar] -> TCExpr -> m (Type, [(IndexVar, Int)])
 inferTCExprIndices is tc = do
   (t, indices) <- collectTCExprTypeInfo tc
   let resolveIndex =
-       do
-         solver <- newSolver
-         varBindings <- collectIndexVariables solver tc
-         let atoms = join (map (\(i, u) -> addIndexAtom varBindings i u) indices)
-                      ++ map (\i -> LA.var (fromJust $ varBindings ^.at i) .>=. LA.constant 0) is
-             initBounds = IM.fromList [(i, I.whole) | i <- M.elems varBindings]
-             iVars = IS.fromList $ M.elems varBindings
-             bounds = inferBounds initBounds atoms iVars 1000
-         return [(i, fromJust $ IM.lookup (fromJust $ varBindings ^.at i) bounds) | i <- is]
+        do
+          solver <- newSolver
+          varBindings <- collectIndexVariables solver tc
+          let atoms =
+                join (map (\(i, u) -> addIndexAtom varBindings i u) indices)
+                  ++ map (\i -> LA.var (fromJust $ varBindings ^. at i) .>=. LA.constant 0) is
+              initBounds = IM.fromList [(i, I.whole) | i <- M.elems varBindings]
+              iVars = IS.fromList $ M.elems varBindings
+              bounds = inferBounds initBounds atoms iVars 1000
+          return [(i, fromJust $ IM.lookup (fromJust $ varBindings ^. at i) bounds) | i <- is]
       ds = runST resolveIndex
   forM_ ds $ \(i, d) ->
     if E.isInfinite $ I.lowerBound d
       then throwError $ "lowerbound is infinite: " ++ ppr i
-      else if E.isInfinite $ I.upperBound d
-        then throwError $ "upperbound is infinite: " ++ ppr i
-        else return ()
+      else
+        if E.isInfinite $ I.upperBound d
+          then throwError $ "upperbound is infinite: " ++ ppr i
+          else return ()
   (t,) <$> mapM (\(i, d) -> return (i, fromInteger $ floor $ 1 + I.width d)) ds
 
 -- | Infer a tensor comprehensive expression's type
@@ -444,7 +451,7 @@ inferExprEffType ECase {..} = do
   --let le : _ = cse
   --forM_ cse $ checkEffTypeMatch le
   foldM mergeEffs ce cse
-  -- mergeEffs ce le
+-- mergeEffs ce le
 inferExprEffType EWhile {..} = do
   ce <- inferExprEffType _ewhileCond
   be <- inferExprEffType _ewhileBody
@@ -499,7 +506,7 @@ inferExprEffType ETC {..} = return $ EffList [] _eloc
 setupEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
 setupEffIntfType f = do
   let pos = f ^. funcLoc
-      bvars = fmap (\t -> (name2String (t ^._1), t ^._2 . non (KStar pos))) $ f ^.. funcBoundVars.traverse
+      bvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non (KStar pos))) $ f ^.. funcBoundVars . traverse
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n

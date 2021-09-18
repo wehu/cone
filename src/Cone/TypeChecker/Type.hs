@@ -73,7 +73,7 @@ inferTypeKind f@TFunc {..} = do
 inferTypeKind n@TNum {..} = return $ KNum _tloc
 inferTypeKind l@TList {..} = do
   es' <- mapM inferTypeKind _tlist
-  let e:es = es'
+  let e : es = es'
   forM_ es $ \k ->
     checkKindMatch e k
   return $ KList e _tloc
@@ -102,7 +102,7 @@ inferType a@TApp {..} = do
   args <- mapM inferType _tappArgs
   let t = a {_tappArgs = args}
   case name2String (_tvar _tappName) of
-    "core/prelude/neg" -> return $ evalType1 t args (\e -> (- e))
+    "core/prelude/neg" -> return $ evalType1 t args (\e -> (-e))
     "core/prelude/add" -> return $ evalType2 t args (+)
     "core/prelude/sub" -> return $ evalType2 t args (-)
     "core/prelude/mul" -> return $ evalType2 t args (*)
@@ -127,7 +127,7 @@ inferType f@TFunc {..} = do
   eff <- inferEffectType _tfuncEff
   res <- inferType _tfuncResult
   return f {_tfuncArgs = args, _tfuncEff = eff, _tfuncResult = res}
-inferType l@TList{..} = do
+inferType l@TList {..} = do
   es <- mapM inferType _tlist
   return l {_tlist = es}
 inferType t = return t
@@ -679,13 +679,17 @@ funcDefType f =
 
 -- | Extract a tensor type's shape
 extractTensorShape :: (Has EnvEff sig m) => Type -> m [Int]
-extractTensorShape t@TList {..} = 
-  foldM (\s e -> do
-    case e of
-      TNum d _ -> case d of 
-                    Just d -> return $ s ++ [d]
-                    Nothing -> throwError $ "expected a static shape, but got " ++ ppr e ++ ppr (e ^.tloc)
-      _ -> throwError $ "expected a number type, but got " ++ ppr e ++ ppr (e ^.tloc)) [] _tlist
+extractTensorShape t@TList {..} =
+  foldM
+    ( \s e -> do
+        case e of
+          TNum d _ -> case d of
+            Just d -> return $ s ++ [d]
+            Nothing -> throwError $ "expected a static shape, but got " ++ ppr e ++ ppr (e ^. tloc)
+          _ -> throwError $ "expected a number type, but got " ++ ppr e ++ ppr (e ^. tloc)
+    )
+    []
+    _tlist
 extractTensorShape t = throwError $ "expected a pair type, but got " ++ ppr t ++ ppr (_tloc t)
 
 -- | Extract a tensor type's information

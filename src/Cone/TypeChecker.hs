@@ -46,15 +46,15 @@ initTypeDef prefix t = do
           star = KStar loc
           num = KNum loc
           resK = case (t ^. typeName) of
-                   "neg" -> num
-                   "add" -> num 
-                   "sub" -> num 
-                   "mul" -> num 
-                   "div" -> num 
-                   "mod" -> num 
-                   "max" -> num 
-                   "min" -> num 
-                   _ -> star
+            "neg" -> num
+            "add" -> num
+            "sub" -> num
+            "mul" -> num
+            "div" -> num
+            "mod" -> num
+            "max" -> num
+            "min" -> num
+            _ -> star
        in if args == [] -- if no arguments, it is just a simple enum
             then star
             else KFunc (args ^.. traverse . _2 . non star) resK loc
@@ -104,7 +104,7 @@ initTypeConDef prefix t = do
           rt =
             if tvars == []
               then TVar (s2n tn) pos
-              else TApp (TVar (s2n tn) pos) (fmap (\t -> TVar (t ^._1) pos) tvars) pos
+              else TApp (TVar (s2n tn) pos) (fmap (\t -> TVar (t ^. _1) pos) tvars) pos
           bt =
             bindType tvars $
               if targs == []
@@ -168,7 +168,7 @@ initEffIntfDef prefix e = do
             iargs = i ^. intfArgs
             iresult = _intfResultType i
             pos = i ^. intfLoc
-            bvars = (i ^.. intfBoundVars. traverse . _1)
+            bvars = (i ^.. intfBoundVars . traverse . _1)
             targs = (e ^.. effectArgs . traverse . _1) ++ globalTypes
             b = bind (targs ++ bvars) $ iresult : iargs
             fvars = (b ^.. fv) :: [TVar]
@@ -263,7 +263,7 @@ checkFuncType :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 checkFuncType f = underScope $ do
   let pos = f ^. funcLoc
       star = KStar pos
-      btvars = fmap (\t -> (name2String (t ^._1), t ^._2. non star)) $ f ^. funcBoundVars
+      btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
   -- add all bound type variables into env
   forM_ btvars $ \(n, k) -> setEnv (Just k) $ types . at n
@@ -363,12 +363,12 @@ addTypeBindings m =
     bindEDef edef =
       let boundVars = L.nub $ edef ^.. effectArgs . traverse
           edef' = over (effectIntfs . traverse) (bindEffIntf boundVars) edef
-       in BoundEffectDef (bind (boundVars ^..traverse._1) edef') (_effectLoc edef)
+       in BoundEffectDef (bind (boundVars ^.. traverse . _1) edef') (_effectLoc edef)
     bindEffIntf bvs intf =
       let boundVars = L.nub $ bvs ++ intf ^. intfBoundVars
           boundEffVars = L.nub $ intf ^. intfBoundEffVars
           loc = intf ^. intfLoc
-       in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind (boundVars ^..traverse._1) intf) loc) loc
+       in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind (boundVars ^.. traverse . _1) intf) loc) loc
     bindTDef tdef =
       let boundVars = L.nub $ tdef ^.. typeArgs . traverse . _1
        in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef)
@@ -377,7 +377,7 @@ addTypeBindings m =
           boundEffVars = L.nub $ fdef ^. funcBoundEffVars
           loc = fdef ^. funcLoc
           expr = fmap (transform bindExpr) $ _funcExpr fdef
-       in BoundEffFuncDef (bind boundEffVars $ BoundFuncDef (bind (boundVars ^..traverse._1) fdef {_funcExpr = expr}) loc) loc
+       in BoundEffFuncDef (bind boundEffVars $ BoundFuncDef (bind (boundVars ^.. traverse . _1) fdef {_funcExpr = expr}) loc) loc
     bindExpr l@ELam {..} =
       let boundVars = L.nub $ _elamBoundVars
           boundEffVars = L.nub $ _elamBoundEffVars
@@ -385,7 +385,7 @@ addTypeBindings m =
             { _elamExpr =
                 fmap
                   ( \e ->
-                      EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind (boundVars ^..traverse._1) e) _eloc) _eloc
+                      EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind (boundVars ^.. traverse . _1) e) _eloc) _eloc
                   )
                   _elamExpr
             }
@@ -498,11 +498,12 @@ addPrefixForTypes m' = do
   let m = addTypeBindings m'
   let allGlobalVars = L.nub (m ^.. fv) :: [TVar]
       allGlobalEffVars = L.nub (m ^.. fv) :: [EffVar]
-      prefixes = L.nub $ 
-        "" :
-        (m ^. moduleName ++ "/") :
-        "core/prelude/" :
-        (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
+      prefixes =
+        L.nub $
+          "" :
+          (m ^. moduleName ++ "/") :
+          "core/prelude/" :
+          (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
       loc = m ^. moduleLoc
   ts <- getEnv types
   es <- getEnv effs
@@ -573,10 +574,14 @@ addVarBindings m =
       let vs = map (s2n . name2String) ((l ^.. fv) :: [PVar])
        in EBoundVars (bind vs l) _eloc
     bindExpr c@ECase {..} =
-      let ps = map (\p -> 
-                    let vs = map (s2n . name2String) ((p ^.. fv) :: [PVar])
-                     in BoundCase (bind vs p) (_caseLoc p)) _ecaseBody
-       in c{_ecaseBody=ps}
+      let ps =
+            map
+              ( \p ->
+                  let vs = map (s2n . name2String) ((p ^.. fv) :: [PVar])
+                   in BoundCase (bind vs p) (_caseLoc p)
+              )
+              _ecaseBody
+       in c {_ecaseBody = ps}
     bindExpr expr = expr
 
 -- | Remove variable bindings
@@ -626,7 +631,7 @@ removeVarBindings m =
     removeBindingsForPattern p@PExpr {..} =
       p {_pExpr = removeBindingsForExpr _pExpr}
     removeBindingsForPattern p = p
-    removeBindingsForCase BoundCase{..} =
+    removeBindingsForCase BoundCase {..} =
       let (_, c) = unsafeUnbind _boundCase
        in removeBindingsForCase c
     removeBindingsForCase c@Case {..} =
@@ -640,11 +645,12 @@ addPrefixForExprs :: (Has EnvEff sig m) => Module -> m Module
 addPrefixForExprs m' = do
   let m = addVarBindings m'
   let allGlobalVars = L.nub (m ^.. fv) :: [EVar]
-      prefixes = L.nub $
-        "" :
-        (m ^. moduleName ++ "/") :
-        "core/prelude/" :
-        (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
+      prefixes =
+        L.nub $
+          "" :
+          (m ^. moduleName ++ "/") :
+          "core/prelude/" :
+          (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
       loc = m ^. moduleLoc
   fs <- getEnv funcs
   binds <-

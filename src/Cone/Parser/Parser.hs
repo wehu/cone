@@ -135,7 +135,7 @@ backSlash = symbol L.Backslash
 
 question = symbol L.Question
 
-at_ = symbol L.At 
+at_ = symbol L.At
 
 arrow = symbol L.Arrow
 
@@ -249,7 +249,7 @@ primType =
     P.<|> (A.Unit <$ unit)
 
 typeTable =
-  [ [ typePrefix sub "neg"],
+  [ [typePrefix sub "neg"],
     [ typeBinary star "mul" PE.AssocLeft,
       typeBinary div_ "div" PE.AssocLeft,
       typeBinary mod_ "mod" PE.AssocLeft
@@ -314,8 +314,8 @@ typeTerm =
       Just k' -> A.TAnn t k' pos
       _ -> t
     tlist t pos = A.TApp (A.TVar (s2n "list") pos) [t] pos
-    ttuple (t0:t1:ts) pos = A.TApp (A.TVar (s2n "pair") pos) [t0, ttuple (t1:ts) pos] pos
-    ttuple (t:[]) pos = t
+    ttuple (t0 : t1 : ts) pos = A.TApp (A.TVar (s2n "pair") pos) [t0, ttuple (t1 : ts) pos] pos
+    ttuple (t : []) pos = t
 
 type_ :: Parser A.Type
 type_ = PE.buildExpressionParser typeTable typeTerm
@@ -375,11 +375,18 @@ exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr) <*> getP
 funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
 
 indexExpr :: Parser A.IndexExpr
-indexExpr = A.IndexExpr <$> (P.sepBy1 
-                 (P.try ((,) <$> (read <$> literalInt) <* star <*> (s2n <$> ident))
-                  P.<|> P.try ((\a b -> (b,a)) <$> (s2n <$> ident) <* star <*> (read <$> literalInt))
-                  P.<|> P.try ((,) <$> return 1 <*> (s2n <$> ident))
-                  P.<|> ((,) <$> (read <$> literalInt) <*> return (s2n "*"))) add) <*> getPos P.<?> "index expr"
+indexExpr =
+  A.IndexExpr
+    <$> ( P.sepBy1
+            ( P.try ((,) <$> (read <$> literalInt) <* star <*> (s2n <$> ident))
+                P.<|> P.try ((\a b -> (b, a)) <$> (s2n <$> ident) <* star <*> (read <$> literalInt))
+                P.<|> P.try ((,) <$> return 1 <*> (s2n <$> ident))
+                P.<|> ((,) <$> (read <$> literalInt) <*> return (s2n "*"))
+            )
+            add
+        )
+    <*> getPos
+    P.<?> "index expr"
 
 tcExprTable =
   [ [tcExprPrefix sub "-"],
@@ -430,8 +437,13 @@ tcTerm =
 tc :: Parser A.TCExpr
 tc =
   brackets $
-    f <$> (A.TCAccess <$> ident <*> brackets 
-             (P.sepBy1 (A.IndexExpr <$> ((\n -> [(1::Int, s2n n)]) <$> ident) <*> getPos) comma) <*> getPos P.<?> "tc access")
+    f
+      <$> ( A.TCAccess <$> ident
+              <*> brackets
+                (P.sepBy1 (A.IndexExpr <$> ((\n -> [(1 :: Int, s2n n)]) <$> ident) <*> getPos) comma)
+              <*> getPos
+              P.<?> "tc access"
+          )
       <*> ( assign_ *> return "="
               P.<|> addAssign *> return "+="
               P.<|> subAssign *> return "-="
@@ -446,7 +458,7 @@ tc =
 
 exprTable =
   [ [exprPrefix sub "____negative"],
-    [ exprBinary pipe_ "cons" PE.AssocLeft],
+    [exprBinary pipe_ "cons" PE.AssocLeft],
     [ exprBinary star "____mul" PE.AssocLeft,
       exprBinary div_ "____div" PE.AssocLeft,
       exprBinary mod_ "____mod" PE.AssocLeft
@@ -487,35 +499,39 @@ exprBinary op name assoc =
 
 pat :: Parser A.Pattern
 pat =
-  pcons <$> (P.try (parens pat)
-    P.<|> ( ( P.try
-                ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-                    <*> (angles (P.sepBy1 type_ comma) P.<|> return [])
-                    <*> parens (P.sepBy1 pat comma)
-                    <*> getPos
-                )
-            )
-              P.<?> "pattern application"
-          )
-    P.<|> ( ( P.try
-                ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-                    <*> angles (P.sepBy1 type_ comma)
-                    <*> return []
-                    <*> getPos
-                )
-            )
-              P.<?> "pattern application"
-          )
-    P.<|> P.try (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
-    P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
-    P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal"))
-    <*> P.optionMaybe (pipe_ *> pat P.<?> "pattern list cons") <*> getPos
-  where ptuple (p0:p1:ps) pos = A.PApp (A.EVar (s2n "pair") pos) [] [p0, ptuple (p1:ps) pos] pos
-        ptuple (p:[]) pos = p
-        pcons p ps pos = 
-          case ps of
-            Just ps -> A.PApp (A.EVar (s2n "cons") pos) [] [p, ps] pos
-            Nothing -> p
+  pcons
+    <$> ( P.try (parens pat)
+            P.<|> ( ( P.try
+                        ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+                            <*> (angles (P.sepBy1 type_ comma) P.<|> return [])
+                            <*> parens (P.sepBy1 pat comma)
+                            <*> getPos
+                        )
+                    )
+                      P.<?> "pattern application"
+                  )
+            P.<|> ( ( P.try
+                        ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+                            <*> angles (P.sepBy1 type_ comma)
+                            <*> return []
+                            <*> getPos
+                        )
+                    )
+                      P.<?> "pattern application"
+                  )
+            P.<|> P.try (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
+            P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
+            P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal")
+        )
+    <*> P.optionMaybe (pipe_ *> pat P.<?> "pattern list cons")
+    <*> getPos
+  where
+    ptuple (p0 : p1 : ps) pos = A.PApp (A.EVar (s2n "pair") pos) [] [p0, ptuple (p1 : ps) pos] pos
+    ptuple (p : []) pos = p
+    pcons p ps pos =
+      case ps of
+        Just ps -> A.PApp (A.EVar (s2n "cons") pos) [] [p, ps] pos
+        Nothing -> p
 
 literal =
   ( A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
@@ -579,10 +595,10 @@ term =
     varOrAssign v e pos = case e of
       Nothing -> A.EVar (s2n v) pos
       Just e -> A.EApp (A.EVar (s2n "____assign") pos) [] [A.EVar (s2n v) pos, e] pos
-    elist t (e:es) pos = A.EApp (A.EVar (s2n "cons") pos) [t] [e, elist t es pos] pos
+    elist t (e : es) pos = A.EApp (A.EVar (s2n "cons") pos) [t] [e, elist t es pos] pos
     elist t [] pos = A.EApp (A.EVar (s2n "nil") pos) [t] [] pos
-    etuple (e0:e1:es) pos = A.EApp (A.EVar (s2n "pair") pos) [] [e0, etuple (e1:es) pos] pos
-    etuple (e:[]) pos = e
+    etuple (e0 : e1 : es) pos = A.EApp (A.EVar (s2n "pair") pos) [] [e0, etuple (e1 : es) pos] pos
+    etuple (e : []) pos = e
     econs e0 e1 pos = A.EApp (A.EVar (s2n "cons") pos) [] [e0, e1] pos
 
 handle :: Parser A.FuncDef
