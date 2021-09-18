@@ -226,7 +226,7 @@ inferExprType h@EHandle {..} = underScope $ do
       prefix = join $ L.intersperse "/" $ (init $ splitOn "/" effN)
   
   if effN == "core/prelude/io" || effN == "core/prelude/python"
-    then throwError $ "io or python effect cannot be handled"
+    then throwError $ effN ++ " effect cannot be handled"
     else return ()
 
   bs <- forM _ehandleBindings $ \intf -> underScope $ do
