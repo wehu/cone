@@ -1,9 +1,9 @@
 module data/list
 
-fun reverse<a>(l : list<a>) : list<a> {
+fun reverse<a>(l : [a]) : [a] {
   var rest = l
-  var newl = nil<a>
-  while (rest != nil<a>) {
+  var newl = []:[a]
+  while (rest != []:[a]) {
     val e|r = rest
     rest = r
     newl = e|newl
@@ -11,9 +11,9 @@ fun reverse<a>(l : list<a>) : list<a> {
   newl
 }
 
-fun map<a, b>[e](l : list<a>, f : (a) -> e b) : e list<b> {
-  if l == nil<a> {
-    nil<b>
+fun map<a, b>[e](l : [a], f : (a) -> e b) : e [b] {
+  if l == []:[a] {
+    []:[b]
   } else {
     val e|r = l
     f(e)|map(r, f)
