@@ -246,19 +246,19 @@ class Backend t where
   genExpr proxy EApp {..} =
     let fn = name2String $ (removeAnn _eappFunc) ^. evarName
      in case fn of
-          "core/prelude/____add" -> binary "+"
-          "core/prelude/____sub" -> binary "-"
-          "core/prelude/____mul" -> binary "*"
-          "core/prelude/____div" -> binary "/"
-          "core/prelude/____mod" -> binary "%"
-          "core/prelude/____eq" -> binary "=="
-          "core/prelude/____ne" -> binary "!="
-          "core/prelude/____gt" -> binary ">"
-          "core/prelude/____lt" -> binary "<"
-          "core/prelude/____ge" -> binary ">="
-          "core/prelude/____le" -> binary "<="
-          "core/prelude/____and" -> binary "and"
-          "core/prelude/____or" -> binary "or"
+          "core/prelude/add" -> binary "+"
+          "core/prelude/sub" -> binary "-"
+          "core/prelude/mul" -> binary "*"
+          "core/prelude/div" -> binary "/"
+          "core/prelude/mod" -> binary "%"
+          "core/prelude/eq" -> binary "=="
+          "core/prelude/ne" -> binary "!="
+          "core/prelude/gt" -> binary ">"
+          "core/prelude/lt" -> binary "<"
+          "core/prelude/ge" -> binary ">="
+          "core/prelude/le" -> binary "<="
+          "core/prelude/and" -> binary "and"
+          "core/prelude/or" -> binary "or"
           "core/prelude/____assign" -> do
             prefix <- getEnv currentModuleName
             e <- genExpr proxy (_eappArgs !! 1)

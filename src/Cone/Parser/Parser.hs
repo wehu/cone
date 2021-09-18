@@ -439,26 +439,26 @@ tc =
     f a op e pos = A.TCApp op [a, e] pos
 
 exprTable =
-  [ [exprPrefix sub "____negative"],
+  [ [exprPrefix sub "negative"],
     [ exprBinary pipe_ "cons" PE.AssocLeft],
-    [ exprBinary star "____mul" PE.AssocLeft,
-      exprBinary div_ "____div" PE.AssocLeft,
-      exprBinary mod_ "____mod" PE.AssocLeft
+    [ exprBinary star "mul" PE.AssocLeft,
+      exprBinary div_ "div" PE.AssocLeft,
+      exprBinary mod_ "mod" PE.AssocLeft
     ],
-    [ exprBinary add "____add" PE.AssocLeft,
-      exprBinary sub "____sub" PE.AssocLeft
+    [ exprBinary add "add" PE.AssocLeft,
+      exprBinary sub "sub" PE.AssocLeft
     ],
-    [ exprBinary less "____lt" PE.AssocLeft,
-      exprBinary greater "____gt" PE.AssocLeft,
-      exprBinary le "____le" PE.AssocLeft,
-      exprBinary ge "____ge" PE.AssocLeft
+    [ exprBinary less "lt" PE.AssocLeft,
+      exprBinary greater "gt" PE.AssocLeft,
+      exprBinary le "le" PE.AssocLeft,
+      exprBinary ge "ge" PE.AssocLeft
     ],
-    [ exprBinary eq "____eq" PE.AssocLeft,
-      exprBinary ne "____ne" PE.AssocLeft
+    [ exprBinary eq "eq" PE.AssocLeft,
+      exprBinary ne "ne" PE.AssocLeft
     ],
-    [exprPrefix not_ "____not"],
-    [ exprBinary and_ "____and" PE.AssocLeft,
-      exprBinary or_ "____or" PE.AssocLeft
+    [exprPrefix not_ "not"],
+    [ exprBinary and_ "and" PE.AssocLeft,
+      exprBinary or_ "or" PE.AssocLeft
     ]
   ]
 
