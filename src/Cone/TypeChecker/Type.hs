@@ -649,7 +649,7 @@ varBindings bindings = do
             Just _ -> return (vars, nonVars ++ [e])
             Nothing -> return (vars ++ [e], nonVars)) ([], []) g
     if L.length nonVars > 1
-      then throwError $ "var bind conflicts: " ++ ppr nonVars
+      then throwError $ "var bind conflicts: " ++ ppr [(v, loc) | v <- nonVars | loc <- nonVars ^..traverse.tloc]
       else return [(_tvar v, t)| v <- vars, t <- nonVars]
   return $ join bs
 
@@ -683,7 +683,7 @@ effVarBindings bindings = do
             Just _ -> return (vars, nonVars ++ [e])
             Nothing -> return (vars ++ [e], nonVars)) ([], []) g
     if L.length nonVars > 1
-      then throwError $ "eff var bind conflicts: " ++ ppr nonVars
+      then throwError $ "eff var bind conflicts: " ++ ppr [(v, loc) | v <- nonVars | loc <- nonVars ^..traverse.effLoc]
       else return [(_effVar v, t)| v <- vars, t <- nonVars]
   return $ join bs
 
