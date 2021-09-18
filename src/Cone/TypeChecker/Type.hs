@@ -629,8 +629,33 @@ collectEffVarBindingsInType a@TNum {} b@TNum {} =
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType a b = throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 
+groupTypes :: (Alpha a) => [(a, a)] -> [[a]]
+groupTypes rels = 
+  let ts = L.nubBy aeq $ join $ map (\(a, b) -> [a, b]) rels
+   in L.groupBy (\a b -> elem (a, b) rels) ts
+  where elem a (e:es) = if aeq a e then True else elem a es
+        elem a [] = False
+
+varBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m [(TVar, Type)]
+varBindings bindings = do
+  let groups = groupTypes $ map (\(v, t) -> ((TVar v $ _tloc t), t)) bindings
+  bs <- forM groups $ \g -> do
+    (vars, nonVars) <- foldM (\(vars, nonVars) e -> do
+      if isn't _TVar e
+        then return (vars, nonVars ++ [e])
+        else do
+          k <- getEnv $ types . at (name2String $ _tvar e)
+          case k of
+            Just _ -> return (vars, nonVars ++ [e])
+            Nothing -> return (vars ++ [e], nonVars)) ([], []) g
+    if L.length nonVars > 1
+      then throwError $ "var bind conflicts: " ++ ppr nonVars
+      else return [(_tvar v, t)| v <- vars, t <- nonVars]
+  return $ join bs
+
 checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m ()
-checkVarBindings bindings = do
+checkVarBindings bindings' = do
+  bindings <- varBindings bindings'
   foldM_
     ( \b (n, t) -> do
         if aeq (TVar n $ _tloc t) t
@@ -645,9 +670,27 @@ checkVarBindings bindings = do
     M.empty
     bindings
 
+effVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m [(EffVar, EffectType)]
+effVarBindings bindings = do
+  let groups = groupTypes $ map (\(v, t) -> ((EffVar v $ _effLoc t), t)) bindings
+  bs <- forM groups $ \g -> do
+    (vars, nonVars) <- foldM (\(vars, nonVars) e -> do
+      if isn't _EffVar e
+        then return (vars, nonVars ++ [e])
+        else do
+          k <- getEnv $ effs . at (name2String $ _effVar e)
+          case k of
+            Just _ -> return (vars, nonVars ++ [e])
+            Nothing -> return (vars ++ [e], nonVars)) ([], []) g
+    if L.length nonVars > 1
+      then throwError $ "eff var bind conflicts: " ++ ppr nonVars
+      else return [(_effVar v, t)| v <- vars, t <- nonVars]
+  return $ join bs
+
 -- | Check all effect variable bindings
 checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m ()
-checkEffVarBindings bindings = do
+checkEffVarBindings bindings' = do
+  bindings <- effVarBindings bindings'
   foldM_
     ( \b (n, t) -> do
         if aeq (EffVar n $ _effLoc t) t
