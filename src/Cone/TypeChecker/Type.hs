@@ -326,7 +326,7 @@ inferAppResultType f@TFunc {} bargs args = do
     foldM
       (\s e -> (++) <$> return s <*> e)
       []
-      [collectVarBindings a b | a <- fArgTypes | b <- args] >>= varBindings
+      [collectVarBindings a b | a <- fArgTypes | b <- args] >>= checkVarBindings
   let ft = substs bindings f
   return (_tfuncResult ft, ft)
 inferAppResultType t _ [] = return (t, t)
@@ -343,7 +343,7 @@ inferAppResultEffType f@TFunc {} targs args = do
     foldM
       (\s e -> (++) <$> return s <*> e)
       []
-      [collectVarBindings a b | a <- fArgTypes | b <- args] >>= varBindings
+      [collectVarBindings a b | a <- fArgTypes | b <- args] >>= checkVarBindings
   resEff <- toEffList $ _tfuncEff f
   funcEff <- toEffList $ _tfuncEff f
   let eff = substs bindings resEff
@@ -354,7 +354,7 @@ inferAppResultEffType f@TFunc {} targs args = do
               []
               [collectEffVarBindingsInType a b | a <- fArgTypes | b <- args]
           )
-      <*> collectEffVarBindings funcEff resEff) >>= effVarBindings
+      <*> collectEffVarBindings funcEff resEff) >>= checkEffVarBindings
   toEffList $ substs effBindings eff
 inferAppResultEffType t _ [] = return $ EffList [] (_tloc t)
 inferAppResultEffType t _ _ = throwError $ "expected a function type, but got " ++ ppr t ++ ppr (_tloc t)
@@ -502,7 +502,7 @@ collectEffVarBindings a@EffApp {} b@EffApp {} = do
         foldM
           (\s e -> (++) <$> return s <*> e)
           []
-          [collectVarBindings aarg barg | aarg <- (a ^. effAppArgs) | barg <- (b ^. effAppArgs)] >>= varBindings
+          [collectVarBindings aarg barg | aarg <- (a ^. effAppArgs) | barg <- (b ^. effAppArgs)] >>= checkVarBindings
   return []
 collectEffVarBindings a@EffList {} b@EffList {} = do
   let al = a ^. effList
@@ -629,8 +629,8 @@ groupTypes rels =
   where elem a (e:es) = if aeq a e then True else elem a es
         elem a [] = False
 
-varBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m [(TVar, Type)]
-varBindings bindings = do
+checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m [(TVar, Type)]
+checkVarBindings bindings = do
   let groups = groupTypes $ map (\(v, t) -> ((TVar v $ _tloc t), t)) bindings
   bs <- forM groups $ \g -> do
     (vars, nonVars) <- foldM (\(vars, nonVars) e -> do
@@ -646,8 +646,8 @@ varBindings bindings = do
       else return [(_tvar v, t)| v <- vars, t <- nonVars]
   return $ join bs
 
-effVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m [(EffVar, EffectType)]
-effVarBindings bindings = do
+checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m [(EffVar, EffectType)]
+checkEffVarBindings bindings = do
   let groups = groupTypes $ map (\(v, t) -> ((EffVar v $ _effLoc t), t)) bindings
   bs <- forM groups $ \g -> do
     (vars, nonVars) <- foldM (\(vars, nonVars) e -> do
@@ -725,7 +725,7 @@ isSubType s t = do
     ( if aeq s t
         then return False
         else do
-          collectVarBindings t s >>= varBindings
+          collectVarBindings t s >>= checkVarBindings
           return True
     )
     (\(e :: String) -> return False)

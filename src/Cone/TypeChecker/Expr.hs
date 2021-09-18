@@ -155,7 +155,7 @@ inferExprType a@EAnn {..} = do
   k <- inferTypeKind _eannType
   checkTypeKind k
   at <- inferType _eannType
-  bindings <- collectVarBindings t at >>= varBindings
+  bindings <- collectVarBindings t at >>= checkVarBindings
   let aet = substs bindings t
   return $ annotateExpr a {_eannExpr = et} aet
 inferExprType l@ELit {..} = do
@@ -254,7 +254,7 @@ inferExprType h@EHandle {..} = underScope $ do
       -- check if interface defintion match with implemention's or not
       let handleT' = handleT {_tfuncEff = emptyEff, _tfuncResult = unit}
           intfT' = intfT {_tfuncEff = emptyEff, _tfuncResult = unit}
-      collectVarBindings intfT' handleT' >>= varBindings
+      collectVarBindings intfT' handleT' >>= checkVarBindings
 
       -- check expression result type
       intfE <- inferExprType $ fromJust $ _funcExpr intf
@@ -328,8 +328,8 @@ collectIndexVariables solver tc = do
   M.fromList <$> mapM (\v -> (v,) <$> if name2String v == "*" then return LA.unitVar else newVar solver) vars
 
 addIndexAtom :: M.Map IndexVar Var -> IndexExpr -> Int -> [Atom Rational]
-addIndexAtom varBindings indexE upper =
-  let ts = map (\(i, x) -> (fromIntegral i, fromJust $ varBindings ^. at x)) $ indexE ^. indexExpr
+addIndexAtom checkVarBindings indexE upper =
+  let ts = map (\(i, x) -> (fromIntegral i, fromJust $ checkVarBindings ^. at x)) $ indexE ^. indexExpr
    in [LA.fromTerms ts .<=. LA.constant (fromIntegral upper - 1), LA.fromTerms ts .>=. LA.constant 0]
 
 inferTCExprIndices :: (Has EnvEff sig m) => [IndexVar] -> TCExpr -> m (Type, [(IndexVar, Int)])
@@ -338,14 +338,14 @@ inferTCExprIndices is tc = do
   let resolveIndex =
         do
           solver <- newSolver
-          varBindings <- collectIndexVariables solver tc
+          checkVarBindings <- collectIndexVariables solver tc
           let atoms =
-                join (map (\(i, u) -> addIndexAtom varBindings i u) indices)
-                  ++ map (\i -> LA.var (fromJust $ varBindings ^. at i) .>=. LA.constant 0) is
-              initBounds = IM.fromList [(i, I.whole) | i <- M.elems varBindings]
-              iVars = IS.fromList $ M.elems varBindings
+                join (map (\(i, u) -> addIndexAtom checkVarBindings i u) indices)
+                  ++ map (\i -> LA.var (fromJust $ checkVarBindings ^. at i) .>=. LA.constant 0) is
+              initBounds = IM.fromList [(i, I.whole) | i <- M.elems checkVarBindings]
+              iVars = IS.fromList $ M.elems checkVarBindings
               bounds = inferBounds initBounds atoms iVars 1000
-          return [(i, fromJust $ IM.lookup (fromJust $ varBindings ^. at i) bounds) | i <- is]
+          return [(i, fromJust $ IM.lookup (fromJust $ checkVarBindings ^. at i) bounds) | i <- is]
       ds = runST resolveIndex
   forM_ ds $ \(i, d) ->
     if E.isInfinite $ I.lowerBound d
