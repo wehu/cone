@@ -140,12 +140,14 @@ namespace cone {
     }
   }
 
+  cont identity_k = [](const object &x) { return x; };
+
   inline object ____handle(const cont &k, states &&state, effects &&effs,
                           const object &scope, std::map<std::string, object> &handlers) {
     state.push_back({});
     effs.push_back({});
     effs[effs.size()-1].merge(handlers);
-    auto &&o = k(std::any_cast<cont_with_state>(scope)([](const object &x) {return x;}, state, effs));
+    auto &&o = k(std::any_cast<cont_with_state>(scope)(identity_k, state, effs));
     state.pop_back();
     effs.pop_back();
     return o;
@@ -156,7 +158,7 @@ namespace cone {
   inline object ____call_with_resumed_k(const cont &k, states &&state, effects &&effs, const object &handler) {
     state.push_back({});
     state[state.size()-1][____resumed_k] = k;
-    auto &&o = std::any_cast<cont_with_state>(handler)([](const object &x) {return x;}, state, effs);
+    auto &&o = std::any_cast<cont_with_state>(handler)(identity_k, state, effs);
     state.pop_back();
     return o;
   }
