@@ -27,30 +27,31 @@ namespace cone {
 
   inline object print(const cont &k, states &&s, effects &&effs, const object &a) {
     if (a.type() == typeid(int8_t)) { 
-      std::cout << std::any_cast<int8_t>(a) << std::endl;
+      std::cout << std::any_cast<int8_t>(a);
     } else if (a.type() == typeid(int16_t)) { 
-      std::cout << std::any_cast<int16_t>(a) << std::endl;
+      std::cout << std::any_cast<int16_t>(a);
     } else if (a.type() == typeid(int32_t)) { 
-      std::cout << std::any_cast<int32_t>(a) << std::endl;
+      std::cout << std::any_cast<int32_t>(a);
     } else if (a.type() == typeid(int64_t)) { 
-      std::cout << std::any_cast<int64_t>(a) << std::endl;
+      std::cout << std::any_cast<int64_t>(a);
     } else if (a.type() == typeid(uint8_t)) { 
-      std::cout << std::any_cast<uint8_t>(a) << std::endl;
+      std::cout << std::any_cast<uint8_t>(a);
     } else if (a.type() == typeid(uint16_t)) { 
-      std::cout << std::any_cast<uint16_t>(a) << std::endl;
+      std::cout << std::any_cast<uint16_t>(a);
     } else if (a.type() == typeid(uint32_t)) { 
-      std::cout << std::any_cast<uint32_t>(a) << std::endl;
+      std::cout << std::any_cast<uint32_t>(a);
     } else if (a.type() == typeid(uint64_t)) { 
-      std::cout << std::any_cast<uint64_t>(a) << std::endl;
+      std::cout << std::any_cast<uint64_t>(a);
     } else if (a.type() == typeid(float)) {
-      std::cout << std::any_cast<float>(a) << std::endl;
+      std::cout << std::any_cast<float>(a);
     } else if (a.type() == typeid(double)) {
-      std::cout << std::any_cast<double>(a) << std::endl;
+      std::cout << std::any_cast<double>(a);
     } else if (a.type() == typeid(bool)) {
-      std::cout << std::any_cast<bool>(a) << std::endl;
+      std::cout << std::any_cast<bool>(a);
     } else if (a.type() == typeid(std::string)) {
-      std::cout << std::any_cast<std::string>(a) << std::endl;
+      std::cout << std::any_cast<std::string>(a);
     }
+    std::cout << std::endl;
     return k(a);
   }
 
