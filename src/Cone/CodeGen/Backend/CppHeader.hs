@@ -13,6 +13,10 @@ module Cone.CodeGen.Backend.CppHeader where
 
 import Cone.CodeGen.Backend
 import Cone.Parser.AST
+import Control.Effect.Error
+import Control.Effect.Fresh
+import Control.Effect.State
+import Control.Effect.Sum
 import Control.Lens
 import Control.Monad
 import Data.List

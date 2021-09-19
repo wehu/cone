@@ -13,9 +13,6 @@ module Cone.CodeGen.Backend.CppSource where
 
 import Cone.CodeGen.Backend
 import Cone.Parser.AST
-import Control.Carrier.Error.Either
-import Control.Carrier.Fresh.Strict
-import Control.Carrier.State.Strict
 import Control.Effect.Error
 import Control.Effect.Fresh
 import Control.Effect.State
