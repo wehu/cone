@@ -1,5 +1,6 @@
        
 #include <any>
+#include <iostream>
 #include <map>
 #include <vector>
 #include <functional>
@@ -24,11 +25,36 @@ namespace cone {
 
   none unit;
 
-  inline object print(const cont &k, states &s, effects &effs, const object &a) {
+  inline object print(const cont &k, states &&s, effects &&effs, const object &a) {
+    if (a.type() == typeid(int8_t)) { 
+      std::cout << std::any_cast<int8_t>(a) << std::endl;
+    } else if (a.type() == typeid(int16_t)) { 
+      std::cout << std::any_cast<int16_t>(a) << std::endl;
+    } else if (a.type() == typeid(int32_t)) { 
+      std::cout << std::any_cast<int32_t>(a) << std::endl;
+    } else if (a.type() == typeid(int64_t)) { 
+      std::cout << std::any_cast<int64_t>(a) << std::endl;
+    } else if (a.type() == typeid(uint8_t)) { 
+      std::cout << std::any_cast<uint8_t>(a) << std::endl;
+    } else if (a.type() == typeid(uint16_t)) { 
+      std::cout << std::any_cast<uint16_t>(a) << std::endl;
+    } else if (a.type() == typeid(uint32_t)) { 
+      std::cout << std::any_cast<uint32_t>(a) << std::endl;
+    } else if (a.type() == typeid(uint64_t)) { 
+      std::cout << std::any_cast<uint64_t>(a) << std::endl;
+    } else if (a.type() == typeid(float)) {
+      std::cout << std::any_cast<float>(a) << std::endl;
+    } else if (a.type() == typeid(double)) {
+      std::cout << std::any_cast<double>(a) << std::endl;
+    } else if (a.type() == typeid(bool)) {
+      std::cout << std::any_cast<bool>(a) << std::endl;
+    } else if (a.type() == typeid(std::string)) {
+      std::cout << std::any_cast<std::string>(a) << std::endl;
+    }
     return k(a);
   }
 
-  inline object ____lookup_var(states &s, const std::string &key) {
+  inline object ____lookup_var(states &&s, const std::string &key) {
     for (auto it=s.rbegin(); it != s.rend(); ++it) {
       if (it->find(key) != it->end()) {
         return (*it)[key];
@@ -37,7 +63,7 @@ namespace cone {
     return unit;
   }
 
-  inline object ____lookup_eff(effects &effs, const std::string &key) {
+  inline object ____lookup_eff(effects &&effs, const std::string &key) {
     for (auto it=effs.rbegin(); it != effs.rend(); ++it) {
       if (it->find(key) != it->end()) {
         return (*it)[key];
@@ -46,12 +72,12 @@ namespace cone {
     return unit;
   }
 
-  inline object ____add_var(states &s, const std::string &key, const object &k) {
+  inline object ____add_var(states &&s, const std::string &key, const object &k) {
     s[s.size()-1][key] = k;
     return unit;
   }
 
-  inline object ____update_state(states &s, const std::string &key, const object &k) {
+  inline object ____update_state(states &&s, const std::string &key, const object &k) {
     for (auto it=s.rbegin(); it != s.rend(); ++it) {
       if (it->find(key) != it->end()) {
         (*it)[key] = k;
@@ -62,7 +88,7 @@ namespace cone {
   }
 
   inline object ____call_cps_with_cleared_vars(
-    const cont &k, states &s, effects &es,
+    const cont &k, states &&s, effects &&es,
     const std::vector<std::string> &ks, object e) {
     auto state = s;
     effects effs;
@@ -74,7 +100,7 @@ namespace cone {
     return std::any_cast<cont_with_state>(e)(k, state, effs);
   }
 
-  inline object ____while(const cont &k, states &state, effects &effs,
+  inline object ____while(const cont &k, states &&state, effects &&effs,
                           const object &cond,
                           const object &body) {
     state.push_back({});
@@ -95,7 +121,7 @@ namespace cone {
     return std::any_cast<cont_with_state>(cond)(k2, state, effs);
   }
 
-  inline object ____case(const cont &k, states &state, effects &effs, const object &ce,
+  inline object ____case(const cont &k, states &&state, effects &&effs, const object &ce,
                          const std::vector<std::function<bool(object)>> &conds,
                          const std::vector<object> &exprs) {
     for (unsigned i=0; i<conds.size(); ++i) {
@@ -113,12 +139,12 @@ namespace cone {
     }
   }
 
-  inline object ____handle(const cont &k, states &state, effects &effs,
+  inline object ____handle(const cont &k, states &&state, effects &&effs,
                           const object &scope, std::map<std::string, object> &handlers) {
     state.push_back({});
     effs.push_back({});
     effs[effs.size()-1].merge(handlers);
-    auto o = k(std::any_cast<cont_with_state>(scope)([](const object &x) {return x;}, state, effs));
+    auto &&o = k(std::any_cast<cont_with_state>(scope)([](const object &x) {return x;}, state, effs));
     state.pop_back();
     effs.pop_back();
     return o;
@@ -126,15 +152,15 @@ namespace cone {
 
   constexpr auto ____resumed_k = "____resumed_k";
 
-  inline object ____call_with_resumed_k(const cont &k, states &state, effects &effs, const object &handler) {
+  inline object ____call_with_resumed_k(const cont &k, states &&state, effects &&effs, const object &handler) {
     state.push_back({});
     state[state.size()-1][____resumed_k] = k;
-    auto o = std::any_cast<cont_with_state>(handler)([](const object &x) {return x;}, state, effs);
+    auto &&o = std::any_cast<cont_with_state>(handler)([](const object &x) {return x;}, state, effs);
     state.pop_back();
     return o;
   }
 
-  inline object resume(const cont &k, states &s, effects &effs, const object &a) {
+  inline object resume(const cont &k, states &&s, effects &&effs, const object &a) {
     return k(std::any_cast<cont>(s[s.size()-1][____resumed_k])(a));
   }
 
