@@ -515,6 +515,24 @@ class Backend t where
           indent 4 $ funcN proxy prefix "main_w()" <+> line
         ]
 
+  genModule :: (Has EnvEff sig m) => t Target -> Module -> m (Doc a)
+  genModule proxy Module {..} = do
+    setEnv _moduleName currentModuleName
+    pre <- genPrologue proxy
+    imps <- mapM (genImport proxy) _imports
+    tops <- mapM (genTopStmt proxy) _topStmts
+    pos <- genEpilogue proxy
+    return $
+      vsep $
+        -- [ "module" <+> namePath proxy _moduleName <+> line]
+        [ "import core.prelude",
+          "import copy"
+        ]
+          ++ imps
+          ++ [pre]
+          ++ tops
+          ++ [pos]
+
 -- | Convert a experision to cps
 exprToCps :: Doc a -> Doc a
 exprToCps e = parens $ "lambda" <+> "____k" <> comma <+> "____state" <> comma <+> "____effs" <> colon <+> e
@@ -525,24 +543,6 @@ callWithCps e k = parens $ e <> (encloseSep lparen rparen comma $ (parens k) : "
 
 genImplFuncDef :: (Has EnvEff sig m) => Backend t => t Target -> ImplFuncDef -> m (Doc a)
 genImplFuncDef proxy ImplFuncDef {..} = genFuncDef proxy _implFunDef
-
-genModule :: (Has EnvEff sig m) => Backend t => t Target -> Module -> m (Doc a)
-genModule proxy Module {..} = do
-  setEnv _moduleName currentModuleName
-  pre <- genPrologue proxy
-  imps <- mapM (genImport proxy) _imports
-  tops <- mapM (genTopStmt proxy) _topStmts
-  pos <- genEpilogue proxy
-  return $
-    vsep $
-      -- [ "module" <+> namePath proxy _moduleName <+> line]
-      [ "import core.prelude",
-        "import copy"
-      ]
-        ++ imps
-        ++ [pre]
-        ++ tops
-        ++ [pos]
 
 genTopStmt :: (Has EnvEff sig m) => Backend t => t Target -> TopStmt -> m (Doc a)
 genTopStmt proxy TDef {..} = genTypeDef proxy _tdef
