@@ -19,7 +19,7 @@ namespace cone {
 
   typedef std::vector<std::map<std::string, object>> effects;
 
-  typedef std::function<object(const cont &, states &, effects &)> cont_with_state;
+  typedef std::function<object(const cont &, states &&, effects &&)> cont_with_state;
 
   struct none {};
 
@@ -98,7 +98,7 @@ namespace cone {
         it->erase(k);
       }
     }
-    return std::any_cast<cont_with_state>(e)(k, state, effs);
+    return std::any_cast<cont_with_state>(e)(k, std::move(state), std::move(effs));
   }
 
   inline object ____while(const cont &k, states &&state, effects &&effs,
@@ -110,16 +110,16 @@ namespace cone {
     k2 = [&state, &effs, k, k3, body](const object &o) {
       if (std::any_cast<bool>(o)) {
         state.push_back({});
-        return std::any_cast<cont_with_state>(body)(*k3, state, effs);
+        return std::any_cast<cont_with_state>(body)(*k3, std::move(state), std::move(effs));
       } else {
         return k(o);
       }
     };
     k3 = std::make_shared<cont>([&state, &effs, k2, cond](const object &o) {
       state.pop_back();
-      return std::any_cast<cont_with_state>(cond)(k2, state, effs);
+      return std::any_cast<cont_with_state>(cond)(k2, std::move(state), std::move(effs));
     });
-    return std::any_cast<cont_with_state>(cond)(k2, state, effs);
+    return std::any_cast<cont_with_state>(cond)(k2, std::move(state), std::move(effs));
   }
 
   inline object ____case(const cont &k, states &&state, effects &&effs, const object &ce,
@@ -134,7 +134,7 @@ namespace cone {
         return k(o);
       };
       if (p(ce)) {
-        return std::any_cast<cont_with_state>(e)(k2, state, effs);
+        return std::any_cast<cont_with_state>(e)(k2, std::move(state), std::move(effs));
       }
       state.pop_back();
     }
@@ -147,7 +147,7 @@ namespace cone {
     state.push_back({});
     effs.push_back({});
     effs[effs.size()-1].merge(handlers);
-    auto &&o = k(std::any_cast<cont_with_state>(scope)(identity_k, state, effs));
+    auto &&o = k(std::any_cast<cont_with_state>(scope)(identity_k, std::move(state), std::move(effs)));
     state.pop_back();
     effs.pop_back();
     return o;
@@ -158,7 +158,7 @@ namespace cone {
   inline object ____call_with_resumed_k(const cont &k, states &&state, effects &&effs, const object &handler) {
     state.push_back({});
     state[state.size()-1][____resumed_k] = k;
-    auto &&o = std::any_cast<cont_with_state>(handler)(identity_k, state, effs);
+    auto &&o = std::any_cast<cont_with_state>(handler)(identity_k, std::move(state), std::move(effs));
     state.pop_back();
     return o;
   }
