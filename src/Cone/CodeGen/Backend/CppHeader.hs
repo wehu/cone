@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Cone.CodeGen.Backend.Python where
+module Cone.CodeGen.Backend.CppHeader where
 
 import Cone.CodeGen.Backend
 import Cone.Parser.AST
@@ -30,10 +30,10 @@ import Debug.Trace
 import Prettyprinter
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 
-data Python a = Python
+data CppHeader a = CppHeader
 
-instance Backend Python where
-  namePath proxy n = pretty $ join $ intersperse "." $ splitOn "/" n
+instance Backend CppHeader where
+  namePath proxy n = pretty $ join $ intersperse "::" $ splitOn "/" n
 
   typeN proxy prefix n' =
     let prefixLen = length prefix
@@ -493,6 +493,3 @@ exprToCps e = parens $ "lambda" <+> "____k" <> comma <+> "____state" <> comma <+
 -- | Call a cps function
 callWithCps :: Doc a -> Doc a -> Doc a
 callWithCps e k = parens $ e <> (encloseSep lparen rparen comma $ (parens k) : "____state" : ["____effs"])
-
-
-
