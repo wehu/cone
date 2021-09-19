@@ -1,10 +1,10 @@
 name:                cone
 version:             0.1.0.0
-github:              "githubuser/cone"
+github:              "wehu/cone"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2021 Author name here"
+author:              "Wei Hu"
+maintainer:          "huwei04@hotmail.com"
+copyright:           "2021 Wei Hu"
 
 extra-source-files:
 - README.md
@@ -12,6 +12,7 @@ extra-source-files:
 
 data-files:
 - lib/*/*.cone
+- lib/*/*.h
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package

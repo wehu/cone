@@ -25,7 +25,7 @@ namespace cone {
 
   none unit;
 
-  inline object print(const cont &k, states &&s, effects &&effs, const object &a) {
+  inline object cone_print(const cont &k, states &&s, effects &&effs, const object &a) {
     if (a.type() == typeid(int8_t)) { 
       std::cout << std::any_cast<int8_t>(a);
     } else if (a.type() == typeid(int16_t)) { 
@@ -129,7 +129,7 @@ namespace cone {
       const auto &p = conds[i];
       const auto &e = exprs[i];
       state.push_back({});
-      cont k2 = [&state, k](const object &o) {
+      const cont k2 = [&state, k](const object &o) {
         state.pop_back();
         return k(o);
       };
@@ -140,7 +140,7 @@ namespace cone {
     }
   }
 
-  cont identity_k = [](const object &x) { return x; };
+  const cont identity_k = [](const object &x) { return x; };
 
   inline object ____handle(const cont &k, states &&state, effects &&effs,
                           const object &scope, std::map<std::string, object> &handlers) {
@@ -163,7 +163,7 @@ namespace cone {
     return o;
   }
 
-  inline object resume(const cont &k, states &&s, effects &&effs, const object &a) {
+  inline object cone_resume(const cont &k, states &&s, effects &&effs, const object &a) {
     return k(std::any_cast<cont>(s[s.size()-1][____resumed_k])(a));
   }
 
