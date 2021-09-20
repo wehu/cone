@@ -135,6 +135,20 @@ inferType v@TVar {..} = do
     Nothing -> return v
 inferType t = return t
 
+inferEffType :: (Has EnvEff sig m) => EffectType -> m EffectType
+inferEffType v@EffVar {..} = do
+  t <- getEnv $ effTypeBinds . at _effVar
+  case t of
+    Just t -> inferEffType t
+    Nothing -> return v
+inferEffType a@EffApp {..} = do
+  app <- inferEffType _effAppName
+  args <- mapM inferType _effAppArgs
+  return a{_effAppName=app, _effAppArgs=args}
+inferEffType l@EffList {..} = do
+  ls <- mapM inferEffectType _effList
+  return l{_effList=ls}
+
 -- | Check a type kind
 checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
 checkTypeKind k = do
@@ -656,7 +670,7 @@ checkVarBindings bindings = do
 
 groupEffTypes :: (Has EnvEff sig m) => [(EffectType, EffectType)] -> m [[EffectType]]
 groupEffTypes rels = do
-  ts <- (L.nubBy aeq) <$> return (join $ map (\(a, b) -> [a, b]) rels)
+  ts <- (L.nubBy aeq) <$> mapM inferEffectType (join $ map (\(a, b) -> [a, b]) rels)
   return $ L.groupBy (\a b -> elem (a, b) rels) ts
   where elem a (e:es) = if aeq a e then True else elem a es
         elem a [] = False
