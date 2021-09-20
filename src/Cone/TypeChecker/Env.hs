@@ -110,11 +110,11 @@ addEffIntfs effName intfName = do
 
 -- | Generate a free type variable name
 freeVarName :: Int -> TVar
-freeVarName i = makeName "$tvar" $ toInteger i
+freeVarName i = s2n $ "$tvar" ++ show i
 
 -- | Generate a free effect type variable name
 freeEffVarName :: Int -> EffVar
-freeEffVarName i = makeName "$evar" $ toInteger i
+freeEffVarName i = s2n $ "$evar" ++ show i
 
 -- | Add all free type variables into bound variable list
 closeType :: Type -> Bind [TVar] Type
