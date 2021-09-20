@@ -260,7 +260,7 @@ toEffList eff = do
                 || (isn't _Nothing $ M.lookup (name2String $ _effVar e) es)
           )
           (_effList effs)
-      al = (L.sortBy acompare el) ++ (L.sortBy acompare vl)
+  al <- mapM inferEffectType $ (L.sortBy acompare el) ++ (L.sortBy acompare vl)
   return effs {_effList = al}
 
 -- | Merge two effect types
