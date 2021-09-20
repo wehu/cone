@@ -135,26 +135,26 @@ inferType v@TVar {..} = do
     Nothing -> return v
 inferType t = return t
 
-inferEffType :: (Has EnvEff sig m) => EffectType -> m EffectType
-inferEffType v@EffVar {..} = do
-  t <- getEnv $ effTypeBinds . at (name2String _effVar)
-  case t of
-    Just t -> inferEffType t
-    Nothing -> return v
-inferEffType a@EffApp {..} = do
-  app <- inferEffType _effAppName
-  args <- mapM inferType _effAppArgs
-  return a{_effAppName=app, _effAppArgs=args}
-inferEffType l@EffList {..} = do
-  ls <- mapM inferEffectType _effList
-  return l{_effList=ls}
-
 -- | Check a type kind
 checkTypeKind :: (Has EnvEff sig m) => Kind -> m ()
 checkTypeKind k = do
   case k of
     KStar {} -> return ()
     _ -> throwError $ "expected a star kind, but got " ++ ppr k ++ ppr (_kloc k)
+
+inferEffectType :: (Has EnvEff sig m) => EffectType -> m EffectType
+inferEffectType v@EffVar {..} = do
+  t <- getEnv $ effTypeBinds . at (name2String _effVar)
+  case t of
+    Just t -> inferEffectType t
+    Nothing -> return v
+inferEffectType a@EffApp {..} = do
+  app <- inferEffectType _effAppName
+  args <- mapM inferType _effAppArgs
+  return a{_effAppName=app, _effAppArgs=args}
+inferEffectType l@EffList {..} = do
+  ls <- mapM inferEffectType _effList
+  return l{_effList=ls}
 
 -- | Infer an effect type kind
 inferEffKind :: (Has EnvEff sig m) => EffectType -> m EffKind
@@ -185,16 +185,6 @@ inferEffKind l@EffList {..} = do
   ls <- mapM inferEffKind _effList
   mapM_ checkEffKind ls
   return $ EKList ls _effLoc
-
--- | Infer effect type
-inferEffectType :: (Has EnvEff sig m) => EffectType -> m EffectType
-inferEffectType v@EffVar {} = return v
-inferEffectType a@EffApp {..} = do
-  args <- mapM inferType _effAppArgs
-  return a {_effAppArgs = args}
-inferEffectType l@EffList {..} = do
-  ls <- mapM inferEffectType _effList
-  return l {_effList = ls}
 
 -- | Check effect kind
 checkEffKind :: (Has EnvEff sig m) => EffKind -> m ()
