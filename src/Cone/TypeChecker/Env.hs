@@ -36,9 +36,9 @@ type ExprTypes = M.Map String Type
 
 type FuncImpls = M.Map String Expr
 
-type TypeBinds = M.Map TVar Type
+type TypeBinds = M.Map String Type
 
-type EffTypeBinds = M.Map EffVar EffectType
+type EffTypeBinds = M.Map String EffectType
 
 -- | The environment
 data Env = -- | the type-kind bindings

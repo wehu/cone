@@ -129,7 +129,7 @@ inferType l@TList {..} = do
   es <- mapM inferType _tlist
   return l {_tlist = es}
 inferType v@TVar {..} = do
-  t <- getEnv $ typeBinds . at _tvar
+  t <- getEnv $ typeBinds . at (name2String _tvar)
   case t of
     Just t -> inferType t
     Nothing -> return v
@@ -137,7 +137,7 @@ inferType t = return t
 
 inferEffType :: (Has EnvEff sig m) => EffectType -> m EffectType
 inferEffType v@EffVar {..} = do
-  t <- getEnv $ effTypeBinds . at _effVar
+  t <- getEnv $ effTypeBinds . at (name2String _effVar)
   case t of
     Just t -> inferEffType t
     Nothing -> return v
@@ -680,7 +680,7 @@ checkVarBindings bindings = do
       else return [(_tvar v, t)| v <- vars, t <- nonVars]
   let allBinds = join bs
   forM_ allBinds $ \(v, t) -> do
-    setEnv (Just t) $ typeBinds . at v
+    setEnv (Just t) $ typeBinds . at (name2String v)
   return allBinds
 
 groupEffTypes :: (Has EnvEff sig m) => [(EffectType, EffectType)] -> m [[EffectType]]
@@ -707,7 +707,7 @@ checkEffVarBindings bindings = do
       else return [(_effVar v, t)| v <- vars, t <- nonVars]
   let allBinds = join bs
   forM_ allBinds $ \(v, t) -> do
-    setEnv (Just t) $ effTypeBinds . at v
+    setEnv (Just t) $ effTypeBinds . at (name2String v)
   return allBinds
 
 -- | Get a function type from a function defintion
