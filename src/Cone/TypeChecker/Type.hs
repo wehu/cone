@@ -660,6 +660,7 @@ checkVarBindings bindings = do
           case k of
             Just _ -> return (vars, nonVars ++ [e])
             Nothing -> return (vars ++ [e], nonVars)) ([], []) g
+    nonVars <- getSpecials nonVars
     if L.length nonVars > 1
       then throwError $ "var bind conflicts: " ++ ppr vars ++ " to " ++ ppr [(v, loc) | v <- nonVars | loc <- nonVars ^..traverse.tloc]
       else return [(_tvar v, t)| v <- vars, t <- nonVars]
@@ -667,6 +668,18 @@ checkVarBindings bindings = do
   forM_ allBinds $ \(v, t) -> do
     setEnv (Just t) $ typeBinds . at v
   return allBinds
+  where getSpecials (t:ts) =
+          foldM (\s t -> do
+            foldM (\r e -> do
+              is <- isSubType e t
+              if is then return $ r ++ [e]
+              else do
+                   is <- isSubType t e
+                   if is then return $ r ++ [t]
+                   else return $ r ++ [e, t]
+              ) [] s)
+            [t] ts
+        getSpecials [] = return []
 
 groupEffTypes :: (Has EnvEff sig m) => [(EffectType, EffectType)] -> m [[EffectType]]
 groupEffTypes rels = do
