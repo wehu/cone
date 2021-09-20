@@ -159,10 +159,8 @@ checkTypeKind k = do
 -- | Infer an effect type kind
 inferEffKind :: (Has EnvEff sig m) => EffectType -> m EffKind
 inferEffKind v@EffVar {..} = do
-  k <- getEnv $ effs . at (name2String _effVar)
-  case k of
-    Just k -> return k
-    Nothing -> throwError $ "cannot find eff variable: " ++ ppr v ++ ppr _effLoc
+  let kstar = EKStar _effLoc
+  getEnv $ effs . at (name2String _effVar) . non kstar
 inferEffKind a@EffApp {..} = do
   k <- getEnv $ effs . at (name2String $ _effVar _effAppName)
   forMOf _Nothing k $ \k ->
@@ -683,6 +681,20 @@ checkVarBindings bindings = do
     setEnv (Just t) $ typeBinds . at (name2String v)
   return allBinds
 
+getSpecialEffTypes :: (Has EnvEff sig m) => [EffectType] -> m [EffectType]
+getSpecialEffTypes (t:ts) =
+  foldM (\s t -> do
+    foldM (\r e -> do
+      is <- isEqOrSubEffType e t
+      if is then return $ r ++ [e]
+      else do
+           is <- isEqOrSubEffType t e
+           if is then return $ r ++ [t]
+           else return $ r ++ [e, t]
+      ) [] s)
+    [t] ts
+getSpecialEffTypes [] = return []
+
 groupEffTypes :: (Has EnvEff sig m) => [(EffectType, EffectType)] -> m [[EffectType]]
 groupEffTypes rels = do
   ts <- (L.nubBy aeq) <$> mapM inferEffectType (join $ map (\(a, b) -> [a, b]) rels)
@@ -702,6 +714,7 @@ checkEffVarBindings bindings = do
           case k of
             Just _ -> return (vars, nonVars ++ [e])
             Nothing -> return (vars ++ [e], nonVars)) ([], []) g
+    nonVars <- getSpecialEffTypes nonVars
     if L.length nonVars > 1
       then throwError $ "eff var bind conflicts: " ++ ppr vars ++ " to " ++ ppr [(v, loc) | v <- nonVars | loc <- nonVars ^..traverse.effLoc]
       else return [(_effVar v, t)| v <- vars, t <- nonVars]
@@ -783,6 +796,28 @@ isEqOrSubType s t = do
   catchError
     ( do
       collectVarBindings t s >>= checkVarBindings
+      return True
+    )
+    (\(e :: String) -> return False)
+
+-- | Test if a type is a subtype of another type
+isSubEffType :: (Has EnvEff sig m) => EffectType -> EffectType -> m Bool
+isSubEffType s t = do
+  catchError
+    ( if aeq s t
+        then return False
+        else do
+          collectEffVarBindings t s >>= checkEffVarBindings
+          return True
+    )
+    (\(e :: String) -> return False)
+
+-- | Test if a type is a subtype of another type
+isEqOrSubEffType :: (Has EnvEff sig m) => EffectType -> EffectType -> m Bool
+isEqOrSubEffType s t = do
+  catchError
+    ( do
+      collectEffVarBindings t s >>= checkEffVarBindings
       return True
     )
     (\(e :: String) -> return False)
