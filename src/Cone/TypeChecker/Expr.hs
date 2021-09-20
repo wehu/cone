@@ -184,15 +184,15 @@ inferExprType c@ECase {..} = do
     e <- inferExprType $ _caseExpr c
     et <- typeOfExpr e
     return (pt, et, c {_caseExpr = e})
-  let t : rest = ts
   -- check if condition's type match with case exprs' type or not
-  forM_ (rest ^.. traverse . _2) $ \et ->
-    checkTypeMatch et (t ^. _2)
+  sts <- getSpecialTypes (ts ^.. traverse . _2)
+  if L.length sts /= 1 then throwError $ "case exprs type conflict: " ++ ppr [(t, _tloc t) | t <- sts]
+  else return ()
   -- check if all pattern expressions' type match or not
   forM_ (ts ^.. traverse . _1) $ \e ->
     checkTypeMatch ct e
   -- return case's type
-  t <- inferType $ (last ts) ^. _2
+  t <- inferType $ (last sts)
   return $ annotateExpr c {_ecaseExpr = ce, _ecaseBody = ts ^.. traverse . _3} t
 inferExprType w@EWhile {..} = do
   -- infer while condition's type

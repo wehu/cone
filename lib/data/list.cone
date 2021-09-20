@@ -13,7 +13,7 @@ fun reverse<a>(l : [a]) : [a] {
 
 fun map<a, b>[e](l : [a], f : (a) -> e b) : e [b] {
   if l == [] {
-    [] : [b]
+    []
   } else {
     val e|r = l
     f(e)|map(r, f)
