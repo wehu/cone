@@ -627,16 +627,16 @@ collectEffVarBindingsInType a@TNum {} b@TNum {} =
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType a b = throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 
-groupTypes :: (Alpha a) => [(a, a)] -> [[a]]
-groupTypes rels = 
-  let ts = L.nubBy aeq $ join $ map (\(a, b) -> [a, b]) rels
-   in L.groupBy (\a b -> elem (a, b) rels) ts
+groupTypes :: (Has EnvEff sig m) => [(Type, Type)] -> m [[Type]]
+groupTypes rels = do
+  ts <- (L.nubBy aeq) <$> mapM inferType (join $ map (\(a, b) -> [a, b]) rels)
+  return $ L.groupBy (\a b -> elem (a, b) rels) ts
   where elem a (e:es) = if aeq a e then True else elem a es
         elem a [] = False
 
 checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m [(TVar, Type)]
 checkVarBindings bindings = do
-  let groups = groupTypes $ map (\(v, t) -> ((TVar v $ _tloc t), t)) bindings
+  groups <- groupTypes $ map (\(v, t) -> ((TVar v $ _tloc t), t)) bindings
   bs <- forM groups $ \g -> do
     (vars, nonVars) <- foldM (\(vars, nonVars) e -> do
       if isn't _TVar e
@@ -654,9 +654,16 @@ checkVarBindings bindings = do
     setEnv (Just t) $ typeBinds . at v
   return allBinds
 
+groupEffTypes :: (Has EnvEff sig m) => [(EffectType, EffectType)] -> m [[EffectType]]
+groupEffTypes rels = do
+  ts <- (L.nubBy aeq) <$> return (join $ map (\(a, b) -> [a, b]) rels)
+  return $ L.groupBy (\a b -> elem (a, b) rels) ts
+  where elem a (e:es) = if aeq a e then True else elem a es
+        elem a [] = False
+
 checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m [(EffVar, EffectType)]
 checkEffVarBindings bindings = do
-  let groups = groupTypes $ map (\(v, t) -> ((EffVar v $ _effLoc t), t)) bindings
+  groups <- groupEffTypes $ map (\(v, t) -> ((EffVar v $ _effLoc t), t)) bindings
   bs <- forM groups $ \g -> do
     (vars, nonVars) <- foldM (\(vars, nonVars) e -> do
       if isn't _EffVar e

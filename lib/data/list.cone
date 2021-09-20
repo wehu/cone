@@ -2,7 +2,7 @@ module data/list
 
 fun reverse<a>(l : [a]) : [a] {
   var rest = l
-  var newl = [] : [a]
+  var newl = []
   while (rest != [] : [a]) {
     val e|r = rest
     rest = r
