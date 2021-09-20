@@ -641,6 +641,20 @@ collectEffVarBindingsInType a@TNum {} b@TNum {} =
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType a b = throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 
+getSpecialTypes :: (Has EnvEff sig m) => [Type] -> m [Type]
+getSpecialTypes (t:ts) =
+  foldM (\s t -> do
+    foldM (\r e -> do
+      is <- isEqOrSubType e t
+      if is then return $ r ++ [e]
+      else do
+           is <- isEqOrSubType t e
+           if is then return $ r ++ [t]
+           else return $ r ++ [e, t]
+      ) [] s)
+    [t] ts
+getSpecialTypes [] = return []
+
 groupTypes :: (Has EnvEff sig m) => [(Type, Type)] -> m [[Type]]
 groupTypes rels = do
   ts <- (L.nubBy aeq) <$> mapM inferType (join $ map (\(a, b) -> [a, b]) rels)
@@ -660,7 +674,7 @@ checkVarBindings bindings = do
           case k of
             Just _ -> return (vars, nonVars ++ [e])
             Nothing -> return (vars ++ [e], nonVars)) ([], []) g
-    nonVars <- getSpecials nonVars
+    nonVars <- getSpecialTypes nonVars
     if L.length nonVars > 1
       then throwError $ "var bind conflicts: " ++ ppr vars ++ " to " ++ ppr [(v, loc) | v <- nonVars | loc <- nonVars ^..traverse.tloc]
       else return [(_tvar v, t)| v <- vars, t <- nonVars]
@@ -668,18 +682,6 @@ checkVarBindings bindings = do
   forM_ allBinds $ \(v, t) -> do
     setEnv (Just t) $ typeBinds . at v
   return allBinds
-  where getSpecials (t:ts) =
-          foldM (\s t -> do
-            foldM (\r e -> do
-              is <- isSubType e t
-              if is then return $ r ++ [e]
-              else do
-                   is <- isSubType t e
-                   if is then return $ r ++ [t]
-                   else return $ r ++ [e, t]
-              ) [] s)
-            [t] ts
-        getSpecials [] = return []
 
 groupEffTypes :: (Has EnvEff sig m) => [(EffectType, EffectType)] -> m [[EffectType]]
 groupEffTypes rels = do
@@ -772,6 +774,16 @@ isSubType s t = do
         else do
           collectVarBindings t s >>= checkVarBindings
           return True
+    )
+    (\(e :: String) -> return False)
+
+-- | Test if a type is a subtype of another type
+isEqOrSubType :: (Has EnvEff sig m) => Type -> Type -> m Bool
+isEqOrSubType s t = do
+  catchError
+    ( do
+      collectVarBindings t s >>= checkVarBindings
+      return True
     )
     (\(e :: String) -> return False)
 
