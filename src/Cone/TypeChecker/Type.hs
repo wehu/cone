@@ -122,7 +122,7 @@ inferType b@BoundEffVarType {..} = do
   return $ bindTypeEffVar ets t
 inferType f@TFunc {..} = do
   args <- mapM inferType _tfuncArgs
-  eff <- inferEffectType _tfuncEff
+  eff <- inferEffType _tfuncEff
   res <- inferType _tfuncResult
   return f {_tfuncArgs = args, _tfuncEff = eff, _tfuncResult = res}
 inferType l@TList {..} = do
@@ -142,18 +142,18 @@ checkTypeKind k = do
     KStar {} -> return ()
     _ -> throwError $ "expected a star kind, but got " ++ ppr k ++ ppr (_kloc k)
 
-inferEffectType :: (Has EnvEff sig m) => EffectType -> m EffectType
-inferEffectType v@EffVar {..} = do
+inferEffType :: (Has EnvEff sig m) => EffectType -> m EffectType
+inferEffType v@EffVar {..} = do
   t <- getEnv $ effTypeBinds . at (name2String _effVar)
   case t of
-    Just t -> inferEffectType t
+    Just t -> inferEffType t
     Nothing -> return v
-inferEffectType a@EffApp {..} = do
-  app <- inferEffectType _effAppName
+inferEffType a@EffApp {..} = do
+  app <- inferEffType _effAppName
   args <- mapM inferType _effAppArgs
   return a{_effAppName=app, _effAppArgs=args}
-inferEffectType l@EffList {..} = do
-  ls <- mapM inferEffectType _effList
+inferEffType l@EffList {..} = do
+  ls <- mapM inferEffType _effList
   return l{_effList=ls}
 
 -- | Infer an effect type kind
@@ -248,7 +248,7 @@ toEffList eff = do
                 || (isn't _Nothing $ M.lookup (name2String $ _effVar e) es)
           )
           (_effList effs)
-  al <- mapM inferEffectType $ (L.sortBy acompare el) ++ (L.sortBy acompare vl)
+  al <- mapM inferEffType $ (L.sortBy acompare el) ++ (L.sortBy acompare vl)
   return effs {_effList = al}
 
 -- | Merge two effect types
@@ -687,7 +687,7 @@ getSpecialEffTypes [] = return []
 
 groupEffTypes :: (Has EnvEff sig m) => [(EffectType, EffectType)] -> m [[EffectType]]
 groupEffTypes rels = do
-  ts <- (L.nubBy aeq) <$> mapM inferEffectType (join $ map (\(a, b) -> [a, b]) rels)
+  ts <- (L.nubBy aeq) <$> mapM inferEffType (join $ map (\(a, b) -> [a, b]) rels)
   return $ L.groupBy (\a b -> elem (a, b) rels) ts
   where elem a (e:es) = if aeq a e then True else elem a es
         elem a [] = False
