@@ -64,7 +64,7 @@ selectFuncImpl e = return e
 -- | Infer expression's type
 inferExprType :: (Has EnvEff sig m) => Expr -> m Expr
 inferExprType e@EVar {..} = do
-  t <- getFuncType _eloc $ name2String _evarName
+  t <- (getFuncType _eloc $ name2String _evarName) >>= inferType
   return $ annotateExpr e t
 inferExprType a@EApp {..} = do
   -- check assign variable
@@ -120,7 +120,7 @@ inferExprType l@ELam {..} = underScope $ do
           ( \(_, t) -> do
               k <- inferTypeKind t
               checkTypeKind k
-              return t
+              inferType t
           )
           _elamArgs
       -- infer effect type kind

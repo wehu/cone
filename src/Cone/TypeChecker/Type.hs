@@ -128,6 +128,11 @@ inferType f@TFunc {..} = do
 inferType l@TList {..} = do
   es <- mapM inferType _tlist
   return l {_tlist = es}
+inferType v@TVar {..} = do
+  t <- getEnv $ typeBinds . at (name2String _tvar)
+  case t of
+    Just t -> inferType t
+    Nothing -> return v
 inferType t = return t
 
 -- | Check a type kind

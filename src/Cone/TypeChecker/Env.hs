@@ -36,6 +36,8 @@ type ExprTypes = M.Map String Type
 
 type FuncImpls = M.Map String Expr
 
+type TypeBinds = M.Map String Type
+
 -- | The environment
 data Env = -- | the type-kind bindings
   Env
@@ -49,7 +51,8 @@ data Env = -- | the type-kind bindings
     _effs :: EffKinds,
     -- | the local variabe-type bindings
     _effIntfs :: EffIntfs,
-    _localState :: ExprTypes
+    _localState :: ExprTypes,
+    _typeBinds :: TypeBinds
   }
   deriving (Show)
 
@@ -62,7 +65,8 @@ initialEnv =
       _funcImpls = M.empty,
       _effs = M.empty,
       _effIntfs = M.empty,
-      _localState = M.empty
+      _localState = M.empty,
+      _typeBinds = M.empty
     }
 
 type EnvEff = Eff Env String

@@ -30,7 +30,7 @@ import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 data CppHeader a = CppHeader
 
 instance Backend CppHeader where
-  namePath proxy n = pretty $ join $ intersperse "::" $ splitOn "/" n
+  namePath proxy n = pretty n
 
   typeN proxy prefix n' =
     let prefixLen = length prefix
@@ -38,7 +38,7 @@ instance Backend CppHeader where
         ns = splitOn "/" n
         ps = init ns
         tn = "Cone__" ++ last ns
-     in pretty $ join $ intersperse "." $ ps ++ [tn]
+     in pretty $ join $ intersperse "::" $ ps ++ [tn]
 
   funcN proxy prefix n' =
     let prefixLen = length prefix
@@ -46,24 +46,16 @@ instance Backend CppHeader where
         ns = splitOn "/" n
         ps = init ns
         fn = "cone__" ++ last ns
-     in pretty $ join $ intersperse "." $ ps ++ [fn]
+     in pretty $ join $ intersperse "::" $ ps ++ [fn]
 
   genImport proxy ImportStmt {..} =
     return $
-      ( -- case _importAlias of
-        --  Just a -> "import" <+> namePath proxy _importPath <+> "as" <+> pretty a
-        --  Nothing ->
-        "import" <+> namePath proxy _importPath
-      )
+        "#include" <+> "\"" <> namePath proxy _importPath <> ".h\""
         <+> line
 
   genTypeDef proxy TypeDef {..} = do
     cons <- mapM (genTypeCon proxy _typeName) _typeCons
-    return $
-      vsep $ {-["class" <+> typeN proxy _typeName <> ":"
-             ,indent 4 "pass" <+> line
-             ] ++-}
-        cons
+    return $ vsep cons
 
   genTypeCon proxy ptn TypeCon {..} = do
     prefix <- getEnv currentModuleName
@@ -71,57 +63,40 @@ instance Backend CppHeader where
         fn = funcN proxy prefix _typeConName
      in return $
           vsep
-            [ "class" <+> tn {- <> parens (typeN proxy ptn) -} <> ":",
-              indent 4 constructor,
-              indent 4 hash,
-              indent 4 $ eq tn,
+            [ "struct" <+> tn <+> braces (vsep [
+              indent 4 $ constructor tn,
+              indent 4 $ eq tn]),
               ctrFunc fn tn,
-              ctrFuncWrapper fn <+> line
+              ctrFuncWrapper fn tn <+> line
             ]
     where
-      constructor =
-        vsep
-          [ "def" <+> "__init__" <> genArgs ["self", "____k", "____state", "____effs"] <> colon,
-            indent 4 $ vsep genFields
-          ]
-      hash =
-        vsep
-          [ "def __hash__(self):",
-            indent 4 $ "return hash(" <> fields <> ")"
-          ]
+      constructor tn =
+        tn <> genArgs ["const cont &____k", "states &&____state", "effects &&____effs"] <+> braces (indent 4 $ vsep genFields)
       eq tn =
-        vsep
-          [ "def __eq__(self, other):",
-            indent 4 $ "return" <+> "isinstance(other, " <> tn <> ") and" <+> cmpFields
-          ]
-      fields = encloseSep lparen rparen comma $ ["self.f" <> pretty i | i <- [0 .. length (_typeConArgs) - 1]]
-      cmpFields = encloseSep lparen rparen " and " $ "True" : ["self.f" <> pretty i <+> "==" <+> "other.f" <> pretty i | i <- [0 .. length (_typeConArgs) - 1]]
+        "bool operator==(const object &other)" <+> braces (
+            indent 4 $ "return" <+> "other.type() == typeid(" <> tn <> ") &&" <+> cmpFields tn <> semi)
+      fields = encloseSep lparen rparen comma $ ["object f" <> pretty i | i <- [0 .. length (_typeConArgs) - 1]]
+      cmpFields tn = encloseSep lparen rparen " && " $ "true" : ["f" <> pretty i <+> "==" <+> 
+         "std::any_cast<"<> tn <> ">(other).f" <> pretty i | i <- [0 .. length (_typeConArgs) - 1]]
       genArgs init =
         encloseSep lparen rparen comma $
-          foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
+          foldl' (\s e -> s ++ [pretty $ "const object &t" ++ show (length s)]) init _typeConArgs
       genFields =
-        if _typeConArgs == []
-          then ["pass"]
-          else
             foldl'
               ( \s e ->
                   let i = length s
-                      f = "self.f" ++ show i
+                      f = "f" ++ show i
                       a = "t" ++ show (i + 4)
-                   in s ++ [pretty f <+> "=" <+> pretty a]
+                   in s ++ [pretty f <+> "=" <+> pretty a <> semi]
               )
               []
               _typeConArgs
       ctrFunc fn tn =
-        vsep
-          [ "def" <+> fn <> genArgs ["____k", "____state", "____effs"] <> ":",
-            indent 4 ("return" <+> ("____k" <> parens (tn <> genArgs ["____k", "____state", "____effs"])))
-          ]
-      ctrFuncWrapper fn =
-        vsep
-          [ "def" <+> fn <> "_w" <> genArgs [] <> ":",
-            indent 4 ("return" <+> (fn <> genArgs ["lambda x:x", "[{}]", "[]"]))
-          ]
+        tn <+> fn <> genArgs ["const cont &____k", "states &&____state", "effects &&____effs"] <> braces (
+            indent 4 ("return" <+> ("____k" <> parens (tn <> genArgs ["____k", "std::move(____state)", "std::move(____effs)"]))))
+      ctrFuncWrapper tn fn =
+        tn <+> fn <> "_w" <> genArgs [] <> braces (
+            indent 4 ("return" <+> (fn <> genArgs ["identity_k", "{{}}", "{}"])))
 
   genEffectDef proxy e = return emptyDoc
 
@@ -321,142 +296,7 @@ instance Backend CppHeader where
 
   genPrologue proxy = do
     prefix <- getEnv currentModuleName
-    return $
-      vsep
-        [ "def " <> funcN proxy prefix "print(k, s, effs, a):",
-          indent 4 $ vsep ["return k(print(a))"],
-          "def ____lookup_var(state, k):",
-          indent 4 $
-            vsep
-              [ "for s in reversed(state):",
-                indent 4 $
-                  vsep
-                    [ "if k in s:",
-                      indent 4 $ vsep ["return s[k]"]
-                    ]
-              ],
-          indent 4 $ "return None",
-          "def ____lookup_eff(effs, k):",
-          indent 4 $
-            vsep
-              [ "for s in reversed(effs):",
-                indent 4 $
-                  vsep
-                    [ "if k in s:",
-                      indent 4 $ vsep ["return s[k]"]
-                    ]
-              ],
-          indent 4 $ "return None",
-          "def ____add_var(state, k, v):",
-          indent 4 $ "state[-1][k] = v",
-          "def ____update_state(state, k, v):",
-          indent 4 $
-            vsep
-              [ "for s in reversed(state):",
-                indent 4 $
-                  vsep
-                    [ "if k in s:",
-                      indent 4 $
-                        vsep
-                          [ "s[k] = v",
-                            "return"
-                          ]
-                    ]
-              ],
-          "def ____call_cps_with_cleared_vars(k, state, effs, ks, e):",
-          indent 4 $
-            vsep
-              [ "state = copy.deepcopy(state)",
-                "effs = []",
-                "for s in state:",
-                indent 4 $
-                  vsep
-                    [ "for k_ in ks:",
-                      indent 4 $
-                        vsep
-                          [ "if k_ in s:",
-                            indent 4 "del s[k_]"
-                          ]
-                    ],
-                "return e(k, state, effs)"
-              ],
-          "def ____while(k, state, effs, cond, body):",
-          indent 4 $
-            vsep
-              [ "state.append({})",
-                "def k3(o):",
-                indent 4 $
-                  vsep
-                    [ "del state[-1]",
-                      "cond(k2, state, effs)"
-                    ],
-                "def k2(o):",
-                indent 4 $
-                  vsep
-                    [ "if o:",
-                      indent 4 $
-                        vsep
-                          [ "state.append({})",
-                            "body(k3, state, effs)"
-                          ],
-                      "else:",
-                      indent 4 $
-                        vsep
-                          [ "k(o)"
-                          ]
-                    ],
-                "return cond(k2, state, effs)"
-              ],
-          "def ____case(k, state, effs, ce, conds, exprs):",
-          indent 4 $
-            vsep
-              [ "for (p, e) in zip(conds, exprs):",
-                indent 4 $
-                  vsep
-                    [ "state.append({})",
-                      "def k2(o):",
-                      indent 4 $
-                        vsep
-                          [ "del state[-1]",
-                            "return k(o)"
-                          ],
-                      "if p(ce):",
-                      indent 4 $ vsep ["return e(k2, state, effs)"],
-                      "del state[-1]"
-                    ]
-              ],
-          "def ____handle(k, state, effs, scope, handlers):",
-          indent 4 $
-            vsep
-              [ "state.append({})",
-                "effs.append({})",
-                "try:",
-                indent 4 $
-                  vsep
-                    [ "effs[-1].update(handlers)",
-                      "o = scope(lambda x: x, state, effs)"
-                    ],
-                "finally:",
-                indent 4 $ vsep ["del state[-1]", "del effs[-1]"],
-                "return k(o)"
-              ],
-          "def ____call_with_resumed_k(k, state, effs, handler):",
-          indent 4 $
-            vsep
-              [ "state.append({})",
-                "state[-1]['____resumed_k'] = k",
-                "try:",
-                indent 4 $ vsep ["o = handler(lambda x: x, state, effs)"],
-                "finally:",
-                indent 4 $ "del state[-1]",
-                "return o"
-              ],
-          "def " <> funcN proxy prefix "resume(k, s, effs, a):",
-          indent 4 $ vsep ["return k(s[-1]['____resumed_k'](a))"],
-          "unit = None",
-          "true = True",
-          "false = False"
-        ]
+    return emptyDoc 
 
   genEpilogue proxy = do
     prefix <- getEnv currentModuleName
@@ -475,8 +315,7 @@ instance Backend CppHeader where
     return $
       vsep $
         -- [ "module" <+> namePath proxy _moduleName <+> line]
-        [ "import core.prelude",
-          "import copy"
+        [ "#include \"core/prelude.h\""
         ]
           ++ imps
           ++ [pre]
