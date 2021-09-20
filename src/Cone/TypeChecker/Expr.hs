@@ -385,7 +385,7 @@ inferPatternType PApp {..} = do
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   typeArgs <- mapM inferType _pappTypeArgs
   (t, _) <- inferAppResultType appFuncType typeArgs args
-  return t
+  inferType t
 inferPatternType PExpr {..} = inferExprType _pExpr >>= typeOfExpr
 
 -- | Bind a pattern's variables with real types

@@ -129,7 +129,7 @@ inferType l@TList {..} = do
   es <- mapM inferType _tlist
   return l {_tlist = es}
 inferType v@TVar {..} = do
-  t <- getEnv $ typeBinds . at (name2String _tvar)
+  t <- getEnv $ typeBinds . at _tvar
   case t of
     Just t -> inferType t
     Nothing -> return v
@@ -649,7 +649,10 @@ checkVarBindings bindings = do
     if L.length nonVars > 1
       then throwError $ "var bind conflicts: " ++ ppr vars ++ " to " ++ ppr [(v, loc) | v <- nonVars | loc <- nonVars ^..traverse.tloc]
       else return [(_tvar v, t)| v <- vars, t <- nonVars]
-  return $ join bs
+  let allBinds = join bs
+  forM_ allBinds $ \(v, t) -> do
+    setEnv (Just t) $ typeBinds . at v
+  return allBinds
 
 checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m [(EffVar, EffectType)]
 checkEffVarBindings bindings = do
@@ -666,7 +669,10 @@ checkEffVarBindings bindings = do
     if L.length nonVars > 1
       then throwError $ "eff var bind conflicts: " ++ ppr vars ++ " to " ++ ppr [(v, loc) | v <- nonVars | loc <- nonVars ^..traverse.effLoc]
       else return [(_effVar v, t)| v <- vars, t <- nonVars]
-  return $ join bs
+  let allBinds = join bs
+  forM_ allBinds $ \(v, t) -> do
+    setEnv (Just t) $ effTypeBinds . at v
+  return allBinds
 
 -- | Get a function type from a function defintion
 funcDefType :: FuncDef -> Type
@@ -734,6 +740,28 @@ isSubType s t = do
           return True
     )
     (\(e :: String) -> return False)
+
+-- | Set a function type into env
+setFuncType :: (Has EnvEff sig m) => String -> Type -> m ()
+setFuncType n t = do
+  setEnv (Just t) $ funcs . at n
+  l <- getEnv localState
+  -- clear the local state
+  setEnv (M.delete n l) localState
+
+-- | Get a function type into env
+getFuncType :: (Has EnvEff sig m) => Location -> String -> m Type
+getFuncType pos n = do
+  -- try to find in local state first
+  v <- getEnv $ localState . at n
+  case v of
+    Just v -> inferType v
+    Nothing -> do
+      -- try to find in local scope
+      v <- getEnv $ funcs . at n
+      case v of
+        Just v -> inferType v
+        Nothing -> throwError $ "cannot find variable: " ++ n ++ ppr pos
 
 -- | Func implementation selector
 funcImplSelector :: Type -> String

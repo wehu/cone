@@ -36,7 +36,9 @@ type ExprTypes = M.Map String Type
 
 type FuncImpls = M.Map String Expr
 
-type TypeBinds = M.Map String Type
+type TypeBinds = M.Map TVar Type
+
+type EffTypeBinds = M.Map EffVar EffectType
 
 -- | The environment
 data Env = -- | the type-kind bindings
@@ -52,7 +54,8 @@ data Env = -- | the type-kind bindings
     -- | the local variabe-type bindings
     _effIntfs :: EffIntfs,
     _localState :: ExprTypes,
-    _typeBinds :: TypeBinds
+    _typeBinds :: TypeBinds,
+    _effTypeBinds :: EffTypeBinds
   }
   deriving (Show)
 
@@ -66,7 +69,8 @@ initialEnv =
       _effs = M.empty,
       _effIntfs = M.empty,
       _localState = M.empty,
-      _typeBinds = M.empty
+      _typeBinds = M.empty,
+      _effTypeBinds = M.empty
     }
 
 type EnvEff = Eff Env String
@@ -88,30 +92,10 @@ underScope :: (Has EnvEff sig m) => m a -> m a
 underScope f = do
   env <- get @Env
   res <- f
-  put env
+  tbs <- getEnv typeBinds
+  ebs <- getEnv effTypeBinds
+  put env{_typeBinds=tbs, _effTypeBinds=ebs}
   return res
-
--- | Set a function type into env
-setFuncType :: (Has EnvEff sig m) => String -> Type -> m ()
-setFuncType n t = do
-  setEnv (Just t) $ funcs . at n
-  l <- getEnv localState
-  -- clear the local state
-  setEnv (M.delete n l) localState
-
--- | Get a function type into env
-getFuncType :: (Has EnvEff sig m) => Location -> String -> m Type
-getFuncType pos n = do
-  -- try to find in local state first
-  v <- getEnv $ localState . at n
-  case v of
-    Just v -> return v
-    Nothing -> do
-      -- try to find in local scope
-      v <- getEnv $ funcs . at n
-      case v of
-        Just v -> return v
-        Nothing -> throwError $ "cannot find variable: " ++ n ++ ppr pos
 
 -- | Add effect interface into env
 addEffIntfs :: (Has EnvEff sig m) => String -> String -> m ()

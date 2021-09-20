@@ -292,6 +292,8 @@ checkFuncType f = underScope $ do
 -- | Check a function definiton
 checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 checkFuncDef f = underScope $ do
+  setEnv M.empty typeBinds
+  setEnv M.empty effTypeBinds
   let pos = f ^. funcLoc
       ft = funcDefType f
   k <- inferTypeKind ft
@@ -313,6 +315,8 @@ initImplFuncDefs m = mapMOf (topStmts . traverse . _ImplFDef) (initImplFuncDef $
 -- | Check a function implementation
 checkImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ImplFuncDef
 checkImplFuncDef i = underScope $ do
+  setEnv M.empty typeBinds
+  setEnv M.empty effTypeBinds
   let f = i ^. implFunDef
   let ft = funcDefType f
   k <- inferTypeKind ft
