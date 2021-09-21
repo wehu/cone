@@ -26,7 +26,12 @@ import Unbound.Generics.LocallyNameless.Unsafe
 -- | Infer type's kind
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
 inferTypeKind a@TApp {..} = do
-  ak <- inferTypeKind _tappName
+  ak <- if not $ isn't _TVar _tappName then do
+          let tvn = name2String $ _tvar _tappName
+              kstar = KStar _tloc
+              kf = KFunc [kstar | _ <- _tappArgs] kstar _tloc
+          getEnv $ types . at tvn . non kf
+        else inferTypeKind _tappName
   case ak of
     KStar {} ->
       if _tappArgs == []
@@ -43,7 +48,10 @@ inferTypeKind a@TApp {..} = do
               checkKindMatch t b
           return _kfuncResult
 inferTypeKind a@TAnn {..} = do
-  k <- inferTypeKind _tannType
+  k <- if not $ isn't _TVar _tannType then do
+    let tvn = name2String $ _tvar _tannType
+    getEnv $ types . at tvn . non _tannKind
+  else inferTypeKind _tannType
   checkKindMatch k _tannKind
   return _tannKind
 inferTypeKind b@BoundType {..} = underScope $ do
