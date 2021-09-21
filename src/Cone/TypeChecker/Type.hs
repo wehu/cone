@@ -23,6 +23,17 @@ import GHC.Stack
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
+getKindOfTVar :: (Has EnvEff sig m) => String -> Kind -> m Kind
+getKindOfTVar n defaultK = do
+  k <- getEnv $ types . at n
+  case k of 
+    Just k -> return k
+    Nothing -> do
+      k <- getEnv $ kindBinds . at n . non defaultK
+      checkKindMatch k defaultK
+      setEnv (Just k) $ kindBinds . at n
+      return k
+
 -- | Infer type's kind
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
 inferTypeKind a@TApp {..} = do
@@ -31,7 +42,7 @@ inferTypeKind a@TApp {..} = do
               kstar = KStar _tloc
               kf = if _tappArgs == [] then kstar
                    else KFunc [kstar | _ <- _tappArgs] kstar _tloc
-          getEnv $ types . at tvn . non kf
+          getKindOfTVar tvn kf
         else inferTypeKind _tappName
   case ak of
     KStar {} ->
@@ -51,7 +62,7 @@ inferTypeKind a@TApp {..} = do
 inferTypeKind a@TAnn {..} = do
   k <- if not $ isn't _TVar _tannType then do
     let tvn = name2String $ _tvar _tannType
-    getEnv $ types . at tvn . non _tannKind
+    getKindOfTVar tvn _tannKind
   else inferTypeKind _tannType
   checkKindMatch k _tannKind
   return _tannKind
@@ -68,7 +79,7 @@ inferTypeKind b@BoundEffVarType {..} = underScope $ do
 inferTypeKind v@TVar {..} = do
   let tvn = name2String _tvar
       kstar = KStar _tloc
-  getEnv $ types . at tvn . non kstar
+  getKindOfTVar tvn kstar
 inferTypeKind f@TFunc {..} = do
   ks <- mapM inferTypeKind _tfuncArgs
   mapM_ checkTypeKind ks
@@ -165,11 +176,22 @@ inferEffType l@EffList {..} = do
   ls <- mapM inferEffType _effList
   return l{_effList=ls}
 
+getEffKindOfEffVar :: (Has EnvEff sig m) => String -> EffKind -> m EffKind
+getEffKindOfEffVar n defaultK = do
+  k <- getEnv $ effs . at n
+  case k of 
+    Just k -> return k
+    Nothing -> do
+      k <- getEnv $ effKindBinds . at n . non defaultK
+      checkEffKindMatch k defaultK
+      setEnv (Just k) $ effKindBinds . at n
+      return k
+
 -- | Infer an effect type kind
 inferEffKind :: (Has EnvEff sig m) => EffectType -> m EffKind
 inferEffKind v@EffVar {..} = do
   let kstar = EKStar _effLoc
-  getEnv $ effs . at (name2String _effVar) . non kstar
+  getEffKindOfEffVar (name2String _effVar) kstar
 inferEffKind a@EffApp {..} = do
   k <- getEnv $ effs . at (name2String $ _effVar _effAppName)
   forMOf _Nothing k $ \k ->

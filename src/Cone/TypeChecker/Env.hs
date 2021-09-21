@@ -38,7 +38,11 @@ type FuncImpls = M.Map String Expr
 
 type TypeBinds = M.Map String Type
 
+type KindBinds = M.Map String Kind
+
 type EffTypeBinds = M.Map String EffectType
+
+type EffKindBinds = M.Map String EffKind
 
 -- | The environment
 data Env = -- | the type-kind bindings
@@ -55,7 +59,9 @@ data Env = -- | the type-kind bindings
     _effIntfs :: EffIntfs,
     _localState :: ExprTypes,
     _typeBinds :: TypeBinds,
-    _effTypeBinds :: EffTypeBinds
+    _kindBinds :: KindBinds,
+    _effTypeBinds :: EffTypeBinds,
+    _effKindBinds :: EffKindBinds
   }
   deriving (Show)
 
@@ -70,7 +76,9 @@ initialEnv =
       _effIntfs = M.empty,
       _localState = M.empty,
       _typeBinds = M.empty,
-      _effTypeBinds = M.empty
+      _kindBinds = M.empty,
+      _effTypeBinds = M.empty,
+      _effKindBinds = M.empty
     }
 
 type EnvEff = Eff Env String
@@ -93,8 +101,10 @@ underScope f = do
   env <- get @Env
   res <- f
   tbs <- getEnv typeBinds
+  kbs <- getEnv kindBinds
   ebs <- getEnv effTypeBinds
-  put env{_typeBinds=tbs, _effTypeBinds=ebs}
+  ekbs <- getEnv effKindBinds
+  put env{_typeBinds=tbs, _kindBinds=kbs, _effTypeBinds=ebs, _effKindBinds=ekbs}
   return res
 
 -- | Add effect interface into env
