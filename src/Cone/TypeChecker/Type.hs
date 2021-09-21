@@ -29,7 +29,8 @@ inferTypeKind a@TApp {..} = do
   ak <- if not $ isn't _TVar _tappName then do
           let tvn = name2String $ _tvar _tappName
               kstar = KStar _tloc
-              kf = KFunc [kstar | _ <- _tappArgs] kstar _tloc
+              kf = if _tappArgs == [] then kstar
+                   else KFunc [kstar | _ <- _tappArgs] kstar _tloc
           getEnv $ types . at tvn . non kf
         else inferTypeKind _tappName
   case ak of
