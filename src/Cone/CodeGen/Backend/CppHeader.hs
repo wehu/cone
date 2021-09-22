@@ -65,9 +65,9 @@ instance Backend CppHeader where
     return $
       vsep $
         ["#pragma once",
-         (sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs),
          "#include \"pybind11/pybind11.h\""]
           ++ imps
+          ++ [sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
           ++ [pre]
           ++ tops
           ++ [pos]

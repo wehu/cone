@@ -36,7 +36,7 @@ checkAndCompileImport paths i target = do
   userDataDir <- liftIO $ coneUserDataDir
   let fn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) $ targetEx target)
       cppHeaderFn = addExtension (dropExtension fn) ".h"
-      cppLibFn = addExtension (dropExtension fn ++ "_C") ".so"
+      cppLibFn = addExtension (dropExtension fn ++ "_c") ".so"
       d = takeDirectory fn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
   liftIO $ createDirectoryIfMissing True d
@@ -114,9 +114,11 @@ compileToCppSource paths f target = do
 
 compileCppToLib :: [FilePath] -> String -> FilePath -> CompileEnv String
 compileCppToLib paths outputFile input = do
-  let cc = "gcc"
-      args = ["-lstdc++", "-O3", "-std=c++11", "-shared"] ++ map (\p -> "-I" ++ (p </> "include")) paths ++ ["-o", outputFile]
-  liftIO $ putStrLn input
+  let cc = "g++"
+      pythonHeaderPath = "/usr/include/python3.8"
+      args = ["-lstdc++", "-O3", "-std=c++11", "-shared", "-fPIC", "-I"++pythonHeaderPath] ++
+             map (\p -> "-I" ++ (p </> "include")) paths ++ ["-o", outputFile, "-xc++", "-"]
+  -- liftIO $ putStrLn input
   liftIO $ readProcess cc args input
 
 -- | Compile a file

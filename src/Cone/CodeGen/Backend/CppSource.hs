@@ -64,10 +64,13 @@ instance Backend CppSource where
     pos <- genEpilogue proxy
     return $
       vsep $
-        [ sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
-          ++ [ "#include \"pybind11/pybind11.h\""]
+         [ "#include \"pybind11/pybind11.h\""]
           ++ imps
+          ++ [sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
+          ++ ["PYBIND11_MODULE(" <> pretty (last modulePs) <> ", m) {"
+             ,indent 4 "m.doc() = \"\";"]
           ++ [pre]
           ++ tops
           ++ [pos]
-          ++ [sep $ map (\_ -> rbrace) modulePs]
+          ++ ["}"]
+         ++ [sep $ map (\_ -> rbrace) modulePs]
