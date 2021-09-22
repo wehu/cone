@@ -119,9 +119,11 @@ compileToCppSource paths f target = do
   (env, id, m, imports) <- loadModule paths f
   case target of
     "cone" -> return ""
-    "python" -> case gen (CppSource :: (CppSource Target)) m of
-      Left err -> throwError err
-      Right doc -> return $ show doc
+    "python" -> do
+      liftIO $ putStrLn $ "compiling " ++ f ++ "..."
+      case gen (CppSource :: (CppSource Target)) m of
+        Left err -> throwError err
+        Right doc -> return $ show doc
     _ -> throwError $ "unknown target: " ++ target
 
 getPythonIncludePaths :: IO [String]
@@ -139,7 +141,7 @@ compileCppToLib paths outputFile input = do
               pythonHeaderPaths ++
              map (\p -> "-I" ++ (p </> "include")) paths ++
              ["-o", outputFile, "-xc++", "-"]
-  liftIO $ putStrLn $ "compiling..."
+  -- liftIO $ putStrLn $ "compiling..."
   liftIO $ readProcess cc args input
 
 -- | Compile a file

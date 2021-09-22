@@ -78,7 +78,7 @@ instance Backend CppHeader where
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
       ctrFunc fn tn =
         "inline py::object" <+> fn <> 
-            genArgs ["const std::function<py::object(py::object)> &____k", "py::object ____state", "py::object ____effs"] <+>
+            genArgs ["const cont &____k", "states ____state", "effects ____effs"] <+>
             braces
             (vsep ["py::object cntr = " <> pythonTypeNamePath _typeConName <> semi
                   ,"return" <+> ("____k" <> parens ("cntr" <> genArgs' ["____k", "____state", "____effs"])) <> semi])
