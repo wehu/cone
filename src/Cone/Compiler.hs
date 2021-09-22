@@ -47,21 +47,19 @@ checkAndCompileImport paths i target = do
       coneFTS <- liftIO $ getModificationTime coneFn
       if fTS /= coneFTS
         then do
-          (o, _, _) <- compile' paths coneFn target
-          liftIO $ writeFile fn o
-          o <- compileToCppHeader paths coneFn target
-          liftIO $ writeFile cppHeaderFn o
-          compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
+          compileConeFile fn coneFn cppHeaderFn cppLibFn
           addInitFile userDataDir i
         else return ()
     else do
+      compileConeFile fn coneFn cppHeaderFn cppLibFn
+      addInitFile userDataDir i
+  where
+    compileConeFile fn coneFn cppHeaderFn cppLibFn = do
       (o, _, _) <- compile' paths coneFn target
       liftIO $ writeFile fn o
       o <- compileToCppHeader paths coneFn target
       liftIO $ writeFile cppHeaderFn o
       compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
-      addInitFile userDataDir i
-  where
     addInitFile userDataDir i = do
       let ds = splitOn "/" i
       foldM
