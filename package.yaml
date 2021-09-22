@@ -11,8 +11,8 @@ extra-source-files:
 - ChangeLog.md
 
 data-files:
-- lib/*/*.cone
-- lib/*/*.h
+- lib/**/*.cone
+- include/**/*.h
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
