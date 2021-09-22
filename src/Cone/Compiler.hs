@@ -14,6 +14,7 @@ import Control.Monad.Except
 import Data.List
 import Data.List.Split
 import Data.Proxy
+import System.Process
 import System.Directory
 import System.FilePath
 import System.IO
@@ -33,7 +34,7 @@ checkAndCompileImport :: [FilePath] -> String -> String -> CompileEnv ()
 checkAndCompileImport paths i target = do
   userDataDir <- liftIO $ coneUserDataDir
   let fn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) $ targetEx target)
-
+      cppLibFn = addExtension (dropExtension fn ++ "_C") ".so"
       d = takeDirectory fn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
   liftIO $ createDirectoryIfMissing True d
@@ -46,11 +47,13 @@ checkAndCompileImport paths i target = do
         then do
           (o, _, _) <- compile' paths coneFn target
           liftIO $ writeFile fn o
+          compileToCpp paths coneFn target >>= compileCppToLib paths cppLibFn
           addInitFile userDataDir i
         else return ()
     else do
       (o, _, _) <- compile' paths coneFn target
       liftIO $ writeFile fn o
+      compileToCpp paths coneFn target >>= compileCppToLib paths cppLibFn
       addInitFile userDataDir i
   where
     addInitFile userDataDir i = do
@@ -92,6 +95,13 @@ compileToCpp paths f target = do
       Left err -> throwError err
       Right doc -> return $ show doc
     _ -> throwError $ "unknown target: " ++ target
+
+compileCppToLib :: [FilePath] -> String -> FilePath -> CompileEnv String
+compileCppToLib paths outputFile input = do
+  let cc = "gcc"
+      args = ["-lstdc++", "-O3", "-std=c++11", "-shared"] ++ map (\p -> "-I" ++ (p </> "include")) paths ++ ["-o", outputFile]
+  liftIO $ putStrLn input
+  liftIO $ readProcess cc args input
 
 -- | Compile a file
 compile :: [FilePath] -> FilePath -> String -> CompileEnv String
