@@ -119,8 +119,10 @@ getPythonIncludePaths = do
 compileCppToLib :: [FilePath] -> String -> FilePath -> CompileEnv String
 compileCppToLib paths outputFile input = do
   pythonHeaderPaths <- liftIO getPythonIncludePaths
+  userDataDir <- liftIO $ coneUserDataDir
   let cc = "g++"
-      args = ["-lstdc++", "-O3", "-std=c++11", "-shared", "-fPIC"] ++ pythonHeaderPaths ++
+      args = ["-lstdc++", "-O3", "-std=c++11", "-shared", "-fPIC", "-I"++userDataDir</>"python"] ++ 
+              pythonHeaderPaths ++
              map (\p -> "-I" ++ (p </> "include")) paths ++
              ["-o", outputFile, "-xc++", "-"]
   liftIO $ putStrLn $ "compiling..."
@@ -130,6 +132,6 @@ compileCppToLib paths outputFile input = do
 compile :: [FilePath] -> FilePath -> String -> CompileEnv String
 compile paths f target = do
   (o, m, imports) <- compile' paths f target
-  forM_ (reverse $ (dropExtension f):imports) $ \p ->
+  forM_ (nub $ reverse $ (dropExtension f):imports) $ \p ->
     checkAndCompileImport paths p target
   return o
