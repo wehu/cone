@@ -31,13 +31,29 @@ data CppSource a = CppSource
 
 instance Backend CppSource where
 
-  namePath _ _ = emptyDoc
+  namePath proxy n = pretty n
 
-  typeN _ _ _ = emptyDoc
+  typeN proxy prefix n' =
+    let prefixLen = length prefix
+        n = if prefix == (take prefixLen n') then (drop (prefixLen + 1) n') else n'
+        ns = splitOn "/" n
+        ps = init ns
+        tn = "Cone__" ++ last ns
+     in pretty $ join $ intersperse "." $ ps ++ [tn]
 
-  funcN _ _ _ = emptyDoc
+  funcN proxy prefix n' =
+    let prefixLen = length prefix
+        n = if prefix == (take prefixLen n') then (drop (prefixLen + 1) n') else n'
+        ns = splitOn "/" n
+        ps = init ns
+        fn = "cone__" ++ last ns
+     in pretty $ join $ intersperse "." $ ps ++ [fn]
 
-  genImport _ _ = return emptyDoc
+  genImport proxy ImportStmt {..} =
+    return $
+      ( "#include \"" <> namePath proxy _importPath <> ".h\""
+      )
+        <+> line
 
   genTypeDef _ _ = return emptyDoc
 
