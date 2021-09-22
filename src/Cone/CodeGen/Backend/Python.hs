@@ -80,11 +80,7 @@ instance Backend Python where
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
       ctrFunc fn = fn <> "=" <> "____C." <> fn
-      ctrFuncWrapper fn =
-        vsep
-          [ "def" <+> fn <> "_w" <> genArgs [] <> ":",
-            indent 4 ("return" <+> (fn <> genArgs ["lambda x:x", "[{}]", "[]"]))
-          ]
+      ctrFuncWrapper fn = fn <> "_w=" <> "____C." <> fn <> "_w"
 
   genEffectDef proxy e = return emptyDoc
 

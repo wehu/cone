@@ -62,10 +62,12 @@ instance Backend CppSource where
   genTypeCon proxy ptn TypeCon {..} = do
     prefix <- getEnv currentModuleName
     let fn = funcN proxy prefix _typeConName
-     in return $ ctrFunc fn
+     in return $ vsep [ctrFunc fn, ctrFuncWrapper fn]
     where
       ctrFunc fn =
         "m.def(\"" <> fn <> "\", &" <> fn <> ");"
+      ctrFuncWrapper fn =
+        "m.def(\"" <> fn <> "_w\", &" <> fn <> "_w);"
 
   genEffectDef _ _ = return emptyDoc
 

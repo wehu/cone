@@ -68,7 +68,7 @@ instance Backend CppHeader where
     prefix <- getEnv currentModuleName
     let tn = typeN proxy prefix _typeConName
         fn = funcN proxy prefix _typeConName
-     in return $ ctrFunc fn tn
+     in return $ vsep [ctrFunc fn tn, ctrFuncWrapper fn]
     where
       genArgs init =
         encloseSep lparen rparen comma $
@@ -76,12 +76,18 @@ instance Backend CppHeader where
       genArgs' init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
+      genArgs'' init =
+        encloseSep lparen rparen comma $
+          foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s - 3)]) init _typeConArgs
       ctrFunc fn tn =
-        "inline py::object" <+> fn <> 
+        "inline object" <+> fn <> 
             genArgs ["const cont &____k", "states ____state", "effects ____effs"] <+>
             braces
-            (vsep ["py::object cntr = " <> pythonTypeNamePath _typeConName <> semi
+            (vsep ["object cntr = " <> pythonTypeNamePath _typeConName <> semi
                   ,"return" <+> ("____k" <> parens ("cntr" <> genArgs' ["____k", "____state", "____effs"])) <> semi])
+      ctrFuncWrapper fn =
+           "inline object" <+> fn <> "_w" <> genArgs [] <> braces
+            ("return" <+> (fn <> genArgs'' ["____identity_k", "py::list(py::dict())", "py::list()"]) <> semi)
 
   genEffectDef _ _ = return emptyDoc
 
