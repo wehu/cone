@@ -5,6 +5,7 @@ module Cone.Compiler (compile, coneUserDataDir) where
 import Cone.CodeGen.Backend
 import Cone.CodeGen.Backend.Cone
 import Cone.CodeGen.Backend.Python
+import Cone.CodeGen.Backend.CppSource
 import Cone.ModuleLoader
 import Cone.Parser.AST
 import Control.Lens
@@ -82,10 +83,20 @@ compile' paths f target = do
       Right doc -> return $ (show doc, m, imports)
     _ -> throwError $ "unknown target: " ++ target
 
+compileToCpp :: [FilePath] -> FilePath -> String -> CompileEnv String
+compileToCpp paths f target = do
+  (env, id, m, imports) <- loadModule paths f
+  case target of
+    "cone" -> return ""
+    "python" -> case gen (CppSource :: (CppSource Target)) m of
+      Left err -> throwError err
+      Right doc -> return $ show doc
+    _ -> throwError $ "unknown target: " ++ target
+
 -- | Compile a file
 compile :: [FilePath] -> FilePath -> String -> CompileEnv String
 compile paths f target = do
   (o, m, imports) <- compile' paths f target
-  forM_ (reverse . nub . reverse $ imports) $ \p ->
+  forM_ (nub $ (dropExtension f):imports) $ \p ->
     checkAndCompileImport paths p target
   return o
