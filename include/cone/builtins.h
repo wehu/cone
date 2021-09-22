@@ -95,7 +95,7 @@ namespace cone {
     };
     k3 = std::make_shared<cont>([state, effs, k2, cond](const object &o) {
       auto l = py::cast<py::list>(state);
-      py::delattr(l, 0);
+      l.attr("pop")(0);
       return cond(k2, state, effs);
     });
     return cond(k2, state, effs);
@@ -111,13 +111,13 @@ namespace cone {
       l.insert(0, py::dict());
       const cont k2 = [state, k](const object &o) {
         auto l = py::cast<py::list>(state);
-        py::delattr(l, 0);
+        l.attr("pop")(0);
         return k(o);
       };
       if (p(ce)) {
         return e(k2, state, effs);
       }
-      py::delattr(l, 0);
+      l.attr("pop")(0);
     }
   }
 
@@ -131,8 +131,8 @@ namespace cone {
     el.insert(0, py::dict());
     el[0].attr("update")(handlers);
     auto &&o = k(scope(identity_k, state, effs));
-    py::delattr(sl, 0);
-    py::delattr(el, 0);
+    sl.attr("pop")(0);
+    el.attr("pop")(0);
     return o;
   }
 
@@ -143,7 +143,7 @@ namespace cone {
     l.insert(0, py::dict());
     py::setattr(l[0], ____resumed_k, py::cpp_function(k));
     auto &&o = handler(identity_k, state, effs);
-    py::delattr(l, 0);
+    l.attr("pop")(0);
     return o;
   }
 
