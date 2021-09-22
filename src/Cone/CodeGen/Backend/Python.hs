@@ -476,7 +476,8 @@ instance Backend Python where
       vsep $
         -- [ "module" <+> namePath proxy _moduleName <+> line]
         [ "import core.prelude",
-          "import copy"
+          "import copy",
+          "from" <+> namePath proxy _moduleName <> "_c" <+> "import *"
         ]
           ++ imps
           ++ [pre]
