@@ -2,6 +2,7 @@
 #pragma once
 
 #include <pybind11.h>
+#include <pybind11/functional.h>
 #include <iostream>
 #include <map>
 #include <vector>
@@ -13,58 +14,29 @@ namespace cone {
 
   namespace py = pybind11;
 
+  typedef py::object object;
+
   typedef std::function<py::object(py::object)> cont;
 
-  typedef std::vector<std::map<std::string, object>> states;
+  typedef py::object states;
 
-  typedef std::vector<std::map<std::string, object>> effects;
+  typedef py::object effects;
 
-  typedef std::function<object(const cont &, states &&, effects &&)> cont_with_state;
-
-  struct none {};
-
-  none unit;
-
-  inline object cone_print(const cont &k, states &&s, effects &&effs, const object &a) {
-    if (a.type() == typeid(int8_t)) { 
-      std::cout << std::any_cast<int8_t>(a);
-    } else if (a.type() == typeid(int16_t)) { 
-      std::cout << std::any_cast<int16_t>(a);
-    } else if (a.type() == typeid(int32_t)) { 
-      std::cout << std::any_cast<int32_t>(a);
-    } else if (a.type() == typeid(int64_t)) { 
-      std::cout << std::any_cast<int64_t>(a);
-    } else if (a.type() == typeid(uint8_t)) { 
-      std::cout << std::any_cast<uint8_t>(a);
-    } else if (a.type() == typeid(uint16_t)) { 
-      std::cout << std::any_cast<uint16_t>(a);
-    } else if (a.type() == typeid(uint32_t)) { 
-      std::cout << std::any_cast<uint32_t>(a);
-    } else if (a.type() == typeid(uint64_t)) { 
-      std::cout << std::any_cast<uint64_t>(a);
-    } else if (a.type() == typeid(float)) {
-      std::cout << std::any_cast<float>(a);
-    } else if (a.type() == typeid(double)) {
-      std::cout << std::any_cast<double>(a);
-    } else if (a.type() == typeid(bool)) {
-      std::cout << std::any_cast<bool>(a);
-    } else if (a.type() == typeid(std::string)) {
-      std::cout << std::any_cast<std::string>(a);
-    }
-    std::cout << std::endl;
+  inline object cone_print(const cont &k, states s, effects effs, const object &a) {
+    py::print(a);
     return k(a);
   }
 
-  inline object ____lookup_var(states &&s, const std::string &key) {
+  inline object ____lookup_var(states s, const std::string &key) {
     for (auto it=s.rbegin(); it != s.rend(); ++it) {
       if (it->find(key) != it->end()) {
         return (*it)[key];
       }
     }
-    return unit;
+    return py::none;
   }
 
-  inline object ____lookup_eff(effects &&effs, const std::string &key) {
+  inline object ____lookup_eff(effects effs, const std::string &key) {
     for (auto it=effs.rbegin(); it != effs.rend(); ++it) {
       if (it->find(key) != it->end()) {
         return (*it)[key];
@@ -73,12 +45,12 @@ namespace cone {
     return unit;
   }
 
-  inline object ____add_var(states &&s, const std::string &key, const object &k) {
+  inline object ____add_var(states s, const std::string &key, const object &k) {
     s[s.size()-1][key] = k;
     return unit;
   }
 
-  inline object ____update_state(states &&s, const std::string &key, const object &k) {
+  inline object ____update_state(states s, const std::string &key, const object &k) {
     for (auto it=s.rbegin(); it != s.rend(); ++it) {
       if (it->find(key) != it->end()) {
         (*it)[key] = k;
