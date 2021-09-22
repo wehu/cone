@@ -94,14 +94,16 @@ instance Backend CppHeader where
       Nothing -> return $ "throw \"" <> pretty _funcName <> " is not implemented\";"
     return $
       vsep
-        [ "object" <+> funcN proxy prefix _funcName <> genArgs' ["const cont &____k", "states ____state", "effects ____effs"] prefix <> 
+        [ "inline object" <+> funcN proxy prefix _funcName <> genArgs' ["const cont &____k", "states ____state", "effects ____effs"] prefix <> 
           braces body,
-          "object" <+> funcN proxy prefix _funcName <> "_w" <> genArgs' [] prefix <>
+          "inline object" <+> funcN proxy prefix _funcName <> "_w" <> genArgs' [] prefix <>
           braces ("return" <+> funcN proxy prefix _funcName <> genArgs ["____identity_k", "py::list(py::dict())", "py::list()"] prefix <> semi)
         ]
     where
       genArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
       genArgs' init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
+
+  genImplFuncDef _ _ = return emptyDoc
 
   genExpr _ _ = return emptyDoc
 

@@ -78,6 +78,8 @@ instance Backend CppSource where
           "m.def(\"" <> fn <> "_w\", &" <> fn <> "_w);"
         ]
 
+  genImplFuncDef _ _ = return emptyDoc
+
   genExpr _ _ = return emptyDoc
 
   genPatternMatch _ _ = return emptyDoc
