@@ -68,7 +68,7 @@ instance Backend CppSource where
           ++ imps
           ++ [sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
           ++ ["PYBIND11_MODULE(" <> pretty (last modulePs) <> "_c, m) {"
-             ,indent 4 "m.doc() = \"\";"]
+             ,indent 4 "m.doc() = \""<> pretty _moduleName <>"\";"]
           ++ [pre]
           ++ tops
           ++ [pos]
