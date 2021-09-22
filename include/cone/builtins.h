@@ -3,8 +3,6 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
-#include <iostream>
-#include <string>
 
 namespace cone {
 
