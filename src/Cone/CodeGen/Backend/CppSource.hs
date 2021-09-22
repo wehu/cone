@@ -69,7 +69,14 @@ instance Backend CppSource where
 
   genEffectDef _ _ = return emptyDoc
 
-  genFuncDef _ _ = return emptyDoc
+  genFuncDef proxy FuncDef {..} = do
+    prefix <- getEnv currentModuleName
+    let fn = funcN proxy prefix _funcName
+    return $
+      vsep
+        [ "m.def(\"" <> fn <> "\", &" <> fn <> ");",
+          "m.def(\"" <> fn <> "_w\", &" <> fn <> "_w);"
+        ]
 
   genExpr _ _ = return emptyDoc
 

@@ -120,7 +120,7 @@ namespace cone {
     }
   }
 
-  const cont identity_k = [](const object &x) { return x; };
+  const cont ____identity_k = [](const object &x) { return x; };
 
   inline object ____handle(const cont &k, states state, effects effs,
                           const object &scope, const object &handlers) {
@@ -129,7 +129,7 @@ namespace cone {
     sl.insert(0, py::dict());
     el.insert(0, py::dict());
     el[0].attr("update")(handlers);
-    auto &&o = scope(identity_k, state, effs);
+    auto &&o = scope(____identity_k, state, effs);
     sl.attr("pop")(0);
     el.attr("pop")(0);
     return k(o);
@@ -141,7 +141,7 @@ namespace cone {
     auto l = py::cast<py::list>(state);
     l.insert(0, py::dict());
     py::setattr(l[0], ____resumed_k, py::cpp_function(k));
-    auto &&o = handler(identity_k, state, effs);
+    auto &&o = handler(____identity_k, state, effs);
     l.attr("pop")(0);
     return o;
   }

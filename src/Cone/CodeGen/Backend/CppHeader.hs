@@ -72,7 +72,7 @@ instance Backend CppHeader where
     where
       genArgs init =
         encloseSep lparen rparen comma $
-          foldl' (\s e -> s ++ [pretty $ "const py::object &t" ++ show (length s)]) init _typeConArgs
+          foldl' (\s e -> s ++ [pretty $ "const object &t" ++ show (length s)]) init _typeConArgs
       genArgs' init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
@@ -85,7 +85,23 @@ instance Backend CppHeader where
 
   genEffectDef _ _ = return emptyDoc
 
-  genFuncDef _ _ = return emptyDoc
+  genFuncDef proxy FuncDef {..} = do
+    prefix <- getEnv currentModuleName
+    body <- case _funcExpr of
+      Just e -> do
+        es <- genExpr proxy e
+        return $ "return" <+> parens (es <> parens "____k, py::list(py::dict()), ____effs") <> semi
+      Nothing -> return $ "throw \"" <> pretty _funcName <> " is not implemented\";"
+    return $
+      vsep
+        [ "object" <+> funcN proxy prefix _funcName <> genArgs' ["const cont &____k", "states ____state", "effects ____effs"] prefix <> 
+          braces body,
+          "object" <+> funcN proxy prefix _funcName <> "_w" <> genArgs' [] prefix <>
+          braces ("return" <+> funcN proxy prefix _funcName <> genArgs ["____identity_k", "py::list(py::dict())", "py::list()"] prefix <> semi)
+        ]
+    where
+      genArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
+      genArgs' init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
 
   genExpr _ _ = return emptyDoc
 
