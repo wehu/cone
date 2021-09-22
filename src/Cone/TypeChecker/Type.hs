@@ -135,7 +135,7 @@ inferType a@TAnn {..} = do
 inferType b@BoundType {..} = do
   let (bts, t) = unsafeUnbind _boundType
   t <- inferType t
-  return $ bindType bts t
+  return $ bindTypeVar bts t
 inferType b@BoundEffVarType {..} = do
   let (ets, t) = unsafeUnbind _boundEffVarType
   t <- inferType t
@@ -351,7 +351,7 @@ applyTypeArgs t args = do
       forM_ ts $ \(k, t) -> do
         tk <- inferTypeKind t
         checkKindMatch k tk
-      return $ bindTypeEffVar ets $ bindType (L.drop argsLen bts) $ substs binds tt
+      return $ bindTypeEffVar ets $ bindTypeVar (L.drop argsLen bts) $ substs binds tt
 
 -- | Infer a result type of application type
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m (Type, Type)
@@ -753,7 +753,7 @@ funcDefType f =
       resultType = _funcResultType f
       bvs = _funcBoundVars f
       ft =
-        bindType bvs $
+        bindTypeVar bvs $
           TFunc argTypes effType resultType pos
       bes = f ^. funcBoundEffVars
       bft = bindTypeEffVar bes ft
@@ -881,7 +881,7 @@ setFuncImpl prefix impl = do
       loc = funcD ^. funcLoc
       t =
         bindTypeEffVar (funcD ^. funcBoundEffVars) $
-          bindType (funcD ^. funcBoundVars) $
+          bindTypeVar (funcD ^. funcBoundVars) $
             TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
   ft <- getEnv $ funcs . at fn
   case ft of

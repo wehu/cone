@@ -106,7 +106,7 @@ initTypeConDef prefix t = do
               then TVar (s2n tn) pos
               else TApp (TVar (s2n tn) pos) (fmap (\t -> TVar (t ^. _1) pos) tvars) pos
           bt =
-            bindType tvars $
+            bindTypeVar tvars $
               if targs == []
                 then rt
                 else TFunc targs (EffList [] pos) rt pos
@@ -213,8 +213,8 @@ initEffIntfDef prefix e = do
           tvars = e ^. effectArgs
           evars = i ^. intfBoundEffVars
        in bindTypeEffVar evars $
-            bindType tvars $
-              bindType bvars $ TFunc iargs eff iresult pos
+            bindTypeVar tvars $
+              bindTypeVar bvars $ TFunc iargs eff iresult pos
 
 -- | Initialize all effect interfaces
 initEffIntfDefs :: (Has EnvEff sig m) => Module -> m Module

@@ -133,8 +133,8 @@ closeEffType t =
    in bind fvars t
 
 -- | Bind a type with type variables
-bindType :: [(TVar, Maybe Kind)] -> Type -> Type
-bindType bvs t = BoundType (bind bvs t) (_tloc t)
+bindTypeVar :: [(TVar, Maybe Kind)] -> Type -> Type
+bindTypeVar bvs t = BoundType (bind bvs t) (_tloc t)
 
 -- | Bind an effect type with type variables
 bindTypeEffVar :: [EffVar] -> Type -> Type

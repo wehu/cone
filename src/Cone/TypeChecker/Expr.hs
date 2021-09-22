@@ -98,7 +98,7 @@ inferExprType a@EApp {..} = do
   -- infer the result type
   (t, ft) <- inferAppResultType appFuncType typeArgs argTypes
   t <- inferType t
-  appFunc <- selectFuncImpl appFunc {_eannMetaType = bindTypeEffVar [] $ bindType [] ft}
+  appFunc <- selectFuncImpl appFunc {_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft}
   return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t
 inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
@@ -144,7 +144,7 @@ inferExprType l@ELam {..} = underScope $ do
       t <-
         inferType $
           bindTypeEffVar evs $
-            bindType
+            bindTypeVar
               [(t, k) | t <- bvs | k <- _elamBoundVars ^.. traverse . _2]
               $ TFunc args _elamEffType eType _eloc
       return $ annotateExpr l {_elamExpr = Just lamE} t
@@ -247,7 +247,7 @@ inferExprType h@EHandle {..} = underScope $ do
       -- add resume function type
       let resumeT =
             bindTypeEffVar [] $
-              bindType [] $
+              bindTypeVar [] $
                 TFunc [_tfuncResult intfT] emptyEff resT _eloc
       setEnv (Just resumeT) $ funcs . at "resume"
 
