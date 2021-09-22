@@ -104,7 +104,7 @@ inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
   setEnv M.empty localState
   -- refresh all bound variables
-  (bvs, newLam) <- refresh (_elamBoundVars ^.. traverse . _1) l
+  (bvs, newLam) <- refreshTypeVar (_elamBoundVars ^.. traverse . _1) l
   (evs, newLam) <- refreshEffVar _elamBoundEffVars newLam
   case newLam of
     l@ELam {..} -> do

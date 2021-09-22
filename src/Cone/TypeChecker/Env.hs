@@ -141,8 +141,8 @@ bindTypeEffVar :: [EffVar] -> Type -> Type
 bindTypeEffVar bvs t = BoundEffVarType (bind bvs t) (_tloc t)
 
 -- | Refresh all bound type variables with new names
-refresh :: (Has EnvEff sig m) => [TVar] -> Expr -> m ([TVar], Expr)
-refresh vs e = do
+refreshTypeVar :: (Has EnvEff sig m) => [TVar] -> Expr -> m ([TVar], Expr)
+refreshTypeVar vs e = do
   let pos = _eloc e
   nvs <- mapM (\_ -> freeVarName <$> fresh) vs
   return (nvs, substs [(f, TVar t pos) | f <- vs | t <- nvs] e)
