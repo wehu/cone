@@ -1,7 +1,7 @@
        
 #pragma once
 
-#include <pybind11.h>
+#include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 #include <iostream>
 #include <string>
@@ -28,7 +28,7 @@ namespace cone {
     for (auto it=l.begin(); it != l.end(); ++it) {
       auto m = py::cast<py::dict>(*it);
       if (m.contains(key)) {
-        return py::getattr(m, key);
+        return py::getattr(m, key.c_str());
       }
     }
     return py::none();
@@ -39,7 +39,7 @@ namespace cone {
     for (auto it=l.begin(); it != l.end(); ++it) {
       auto m = py::cast<py::dict>(*it);
       if (m.contains(key)) {
-        return py::getattr(m, key);
+        return py::getattr(m, key.c_str());
       }
     }
     return py::none();
@@ -47,7 +47,7 @@ namespace cone {
 
   inline object ____add_var(states s, const std::string &key, const object &k) {
     auto l = py::cast<py::list>(s);
-    py::setattr(l[0], key, k);
+    py::setattr(l[0], key.c_str(), k);
     return py::none();
   }
 
@@ -56,7 +56,7 @@ namespace cone {
     for (auto it=l.begin(); it != l.end(); ++it) {
       auto m = py::cast<py::dict>(*it);
       if (m.contains(key)) {
-        setattr(m, key, k);
+        setattr(m, key.c_str(), k);
         return py::none();
       }
     }
@@ -71,7 +71,7 @@ namespace cone {
     auto l = py::cast<py::list>(state);
     for (auto it=l.begin(); it!=l.end(); ++it) {
       for (auto k : ks) {
-        delattr(*it, k);
+        py::delattr(*it, k.c_str());
       }
     }
     return e(k, state, effs);
@@ -86,7 +86,7 @@ namespace cone {
     std::shared_ptr<cont> k3;
     k2 = [state, effs, k, k3, body](const object &o) {
       auto l = py::cast<py::list>(state);
-      if (std::any_cast<bool>(o)) {
+      if (py::cast<bool>(o)) {
         l.insert(0, py::dict());
         return body(*k3, state, effs);
       } else {
@@ -111,7 +111,7 @@ namespace cone {
       l.insert(0, py::dict());
       const cont k2 = [state, k](const object &o) {
         auto l = py::cast<py::list>(state);
-        py::delattr(l, 0)
+        py::delattr(l, 0);
         return k(o);
       };
       if (p(ce)) {
@@ -124,7 +124,7 @@ namespace cone {
   const cont identity_k = [](const object &x) { return x; };
 
   inline object ____handle(const cont &k, states state, effects effs,
-                          const object &scope, std::map<std::string, object> &handlers) {
+                          const object &scope, const object &handlers) {
     auto sl = py::cast<py::list>(state);
     auto el = py::cast<py::list>(effs);
     sl.insert(0, py::dict());
@@ -141,14 +141,14 @@ namespace cone {
   inline object ____call_with_resumed_k(const cont &k, states state, effects effs, const object &handler) {
     auto l = py::cast<py::list>(state);
     l.insert(0, py::dict());
-    py::setattr(l[0], ____resumed_k, k);
+    py::setattr(l[0], ____resumed_k, py::cpp_function(k));
     auto &&o = handler(identity_k, state, effs);
-    py::delattr(l, 0)
+    py::delattr(l, 0);
     return o;
   }
 
   inline object cone_resume(const cont &k, states s, effects effs, const object &a) {
-    auto l = py::cast<py::list>(state);
+    auto l = py::cast<py::list>(s);
     return k(py::getattr(l[0], ____resumed_k)(a));
   }
 

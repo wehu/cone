@@ -21,7 +21,7 @@ extra-source-files:
 data-files:
     lib/core/prelude.cone
     lib/data/list.cone
-    include/cone/prelude.h
+    include/cone/builtins.h
     include/pybind11/attr.h
     include/pybind11/buffer_info.h
     include/pybind11/cast.h

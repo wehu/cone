@@ -107,7 +107,8 @@ instance Backend CppHeader where
         ["#pragma once"
          ,"#include <iostream>"
          ,"#include \"pybind11/pybind11.h\""
-         ,"#include \"pybind11/functional.h\""]
+         ,"#include \"pybind11/functional.h\""
+         ,"#include \"cone/builtins.h\""]
           ++ imps
           ++ ["namespace py = pybind11;"
              ,"namespace cone{"
