@@ -29,6 +29,11 @@ import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 
 data CppHeader a = CppHeader
 
+pythonTypeNamePath n = 
+  let ns = splitOn "/" n
+   in "py::module_::import(\"" <> (pretty $ join $ intersperse "." $ init ns) <>
+       "\").attr(\"" <> pretty ("Cone__" ++ last ns) <> "\")"
+
 instance Backend CppHeader where
 
   namePath proxy n = pretty n
@@ -55,9 +60,28 @@ instance Backend CppHeader where
       )
         <+> line
 
-  genTypeDef _ _ = return emptyDoc
+  genTypeDef proxy TypeDef {..} = do
+    cons <- mapM (genTypeCon proxy _typeName) _typeCons
+    return $ vsep cons
 
-  genTypeCon _ _ _ = return emptyDoc
+  genTypeCon proxy ptn TypeCon {..} = do
+    prefix <- getEnv currentModuleName
+    let tn = typeN proxy prefix _typeConName
+        fn = funcN proxy prefix _typeConName
+     in return $ ctrFunc fn tn
+    where
+      genArgs init =
+        encloseSep lparen rparen comma $
+          foldl' (\s e -> s ++ [pretty $ "py::object t" ++ show (length s)]) init _typeConArgs
+      genArgs' init =
+        encloseSep lparen rparen comma $
+          foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
+      ctrFunc fn tn =
+        "inline py::object" <+> fn <> 
+            genArgs ["std::function<py::object(py::object)> ____k", "py::object ____state", "py::object ____effs"] <+>
+            braces
+            (vsep ["py::object cntr = " <> pythonTypeNamePath _typeConName <> semi
+                  ,"return" <+> ("____k" <> parens ("cntr" <> genArgs' ["____k", "____state", "____effs"])) <> semi])
 
   genEffectDef _ _ = return emptyDoc
 
@@ -80,12 +104,15 @@ instance Backend CppHeader where
     pos <- genEpilogue proxy
     return $
       vsep $
-        ["#pragma once",
-         "#include \"pybind11/pybind11.h\""]
+        ["#pragma once"
+         ,"#include <iostream>"
+         ,"#include \"pybind11/pybind11.h\""
+         ,"#include \"pybind11/functional.h\""]
           ++ imps
           ++ ["namespace py = pybind11;"
+             ,"namespace cone{"
              ,sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
           ++ [pre]
           ++ tops
           ++ [pos]
-          ++ [sep $ map (\_ -> rbrace) modulePs]
+          ++ ["}",sep $ map (\_ -> rbrace) modulePs]

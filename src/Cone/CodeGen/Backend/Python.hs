@@ -75,7 +75,7 @@ instance Backend Python where
               indent 4 constructor,
               indent 4 hash,
               indent 4 $ eq tn,
-              ctrFunc fn tn,
+              ctrFunc fn,
               ctrFuncWrapper fn <+> line
             ]
     where
@@ -112,11 +112,7 @@ instance Backend Python where
               )
               []
               _typeConArgs
-      ctrFunc fn tn =
-        vsep
-          [ "def" <+> fn <> genArgs ["____k", "____state", "____effs"] <> ":",
-            indent 4 ("return" <+> ("____k" <> parens (tn <> genArgs ["____k", "____state", "____effs"])))
-          ]
+      ctrFunc fn = fn <> "=" <> "____C." <> fn
       ctrFuncWrapper fn =
         vsep
           [ "def" <+> fn <> "_w" <> genArgs [] <> ":",
@@ -477,7 +473,7 @@ instance Backend Python where
         -- [ "module" <+> namePath proxy _moduleName <+> line]
         [ "import core.prelude",
           "import copy",
-          "import" <+> namePath proxy _moduleName <> "_c"
+          "import" <+> namePath proxy _moduleName <> "_c as ____C"
         ]
           ++ imps
           ++ [pre]

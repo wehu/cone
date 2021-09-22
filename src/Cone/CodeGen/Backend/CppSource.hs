@@ -55,9 +55,17 @@ instance Backend CppSource where
       )
         <+> line
 
-  genTypeDef _ _ = return emptyDoc
+  genTypeDef proxy TypeDef {..} = do
+    cons <- mapM (genTypeCon proxy _typeName) _typeCons
+    return $ vsep cons
 
-  genTypeCon _ _ _ = return emptyDoc
+  genTypeCon proxy ptn TypeCon {..} = do
+    prefix <- getEnv currentModuleName
+    let fn = funcN proxy prefix _typeConName
+     in return $ ctrFunc fn
+    where
+      ctrFunc fn =
+        "m.def(\"" <> fn <> "\", &" <> fn <> ");"
 
   genEffectDef _ _ = return emptyDoc
 
@@ -80,9 +88,11 @@ instance Backend CppSource where
     pos <- genEpilogue proxy
     return $
       vsep $
-         [ "#include \"pybind11/pybind11.h\""]
+         [ "#include \"pybind11/pybind11.h\""
+         , "#include \"pybind11/functional.h\""
+         , "#include \"" <> pretty _moduleName <> ".h\""]
           ++ imps
-          ++ [sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
+          ++ ["namespace cone{", sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
           ++ ["namespace py = pybind11;"
              ,"PYBIND11_MODULE(" <> pretty (last modulePs) <> "_c, m) {"
              ,"m.doc() = \""<> pretty _moduleName <>"\";"]
@@ -90,4 +100,4 @@ instance Backend CppSource where
           ++ tops
           ++ [pos]
           ++ ["}"]
-         ++ [sep $ map (\_ -> rbrace) modulePs]
+         ++ ["}", sep $ map (\_ -> rbrace) modulePs]
