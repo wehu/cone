@@ -130,6 +130,6 @@ compileCppToLib paths outputFile input = do
 compile :: [FilePath] -> FilePath -> String -> CompileEnv String
 compile paths f target = do
   (o, m, imports) <- compile' paths f target
-  forM_ (nub $ (dropExtension f):imports) $ \p ->
+  forM_ (reverse $ (dropExtension f):imports) $ \p ->
     checkAndCompileImport paths p target
   return o
