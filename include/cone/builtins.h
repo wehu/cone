@@ -147,7 +147,7 @@ namespace cone {
     return o;
   }
 
-  inline object cone_resume(const cont &k, states s, effects effs, const object &a) {
+  inline object cone__resume(const cont &k, states s, effects effs, const object &a) {
     auto l = py::cast<py::list>(s);
     return k(py::getattr(l[0], ____resumed_k)(a));
   }
