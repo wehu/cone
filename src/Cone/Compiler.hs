@@ -112,17 +112,19 @@ compileToCppSource paths f target = do
       Right doc -> return $ show doc
     _ -> throwError $ "unknown target: " ++ target
 
-getPythonIncludePath :: IO String
-getPythonIncludePath = do
+getPythonIncludePaths :: IO [String]
+getPythonIncludePaths = do
   o <- readProcess "python" ["-V"] ""
-  return $ "/usr/include/python" ++ (join $ intersperse "." $ init $ splitOn "." $ last $ splitOn " " o)
+  let version = join $ intersperse "." $ init $ splitOn "." $ last $ splitOn " " o
+  return ["-I/usr/include/python" ++ version]
 
 compileCppToLib :: [FilePath] -> String -> FilePath -> CompileEnv String
 compileCppToLib paths outputFile input = do
-  pythonHeaderPath <- liftIO getPythonIncludePath
+  pythonHeaderPaths <- liftIO getPythonIncludePaths
   let cc = "g++"
-      args = ["-lstdc++", "-O3", "-std=c++11", "-shared", "-fPIC", "-I"++pythonHeaderPath] ++
-             map (\p -> "-I" ++ (p </> "include")) paths ++ ["-o", outputFile, "-xc++", "-"]
+      args = ["-lstdc++", "-O3", "-std=c++11", "-shared", "-fPIC"] ++ pythonHeaderPaths ++
+             map (\p -> "-I" ++ (p </> "include")) paths ++
+             ["-o", outputFile, "-xc++", "-"]
   liftIO $ putStrLn $ "compiling..."
   liftIO $ readProcess cc args input
 
