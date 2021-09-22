@@ -440,7 +440,7 @@ instance Backend Python where
         -- [ "module" <+> namePath proxy _moduleName <+> line]
         [ "import core.prelude",
           "import copy",
-          "import" <+> namePath proxy _moduleName <> "_c as ____C",
+          "import" <+> namePath proxy _moduleName <> "____c as ____C",
           "import" <+> namePath proxy _moduleName <> "____t as ____T"
         ]
           ++ imps

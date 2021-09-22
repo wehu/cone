@@ -1,5 +1,7 @@
        
-#include <any>
+#pragma once
+
+#include <pybind11.h>
 #include <iostream>
 #include <map>
 #include <vector>
@@ -7,13 +9,11 @@
 #include <memory>
 #include <string>
 
-#pragma once
-
 namespace cone {
 
-  typedef std::any object;
+  namespace py = pybind11;
 
-  typedef std::function<object(const object &)> cont;
+  typedef std::function<py::object(py::object)> cont;
 
   typedef std::vector<std::map<std::string, object>> states;
 

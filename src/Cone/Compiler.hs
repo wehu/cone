@@ -38,7 +38,7 @@ checkAndCompileImport paths i target = do
   let fn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) $ targetEx target)
       pyTyFn = addExtension (dropExtension fn ++ "____t") (targetEx target)
       cppHeaderFn = addExtension (dropExtension fn) ".h"
-      cppLibFn = addExtension (dropExtension fn ++ "_c") ".so"
+      cppLibFn = addExtension (dropExtension fn ++ "____c") ".so"
       d = takeDirectory fn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
   liftIO $ createDirectoryIfMissing True d

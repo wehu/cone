@@ -94,7 +94,7 @@ instance Backend CppSource where
           ++ imps
           ++ ["namespace cone{", sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
           ++ ["namespace py = pybind11;"
-             ,"PYBIND11_MODULE(" <> pretty (last modulePs) <> "_c, m) {"
+             ,"PYBIND11_MODULE(" <> pretty (last modulePs) <> "____c, m) {"
              ,"m.doc() = \""<> pretty _moduleName <>"\";"]
           ++ [pre]
           ++ tops
