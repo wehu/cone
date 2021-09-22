@@ -71,47 +71,14 @@ instance Backend Python where
         fn = funcN proxy prefix _typeConName
      in return $
           vsep
-            [ "class" <+> tn {- <> parens (typeN proxy ptn) -} <> ":",
-              indent 4 constructor,
-              indent 4 hash,
-              indent 4 $ eq tn,
+            [ tn <> "=" <> "____T." <> tn,
               ctrFunc fn,
               ctrFuncWrapper fn <+> line
             ]
     where
-      constructor =
-        vsep
-          [ "def" <+> "__init__" <> genArgs ["self", "____k", "____state", "____effs"] <> colon,
-            indent 4 $ vsep genFields
-          ]
-      hash =
-        vsep
-          [ "def __hash__(self):",
-            indent 4 $ "return hash(" <> fields <> ")"
-          ]
-      eq tn =
-        vsep
-          [ "def __eq__(self, other):",
-            indent 4 $ "return" <+> "isinstance(other, " <> tn <> ") and" <+> cmpFields
-          ]
-      fields = encloseSep lparen rparen comma $ ["self.f" <> pretty i | i <- [0 .. length (_typeConArgs) - 1]]
-      cmpFields = encloseSep lparen rparen " and " $ "True" : ["self.f" <> pretty i <+> "==" <+> "other.f" <> pretty i | i <- [0 .. length (_typeConArgs) - 1]]
       genArgs init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
-      genFields =
-        if _typeConArgs == []
-          then ["pass"]
-          else
-            foldl'
-              ( \s e ->
-                  let i = length s
-                      f = "self.f" ++ show i
-                      a = "t" ++ show (i + 4)
-                   in s ++ [pretty f <+> "=" <+> pretty a]
-              )
-              []
-              _typeConArgs
       ctrFunc fn = fn <> "=" <> "____C." <> fn
       ctrFuncWrapper fn =
         vsep
@@ -473,7 +440,8 @@ instance Backend Python where
         -- [ "module" <+> namePath proxy _moduleName <+> line]
         [ "import core.prelude",
           "import copy",
-          "import" <+> namePath proxy _moduleName <> "_c as ____C"
+          "import" <+> namePath proxy _moduleName <> "_c as ____C",
+          "import" <+> namePath proxy _moduleName <> "____t as ____T"
         ]
           ++ imps
           ++ [pre]

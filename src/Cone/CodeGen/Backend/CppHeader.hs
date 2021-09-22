@@ -32,7 +32,7 @@ data CppHeader a = CppHeader
 pythonTypeNamePath n = 
   let ns = splitOn "/" n
    in "py::module_::import(\"" <> (pretty $ join $ intersperse "." $ init ns) <>
-       "\").attr(\"" <> pretty ("Cone__" ++ last ns) <> "\")"
+       "____t\").attr(\"" <> pretty ("Cone__" ++ last ns) <> "\")"
 
 instance Backend CppHeader where
 
