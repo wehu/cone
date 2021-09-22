@@ -5,6 +5,7 @@ module Cone.Compiler (compile, coneUserDataDir) where
 import Cone.CodeGen.Backend
 import Cone.CodeGen.Backend.Cone
 import Cone.CodeGen.Backend.Python
+import Cone.CodeGen.Backend.CppHeader
 import Cone.CodeGen.Backend.CppSource
 import Cone.ModuleLoader
 import Cone.Parser.AST
@@ -34,6 +35,7 @@ checkAndCompileImport :: [FilePath] -> String -> String -> CompileEnv ()
 checkAndCompileImport paths i target = do
   userDataDir <- liftIO $ coneUserDataDir
   let fn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) $ targetEx target)
+      cppHeaderFn = addExtension (dropExtension fn) ".h"
       cppLibFn = addExtension (dropExtension fn ++ "_C") ".so"
       d = takeDirectory fn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
@@ -47,13 +49,17 @@ checkAndCompileImport paths i target = do
         then do
           (o, _, _) <- compile' paths coneFn target
           liftIO $ writeFile fn o
-          compileToCpp paths coneFn target >>= compileCppToLib paths cppLibFn
+          o <- compileToCppHeader paths coneFn target
+          liftIO $ writeFile cppHeaderFn o
+          compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
           addInitFile userDataDir i
         else return ()
     else do
       (o, _, _) <- compile' paths coneFn target
       liftIO $ writeFile fn o
-      compileToCpp paths coneFn target >>= compileCppToLib paths cppLibFn
+      o <- compileToCppHeader paths coneFn target
+      liftIO $ writeFile cppHeaderFn o
+      compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
       addInitFile userDataDir i
   where
     addInitFile userDataDir i = do
@@ -86,8 +92,18 @@ compile' paths f target = do
       Right doc -> return $ (show doc, m, imports)
     _ -> throwError $ "unknown target: " ++ target
 
-compileToCpp :: [FilePath] -> FilePath -> String -> CompileEnv String
-compileToCpp paths f target = do
+compileToCppHeader :: [FilePath] -> FilePath -> String -> CompileEnv String
+compileToCppHeader paths f target = do
+  (env, id, m, imports) <- loadModule paths f
+  case target of
+    "cone" -> return ""
+    "python" -> case gen (CppHeader :: (CppHeader Target)) m of
+      Left err -> throwError err
+      Right doc -> return $ show doc
+    _ -> throwError $ "unknown target: " ++ target
+
+compileToCppSource :: [FilePath] -> FilePath -> String -> CompileEnv String
+compileToCppSource paths f target = do
   (env, id, m, imports) <- loadModule paths f
   case target of
     "cone" -> return ""

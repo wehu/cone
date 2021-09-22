@@ -59,6 +59,7 @@ library
       Cone
       Cone.CodeGen.Backend
       Cone.CodeGen.Backend.Cone
+      Cone.CodeGen.Backend.CppHeader
       Cone.CodeGen.Backend.CppSource
       Cone.CodeGen.Backend.Python
       Cone.Compiler
