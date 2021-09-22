@@ -114,8 +114,9 @@ namespace cone {
       };
       if (p(ce)) {
         return e(k2, state, effs);
+      } else {
+        l.attr("pop")(0);
       }
-      l.attr("pop")(0);
     }
   }
 
@@ -128,10 +129,10 @@ namespace cone {
     sl.insert(0, py::dict());
     el.insert(0, py::dict());
     el[0].attr("update")(handlers);
-    auto &&o = k(scope(identity_k, state, effs));
+    auto &&o = scope(identity_k, state, effs);
     sl.attr("pop")(0);
     el.attr("pop")(0);
-    return o;
+    return k(o);
   }
 
   constexpr auto ____resumed_k = "____resumed_k";
