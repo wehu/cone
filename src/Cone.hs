@@ -72,7 +72,7 @@ play Opts {..} = do
     res <- runExceptT $ compile paths f target
     case res of
       Left err -> putStrLn err
-      Right (code, fn) ->
+      Right code ->
         if dump
           then putStrLn code
-          else runCode target [] code fn >>= putStrLn
+          else runCode target [] code f >>= putStrLn

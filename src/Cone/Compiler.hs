@@ -129,9 +129,9 @@ compileCppToLib paths outputFile input = do
   liftIO $ readProcess cc args input
 
 -- | Compile a file
-compile :: [FilePath] -> FilePath -> String -> CompileEnv (String, FilePath)
+compile :: [FilePath] -> FilePath -> String -> CompileEnv String
 compile paths f target = do
   (o, m, imports) <- compile' paths f target
   forM_ (nub $ reverse $ (dropExtension f):imports) $ \p ->
     checkAndCompileImport paths p target
-  return (o, dropExtension f)
+  return o

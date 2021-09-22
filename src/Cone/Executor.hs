@@ -16,5 +16,5 @@ runCode exe args input fn =
     case path of
      Just path -> setEnv "PYTHONPATH" $ (userDataDir </> "python") ++ ";" ++ path
      Nothing -> setEnv "PYTHONPATH" $ (userDataDir </> "python")
-    readProcess exe (args ++ ["-m", join $ intersperse "." $ splitOn "/" fn]) ""
+    readProcess exe (args ++ ["-m", join $ intersperse "." $ splitOn "/" $ dropExtension fn]) ""
   else return ""
