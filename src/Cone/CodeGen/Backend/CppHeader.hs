@@ -111,6 +111,15 @@ instance Backend CppHeader where
 
   genImplFuncDef _ _ = return emptyDoc
 
+  genExpr proxy EVar {..} = do
+    prefix <- getEnv currentModuleName
+    let fn = funcN proxy prefix (name2String _evarName)
+        fnQ = "\"" <> fn <> "\""
+     in return $
+          exprToCps $
+              "____k(!____lookup_eff(____effs, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_eff(____effs, " <> fnQ <> ") : "
+              <+> "(!____lookup_var(____state, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_var(____state, " <> fnQ <> ") : "
+              <+> fn <> "))"
   genExpr _ _ = return emptyDoc
 
   genPatternMatch _ _ = return emptyDoc
@@ -141,3 +150,11 @@ instance Backend CppHeader where
           ++ tops
           ++ [pos]
           ++ ["}",sep $ map (\_ -> rbrace) modulePs]
+
+-- | Convert a experision to cps
+exprToCps :: Doc a -> Doc a
+exprToCps e = parens $ "[=](" <+> "const cont &____k" <> comma <+> "states ____state" <> comma <+> "effects ____effs" <> ")" <+> braces ("return" <+> e <> semi)
+
+-- | Call a cps function
+callWithCps :: Doc a -> Doc a -> Doc a
+callWithCps e k = parens $ e <> (encloseSep lparen rparen comma $ (parens k) : "____state" : ["____effs"])
