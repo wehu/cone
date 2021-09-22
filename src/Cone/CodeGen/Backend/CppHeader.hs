@@ -67,7 +67,8 @@ instance Backend CppHeader where
         ["#pragma once",
          "#include \"pybind11/pybind11.h\""]
           ++ imps
-          ++ [sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
+          ++ ["namespace py = pybind11;"
+             ,sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
           ++ [pre]
           ++ tops
           ++ [pos]

@@ -67,8 +67,9 @@ instance Backend CppSource where
          [ "#include \"pybind11/pybind11.h\""]
           ++ imps
           ++ [sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
-          ++ ["PYBIND11_MODULE(" <> pretty (last modulePs) <> "_c, m) {"
-             ,indent 4 "m.doc() = \""<> pretty _moduleName <>"\";"]
+          ++ ["namespace py = pybind11;"
+             ,"PYBIND11_MODULE(" <> pretty (last modulePs) <> "_c, m) {"
+             ,"m.doc() = \""<> pretty _moduleName <>"\";"]
           ++ [pre]
           ++ tops
           ++ [pos]
