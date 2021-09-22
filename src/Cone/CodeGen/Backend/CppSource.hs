@@ -39,7 +39,7 @@ instance Backend CppSource where
         ns = splitOn "/" n
         ps = init ns
         tn = "Cone__" ++ last ns
-     in pretty $ join $ intersperse "." $ ps ++ [tn]
+     in pretty $ join $ intersperse "::" $ ps ++ [tn]
 
   funcN proxy prefix n' =
     let prefixLen = length prefix
@@ -47,7 +47,7 @@ instance Backend CppSource where
         ns = splitOn "/" n
         ps = init ns
         fn = "cone__" ++ last ns
-     in pretty $ join $ intersperse "." $ ps ++ [fn]
+     in pretty $ join $ intersperse "::" $ ps ++ [fn]
 
   genImport proxy ImportStmt {..} =
     return $
