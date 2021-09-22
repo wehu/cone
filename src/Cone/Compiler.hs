@@ -45,7 +45,7 @@ checkAndCompileImport paths i target = do
     then do
       fTS <- liftIO $ getModificationTime fn
       coneFTS <- liftIO $ getModificationTime coneFn
-      if fTS /= coneFTS
+      if fTS < coneFTS
         then do
           compileConeFile fn coneFn cppHeaderFn cppLibFn
           addInitFile userDataDir i
