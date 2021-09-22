@@ -477,7 +477,7 @@ instance Backend Python where
         -- [ "module" <+> namePath proxy _moduleName <+> line]
         [ "import core.prelude",
           "import copy",
-          "from" <+> namePath proxy _moduleName <> "_c" <+> "import *"
+          "import" <+> namePath proxy _moduleName <> "_c"
         ]
           ++ imps
           ++ [pre]
