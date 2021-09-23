@@ -150,8 +150,8 @@ instance Backend CppHeader where
      in return $
           exprToCps $
             "____k(!____lookup_eff(____effs, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_eff(____effs, " <> fnQ <> ") : "
-            <+> "(!____lookup_var(____state, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_var(____state, " <> fnQ <> ") : "
-            <+> vn <> "))"
+              <+> "(!____lookup_var(____state, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_var(____state, " <> fnQ <> ") : "
+              <+> vn <> "))"
   genExpr proxy ESeq {..} = do
     let e : es = (reverse _eseq)
     e' <- genExpr proxy e
