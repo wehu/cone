@@ -338,7 +338,7 @@ instance Backend CppHeader where
           <> comma <+> "____e); return py::bool_(true);})"
   genPatternMatch proxy PExpr {..} = do
     p <- (\e -> callWithCps e "____identity_k") <$> genExpr proxy _pExpr
-    return $ parens $ "py::cpp_function([=](const object &____e) -> object { return py::bool_(" <+> p <+> ".is(____e));})"
+    return $ parens $ "py::cpp_function([=](const object &____e) -> object { return py::bool_(" <+> p <+> ".attr(\"__eq__\")(____e));})"
   genPatternMatch proxy PApp {..} = do
     prefix <- getEnv currentModuleName
     bindings <-
