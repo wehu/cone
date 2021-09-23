@@ -439,6 +439,19 @@ inferExprEffType ELit {..} = return $ EffList [] _eloc
 inferExprEffType EAnn {..} = inferExprEffType _eannExpr
 inferExprEffType EAnnMeta {..} = inferExprEffType _eannMetaExpr
 inferExprEffType l@ELam {..} = do
+  -- infer arguments
+  args <-
+    mapM
+      ( \(_, t) -> do
+          k <- inferTypeKind t
+          checkTypeKind k
+          inferType t
+      )
+      _elamArgs
+  -- add lambda argument types into env's local scope
+  mapM_
+    (\(n, t) -> setFuncType n t)
+    [(n, t) | (n, _) <- _elamArgs | t <- args]
   forMOf _Nothing _elamExpr $ \_ ->
     throwError $ "expected an expression for lambda" ++ ppr _eloc
   resultEffType <- inferExprEffType $ fromJust _elamExpr
