@@ -21,12 +21,15 @@ import Control.Effect.State
 import Control.Effect.Sum
 import Control.Lens
 import Data.Proxy
+import qualified Data.Map as M
 import Prettyprinter
 
 type Eff s e = Fresh :+: State s :+: Error e
 
 data Env = Env
   { _currentModuleName :: String
+    ,_localState :: M.Map String Bool
+    ,_parameters :: M.Map String Bool
   }
 
 makeLenses ''Env
@@ -34,6 +37,8 @@ makeLenses ''Env
 initialEnv =
   Env
     { _currentModuleName = ""
+     ,_localState = M.empty
+     ,_parameters = M.empty
     }
 
 type EnvEff = Eff Env String
@@ -49,6 +54,14 @@ setEnv :: (Has EnvEff sig m) => b -> Setter Env Env a b -> m ()
 setEnv v l = do
   env <- get @Env
   put $ set l v env
+
+-- | Run under a local scope
+underScope :: (Has EnvEff sig m) => m a -> m a
+underScope f = do
+  env <- get @Env
+  res <- f
+  put env
+  return res
 
 -- | Targe proxy
 data Target

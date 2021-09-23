@@ -30,9 +30,9 @@ fun test_branch(a:i32) : [nodet<i32>] i32 {
    b
 }
 
-fun test_inline() : io unit {
-   inline_python<unit>("print(\"test_inline\")")
-}
+//fun test_inline() : io unit {
+//   inline_python<unit>("print(\"test_inline\")")
+//}
 
 fun main() : io unit {
   var a = 0
@@ -99,6 +99,6 @@ fun main() : io unit {
   val f = fn () : i32 { a + 1 }
   print(f())
   print(a)
-  test_inline()
+  ///test_inline()
 }
 

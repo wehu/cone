@@ -64,7 +64,7 @@ instance Backend CppHeader where
     cons <- mapM (genTypeCon proxy _typeName) _typeCons
     return $ vsep cons
 
-  genTypeCon proxy ptn TypeCon {..} = do
+  genTypeCon proxy ptn TypeCon {..} = underScope $ do
     prefix <- getEnv currentModuleName
     let tn = typeN proxy prefix _typeConName
         fn = funcN proxy prefix _typeConName
@@ -89,9 +89,18 @@ instance Backend CppHeader where
            "inline object" <+> fn <> "_w" <> genArgs [] <> braces
             ("return" <+> (fn <> genArgs'' ["____identity_k", "py::list(py::dict())", "py::list()"]) <> semi)
 
-  genEffectDef _ _ = return emptyDoc
+  genEffectDef proxy EffectDef{..} = do
+    prefix <- getEnv currentModuleName
+    return $ vsep $ map (\intf -> 
+      if (_intfName intf) == "core/prelude/print" then ""
+      else "inline object" <+> funcN proxy prefix (_intfName intf) <>
+             genArgs intf ["const cont &, states, effects"] prefix <> "{ throw(\"unimplemented\"); }") _effectIntfs
+    where
+        genArgs intf init prefix = encloseSep lparen rparen comma $ init ++ (map (\_ -> "const object &") $ (_intfArgs intf))
 
-  genFuncDef proxy FuncDef {..} = do
+  genFuncDef proxy FuncDef {..} = underScope $ do
+    forM_ (_funcArgs ^.. traverse . _1) $ \n -> do
+      setEnv (Just True) $ parameters . at n
     prefix <- getEnv currentModuleName
     body <- case _funcExpr of
       Just e -> do
@@ -113,13 +122,20 @@ instance Backend CppHeader where
 
   genExpr proxy EVar {..} = do
     prefix <- getEnv currentModuleName
+    l <- getEnv $ localState . at (name2String _evarName)
+    p <- getEnv $ parameters . at (name2String _evarName)
     let fn = funcN proxy prefix (name2String _evarName)
         fnQ = "\"" <> fn <> "\""
+        vn = case l of
+              Just _ -> "py::none()"
+              Nothing -> case p of
+                           Just _ -> fn
+                           Nothing -> "py::cpp_function" <> parens fn
      in return $
           exprToCps $
               "____k(!____lookup_eff(____effs, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_eff(____effs, " <> fnQ <> ") : "
               <+> "(!____lookup_var(____state, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_var(____state, " <> fnQ <> ") : "
-              <+> "py::none()" {- fn -} <> "))"
+              <+> vn <> "))"
   genExpr proxy ESeq {..} = do
     let e : es = (reverse _eseq)
     e' <- genExpr proxy e
@@ -138,11 +154,16 @@ instance Backend CppHeader where
             ( case _litType of
                 TPrim Pred _ -> "py::bool_(" <> pretty _lit <> ")"
                 TPrim Unit _ -> "py::none()"
+                TPrim I32 _ -> "py::int_(" <> pretty _lit <> ")"
+                TPrim F32 _ -> "py::float_(" <> pretty _lit <> ")"
+                TPrim Str _ -> "py::str(" <> pretty _lit <> ")"
                 _ -> pretty _lit
             )
-  genExpr proxy ELam {..} = do
+  genExpr proxy ELam {..} = underScope $ do
+    forM_ (_elamArgs ^.. traverse . _1) $ \n -> do
+      setEnv (Just True) $ parameters . at n
     es <- genBody _elamExpr
-    return $ parens $ "[=](const cont &____k2, states ____state, effects ____effs) -> object" <+> braces ("return" <+> es <> semi)
+    return $ parens $ "py::cpp_function([=](const cont &____k2, states ____state, effects ____effs) -> object" <+> braces ("return" <+> es <> semi) <> ")"
     where
       genArgs prefix = encloseSep lparen rparen comma $ "const cont &____k" : "states ____state_unused" : "effects ____effs" : (map (\a -> "const object &" <> funcN proxy prefix a) $ _elamArgs ^.. traverse . _1)
       genBody e = do
@@ -150,16 +171,17 @@ instance Backend CppHeader where
         case e of
           Just e -> do
             es <- genExpr proxy e
-            return $ "____k2(" <> (parens $ "[=]" <+> genArgs prefix <> " -> object " <> braces ("return " <> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es prefix) <> semi) <> ")")
+            return $ "____k2(" <> (parens $ "py::cpp_function([=]" <+> genArgs prefix <> " -> object " <> braces ("return " <> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es prefix) <> semi) <> "))")
           Nothing -> throwError $ "lambda expected a expression"
       callCpsWithclearedVars es prefix =
         encloseSep lparen rparen comma $
           "____k" : "____state" : "____effs" : ("std::vector<std::string>" <> encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)) : [es]
   genExpr proxy EWhile {..} = do
     c <- genExpr proxy _ewhileCond
-    es <- genExpr proxy _ewhileBody
-    return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["____k", "____state", "____effs", c, es]
-  genExpr proxy ELet {..} = do
+    underScope $ do
+      es <- genExpr proxy _ewhileBody
+      return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["____k", "____state", "____effs", c, es]
+  genExpr proxy ELet {..} = underScope $ do
     e <- genExpr proxy _eletExpr
     p <- genPatternMatch proxy _eletPattern
     b <- genExpr proxy _eletBody
@@ -219,12 +241,14 @@ instance Backend CppHeader where
       removeAnn EAnn {..} = _eannExpr
       removeAnn EAnnMeta {..} = _eannMetaExpr
       removeAnn e = e
-  genExpr proxy EHandle {..} = do
+  genExpr proxy EHandle {..} = underScope $ do
     prefix <- getEnv currentModuleName
     scope <- genExpr proxy _ehandleScope
     handlers <-
       mapM
-        ( \intf -> do
+        ( \intf -> underScope $ do
+            forM_ ((_funcArgs intf) ^.. traverse . _1) $ \n -> do
+               setEnv (Just True) $ parameters . at n
             e <- genExpr proxy (fromJust $ _funcExpr intf)
             let n = funcN proxy prefix $ _funcName intf
                 args =
@@ -236,8 +260,8 @@ instance Backend CppHeader where
             return $
               "{\"" <> n <> "\", "
                 <+> parens
-                  ( "[=]" <+> args <> " -> object " <> braces
-                      ("return ____call_with_resumed_k(____k, ____state, ____effs, " <> e <> ");")
+                  ( "py::cpp_function([=]" <+> args <> " -> object " <> braces
+                      ("return ____call_with_resumed_k(____k, ____state, ____effs, " <> e <> ");") <> ")"
                   ) <> "}"
         )
         _ehandleBindings
@@ -247,8 +271,9 @@ instance Backend CppHeader where
           <+> (encloseSep lbrace rbrace comma handlers) <> ")" 
   genExpr proxy ECase {..} = do
     c <- genExpr proxy _ecaseExpr
-    cs <- mapM (genPatternMatch proxy) $ _ecaseBody ^.. traverse . casePattern
-    es <- mapM (genExpr proxy) $ _ecaseBody ^.. traverse . caseExpr
+    pes <- mapM (\pe -> underScope $ (,) <$> genPatternMatch proxy (_casePattern pe) <*> genExpr proxy (_caseExpr pe)) $ _ecaseBody
+    let cs = [fst pe| pe <- pes]
+        es = [snd pe| pe <- pes]
     return $
       exprToCps $
         c
@@ -266,6 +291,7 @@ instance Backend CppHeader where
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
 
   genPatternMatch proxy PVar {..} = do
+    setEnv (Just True) $ localState . at (name2String _pvar)
     prefix <- getEnv currentModuleName
     return $
       parens $
@@ -319,7 +345,9 @@ instance Backend CppHeader where
 
 -- | Convert a experision to cps
 exprToCps :: Doc a -> Doc a
-exprToCps e = parens $ "[=](" <+> "const cont &____k" <> comma <+> "states ____state" <> comma <+> "effects ____effs" <> ") -> object " <+> braces ("return" <+> e <> semi)
+exprToCps e = parens $ "py::cpp_function([=](" <+> "const cont &____k" <>
+      comma <+> "states ____state" <> comma <+> "effects ____effs" <>
+     ") -> object " <+> braces ("return" <+> e <> semi) <> ")"
 
 -- | Call a cps function
 callWithCps :: Doc a -> Doc a -> Doc a

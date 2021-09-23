@@ -3,6 +3,7 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
+#include <map>
 
 namespace cone {
 
@@ -16,10 +17,12 @@ namespace cone {
 
   typedef object effects;
 
+  namespace core { namespace prelude {
   inline object cone__print(const cont &k, states s, effects effs, const object &a) {
     py::print(a);
     return k(a);
   }
+  }}
 
   inline object ____lookup_var(states s, const std::string &key) {
     auto l = py::cast<py::list>(s);
@@ -76,8 +79,8 @@ namespace cone {
   }
 
   inline object ____while(const cont &k, states state, effects effs,
-                          const std::function<object(const cont &, states, effects)> &cond,
-                          const std::function<object(const cont &, states, effects)> &body) {
+                          const object &cond,
+                          const object &body) {
     auto l = py::cast<py::list>(state);
     l.insert(0, py::dict());
     cont k2;
@@ -101,7 +104,7 @@ namespace cone {
 
   inline object ____case(const cont &k, states state, effects effs, const object &ce,
                          const std::vector<std::function<object(const object &)>> &conds,
-                         const std::vector<std::function<object(const cont &, states, effects)>> &exprs) {
+                         const std::vector<object> &exprs) {
     for (unsigned i=0; i<conds.size(); ++i) {
       const auto &p = conds[i];
       const auto &e = exprs[i];
@@ -116,6 +119,7 @@ namespace cone {
         return e(k2, state, effs);
       } else {
         l.attr("pop")(0);
+        return py::none();
       }
     }
   }
@@ -123,12 +127,14 @@ namespace cone {
   const cont ____identity_k = [](const object &x) { return x; };
 
   inline object ____handle(const cont &k, states state, effects effs,
-                          const object &scope, const object &handlers) {
+                          const object &scope, const std::map<std::string, object> &handlers) {
     auto sl = py::cast<py::list>(state);
     auto el = py::cast<py::list>(effs);
     sl.insert(0, py::dict());
     el.insert(0, py::dict());
-    el[0].attr("update")(handlers);
+    for (auto &p : handlers) {
+      py::setattr(el[0], p.first.c_str(), p.second);
+    }
     auto &&o = scope(____identity_k, state, effs);
     sl.attr("pop")(0);
     el.attr("pop")(0);
@@ -141,7 +147,7 @@ namespace cone {
     auto l = py::cast<py::list>(state);
     l.insert(0, py::dict());
     py::setattr(l[0], ____resumed_k, py::cpp_function(k));
-    handler([state](const object &x) { auto l = py::cast<py::list>(state); l.attr("pop")(0); return x;}, state, effs);
+    return handler([state](const object &x) { auto l = py::cast<py::list>(state); l.attr("pop")(0); return x;}, state, effs);
   }
 
   inline object cone__resume(const cont &k, states s, effects effs, const object &a) {

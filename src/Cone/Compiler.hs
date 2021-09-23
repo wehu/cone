@@ -57,13 +57,13 @@ checkAndCompileImport paths i target = do
       addInitFile userDataDir i
   where
     compileConeFile coneFn fn pyTyFn cppHeaderFn cppLibFn = do
-      (o, _, _) <- compile' paths coneFn target
-      liftIO $ writeFile fn o
       o <- compilePythonType paths coneFn target
       liftIO $ writeFile pyTyFn o 
       o <- compileToCppHeader paths coneFn target
       liftIO $ writeFile cppHeaderFn o
       compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
+      (o, _, _) <- compile' paths coneFn target
+      liftIO $ writeFile fn o
     addInitFile userDataDir i = do
       let ds = splitOn "/" i
       foldM
