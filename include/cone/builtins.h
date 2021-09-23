@@ -97,6 +97,7 @@ namespace cone {
         l.insert(0, py::dict());
         return body(*k3, state, effs);
       } else {
+        l.attr("pop")(0);
         return k(o);
       }
     });
