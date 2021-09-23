@@ -21,6 +21,7 @@ import Control.Lens
 import Control.Monad
 import Data.List
 import Data.List.Split
+import qualified Data.Map as M
 import Data.Maybe
 import Data.Proxy
 import Debug.Trace
@@ -114,6 +115,8 @@ instance Backend CppHeader where
   genFuncDef proxy FuncDef {..} = underScope $ do
     forM_ (_funcArgs ^.. traverse . _1) $ \n -> do
       setEnv (Just True) $ parameters . at n
+      l <- getEnv localState
+      setEnv (M.delete n l) localState
     prefix <- getEnv currentModuleName
     body <- case _funcExpr of
       Just e -> do
@@ -147,8 +150,8 @@ instance Backend CppHeader where
      in return $
           exprToCps $
             "____k(!____lookup_eff(____effs, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_eff(____effs, " <> fnQ <> ") : "
-              <+> "(!____lookup_var(____state, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_var(____state, " <> fnQ <> ") : "
-              <+> vn <> "))"
+            <+> "(!____lookup_var(____state, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_var(____state, " <> fnQ <> ") : "
+            <+> vn <> "))"
   genExpr proxy ESeq {..} = do
     let e : es = (reverse _eseq)
     e' <- genExpr proxy e
@@ -184,6 +187,8 @@ instance Backend CppHeader where
   genExpr proxy ELam {..} = underScope $ do
     forM_ (_elamArgs ^.. traverse . _1) $ \n -> do
       setEnv (Just True) $ parameters . at n
+      l <- getEnv localState
+      setEnv (M.delete n l) localState
     es <- genBody _elamExpr
     return $ parens $ "py::cpp_function([=](const cont &____k2, states ____state, effects ____effs) -> object" <+> braces ("return" <+> es <> semi) <> ")"
     where
@@ -221,8 +226,8 @@ instance Backend CppHeader where
           "core/prelude/____mul" -> binary "____lhs * ____rhs"
           "core/prelude/____div" -> binary "____lhs / ____rhs"
           "core/prelude/____mod" -> binary "____lhs % ____rhs"
-          "core/prelude/____eq" -> binary "py::bool_(____lhs.is(____rhs))"
-          "core/prelude/____ne" -> binary "py::bool_(!____lhs.is(____rhs))"
+          "core/prelude/____eq" -> binary "py::bool_(____lhs.attr(\"__eq__\")(____rhs))"
+          "core/prelude/____ne" -> binary "py::bool_(____lhs.attr(\"__ne__\")(____rhs))"
           "core/prelude/____gt" -> binary "py::bool_(____lhs > ____rhs)"
           "core/prelude/____lt" -> binary "py::bool_(____lhs < ____rhs)"
           "core/prelude/____ge" -> binary "py::bool_(____lhs >= ____rhs)"
@@ -277,6 +282,8 @@ instance Backend CppHeader where
         ( \intf -> underScope $ do
             forM_ ((_funcArgs intf) ^.. traverse . _1) $ \n -> do
               setEnv (Just True) $ parameters . at n
+              l <- getEnv localState
+              setEnv (M.delete n l) localState
             e <- genExpr proxy (fromJust $ _funcExpr intf)
             let n = funcN proxy prefix $ _funcName intf
                 args =

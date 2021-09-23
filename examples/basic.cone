@@ -46,6 +46,12 @@ fun main() : io unit {
 
   print(t3)
 
+  if (l != []) {
+     print("aaa")
+  } else {
+     print("bbb")
+  }
+
   val ll = l/map(l, fn(a:i32) : io i32{
      print(a)
      a + 1
