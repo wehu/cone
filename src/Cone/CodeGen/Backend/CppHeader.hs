@@ -167,8 +167,17 @@ instance Backend CppHeader where
             ( case _litType of
                 TPrim Pred _ -> "py::bool_(" <> pretty _lit <> ")"
                 TPrim Unit _ -> "py::none()"
+                TPrim I8 _ -> "py::int_(" <> pretty _lit <> ")"
+                TPrim I16 _ -> "py::int_(" <> pretty _lit <> ")"
                 TPrim I32 _ -> "py::int_(" <> pretty _lit <> ")"
+                TPrim I64 _ -> "py::int_(" <> pretty _lit <> ")"
+                TPrim U8 _ -> "py::int_(" <> pretty _lit <> ")"
+                TPrim U16 _ -> "py::int_(" <> pretty _lit <> ")"
+                TPrim U32 _ -> "py::int_(" <> pretty _lit <> ")"
+                TPrim U64 _ -> "py::int_(" <> pretty _lit <> ")"
+                TPrim F16 _ -> "py::float_(" <> pretty _lit <> ")"
                 TPrim F32 _ -> "py::float_(" <> pretty _lit <> ")"
+                TPrim F64 _ -> "py::float_(" <> pretty _lit <> ")"
                 TPrim Str _ -> "py::str(" <> pretty _lit <> ")"
                 _ -> pretty _lit
             )
