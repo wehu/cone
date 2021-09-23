@@ -141,9 +141,7 @@ namespace cone {
     auto l = py::cast<py::list>(state);
     l.insert(0, py::dict());
     py::setattr(l[0], ____resumed_k, py::cpp_function(k));
-    auto &&o = handler(____identity_k, state, effs);
-    l.attr("pop")(0);
-    return o;
+    handler([state](const object &x) { auto l = py::cast<py::list>(state); l.attr("pop")(0); return x;}, state, effs);
   }
 
   inline object cone__resume(const cont &k, states s, effects effs, const object &a) {
