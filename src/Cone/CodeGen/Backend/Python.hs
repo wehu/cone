@@ -203,8 +203,8 @@ instance Backend Python where
         rhs <- genExpr proxy (_eappArgs !! 1)
         return $
           exprToCps $
-            callWithCps rhs $
-              callWithCps lhs ("lambda ____lhs: (lambda ____rhs : ____k(____lhs" <+> pretty op <+> "____rhs))")
+            callWithCps lhs $ "lambda ____lhs :" <>
+              callWithCps rhs ("lambda ____rhs : ____k(____lhs" <+> pretty op <+> "____rhs)")
       removeAnn EAnn {..} = _eannExpr
       removeAnn EAnnMeta {..} = _eannMetaExpr
       removeAnn e = e
