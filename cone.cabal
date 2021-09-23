@@ -63,6 +63,7 @@ library
       Cone.CodeGen.Backend.CppSource
       Cone.CodeGen.Backend.Python
       Cone.CodeGen.Backend.PythonType
+      Cone.CodeGen.Backend.PythonWrapper
       Cone.Compiler
       Cone.Executor
       Cone.ModuleLoader

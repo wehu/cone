@@ -5,6 +5,7 @@ module Cone.Compiler (compile, coneUserDataDir) where
 import Cone.CodeGen.Backend
 import Cone.CodeGen.Backend.Cone
 import Cone.CodeGen.Backend.Python
+import Cone.CodeGen.Backend.PythonWrapper
 import Cone.CodeGen.Backend.PythonType
 import Cone.CodeGen.Backend.CppHeader
 import Cone.CodeGen.Backend.CppSource
@@ -89,7 +90,7 @@ compile' paths f target = do
     "cone" -> case gen (Cone :: (Cone Target)) m of
       Left err -> throwError err
       Right doc -> return $ (show doc, m, imports)
-    "python" -> case gen (Python :: (Python Target)) m of
+    "python" -> case gen (PythonWrapper :: (PythonWrapper Target)) m of
       Left err -> throwError err
       Right doc -> return $ (show doc, m, imports)
     _ -> throwError $ "unknown target: " ++ target

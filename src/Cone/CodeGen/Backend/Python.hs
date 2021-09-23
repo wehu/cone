@@ -86,23 +86,20 @@ instance Backend Python where
 
   genFuncDef proxy FuncDef {..} = do
     prefix <- getEnv currentModuleName
-    let fn = funcN proxy prefix _funcName
-    return $ vsep [fn <> "=" <> "____C." <> fn
-                  ,fn <> "_w=" <> "____C." <> fn <> "_w"]
-    -- body <- case _funcExpr of
-    --   Just e -> do
-    --     es <- genExpr proxy e
-    --     return $ "return" <+> parens (es <> parens "____k, [{}], ____effs")
-    --   Nothing -> return $ "raise Exception(\"" <> pretty _funcName <> " is not implemented\")"
-    -- return $
-    --   vsep
-    --     [ "def" <+>  <> genArgs ["____k", "____state", "____effs"] prefix <> colon,
-    --       indent 4 body,
-    --       "def" <+> funcN proxy prefix _funcName <> "_w" <> genArgs [] prefix <> colon,
-    --       indent 4 $ "return" <+> funcN proxy prefix _funcName <> genArgs ["lambda x:x", "[{}]", "[]"] prefix
-    --     ]
-    -- where
-    --   genArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
+    body <- case _funcExpr of
+      Just e -> do
+        es <- genExpr proxy e
+        return $ "return" <+> parens (es <> parens "____k, [{}], ____effs")
+      Nothing -> return $ "raise Exception(\"" <> pretty _funcName <> " is not implemented\")"
+    return $
+      vsep
+        [ "def" <+> funcN proxy prefix _funcName <> genArgs ["____k", "____state", "____effs"] prefix <> colon,
+          indent 4 body,
+          "def" <+> funcN proxy prefix _funcName <> "_w" <> genArgs [] prefix <> colon,
+          indent 4 $ "return" <+> funcN proxy prefix _funcName <> genArgs ["lambda x:x", "[{}]", "[]"] prefix
+        ]
+    where
+      genArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
 
   genExpr proxy EVar {..} = do
     prefix <- getEnv currentModuleName
