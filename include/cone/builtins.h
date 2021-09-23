@@ -76,8 +76,8 @@ namespace cone {
   }
 
   inline object ____while(const cont &k, states state, effects effs,
-                          const object &cond,
-                          const object &body) {
+                          const std::function<object(const cont &, states, effects)> &cond,
+                          const std::function<object(const cont &, states, effects)> &body) {
     auto l = py::cast<py::list>(state);
     l.insert(0, py::dict());
     cont k2;
@@ -100,8 +100,8 @@ namespace cone {
   }
 
   inline object ____case(const cont &k, states state, effects effs, const object &ce,
-                         const std::vector<std::function<bool(object)>> &conds,
-                         const std::vector<object> &exprs) {
+                         const std::vector<std::function<object(const object &)>> &conds,
+                         const std::vector<std::function<object(const cont &, states, effects)>> &exprs) {
     for (unsigned i=0; i<conds.size(); ++i) {
       const auto &p = conds[i];
       const auto &e = exprs[i];
@@ -112,7 +112,7 @@ namespace cone {
         l.attr("pop")(0);
         return k(o);
       };
-      if (p(ce)) {
+      if (py::cast<bool>(p(ce))) {
         return e(k2, state, effs);
       } else {
         l.attr("pop")(0);

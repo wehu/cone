@@ -119,11 +119,176 @@ instance Backend CppHeader where
           exprToCps $
               "____k(!____lookup_eff(____effs, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_eff(____effs, " <> fnQ <> ") : "
               <+> "(!____lookup_var(____state, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_var(____state, " <> fnQ <> ") : "
-              <+> fn <> "))"
-  genExpr _ _ = return emptyDoc
+              <+> "py::none()" {- fn -} <> "))"
+  genExpr proxy ESeq {..} = do
+    let e : es = (reverse _eseq)
+    e' <- genExpr proxy e
+    foldM
+      ( \doc e -> do
+          e' <- genExpr proxy e
+          return $ exprToCps $ callWithCps e' ("[=](const object &____unused) -> object" <> braces ("return" <+> callWithCps doc "____k" <> semi))
+      )
+      e'
+      es
+  genExpr proxy ELit {..} =
+    return $
+      exprToCps $
+        "____k"
+          <> parens
+            ( case _litType of
+                TPrim Pred _ -> "py::bool_(" <> pretty _lit <> ")"
+                TPrim Unit _ -> "py::none()"
+                _ -> pretty _lit
+            )
+  genExpr proxy ELam {..} = do
+    es <- genBody _elamExpr
+    return $ parens $ "[=](const cont &____k2, states ____state, effects ____effs) -> object" <+> braces ("return" <+> es <> semi)
+    where
+      genArgs prefix = encloseSep lparen rparen comma $ "const cont &____k" : "states ____state_unused" : "effects ____effs" : (map (\a -> "const object &" <> funcN proxy prefix a) $ _elamArgs ^.. traverse . _1)
+      genBody e = do
+        prefix <- getEnv currentModuleName
+        case e of
+          Just e -> do
+            es <- genExpr proxy e
+            return $ "____k2(" <> (parens $ "[=]" <+> genArgs prefix <> " -> object " <> braces ("return " <> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es prefix) <> semi) <> ")")
+          Nothing -> throwError $ "lambda expected a expression"
+      callCpsWithclearedVars es prefix =
+        encloseSep lparen rparen comma $
+          "____k" : "____state" : "____effs" : ("std::vector<std::string>" <> encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)) : [es]
+  genExpr proxy EWhile {..} = do
+    c <- genExpr proxy _ewhileCond
+    es <- genExpr proxy _ewhileBody
+    return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["____k", "____state", "____effs", c, es]
+  genExpr proxy ELet {..} = do
+    e <- genExpr proxy _eletExpr
+    p <- genPatternMatch proxy _eletPattern
+    b <- genExpr proxy _eletBody
+    return $ exprToCps $ callWithCps 
+             (exprToCps $ callWithCps e ("[=](const object &____e) -> object {return ____k(" <> p <> parens "____e" <> ");}"))
+             ("[=](const object &____unused) -> object " <> braces ("return" <+> callWithCps b "____k" <> semi))
+  genExpr proxy EAnn {..} = genExpr proxy _eannExpr
+  genExpr proxy EApp {..} =
+    let fn = name2String $ (removeAnn _eappFunc) ^. evarName
+     in case fn of
+          "core/prelude/____add" -> binary "____lhs + ____rhs"
+          "core/prelude/____sub" -> binary "____lhs - ____rhs"
+          "core/prelude/____mul" -> binary "____lhs * ____rhs"
+          "core/prelude/____div" -> binary "____lhs / ____rhs"
+          "core/prelude/____mod" -> binary "____lhs % ____rhs"
+          "core/prelude/____eq" -> binary "py::bool_(____lhs.is(____rhs))"
+          "core/prelude/____ne" -> binary "py::bool_(!____lhs.is(____rhs))"
+          "core/prelude/____gt" -> binary "py::bool_(____lhs > ____rhs)"
+          "core/prelude/____lt" -> binary "py::bool_(____lhs < ____rhs)"
+          "core/prelude/____ge" -> binary "py::bool_(____lhs >= ____rhs)"
+          "core/prelude/____le" -> binary "py::bool_(____lhs <= ____rhs)"
+          "core/prelude/____and" -> binary "py::bool_(____lhs && ____rhs)"
+          "core/prelude/____or" -> binary "py::bool_(____lhs || ____rhs)"
+          "core/prelude/____assign" -> do
+            prefix <- getEnv currentModuleName
+            e <- genExpr proxy (_eappArgs !! 1)
+            return $
+              exprToCps $
+                callWithCps
+                  e
+                  ( "[=](const object &____e) -> object {return ____k(____update_state(____state, \""
+                      <> (funcN proxy prefix $ name2String $ removeAnn (_eappArgs !! 0) ^. evarName)
+                      <> "\"," <+> "____e));}"
+                  )
+          "core/prelude/inline_python" -> return $ exprToCps $ "____k(" <> (pretty $ (read (removeAnn (_eappArgs !! 0) ^. lit) :: String)) <> ")"
+          _ -> do
+            f <- genExpr proxy _eappFunc
+            args <- mapM (genExpr proxy) _eappArgs
+            let argNames = map (\i -> "____arg" <> pretty i) [0 .. (length _eappArgs) - 1]
+            return $
+              exprToCps $
+                foldl'
+                  ( \s (e, n) ->
+                      parens $ callWithCps e ("[=](const object &" <> n <> ") -> object" <> braces ("return " <> s <> semi)) 
+                  )
+                  ("____f" <> (encloseSep lparen rparen comma ("____k" : "____state" : "____effs" : argNames)))
+                  [(e, n) | e <- (reverse $ f : args) | n <- (reverse $ "____f" : argNames)]
+    where
+      binary :: (Has EnvEff sig m) => String -> m (Doc a)
+      binary op = do
+        lhs <- genExpr proxy (_eappArgs !! 0)
+        rhs <- genExpr proxy (_eappArgs !! 1)
+        return $
+          exprToCps $
+            callWithCps lhs ("[=](const object &____lhs) -> object { return " <>
+              callWithCps rhs ("[=](const object &____rhs) -> object {return ____k(" <+> pretty op <+> ");}") <> ";}")
+      removeAnn EAnn {..} = _eannExpr
+      removeAnn EAnnMeta {..} = _eannMetaExpr
+      removeAnn e = e
+  genExpr proxy EHandle {..} = do
+    prefix <- getEnv currentModuleName
+    scope <- genExpr proxy _ehandleScope
+    handlers <-
+      mapM
+        ( \intf -> do
+            e <- genExpr proxy (fromJust $ _funcExpr intf)
+            let n = funcN proxy prefix $ _funcName intf
+                args =
+                  encloseSep lparen rparen comma $
+                    "const cont &____k" :
+                    "states ____state_unused" :
+                    "effects ____effs" :
+                    (map (\(n, _) -> "const object &" <> funcN proxy prefix n) (_funcArgs intf))
+            return $
+              "{\"" <> n <> "\", "
+                <+> parens
+                  ( "[=]" <+> args <> " -> object " <> braces
+                      ("return ____call_with_resumed_k(____k, ____state, ____effs, " <> e <> ");")
+                  ) <> "}"
+        )
+        _ehandleBindings
+    return $
+      exprToCps $
+        "____handle(____k, ____state, ____effs, " <> scope <> comma
+          <+> (encloseSep lbrace rbrace comma handlers) <> ")" 
+  genExpr proxy ECase {..} = do
+    c <- genExpr proxy _ecaseExpr
+    cs <- mapM (genPatternMatch proxy) $ _ecaseBody ^.. traverse . casePattern
+    es <- mapM (genExpr proxy) $ _ecaseBody ^.. traverse . caseExpr
+    return $
+      exprToCps $
+        c
+          <> encloseSep
+            lparen
+            rparen
+            comma
+            [ "[=](const object &____c) -> object { return ____case(____k, ____state, ____effs, ____c" <> comma
+                <+> encloseSep lbrace rbrace comma cs <> comma
+                <+> encloseSep lbrace rbrace comma es <> ");}",
+              "____state",
+              "____effs"
+            ]
+  genExpr proxy EAnnMeta {..} = genExpr proxy _eannMetaExpr
+  genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
 
-  genPatternMatch _ _ = return emptyDoc
- 
+  genPatternMatch proxy PVar {..} = do
+    prefix <- getEnv currentModuleName
+    return $
+      parens $
+        "[=](const object &____e) -> object {____add_var(____state, \"" <> funcN proxy prefix (name2String _pvar)
+          <> "\""
+          <> comma <+> "____e); return py::bool_(true);}"
+  genPatternMatch proxy PExpr {..} = do
+    p <- (\e -> callWithCps e "____identity_k") <$> genExpr proxy _pExpr
+    return $ parens $ "[=](const object &____e) -> object { return py::bool_(" <+> p <+> ".is(____e));}"
+  genPatternMatch proxy PApp {..} = do
+    prefix <- getEnv currentModuleName
+    bindings <-
+      mapM
+        ( \(p, ee) -> do
+            b <- genPatternMatch proxy p
+            return $
+              parens $
+                "py::isinstance(____e" <> comma
+                  <+> pythonTypeNamePath (name2String $ _evarName _pappName) <> ") && " <> b <> parens ee
+        )
+        [(arg, parens $ "____e.attr(\"f" <> pretty id <> "\")") | arg <- _pappArgs | id <- [0 :: Int ..]]
+    return $ parens $ "[=](const object &____e) -> object { return py::bool_" <> encloseSep lparen rparen "&&" bindings <> ";}"
+
   genPrologue _ = return emptyDoc
 
   genEpilogue _ = return emptyDoc
@@ -141,7 +306,8 @@ instance Backend CppHeader where
          ,"#include <iostream>"
          ,"#include \"pybind11/pybind11.h\""
          ,"#include \"pybind11/functional.h\""
-         ,"#include \"cone/builtins.h\""]
+         ,"#include \"cone/builtins.h\""
+         ,"#include \"core/prelude.h\""]
           ++ imps
           ++ ["namespace py = pybind11;"
              ,"namespace cone{"
@@ -153,7 +319,7 @@ instance Backend CppHeader where
 
 -- | Convert a experision to cps
 exprToCps :: Doc a -> Doc a
-exprToCps e = parens $ "[=](" <+> "const cont &____k" <> comma <+> "states ____state" <> comma <+> "effects ____effs" <> ")" <+> braces ("return" <+> e <> semi)
+exprToCps e = parens $ "[=](" <+> "const cont &____k" <> comma <+> "states ____state" <> comma <+> "effects ____effs" <> ") -> object " <+> braces ("return" <+> e <> semi)
 
 -- | Call a cps function
 callWithCps :: Doc a -> Doc a -> Doc a

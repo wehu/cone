@@ -68,7 +68,7 @@ instance Backend CppSource where
         "m.def(\"" <> fn <> "\", &" <> fn <> ");"
       ctrFuncWrapper fn =
         "m.def(\"" <> fn <> "_w\", &" <> fn <> "_w);"
-
+  
   genEffectDef _ _ = return emptyDoc
 
   genFuncDef proxy FuncDef {..} = do
