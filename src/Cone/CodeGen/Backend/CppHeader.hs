@@ -368,8 +368,6 @@ instance Backend CppHeader where
       vsep $
         [ "#pragma once",
           "#include <iostream>",
-          "#include \"pybind11/pybind11.h\"",
-          "#include \"pybind11/functional.h\"",
           "#include \"cone/builtins.h\"",
           "#include \"core/prelude.h\""
         ]
