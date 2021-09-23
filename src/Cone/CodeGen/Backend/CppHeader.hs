@@ -245,7 +245,7 @@ instance Backend CppHeader where
                       <> (funcN proxy prefix $ name2String $ removeAnn (_eappArgs !! 0) ^. evarName)
                       <> "\"," <+> "____e));})"
                   )
-          "core/prelude/inline_python" -> return $ exprToCps $ "____k(py::eval(" <> (pretty $ removeAnn (_eappArgs !! 0) ^. lit) <> "))"
+          "core/prelude/inline_python" -> return $ exprToCps $ "____k((py::exec(" <> (pretty $ removeAnn (_eappArgs !! 0) ^. lit) <> "), py::none()))"
           _ -> do
             f <- genExpr proxy _eappFunc
             args <- mapM (genExpr proxy) _eappArgs
