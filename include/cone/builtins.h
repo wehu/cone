@@ -41,6 +41,9 @@ namespace cone {
   }
 
   inline py::object ____to_py_object(const object &o) {
+    if (o.type() != typeid(py::object)) {
+      throw cone_exception("cannot cast to py object, are you trying to capture continuation in while?");
+    }
     return std::experimental::any_cast<py::object>(o);
   }
 
@@ -104,23 +107,37 @@ namespace cone {
     return std::experimental::any_cast<funcWithCont>(e)(k, state, effs);
   }
 
+  struct ____deferred {
+    explicit ____deferred(const object &v) : value(v) {}
+    object value;
+  };
+
   inline object ____while(const cont &k, states state, effects effs,
                           const object &cond0,
                           const object &body0) {
     state->push_back({});
     auto cond = std::experimental::any_cast<funcWithCont>(cond0);
     auto body = std::experimental::any_cast<funcWithCont>(body0);
-    cont k2 = [state, effs, &k2, k, body, cond](const object &o) -> object {
-      if (py::cast<bool>(std::experimental::any_cast<py::object>(o))) {
-        state->push_back({});
-        return body([state, effs, k2, cond](const object &o) {
-                     state->pop_back();
-                     return cond(k2, state, effs);}
-             , state, effs);
-      } else {
-        state->pop_back();
-        return k(o);
-      }
+    cont k2 = [=](const object &o) -> object {
+      cont trampoline = [=](const object &o) -> object {
+         if (py::cast<bool>(std::experimental::any_cast<py::object>(o))) {
+           state->push_back({});
+           return body([=](const object &o) -> object {
+                        state->pop_back();
+                        return cond([](const object &o) -> object{ 
+                               return object(____deferred(o)); 
+                             },
+                            state, effs);}
+                , state, effs);
+         } else {
+           state->pop_back();
+           return k(o);
+         }
+      };
+      auto d = trampoline(o);
+      for (; d.type() == typeid(____deferred); 
+           d = trampoline(std::experimental::any_cast<____deferred>(d).value));
+      return d;
     };
     return cond(k2, state, effs);
   }
