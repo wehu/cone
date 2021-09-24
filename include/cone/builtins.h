@@ -110,20 +110,17 @@ namespace cone {
     state->push_back({});
     auto cond = std::experimental::any_cast<funcWithCont>(cond0);
     auto body = std::experimental::any_cast<funcWithCont>(body0);
-    cont k2;
-    std::shared_ptr<cont> k3 = std::make_shared<cont>();
-    k2 = [state, effs, k, k3, body](const object &o) {
+    cont k2 = [state, effs, &k2, k, body, cond](const object &o) -> object {
       if (py::cast<bool>(std::experimental::any_cast<py::object>(o))) {
         state->push_back({});
-        return body(*k3, state, effs);
+        return body([state, effs, k2, cond](const object &o) {
+                     state->pop_back();
+                     return cond(k2, state, effs);}
+             , state, effs);
       } else {
         state->pop_back();
         return k(o);
       }
-    };
-    *k3 = [state, effs, k2, cond](const object &o) {
-      state->pop_back();
-      return cond(k2, state, effs);
     };
     return cond(k2, state, effs);
   }
