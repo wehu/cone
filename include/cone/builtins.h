@@ -13,6 +13,13 @@ namespace cone {
 
   namespace py = pybind11;
 
+  struct cone_exception : public std::exception {
+     std::string s;
+     explicit cone_exception(std::string ss) : s(ss) {}
+     ~cone_exception() throw () {} // Updated
+     const char* what() const throw() { return s.c_str(); }
+  };
+
   typedef std::experimental::any object;
 
   typedef std::function<object(const object &)> cont;
@@ -78,6 +85,7 @@ namespace cone {
         return py::object(py::none());
       }
     }
+    throw cone_exception("cannot find variable " + key);
     return py::object(py::none());
   }
 
@@ -136,6 +144,7 @@ namespace cone {
         state->pop_back();
       }
     }
+    throw cone_exception("no matched case");
     return py::object(py::none());
   }
 
