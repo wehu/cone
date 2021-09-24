@@ -49,21 +49,11 @@ instance Backend PythonWrapper where
      in pretty $ join $ intersperse "." $ ps ++ [fn]
 
   genImport proxy ImportStmt {..} =
-    return $
-      ( -- case _importAlias of
-        --  Just a -> "import" <+> namePath proxy _importPath <+> "as" <+> pretty a
-        --  Nothing ->
-        "import" <+> namePath proxy _importPath
-      )
-        <+> line
+    return $ "import" <+> namePath proxy _importPath <+> line
 
   genTypeDef proxy TypeDef {..} = do
     cons <- mapM (genTypeCon proxy _typeName) _typeCons
-    return $
-      vsep $ {-["class" <+> typeN proxy _typeName <> ":"
-             ,indent 4 "pass" <+> line
-             ] ++-}
-        cons
+    return $ vsep cons
 
   genTypeCon proxy ptn TypeCon {..} = do
     prefix <- getEnv currentModuleName

@@ -50,13 +50,7 @@ instance Backend PythonType where
      in pretty $ join $ intersperse "." $ ps ++ [fn]
 
   genImport proxy ImportStmt {..} =
-    return $
-      ( -- case _importAlias of
-        --  Just a -> "import" <+> namePath proxy _importPath <+> "as" <+> pretty a
-        --  Nothing ->
-        "import" <+> namePath proxy _importPath <> "____t"
-      )
-        <+> line
+    return $ "import" <+> namePath proxy _importPath <> "____t" <+> line
 
   genTypeDef proxy TypeDef {..} = do
     cons <- mapM (genTypeCon proxy _typeName) _typeCons
