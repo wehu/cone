@@ -4,11 +4,11 @@ module Cone.Compiler (compile, coneUserDataDir) where
 
 import Cone.CodeGen.Backend
 import Cone.CodeGen.Backend.Cone
-import Cone.CodeGen.Backend.Python
-import Cone.CodeGen.Backend.PythonWrapper
-import Cone.CodeGen.Backend.PythonType
 import Cone.CodeGen.Backend.CppHeader
 import Cone.CodeGen.Backend.CppSource
+import Cone.CodeGen.Backend.Python
+import Cone.CodeGen.Backend.PythonType
+import Cone.CodeGen.Backend.PythonWrapper
 import Cone.ModuleLoader
 import Cone.Parser.AST
 import Control.Lens
@@ -17,10 +17,10 @@ import Control.Monad.Except
 import Data.List
 import Data.List.Split
 import Data.Proxy
-import System.Process
 import System.Directory
 import System.FilePath
 import System.IO
+import System.Process
 
 type CompileEnv a = ExceptT String IO a
 
@@ -59,7 +59,7 @@ checkAndCompileImport paths i target = do
   where
     compileConeFile coneFn pyFn pyTyFn cppHeaderFn cppLibFn = do
       o <- compilePythonType paths coneFn target
-      liftIO $ writeFile pyTyFn o 
+      liftIO $ writeFile pyTyFn o
       o <- compileToCppHeader paths coneFn target
       liftIO $ writeFile cppHeaderFn o
       compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
@@ -123,10 +123,11 @@ compileCppToLib paths outputFile input = do
   pythonHeaderPaths <- liftIO getPythonIncludePaths
   userDataDir <- liftIO $ coneUserDataDir
   let cc = "g++"
-      args = ["-fstack-usage", "-lstdc++", "-O3", "-std=c++14", "-shared", "-fPIC", "-I"++userDataDir</>"python"] ++ 
-              pythonHeaderPaths ++
-             map (\p -> "-I" ++ (p </> "include")) paths ++
-             ["-o", outputFile, "-xc++", "-"]
+      args =
+        ["-fstack-usage", "-lstdc++", "-O3", "-std=c++14", "-shared", "-fPIC", "-I" ++ userDataDir </> "python"]
+          ++ pythonHeaderPaths
+          ++ map (\p -> "-I" ++ (p </> "include")) paths
+          ++ ["-o", outputFile, "-xc++", "-"]
   -- liftIO $ putStrLn $ "compiling..."
   liftIO $ readProcess cc args input
 
@@ -140,7 +141,7 @@ compile paths f target = do
         Left err -> throwError err
         Right doc -> return $ show doc
     "python" -> do
-      forM_ (nub $ reverse $ (dropExtension f):imports) $ \p ->
+      forM_ (nub $ reverse $ (dropExtension f) : imports) $ \p ->
         checkAndCompileImport paths p target
       return ""
     _ -> throwError $ "unknown target: " ++ target
