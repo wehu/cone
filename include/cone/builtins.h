@@ -45,10 +45,11 @@ namespace cone {
   }
 
   namespace core { namespace prelude {
-  const std::function<object(const cont &, states, effects, const object &)> cone__print = [=](const cont &k, states s, effects effs, const object &a) -> object {
-    py::print(std::experimental::any_cast<py::object>(a));
-    return k(a);
-  };
+  const std::function<object(const cont &, states, effects, const object &)> cone__print = 
+    [=](const cont &k, states s, effects effs, const object &a) -> object {
+      py::print(std::experimental::any_cast<py::object>(a));
+      return k(a);
+    };
   }}
 
   inline bool ____is_none(const object &o) {
@@ -172,8 +173,9 @@ namespace cone {
     return h([state](const object &x) { state->pop_back(); return x;}, state, effs);
   }
 
-  const std::function<object(const cont &, states, effects, const object &)> cone__resume = [=](const cont &k, states s, effects effs, const object &a) -> object {
-    return k(std::experimental::any_cast<cont>(s->back()[____resumed_k])(a));
-  };
+  const std::function<object(const cont &, states, effects, const object &)> cone__resume = 
+    [=](const cont &k, states s, effects effs, const object &a) -> object {
+      return k(std::experimental::any_cast<cont>(s->back()[____resumed_k])(a));
+    };
 
 }
