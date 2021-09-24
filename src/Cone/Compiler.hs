@@ -46,9 +46,9 @@ checkAndCompileImport paths i target = do
   found <- liftIO $ doesFileExist pyFn
   if found
     then do
-      fTS <- liftIO $ getModificationTime pyFn
+      pyFTS <- liftIO $ getModificationTime pyFn
       coneFTS <- liftIO $ getModificationTime coneFn
-      if fTS < coneFTS
+      if pyFTS < coneFTS
         then do
           compileConeFile coneFn pyFn pyTyFn cppHeaderFn cppLibFn
           addInitFile userDataDir i
