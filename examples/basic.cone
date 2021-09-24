@@ -42,7 +42,7 @@ fun main() : io unit {
 
   val t = (2, "string", 0.2, [1]) : (i32, str, f32, [i32])
 
-  val (t0, t1, t2, t3|r) = t
+  val (t0, t1, 0.2, t3|r) = t
 
   print(t3)
 
@@ -90,7 +90,7 @@ fun main() : io unit {
      print(1000000)
      1000
   })
-  while a < 1000 {
+  while a < 10 {
     print(a)
     a = a + 1
   }

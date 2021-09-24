@@ -242,7 +242,8 @@ instance Backend CppHeader where
     return $
       exprToCps $
         callWithCps
-          (exprToCps $ callWithCps e ("[=](const object &____e) -> object {return ____k(" <> p <> parens "____e" <> ");}"))
+          (exprToCps $ callWithCps e ("[=](const object &____e) -> object {auto ____matched = " <> p <> parens "____e" <>
+                              "; if(!py::cast<bool>(____to_py_object(____matched))) throw \"let decontruction failed\"; return ____k(____matched);}"))
           ("[=](const object &____unused) -> object " <> braces ("return" <+> callWithCps b "____k" <> semi))
   genExpr proxy EAnn {..} = genExpr proxy _eannExpr
   genExpr proxy EApp {..} =
