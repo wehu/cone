@@ -72,36 +72,36 @@ instance Backend CppHeader where
         fn = funcN proxy prefix _typeConName
      in return $ vsep [ctrFunc fn tn, ctrFuncWrapper fn]
     where
-      genArgs init =
+      genWrapperArgTypes init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "const py::object &t" ++ show (length s)]) init _typeConArgs
-      genArgs' init =
+      genCntrArgs init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "std::experimental::any_cast<py::object>(t" ++ show (length s) ++ ")"]) init _typeConArgs
-      genArgs'' init =
+      genWrapperArgs init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s - 3)]) init _typeConArgs
-      genArgs''' init =
+      genArgsInternal init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "const object &t" ++ show (length s)]) init _typeConArgs
-      genArgTypes''' init =
+      genArgTypesInternal init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ ["const object &"]) init _typeConArgs
       ctrFunc fn tn =
-        "const std::function<object" <> genArgTypes''' ["const cont &", "states", "effects"] <> ">" <+> fn <> "= [=]"
-          <> genArgs''' ["const cont &____k", "states ____state", "effects ____effs"]
+        "const std::function<object" <> genArgTypesInternal ["const cont &", "states", "effects"] <> ">" <+> fn <> "= [=]"
+          <> genArgsInternal ["const cont &____k", "states ____state", "effects ____effs"]
           <> " -> object "
           <+> braces
             ( vsep
                 [ "py::object cntr = " <> pythonTypeNamePath _typeConName <> semi,
-                  "return" <+> ("____k(py::object" <> parens ("cntr" <> genArgs' ["py::none()", "py::none()", "py::none()"])) <> ")" <> semi
+                  "return" <+> ("____k(py::object" <> parens ("cntr" <> genCntrArgs ["py::none()", "py::none()", "py::none()"])) <> ")" <> semi
                 ]
             )
           <> semi
       ctrFuncWrapper fn =
-        "inline py::object" <+> fn <> "_w" <> genArgs []
+        "inline py::object" <+> fn <> "_w" <> genWrapperArgTypes []
           <> braces
-            ("return std::experimental::any_cast<py::object>(" <> (fn <> genArgs'' ["____identity_k", "____make_empty_state()", "____make_empty_effs()"]) <> ")" <> semi)
+            ("return std::experimental::any_cast<py::object>(" <> (fn <> genWrapperArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"]) <> ")" <> semi)
 
   genEffectDef proxy EffectDef {..} = do
     prefix <- getEnv currentModuleName
@@ -133,21 +133,21 @@ instance Backend CppHeader where
       Nothing -> return $ "throw \"" <> pretty _funcName <> " is not implemented\";"
     return $
       vsep
-        [ "const std::function<object" <> genArgTypes'' ["const cont &", "states", "effects"] <> ">"
+        [ "const std::function<object" <> genArgTypesInternal ["const cont &", "states", "effects"] <> ">"
             <+> funcN proxy prefix _funcName
             <> "= [=]"
-            <> genArgs'' ["const cont &____k", "states ____state", "effects ____effs"] prefix
+            <> genArgsInternal ["const cont &____k", "states ____state", "effects ____effs"] prefix
             <> " -> object "
             <> braces body
             <> semi,
-          "inline py::object" <+> funcN proxy prefix _funcName <> "_w" <> genArgs' [] prefix
-            <> braces ("return std::experimental::any_cast<py::object>(" <> funcN proxy prefix _funcName <> genArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"] prefix <> ")" <> semi)
+          "inline py::object" <+> funcN proxy prefix _funcName <> "_w" <> genWrapperArgTypes [] prefix
+            <> braces ("return std::experimental::any_cast<py::object>(" <> funcN proxy prefix _funcName <> genWrapperArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"] prefix <> ")" <> semi)
         ]
     where
-      genArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
-      genArgs' init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const py::object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
-      genArgs'' init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
-      genArgTypes'' init = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object &") $ _funcArgs ^.. traverse . _1)
+      genWrapperArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
+      genWrapperArgTypes init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const py::object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
+      genArgsInternal init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
+      genArgTypesInternal init = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object &") $ _funcArgs ^.. traverse . _1)
 
   genImplFuncDef _ _ = return emptyDoc
 
