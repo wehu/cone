@@ -62,10 +62,10 @@ instance Backend CppSource where
   genTypeCon proxy ptn TypeCon {..} = do
     prefix <- getEnv currentModuleName
     let fn = funcN proxy prefix _typeConName
-     in return $ vsep [ctrFunc fn, ctrFuncWrapper fn]
+     in return $ vsep [{-ctrFunc fn,-} ctrFuncWrapper fn]
     where
-      ctrFunc fn =
-        "m.def(\"" <> fn <> "\", &" <> fn <> ");"
+      --ctrFunc fn =
+      --  "m.def(\"" <> fn <> "\", &" <> fn <> ");"
       ctrFuncWrapper fn =
         "m.def(\"" <> fn <> "_w\", &" <> fn <> "_w);"
   
@@ -76,7 +76,7 @@ instance Backend CppSource where
     let fn = funcN proxy prefix _funcName
     return $
       vsep
-        [ "m.def(\"" <> fn <> "\", &" <> fn <> ");",
+        [ --"m.def(\"" <> fn <> "\", &" <> fn <> ");",
           "m.def(\"" <> fn <> "_w\", &" <> fn <> "_w);"
         ]
 
