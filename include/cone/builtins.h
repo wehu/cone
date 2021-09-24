@@ -16,7 +16,7 @@ namespace cone {
   struct cone_exception : public std::exception {
      std::string s;
      explicit cone_exception(std::string ss) : s(ss) {}
-     ~cone_exception() throw () {} // Updated
+     ~cone_exception() throw () {}
      const char* what() const throw() { return s.c_str(); }
   };
 
