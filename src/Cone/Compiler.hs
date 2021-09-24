@@ -24,22 +24,16 @@ import System.Process
 
 type CompileEnv a = ExceptT String IO a
 
-targetEx :: String -> String
-targetEx t =
-  case t of
-    "python" -> "py"
-    _ -> "cone"
-
 coneUserDataDir = getAppUserDataDirectory "cone"
 
 -- | Check and compile imports
 checkAndCompileImport :: [FilePath] -> String -> String -> CompileEnv ()
 checkAndCompileImport paths i target = do
   userDataDir <- liftIO $ coneUserDataDir
-  let pyFn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) $ targetEx target)
-      pyTyFn = addExtension (dropExtension pyFn ++ "____t") (targetEx target)
-      cppHeaderFn = addExtension (dropExtension pyFn) ".h"
-      cppLibFn = addExtension (dropExtension pyFn ++ "____c") ".so"
+  let pyFn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) "py")
+      pyTyFn = addExtension (dropExtension pyFn ++ "____t") "py" 
+      cppHeaderFn = addExtension (dropExtension pyFn) "h"
+      cppLibFn = addExtension (dropExtension pyFn ++ "____c") "so"
       d = takeDirectory pyFn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
   liftIO $ createDirectoryIfMissing True d
@@ -69,7 +63,7 @@ checkAndCompileImport paths i target = do
       let ds = splitOn "/" i
       foldM
         ( \s d -> do
-            let initFn = userDataDir </> joinPath s </> (addExtension "__init__" (targetEx target))
+            let initFn = userDataDir </> joinPath s </> (addExtension "__init__" "py")
             liftIO $ writeFile initFn ""
             return $ s ++ [d]
         )
