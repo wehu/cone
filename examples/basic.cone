@@ -93,7 +93,6 @@ fun main() : io unit {
   while a < 10 {
     print(a)
     a = a + 1
-    unit
   }
 
   case A(200) {

@@ -81,17 +81,21 @@ namespace cone {
         }
       }
     }
-    return e(k, state, effs);
+    auto kk = py::cast<std::function<object(const object &)>>(k);
+    auto ee = py::cast<std::function<object(const std::function<object(const object &)> &, states, effects)>>(e);
+    return ee(kk, state, effs);
   }
 
   inline object ____while(const cont &k, states state, effects effs,
-                          const object &cond,
-                          const object &body) {
+                          const object &cond0,
+                          const object &body0) {
     auto l = py::cast<py::list>(state);
     l.insert(0, py::dict());
-    cont k2;
-    std::shared_ptr<cont> k3 = std::make_shared<cont>();
-    k2 = py::cpp_function([state, effs, k, k3, body](const object &o) {
+    auto cond = py::cast<std::function<object(const std::function<object(const object &)> &, states, effects)>>(cond0);
+    auto body = py::cast<std::function<object(const std::function<object(const object &)> &, states, effects)>>(body0);
+    std::function<object(const object &)> k2;
+    std::shared_ptr<std::function<object(const object &)>> k3 = std::make_shared<std::function<object(const object &)>>();
+    k2 = [state, effs, k, k3, body](const object &o) {
       auto l = py::cast<py::list>(state);
       if (py::cast<bool>(o)) {
         l.insert(0, py::dict());
@@ -100,12 +104,12 @@ namespace cone {
         l.attr("pop")(0);
         return k(o);
       }
-    });
-    *k3 = py::cpp_function([state, effs, k2, cond](const object &o) {
+    };
+    *k3 = [state, effs, k2, cond](const object &o) {
       auto l = py::cast<py::list>(state);
       l.attr("pop")(0);
       return cond(k2, state, effs);
-    });
+    };
     return cond(k2, state, effs);
   }
 
@@ -113,15 +117,15 @@ namespace cone {
                          const std::vector<object> &conds,
                          const std::vector<object> &exprs) {
     for (unsigned i=0; i<conds.size(); ++i) {
-      const auto &p = conds[i];
-      const auto &e = exprs[i];
+      const auto &p = py::cast<std::function<object(const object &)>>(conds[i]);
+      const auto &e = py::cast<std::function<object(const std::function<object(const object &)> &, states, effects)>>(exprs[i]);
       auto l = py::cast<py::list>(state);
       l.insert(0, py::dict());
-      const cont k2 = py::cpp_function([state, k](const object &o) {
+      std::function<object(const object &)> k2 = [state, k](const object &o) {
         auto l = py::cast<py::list>(state);
         l.attr("pop")(0);
         return k(o);
-      });
+      };
       if (py::cast<bool>(p(ce))) {
         return e(k2, state, effs);
       } else {
@@ -134,7 +138,7 @@ namespace cone {
   const cont ____identity_k = py::cpp_function([](const object &x) { return x; });
 
   inline object ____handle(const cont &k, states state, effects effs,
-                          const object &scope, const std::map<std::string, object> &handlers) {
+                           const object &scope, const std::map<std::string, object> &handlers) {
     auto sl = py::cast<py::list>(state);
     auto el = py::cast<py::list>(effs);
     sl.insert(0, py::dict());
@@ -156,7 +160,8 @@ namespace cone {
     l.insert(0, py::dict());
     auto m = py::cast<py::dict>(l[0]);
     m[____resumed_k] = k;
-    return handler(py::cpp_function([state](const object &x) { auto l = py::cast<py::list>(state); l.attr("pop")(0); return x;}), state, effs);
+    auto h = py::cast<std::function<object(const std::function<object(const object &)> &, states, effects)>>(handler);
+    return h([state](const object &x) { auto l = py::cast<py::list>(state); l.attr("pop")(0); return x;}, state, effs);
   }
 
   inline object cone__resume(const cont &k, states s, effects effs, const object &a) {
