@@ -124,10 +124,9 @@ namespace cone {
            state->push_back({});
            return body([=](const object &o) -> object {
                         state->pop_back();
-                        return cond([](const object &o) -> object{ 
-                               return object(____deferred(o)); 
-                             },
-                            state, effs);}
+                        return cond([](const object &o) -> object { 
+                               return object(____deferred(o));},
+                               state, effs);}
                 , state, effs);
          } else {
            state->pop_back();
