@@ -72,14 +72,12 @@ instance Backend PythonWrapper where
      in return $
           vsep
             [ tn <> "=" <> "____T." <> tn,
-              --ctrFunc fn,
               ctrFuncWrapper fn <+> line
             ]
     where
       genArgs init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
-      --ctrFunc fn = fn <> "=" <> "____C." <> fn
       ctrFuncWrapper fn = fn <> "=" <> "____C." <> fn <> "_w"
 
   genEffectDef proxy e = return emptyDoc
@@ -87,8 +85,7 @@ instance Backend PythonWrapper where
   genFuncDef proxy FuncDef {..} = do
     prefix <- getEnv currentModuleName
     let fn = funcN proxy prefix _funcName
-    return $ vsep [--fn <> "=" <> "____C." <> fn
-                  fn <> "=" <> "____C." <> fn <> "_w"]
+    return $ fn <> "=" <> "____C." <> fn <> "_w"
 
   genExpr _ _ = return emptyDoc
  
@@ -112,7 +109,6 @@ instance Backend PythonWrapper where
     pos <- genEpilogue proxy
     return $
       vsep $
-        -- [ "module" <+> namePath proxy _moduleName <+> line]
         [ "import" <+> namePath proxy _moduleName <> "____c as ____C",
           "import" <+> namePath proxy _moduleName <> "____t as ____T"
         ]
