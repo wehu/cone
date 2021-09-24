@@ -13,10 +13,10 @@ namespace cone {
 
   namespace py = pybind11;
 
-  struct cone_exception : public std::exception {
+  struct ____cone_exception : public std::exception {
      std::string s;
-     explicit cone_exception(std::string ss) : s(ss) {}
-     ~cone_exception() throw () {}
+     explicit ____cone_exception(std::string ss) : s(ss) {}
+     virtual ~____cone_exception() throw () {}
      const char* what() const throw() { return s.c_str(); }
   };
 
@@ -42,7 +42,7 @@ namespace cone {
 
   inline py::object ____to_py_object(const object &o) {
     if (o.type() != typeid(py::object)) {
-      throw cone_exception("cannot cast to py object, are you trying to capture continuation in while?");
+      throw ____cone_exception("cannot cast to py object, are you trying to capture continuation in while?");
     }
     return std::experimental::any_cast<py::object>(o);
   }
@@ -89,7 +89,7 @@ namespace cone {
         return py::object(py::none());
       }
     }
-    throw cone_exception("cannot find variable " + key);
+    throw ____cone_exception("cannot find variable " + key);
     return py::object(py::none());
   }
 
@@ -159,7 +159,7 @@ namespace cone {
         state->pop_back();
       }
     }
-    throw cone_exception("no matched case");
+    throw ____cone_exception("no matched case");
     return py::object(py::none());
   }
 

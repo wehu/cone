@@ -114,7 +114,7 @@ instance Backend CppHeader where
                 else
                   "inline object" <+> funcN proxy prefix (_intfName intf)
                     <> genArgs intf ["const cont &, states, effects"] prefix
-                    <> "{ throw cone_exception(\"unimplemented\"); }"
+                    <> "{ throw ____cone_exception(\"unimplemented\"); }"
           )
           _effectIntfs
     where
@@ -130,7 +130,7 @@ instance Backend CppHeader where
       Just e -> do
         es <- genExpr proxy e
         return $ "return" <+> parens ("std::experimental::any_cast<funcWithCont>(" <> es <> ")" <> parens "____k, ____make_empty_state(), ____effs") <> semi
-      Nothing -> return $ "throw cone_exception(\"" <> pretty _funcName <> " is not implemented\");"
+      Nothing -> return $ "throw ____cone_exception(\"" <> pretty _funcName <> " is not implemented\");"
     return $
       vsep
         [ "const std::function<object" <> genArgTypesInternal ["const cont &", "states", "effects"] <> ">"
@@ -243,7 +243,7 @@ instance Backend CppHeader where
       exprToCps $
         callWithCps
           (exprToCps $ callWithCps e ("[=](const object &____e) -> object {auto ____matched = " <> p <> parens "____e" <>
-                              "; if(!py::cast<bool>(____to_py_object(____matched))) throw cone_exception(\"let decontruction failed\"); return ____k(____matched);}"))
+                              "; if(!py::cast<bool>(____to_py_object(____matched))) throw ____cone_exception(\"let decontruction failed\"); return ____k(____matched);}"))
           ("[=](const object &____unused) -> object " <> braces ("return" <+> callWithCps b "____k" <> semi))
   genExpr proxy EAnn {..} = genExpr proxy _eannExpr
   genExpr proxy EApp {..} =
