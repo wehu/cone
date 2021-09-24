@@ -68,14 +68,14 @@ instance Backend PythonWrapper where
       genArgs init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
-      ctrFuncWrapper fn = fn <> "=" <> "____C." <> fn <> "_w"
+      ctrFuncWrapper fn = fn <> "=" <> "____C." <> fn
 
   genEffectDef proxy e = return emptyDoc
 
   genFuncDef proxy FuncDef {..} = do
     prefix <- getEnv currentModuleName
     let fn = funcN proxy prefix _funcName
-    return $ fn <> "=" <> "____C." <> fn <> "_w"
+    return $ fn <> "=" <> "____C." <> fn
 
   genExpr _ _ = return emptyDoc
  

@@ -65,14 +65,14 @@ instance Backend CppSource where
      in return $ ctrFuncWrapper fn
     where
       ctrFuncWrapper fn =
-        "m.def(\"" <> fn <> "_w\", &" <> fn <> "_w);"
+        "m.def(\"" <> fn <> "\", &" <> fn <> "_w____);"
   
   genEffectDef _ _ = return emptyDoc
 
   genFuncDef proxy FuncDef {..} = do
     prefix <- getEnv currentModuleName
     let fn = funcN proxy prefix _funcName
-    return $ "m.def(\"" <> fn <> "_w\", &" <> fn <> "_w);"
+    return $ "m.def(\"" <> fn <> "\", &" <> fn <> "_w____);"
 
   genImplFuncDef _ _ = return emptyDoc
 

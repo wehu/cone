@@ -99,7 +99,7 @@ instance Backend CppHeader where
             )
           <> semi
       ctrFuncWrapper fn =
-        "inline py::object" <+> fn <> "_w" <> genWrapperArgTypes []
+        "inline py::object" <+> fn <> "_w____" <> genWrapperArgTypes []
           <> braces
             ("return ____to_py_object(" <> (fn <> genWrapperArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"]) <> ")" <> semi)
 
@@ -140,7 +140,7 @@ instance Backend CppHeader where
             <> " -> object "
             <> braces body
             <> semi,
-          "inline py::object" <+> funcN proxy prefix _funcName <> "_w" <> genWrapperArgTypes [] prefix
+          "inline py::object" <+> funcN proxy prefix _funcName <> "_w____" <> genWrapperArgTypes [] prefix
             <> braces ("return ____to_py_object(" <> funcN proxy prefix _funcName <> genWrapperArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"] prefix <> ")" <> semi)
         ]
     where
