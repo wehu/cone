@@ -71,11 +71,6 @@ checkAndCompileImport paths i target = do
         ds
       return ()
 
-checkAndCompileImports :: [FilePath] -> Module -> String -> CompileEnv ()
-checkAndCompileImports paths m target = do
-  let ims = m ^.. imports . traverse . importPath
-  forM_ ims (\i -> checkAndCompileImport paths i target)
-
 -- | Compile a file
 compilePythonWrapper :: [FilePath] -> FilePath -> String -> CompileEnv String
 compilePythonWrapper paths f target = do
