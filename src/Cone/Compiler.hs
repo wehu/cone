@@ -63,7 +63,7 @@ checkAndCompileImport paths i target = do
       o <- compileToCppHeader paths coneFn target
       liftIO $ writeFile cppHeaderFn o
       compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
-      (o, _, _) <- compile' paths coneFn target
+      o <- compilePythonWrapper paths coneFn target
       liftIO $ writeFile fn o
     addInitFile userDataDir i = do
       let ds = splitOn "/" i
@@ -83,49 +83,34 @@ checkAndCompileImports paths m target = do
   forM_ ims (\i -> checkAndCompileImport paths i target)
 
 -- | Compile a file
-compile' :: [FilePath] -> FilePath -> String -> CompileEnv (String, Module, [String])
-compile' paths f target = do
+compilePythonWrapper :: [FilePath] -> FilePath -> String -> CompileEnv String
+compilePythonWrapper paths f target = do
   (env, id, m, imports) <- loadModule paths f
-  case target of
-    "cone" -> case gen (Cone :: (Cone Target)) m of
-      Left err -> throwError err
-      Right doc -> return $ (show doc, m, imports)
-    "python" -> case gen (PythonWrapper :: (PythonWrapper Target)) m of
-      Left err -> throwError err
-      Right doc -> return $ (show doc, m, imports)
-    _ -> throwError $ "unknown target: " ++ target
+  case gen (PythonWrapper :: (PythonWrapper Target)) m of
+    Left err -> throwError err
+    Right doc -> return $ show doc
 
 compilePythonType :: [FilePath] -> FilePath -> String -> CompileEnv String
 compilePythonType paths f target = do
   (env, id, m, imports) <- loadModule paths f
-  case target of
-    "cone" -> return ""
-    "python" -> case gen (PythonType :: (PythonType Target)) m of
-      Left err -> throwError err
-      Right doc -> return $ show doc
-    _ -> throwError $ "unknown target: " ++ target
+  case gen (PythonType :: (PythonType Target)) m of
+    Left err -> throwError err
+    Right doc -> return $ show doc
 
 compileToCppHeader :: [FilePath] -> FilePath -> String -> CompileEnv String
 compileToCppHeader paths f target = do
   (env, id, m, imports) <- loadModule paths f
-  case target of
-    "cone" -> return ""
-    "python" -> case gen (CppHeader :: (CppHeader Target)) m of
-      Left err -> throwError err
-      Right doc -> return $ show doc
-    _ -> throwError $ "unknown target: " ++ target
+  case gen (CppHeader :: (CppHeader Target)) m of
+    Left err -> throwError err
+    Right doc -> return $ show doc
 
 compileToCppSource :: [FilePath] -> FilePath -> String -> CompileEnv String
 compileToCppSource paths f target = do
   (env, id, m, imports) <- loadModule paths f
-  case target of
-    "cone" -> return ""
-    "python" -> do
-      liftIO $ putStrLn $ "compiling " ++ f ++ "..."
-      case gen (CppSource :: (CppSource Target)) m of
-        Left err -> throwError err
-        Right doc -> return $ show doc
-    _ -> throwError $ "unknown target: " ++ target
+  liftIO $ putStrLn $ "compiling " ++ f ++ "..."
+  case gen (CppSource :: (CppSource Target)) m of
+    Left err -> throwError err
+    Right doc -> return $ show doc
 
 getPythonIncludePaths :: IO [String]
 getPythonIncludePaths = do
@@ -148,7 +133,14 @@ compileCppToLib paths outputFile input = do
 -- | Compile a file
 compile :: [FilePath] -> FilePath -> String -> CompileEnv String
 compile paths f target = do
-  (o, m, imports) <- compile' paths f target
-  forM_ (nub $ reverse $ (dropExtension f):imports) $ \p ->
-    checkAndCompileImport paths p target
-  return o
+  (env, id, m, imports) <- loadModule paths f
+  case target of
+    "cone" -> do
+      case gen (Cone :: (Cone Target)) m of
+        Left err -> throwError err
+        Right doc -> return $ show doc
+    "python" -> do
+      forM_ (nub $ reverse $ (dropExtension f):imports) $ \p ->
+        checkAndCompileImport paths p target
+      return ""
+    _ -> throwError $ "unknown target: " ++ target

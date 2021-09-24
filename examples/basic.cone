@@ -90,7 +90,7 @@ fun main() : io unit {
      print(1000000)
      1000
   })
-  while a < 10 {
+  while a < 1000 {
     print(a)
     a = a + 1
   }
