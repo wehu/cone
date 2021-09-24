@@ -89,13 +89,15 @@ instance Backend CppHeader where
           foldl' (\s e -> s ++ ["const object &"]) init _typeConArgs
       ctrFunc fn tn =
         "const std::function<object" <> genArgTypes''' ["const cont &", "states", "effects"] <> ">" <+> fn <> "= [=]"
-          <> genArgs''' ["const cont &____k", "states ____state", "effects ____effs"] <> " -> object "
+          <> genArgs''' ["const cont &____k", "states ____state", "effects ____effs"]
+          <> " -> object "
           <+> braces
             ( vsep
                 [ "py::object cntr = " <> pythonTypeNamePath _typeConName <> semi,
                   "return" <+> ("____k(py::object" <> parens ("cntr" <> genArgs' ["py::none()", "py::none()", "py::none()"])) <> ")" <> semi
                 ]
-            ) <> semi
+            )
+          <> semi
       ctrFuncWrapper fn =
         "inline py::object" <+> fn <> "_w" <> genArgs []
           <> braces
@@ -131,9 +133,13 @@ instance Backend CppHeader where
       Nothing -> return $ "throw \"" <> pretty _funcName <> " is not implemented\";"
     return $
       vsep
-        [ "const std::function<object" <> genArgTypes'' ["const cont &", "states", "effects"]  <> ">"
-            <+> funcN proxy prefix _funcName <> "= [=]" <> genArgs'' ["const cont &____k", "states ____state", "effects ____effs"] prefix
-            <> " -> object " <> braces body <> semi,
+        [ "const std::function<object" <> genArgTypes'' ["const cont &", "states", "effects"] <> ">"
+            <+> funcN proxy prefix _funcName
+            <> "= [=]"
+            <> genArgs'' ["const cont &____k", "states ____state", "effects ____effs"] prefix
+            <> " -> object "
+            <> braces body
+            <> semi,
           "inline py::object" <+> funcN proxy prefix _funcName <> "_w" <> genArgs' [] prefix
             <> braces ("return std::experimental::any_cast<py::object>(" <> funcN proxy prefix _funcName <> genArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"] prefix <> ")" <> semi)
         ]
