@@ -158,7 +158,7 @@ instance Backend CppHeader where
     foldM
       ( \doc e -> do
           e' <- genExpr proxy e
-          return $ exprToCps $ callWithCps e' ("py::cpp_function([=](const object &____unused) -> object" <> braces ("return" <+> callWithCps doc "____k" <> semi) <> ")")
+          return $ exprToCps $ callWithCps e' ("[=](const object &____unused) -> object" <> braces ("return" <+> callWithCps doc "____k" <> semi))
       )
       e'
       es
@@ -215,8 +215,8 @@ instance Backend CppHeader where
     return $
       exprToCps $
         callWithCps
-          (exprToCps $ callWithCps e ("py::cpp_function([=](const object &____e) -> object {return ____k(" <> p <> parens "____e" <> ");})"))
-          ("py::cpp_function([=](const object &____unused) -> object " <> braces ("return" <+> callWithCps b "____k" <> semi) <> ")")
+          (exprToCps $ callWithCps e ("[=](const object &____e) -> object {return ____k(" <> p <> parens "____e" <> ");}"))
+          ("[=](const object &____unused) -> object " <> braces ("return" <+> callWithCps b "____k" <> semi))
   genExpr proxy EAnn {..} = genExpr proxy _eannExpr
   genExpr proxy EApp {..} =
     let fn = name2String $ (removeAnn _eappFunc) ^. evarName
@@ -241,9 +241,9 @@ instance Backend CppHeader where
               exprToCps $
                 callWithCps
                   e
-                  ( "py::cpp_function([=](const object &____e) -> object {return ____k(____update_state(____state, \""
+                  ( "[=](const object &____e) -> object {return ____k(____update_state(____state, \""
                       <> (funcN proxy prefix $ name2String $ removeAnn (_eappArgs !! 0) ^. evarName)
-                      <> "\"," <+> "____e));})"
+                      <> "\"," <+> "____e));}"
                   )
           "core/prelude/inline_python" -> return $ exprToCps $ "____k((py::exec(" <> (pretty $ removeAnn (_eappArgs !! 0) ^. lit) <> "), py::none()))"
           _ -> do
@@ -254,7 +254,7 @@ instance Backend CppHeader where
               exprToCps $
                 foldl'
                   ( \s (e, n) ->
-                      parens $ callWithCps e ("py::cpp_function([=](const object &" <> n <> ") -> object" <> braces ("return " <> s <> semi) <> ")")
+                      parens $ callWithCps e ("[=](const object &" <> n <> ") -> object" <> braces ("return " <> s <> semi))
                   )
                   ("____f" <> (encloseSep lparen rparen comma ("____k" : "____state" : "____effs" : argNames)))
                   [(e, n) | e <- (reverse $ f : args) | n <- (reverse $ "____f" : argNames)]
@@ -267,9 +267,9 @@ instance Backend CppHeader where
           exprToCps $
             callWithCps
               lhs
-              ( "py::cpp_function([=](const object &____lhs) -> object { return "
-                  <> callWithCps rhs ("py::cpp_function([=](const object &____rhs) -> object {return ____k(" <+> pretty op <+> ");})")
-                  <> ";})"
+              ( "[=](const object &____lhs) -> object { return "
+                  <> callWithCps rhs ("[=](const object &____rhs) -> object {return ____k(" <+> pretty op <+> ");}")
+                  <> ";}"
               )
       removeAnn EAnn {..} = _eannExpr
       removeAnn EAnnMeta {..} = _eannMetaExpr
@@ -314,14 +314,14 @@ instance Backend CppHeader where
         es = [snd pe | pe <- pes]
     return $
       exprToCps $
-        c
+        "py::cast<funcWithCont>(" <> c <> ")"
           <> encloseSep
             lparen
             rparen
             comma
-            [ "py::cpp_function([=](const object &____c) -> object { return ____case(____k, ____state, ____effs, ____c" <> comma
+            [ "[=](const object &____c) -> object { return ____case(____k, ____state, ____effs, ____c" <> comma
                 <+> encloseSep lbrace rbrace comma cs <> comma
-                <+> encloseSep lbrace rbrace comma es <> ");})",
+                <+> encloseSep lbrace rbrace comma es <> ");}",
               "____state",
               "____effs"
             ]
@@ -393,4 +393,4 @@ exprToCps e =
 
 -- | Call a cps function
 callWithCps :: Doc a -> Doc a -> Doc a
-callWithCps e k = parens $ e <> (encloseSep lparen rparen comma $ (parens k) : "____state" : ["____effs"])
+callWithCps e k = parens $ "py::cast<funcWithCont>(" <> e <> ")" <> (encloseSep lparen rparen comma $ (parens k) : "____state" : ["____effs"])

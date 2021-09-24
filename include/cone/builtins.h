@@ -13,11 +13,13 @@ namespace cone {
 
   typedef py::object object;
 
-  typedef object cont;
+  typedef std::function<object(const object &)> cont;
 
   typedef object states;
 
   typedef object effects;
+
+  typedef std::function<object(const std::function<object(const object &)> &, states, effects)> funcWithCont;
 
   namespace core { namespace prelude {
   inline object cone__print(const cont &k, states s, effects effs, const object &a) {
@@ -81,9 +83,7 @@ namespace cone {
         }
       }
     }
-    auto kk = py::cast<std::function<object(const object &)>>(k);
-    auto ee = py::cast<std::function<object(const std::function<object(const object &)> &, states, effects)>>(e);
-    return ee(kk, state, effs);
+    return py::cast<funcWithCont>(e)(k, state, effs);
   }
 
   inline object ____while(const cont &k, states state, effects effs,
@@ -91,10 +91,10 @@ namespace cone {
                           const object &body0) {
     auto l = py::cast<py::list>(state);
     l.insert(0, py::dict());
-    auto cond = py::cast<std::function<object(const std::function<object(const object &)> &, states, effects)>>(cond0);
-    auto body = py::cast<std::function<object(const std::function<object(const object &)> &, states, effects)>>(body0);
-    std::function<object(const object &)> k2;
-    std::shared_ptr<std::function<object(const object &)>> k3 = std::make_shared<std::function<object(const object &)>>();
+    auto cond = py::cast<funcWithCont>(cond0);
+    auto body = py::cast<funcWithCont>(body0);
+    cont k2;
+    std::shared_ptr<cont> k3 = std::make_shared<cont>();
     k2 = [state, effs, k, k3, body](const object &o) {
       auto l = py::cast<py::list>(state);
       if (py::cast<bool>(o)) {
@@ -117,11 +117,11 @@ namespace cone {
                          const std::vector<object> &conds,
                          const std::vector<object> &exprs) {
     for (unsigned i=0; i<conds.size(); ++i) {
-      const auto &p = py::cast<std::function<object(const object &)>>(conds[i]);
-      const auto &e = py::cast<std::function<object(const std::function<object(const object &)> &, states, effects)>>(exprs[i]);
+      const auto &p = py::cast<cont>(conds[i]);
+      const auto &e = py::cast<funcWithCont>(exprs[i]);
       auto l = py::cast<py::list>(state);
       l.insert(0, py::dict());
-      std::function<object(const object &)> k2 = [state, k](const object &o) {
+      cont k2 = [state, k](const object &o) {
         auto l = py::cast<py::list>(state);
         l.attr("pop")(0);
         return k(o);
@@ -135,7 +135,7 @@ namespace cone {
     return py::none();
   }
 
-  const cont ____identity_k = py::cpp_function([](const object &x) { return x; });
+  const cont ____identity_k = [](const object &x) { return x; };
 
   inline object ____handle(const cont &k, states state, effects effs,
                            const object &scope, const std::map<std::string, object> &handlers) {
@@ -147,7 +147,7 @@ namespace cone {
     for (auto &p : handlers) {
       m[p.first.c_str()] = p.second;
     }
-    auto &&o = scope(____identity_k, state, effs);
+    auto &&o = py::cast<funcWithCont>(scope)(____identity_k, state, effs);
     sl.attr("pop")(0);
     el.attr("pop")(0);
     return k(o);
@@ -160,14 +160,14 @@ namespace cone {
     l.insert(0, py::dict());
     auto m = py::cast<py::dict>(l[0]);
     m[____resumed_k] = k;
-    auto h = py::cast<std::function<object(const std::function<object(const object &)> &, states, effects)>>(handler);
+    auto h = py::cast<funcWithCont>(handler);
     return h([state](const object &x) { auto l = py::cast<py::list>(state); l.attr("pop")(0); return x;}, state, effs);
   }
 
   inline object cone__resume(const cont &k, states s, effects effs, const object &a) {
     auto l = py::cast<py::list>(s);
     auto m = py::cast<py::dict>(l[0]);
-    return k(m[____resumed_k](a));
+    return k(py::cast<cont>(m[____resumed_k])(a));
   }
 
 }
