@@ -74,26 +74,32 @@ instance Backend CppHeader where
     where
       genArgs init =
         encloseSep lparen rparen comma $
-          foldl' (\s e -> s ++ [pretty $ "const object &t" ++ show (length s)]) init _typeConArgs
+          foldl' (\s e -> s ++ [pretty $ "const py::object &t" ++ show (length s)]) init _typeConArgs
       genArgs' init =
         encloseSep lparen rparen comma $
-          foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
+          foldl' (\s e -> s ++ [pretty $ "std::experimental::any_cast<py::object>(t" ++ show (length s) ++ ")"]) init _typeConArgs
       genArgs'' init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s - 3)]) init _typeConArgs
+      genArgs''' init =
+        encloseSep lparen rparen comma $
+          foldl' (\s e -> s ++ [pretty $ "const object &t" ++ show (length s)]) init _typeConArgs
+      genArgTypes''' init =
+        encloseSep lparen rparen comma $
+          foldl' (\s e -> s ++ ["const object &"]) init _typeConArgs
       ctrFunc fn tn =
-        "inline object" <+> fn
-          <> genArgs ["const cont &____k", "states ____state", "effects ____effs"]
+        "const std::function<object" <> genArgTypes''' ["const cont &", "states", "effects"] <> ">" <+> fn <> "= [=]"
+          <> genArgs''' ["const cont &____k", "states ____state", "effects ____effs"] <> " -> object "
           <+> braces
             ( vsep
-                [ "object cntr = " <> pythonTypeNamePath _typeConName <> semi,
-                  "return" <+> ("____k" <> parens ("cntr" <> genArgs' ["____k", "____state", "____effs"])) <> semi
+                [ "py::object cntr = " <> pythonTypeNamePath _typeConName <> semi,
+                  "return" <+> ("____k(py::object" <> parens ("cntr" <> genArgs' ["py::none()", "py::none()", "py::none()"])) <> ")" <> semi
                 ]
-            )
+            ) <> semi
       ctrFuncWrapper fn =
-        "inline object" <+> fn <> "_w" <> genArgs []
+        "inline py::object" <+> fn <> "_w" <> genArgs []
           <> braces
-            ("auto ____state2 = py::list(); ____state2.insert(0, py::dict()); return" <+> (fn <> genArgs'' ["____identity_k", "____state2", "py::list()"]) <> semi)
+            ("return std::experimental::any_cast<py::object>(" <> (fn <> genArgs'' ["____identity_k", "____make_empty_state()", "____make_empty_effs()"]) <> ")" <> semi)
 
   genEffectDef proxy EffectDef {..} = do
     prefix <- getEnv currentModuleName
@@ -121,18 +127,21 @@ instance Backend CppHeader where
     body <- case _funcExpr of
       Just e -> do
         es <- genExpr proxy e
-        return $ "auto ____state2 = py::list(); ____state2.insert(0, py::dict()); return" <+> parens (es <> parens "____k, ____state2, ____effs") <> semi
+        return $ "return" <+> parens ("std::experimental::any_cast<funcWithCont>(" <> es <> ")" <> parens "____k, ____make_empty_state(), ____effs") <> semi
       Nothing -> return $ "throw \"" <> pretty _funcName <> " is not implemented\";"
     return $
       vsep
-        [ "inline object" <+> funcN proxy prefix _funcName <> genArgs' ["const cont &____k", "states ____state", "effects ____effs"] prefix
-            <> braces body,
-          "inline object" <+> funcN proxy prefix _funcName <> "_w" <> genArgs' [] prefix
-            <> braces ("auto ____state2 = py::list(); ____state2.insert(0, py::dict()); return" <+> funcN proxy prefix _funcName <> genArgs ["____identity_k", "____state2", "py::list()"] prefix <> semi)
+        [ "const std::function<object" <> genArgTypes'' ["const cont &", "states", "effects"]  <> ">"
+            <+> funcN proxy prefix _funcName <> "= [=]" <> genArgs'' ["const cont &____k", "states ____state", "effects ____effs"] prefix
+            <> " -> object " <> braces body <> semi,
+          "inline py::object" <+> funcN proxy prefix _funcName <> "_w" <> genArgs' [] prefix
+            <> braces ("return std::experimental::any_cast<py::object>(" <> funcN proxy prefix _funcName <> genArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"] prefix <> ")" <> semi)
         ]
     where
       genArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
-      genArgs' init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
+      genArgs' init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const py::object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
+      genArgs'' init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
+      genArgTypes'' init = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object &") $ _funcArgs ^.. traverse . _1)
 
   genImplFuncDef _ _ = return emptyDoc
 
@@ -143,14 +152,14 @@ instance Backend CppHeader where
     let fn = funcN proxy prefix (name2String _evarName)
         fnQ = "\"" <> fn <> "\""
         vn = case l of
-          Just _ -> "py::none()"
+          Just _ -> "py::object(py::none())"
           Nothing -> case p of
             Just _ -> fn
-            Nothing -> "py::cpp_function" <> parens fn
+            Nothing -> "object(" <> fn <> ")"
      in return $
           exprToCps $
-            "____k(!____lookup_eff(____effs, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_eff(____effs, " <> fnQ <> ") : "
-              <+> "(!____lookup_var(____state, " <> fnQ <> ").is(py::none()) ? " <> "____lookup_var(____state, " <> fnQ <> ") : "
+            "____k(!____is_none(____lookup_eff(____effs, " <> fnQ <> ")) ? " <> "____lookup_eff(____effs, " <> fnQ <> ") : "
+              <+> "(!____is_none(____lookup_var(____state, " <> fnQ <> ")) ? " <> "____lookup_var(____state, " <> fnQ <> ") : "
               <+> vn <> "))"
   genExpr proxy ESeq {..} = do
     let e : es = (reverse _eseq)
@@ -165,40 +174,53 @@ instance Backend CppHeader where
   genExpr proxy ELit {..} =
     return $
       exprToCps $
-        "____k"
-          <> parens
-            ( case _litType of
-                TPrim Pred _ -> "py::bool_(" <> pretty _lit <> ")"
-                TPrim Unit _ -> "py::none()"
-                TPrim I8 _ -> "py::int_(" <> pretty _lit <> ")"
-                TPrim I16 _ -> "py::int_(" <> pretty _lit <> ")"
-                TPrim I32 _ -> "py::int_(" <> pretty _lit <> ")"
-                TPrim I64 _ -> "py::int_(" <> pretty _lit <> ")"
-                TPrim U8 _ -> "py::int_(" <> pretty _lit <> ")"
-                TPrim U16 _ -> "py::int_(" <> pretty _lit <> ")"
-                TPrim U32 _ -> "py::int_(" <> pretty _lit <> ")"
-                TPrim U64 _ -> "py::int_(" <> pretty _lit <> ")"
-                TPrim F16 _ -> "py::float_(" <> pretty _lit <> ")"
-                TPrim F32 _ -> "py::float_(" <> pretty _lit <> ")"
-                TPrim F64 _ -> "py::float_(" <> pretty _lit <> ")"
-                TPrim Str _ -> "py::str(" <> pretty _lit <> ")"
-                _ -> pretty _lit
-            )
+        "____k(py::object("
+          <> ( case _litType of
+                 TPrim Pred _ -> "py::bool_(" <> pretty _lit <> ")"
+                 TPrim Unit _ -> "py::none()"
+                 TPrim I8 _ -> "py::int_(" <> pretty _lit <> ")"
+                 TPrim I16 _ -> "py::int_(" <> pretty _lit <> ")"
+                 TPrim I32 _ -> "py::int_(" <> pretty _lit <> ")"
+                 TPrim I64 _ -> "py::int_(" <> pretty _lit <> ")"
+                 TPrim U8 _ -> "py::int_(" <> pretty _lit <> ")"
+                 TPrim U16 _ -> "py::int_(" <> pretty _lit <> ")"
+                 TPrim U32 _ -> "py::int_(" <> pretty _lit <> ")"
+                 TPrim U64 _ -> "py::int_(" <> pretty _lit <> ")"
+                 TPrim F16 _ -> "py::float_(" <> pretty _lit <> ")"
+                 TPrim F32 _ -> "py::float_(" <> pretty _lit <> ")"
+                 TPrim F64 _ -> "py::float_(" <> pretty _lit <> ")"
+                 TPrim Str _ -> "py::str(" <> pretty _lit <> ")"
+                 _ -> pretty _lit
+             )
+          <> "))"
   genExpr proxy ELam {..} = underScope $ do
     forM_ (_elamArgs ^.. traverse . _1) $ \n -> do
       setEnv (Just True) $ parameters . at n
       l <- getEnv localState
       setEnv (M.delete n l) localState
     es <- genBody _elamExpr
-    return $ parens $ "py::cpp_function([=](const cont &____k2, states ____state, effects ____effs) -> object" <+> braces ("return" <+> es <> semi) <> ")"
+    return $ parens $ "object(funcWithCont([=](const cont &____k2, states ____state, effects ____effs) -> object" <+> braces ("return" <+> es <> semi) <> "))"
     where
       genArgs prefix = encloseSep lparen rparen comma $ "const cont &____k" : "states ____state_unused" : "effects ____effs" : (map (\a -> "const object &" <> funcN proxy prefix a) $ _elamArgs ^.. traverse . _1)
+      genArgTypes = encloseSep lparen rparen comma $ "const cont &" : "states" : "effects" : (map (\_ -> "const object &") $ _elamArgs ^.. traverse . _1)
       genBody e = do
         prefix <- getEnv currentModuleName
         case e of
           Just e -> do
             es <- genExpr proxy e
-            return $ "____k2(" <> (parens $ "py::cpp_function([=]" <+> genArgs prefix <> " -> object " <> braces ("return " <> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es prefix) <> semi) <> "))")
+            return $
+              "____k2("
+                <> ( parens $
+                       "object(std::function<object" <> genArgTypes
+                         <> ">([=]" <+> genArgs prefix
+                         <> " -> object "
+                         <> braces
+                           ( "return "
+                               <> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es prefix)
+                               <> semi
+                           )
+                         <> ")))"
+                   )
           Nothing -> throwError $ "lambda expected a expression"
       callCpsWithclearedVars es prefix =
         encloseSep lparen rparen comma $
@@ -221,19 +243,19 @@ instance Backend CppHeader where
   genExpr proxy EApp {..} =
     let fn = name2String $ (removeAnn _eappFunc) ^. evarName
      in case fn of
-          "core/prelude/____add" -> binary "____lhs + ____rhs"
-          "core/prelude/____sub" -> binary "____lhs - ____rhs"
-          "core/prelude/____mul" -> binary "____lhs * ____rhs"
-          "core/prelude/____div" -> binary "____lhs / ____rhs"
-          "core/prelude/____mod" -> binary "____lhs % ____rhs"
-          "core/prelude/____eq" -> binary "py::bool_(____lhs.attr(\"__eq__\")(____rhs))"
-          "core/prelude/____ne" -> binary "py::bool_(____lhs.attr(\"__ne__\")(____rhs))"
-          "core/prelude/____gt" -> binary "py::bool_(____lhs > ____rhs)"
-          "core/prelude/____lt" -> binary "py::bool_(____lhs < ____rhs)"
-          "core/prelude/____ge" -> binary "py::bool_(____lhs >= ____rhs)"
-          "core/prelude/____le" -> binary "py::bool_(____lhs <= ____rhs)"
-          "core/prelude/____and" -> binary "py::bool_(____lhs && ____rhs)"
-          "core/prelude/____or" -> binary "py::bool_(____lhs || ____rhs)"
+          "core/prelude/____add" -> binary "std::experimental::any_cast<py::object>(____lhs) + std::experimental::any_cast<py::object>(____rhs)"
+          "core/prelude/____sub" -> binary "std::experimental::any_cast<py::object>(____lhs) - std::experimental::any_cast<py::object>(____rhs)"
+          "core/prelude/____mul" -> binary "std::experimental::any_cast<py::object>(____lhs) * std::experimental::any_cast<py::object>(____rhs)"
+          "core/prelude/____div" -> binary "std::experimental::any_cast<py::object>(____lhs) / std::experimental::any_cast<py::object>(____rhs)"
+          "core/prelude/____mod" -> binary "std::experimental::any_cast<py::object>(____lhs) % std::experimental::any_cast<py::object>(____rhs)"
+          "core/prelude/____eq" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs).attr(\"__eq__\")(std::experimental::any_cast<py::object>(____rhs)))"
+          "core/prelude/____ne" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs).attr(\"__ne__\")(std::experimental::any_cast<py::object>(____rhs)))"
+          "core/prelude/____gt" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) > std::experimental::any_cast<py::object>(____rhs))"
+          "core/prelude/____lt" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) < std::experimental::any_cast<py::object>(____rhs))"
+          "core/prelude/____ge" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) >= std::experimental::any_cast<py::object>(____rhs))"
+          "core/prelude/____le" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) <= std::experimental::any_cast<py::object>(____rhs))"
+          "core/prelude/____and" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) && std::experimental::any_cast<py::object>(____rhs))"
+          "core/prelude/____or" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) || std::experimental::any_cast<py::object>(____rhs))"
           "core/prelude/____assign" -> do
             prefix <- getEnv currentModuleName
             e <- genExpr proxy (_eappArgs !! 1)
@@ -245,18 +267,22 @@ instance Backend CppHeader where
                       <> (funcN proxy prefix $ name2String $ removeAnn (_eappArgs !! 0) ^. evarName)
                       <> "\"," <+> "____e));}"
                   )
-          "core/prelude/inline_python" -> return $ exprToCps $ "____k((py::exec(" <> (pretty $ removeAnn (_eappArgs !! 0) ^. lit) <> "), py::none()))"
+          "core/prelude/inline_python" -> return $ exprToCps $ "____k((py::exec(" <> (pretty $ removeAnn (_eappArgs !! 0) ^. lit) <> "), py::object(py::none())))"
           _ -> do
             f <- genExpr proxy _eappFunc
             args <- mapM (genExpr proxy) _eappArgs
             let argNames = map (\i -> "____arg" <> pretty i) [0 .. (length _eappArgs) - 1]
+                argTypes = map (\_ -> ", const object &") [0 .. (length _eappArgs) - 1]
             return $
               exprToCps $
                 foldl'
                   ( \s (e, n) ->
                       parens $ callWithCps e ("[=](const object &" <> n <> ") -> object" <> braces ("return " <> s <> semi))
                   )
-                  ("____f" <> (encloseSep lparen rparen comma ("____k" : "____state" : "____effs" : argNames)))
+                  ( "std::experimental::any_cast<std::function<object(const cont &, states, effects " <> sep argTypes
+                      <> ")>>(____f)"
+                      <> (encloseSep lparen rparen comma ("____k" : "____state" : "____effs" : argNames))
+                  )
                   [(e, n) | e <- (reverse $ f : args) | n <- (reverse $ "____f" : argNames)]
     where
       binary :: (Has EnvEff sig m) => String -> m (Doc a)
@@ -268,7 +294,7 @@ instance Backend CppHeader where
             callWithCps
               lhs
               ( "[=](const object &____lhs) -> object { return "
-                  <> callWithCps rhs ("[=](const object &____rhs) -> object {return ____k(" <+> pretty op <+> ");}")
+                  <> callWithCps rhs ("[=](const object &____rhs) -> object {return ____k(py::object(" <+> pretty op <+> "));}")
                   <> ";}"
               )
       removeAnn EAnn {..} = _eannExpr
@@ -292,13 +318,19 @@ instance Backend CppHeader where
                     "states ____state_unused" :
                     "effects ____effs" :
                     (map (\(n, _) -> "const object &" <> funcN proxy prefix n) (_funcArgs intf))
+                argTypes =
+                  encloseSep lparen rparen comma $
+                    "const cont &" :
+                    "states" :
+                    "effects" :
+                    (map (\_ -> "const object &") (_funcArgs intf))
             return $
               "{\"" <> n <> "\", "
                 <+> parens
-                  ( "py::cpp_function([=]" <+> args <> " -> object "
+                  ( "object(std::function<object" <> argTypes <> ">([=]" <+> args <> " -> object "
                       <> braces
                         ("return ____call_with_resumed_k(____k, ____state, ____effs, " <> e <> ");")
-                      <> ")"
+                      <> "))"
                   )
                   <> "}"
         )
@@ -314,7 +346,7 @@ instance Backend CppHeader where
         es = [snd pe | pe <- pes]
     return $
       exprToCps $
-        "py::cast<funcWithCont>(" <> c <> ")"
+        "std::experimental::any_cast<funcWithCont>(" <> c <> ")"
           <> encloseSep
             lparen
             rparen
@@ -335,10 +367,10 @@ instance Backend CppHeader where
       parens $
         "[=](const object &____e) -> object {____add_var(____state, \"" <> funcN proxy prefix (name2String _pvar)
           <> "\""
-          <> comma <+> "____e); return py::bool_(true);}"
+          <> comma <+> "____e); return py::object(py::bool_(true));}"
   genPatternMatch proxy PExpr {..} = do
     p <- (\e -> callWithCps e "____identity_k") <$> genExpr proxy _pExpr
-    return $ parens $ "[=](const object &____e) -> object { return py::bool_(" <+> p <+> ".attr(\"__eq__\")(____e));}"
+    return $ parens $ "[=](const object &____e) -> object { return py::object(py::bool_(std::experimental::any_cast<py::object>(" <+> p <+> ").attr(\"__eq__\")(std::experimental::any_cast<py::object>(____e))));}"
   genPatternMatch proxy PApp {..} = do
     prefix <- getEnv currentModuleName
     bindings <-
@@ -347,11 +379,11 @@ instance Backend CppHeader where
             b <- genPatternMatch proxy p
             return $
               parens $
-                "py::isinstance(____e" <> comma
-                  <+> pythonTypeNamePath (name2String $ _evarName _pappName) <> ") && " <> b <> parens ee
+                "py::isinstance(std::experimental::any_cast<py::object>(____e)" <> comma
+                  <+> pythonTypeNamePath (name2String $ _evarName _pappName) <> ") && py::cast<bool>(std::experimental::any_cast<py::object>(" <> b <> parens ee <> "))"
         )
-        [(arg, parens $ "____e.attr(\"f" <> pretty id <> "\")") | arg <- _pappArgs | id <- [0 :: Int ..]]
-    return $ parens $ "[=](const object &____e) -> object { return py::bool_" <> encloseSep lparen rparen "&&" bindings <> ";}"
+        [(arg, parens $ "py::object(std::experimental::any_cast<py::object>(____e).attr(\"f" <> pretty id <> "\"))") | arg <- _pappArgs | id <- [0 :: Int ..]]
+    return $ parens $ "[=](const object &____e) -> object { return py::object(py::bool_" <> encloseSep lparen rparen "&&" bindings <> ");}"
 
   genPrologue _ = return emptyDoc
 
@@ -385,12 +417,12 @@ instance Backend CppHeader where
 exprToCps :: Doc a -> Doc a
 exprToCps e =
   parens $
-    "py::cpp_function([=](" <+> "const cont &____k"
+    "object(funcWithCont([=](" <+> "const cont &____k"
       <> comma <+> "states ____state"
       <> comma <+> "effects ____effs"
       <> ") -> object " <+> braces ("return" <+> e <> semi)
-      <> ")"
+      <> "))"
 
 -- | Call a cps function
 callWithCps :: Doc a -> Doc a -> Doc a
-callWithCps e k = parens $ "py::cast<funcWithCont>(" <> e <> ")" <> (encloseSep lparen rparen comma $ (parens k) : "____state" : ["____effs"])
+callWithCps e k = parens $ "std::experimental::any_cast<funcWithCont>(" <> e <> ")" <> (encloseSep lparen rparen comma $ (parens k) : "____state" : ["____effs"])

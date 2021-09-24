@@ -1,113 +1,115 @@
        
 #pragma once
 
+#include <experimental/any>
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 #include <pybind11/eval.h>
 #include <map>
+#include <vector>
 #include <iostream>
 
 namespace cone {
 
   namespace py = pybind11;
 
-  typedef py::object object;
+  typedef std::experimental::any object;
 
   typedef std::function<object(const object &)> cont;
 
-  typedef object states;
+  typedef std::shared_ptr<std::vector<std::map<std::string, object>>> states;
 
-  typedef object effects;
+  typedef std::shared_ptr<std::vector<std::map<std::string, object>>> effects;
 
-  typedef std::function<object(const std::function<object(const object &)> &, states, effects)> funcWithCont;
+  typedef std::function<object(const cont &, states, effects)> funcWithCont;
+
+  states ____make_empty_state() {
+    auto s = std::make_shared<std::vector<std::map<std::string, object>>>();
+    s->push_back({});
+    return s;
+  }
+
+  effects ____make_empty_effs() {
+    return std::make_shared<std::vector<std::map<std::string, object>>>();
+  }
 
   namespace core { namespace prelude {
-  inline object cone__print(const cont &k, states s, effects effs, const object &a) {
-    py::print(a);
+  const std::function<object(const cont &, states, effects, const object &)> cone__print = [=](const cont &k, states s, effects effs, const object &a) -> object {
+    py::print(std::experimental::any_cast<py::object>(a));
     return k(a);
-  }
+  };
   }}
 
+  inline bool ____is_none(const object &o) {
+    return o.type() == typeid(py::object) && std::experimental::any_cast<py::object>(o).is(py::none());
+  }
+
   inline object ____lookup_var(states s, const std::string &key) {
-    auto l = py::cast<py::list>(s);
-    for (auto it=l.begin(); it != l.end(); ++it) {
-      auto m = py::cast<py::dict>(*it);
-      if (m.contains(key)) {
-        return m[key.c_str()];
+    for (auto it=s->rbegin(); it != s->rend(); ++it) {
+      if (it->find(key) != it->end()) {
+        return (*it)[key];
       }
     }
-    return py::none();
+    return py::object(py::none());
   }
 
   inline object ____lookup_eff(effects effs, const std::string &key) {
-    auto l = py::cast<py::list>(effs);
-    for (auto it=l.begin(); it != l.end(); ++it) {
-      auto m = py::cast<py::dict>(*it);
-      if (m.contains(key)) {
-        return m[key.c_str()];
+    for (auto it=effs->rbegin(); it != effs->rend(); ++it) {
+      if (it->find(key) != it->end()) {
+        return (*it)[key];
       }
     }
-    return py::none();
+    return py::object(py::none());
   }
 
   inline object ____add_var(states s, const std::string &key, const object &k) {
-    auto l = py::cast<py::list>(s);
-    auto m = py::cast<py::dict>(l[0]);
-    m[key.c_str()] = k;
-    return py::none();
+    s->back()[key] = k;
+    return py::object(py::none());
   }
 
   inline object ____update_state(states s, const std::string &key, const object &k) {
-    auto l = py::cast<py::list>(s);
-    for (auto it=l.begin(); it != l.end(); ++it) {
-      auto m = py::cast<py::dict>(*it);
-      if (m.contains(key)) {
-        m[key.c_str()] = k;
-        return py::none();
+    for (auto it=s->rbegin(); it != s->rend(); ++it) {
+      if (it->find(key) != it->end()) {
+        (*it)[key] = k;
+        return py::object(py::none());
       }
     }
-    return py::none();
+    return py::object(py::none());
   }
 
   inline object ____call_cps_with_cleared_vars(
     const cont &k, states s, effects es,
     const std::vector<std::string> &ks, const object &e) {
-    states state = py::module_::import("copy").attr("deepcopy")(s);
-    effects effs = py::list();
-    auto l = py::cast<py::list>(state);
-    for (auto it=l.begin(); it!=l.end(); ++it) {
-      auto m = py::cast<py::dict>(*it);
+    states state = ____make_empty_state();
+    *state = *s; 
+    effects effs = ____make_empty_effs();
+    for (auto it=state->rbegin(); it!=state->rend(); ++it) {
       for (auto k : ks) {
-        if (m.contains(k)) {
-          m.attr("pop")(k.c_str());
-        }
+        it->erase(k);
       }
     }
-    return py::cast<funcWithCont>(e)(k, state, effs);
+    return std::experimental::any_cast<funcWithCont>(e)(k, state, effs);
   }
 
   inline object ____while(const cont &k, states state, effects effs,
                           const object &cond0,
                           const object &body0) {
-    auto l = py::cast<py::list>(state);
-    l.insert(0, py::dict());
-    auto cond = py::cast<funcWithCont>(cond0);
-    auto body = py::cast<funcWithCont>(body0);
+    state->push_back({});
+    auto cond = std::experimental::any_cast<funcWithCont>(cond0);
+    auto body = std::experimental::any_cast<funcWithCont>(body0);
     cont k2;
     std::shared_ptr<cont> k3 = std::make_shared<cont>();
     k2 = [state, effs, k, k3, body](const object &o) {
-      auto l = py::cast<py::list>(state);
-      if (py::cast<bool>(o)) {
-        l.insert(0, py::dict());
+      if (py::cast<bool>(std::experimental::any_cast<py::object>(o))) {
+        state->push_back({});
         return body(*k3, state, effs);
       } else {
-        l.attr("pop")(0);
+        state->pop_back();
         return k(o);
       }
     };
     *k3 = [state, effs, k2, cond](const object &o) {
-      auto l = py::cast<py::list>(state);
-      l.attr("pop")(0);
+      state->pop_back();
       return cond(k2, state, effs);
     };
     return cond(k2, state, effs);
@@ -118,56 +120,47 @@ namespace cone {
                          const std::vector<object> &exprs) {
     for (unsigned i=0; i<conds.size(); ++i) {
       const auto &p = conds[i];
-      const auto &e = py::cast<funcWithCont>(exprs[i]);
-      auto l = py::cast<py::list>(state);
-      l.insert(0, py::dict());
+      const auto &e = std::experimental::any_cast<funcWithCont>(exprs[i]);
+      state->push_back({});
       cont k2 = [state, k](const object &o) {
-        auto l = py::cast<py::list>(state);
-        l.attr("pop")(0);
+        state->pop_back();
         return k(o);
       };
-      if (py::cast<bool>(p(ce))) {
+      if (py::cast<bool>(std::experimental::any_cast<py::object>(p(ce)))) {
         return e(k2, state, effs);
       } else {
-        l.attr("pop")(0);
+        state->pop_back();
       }
     }
-    return py::none();
+    return py::object(py::none());
   }
 
   const cont ____identity_k = [](const object &x) { return x; };
 
   inline object ____handle(const cont &k, states state, effects effs,
                            const object &scope, const std::map<std::string, object> &handlers) {
-    auto sl = py::cast<py::list>(state);
-    auto el = py::cast<py::list>(effs);
-    sl.insert(0, py::dict());
-    el.insert(0, py::dict());
-    auto m = py::cast<py::dict>(el[0]);
+    state->push_back({});
+    effs->push_back({});
     for (auto &p : handlers) {
-      m[p.first.c_str()] = p.second;
+      effs->back()[p.first] = p.second;
     }
-    auto &&o = py::cast<funcWithCont>(scope)(____identity_k, state, effs);
-    sl.attr("pop")(0);
-    el.attr("pop")(0);
+    auto &&o = std::experimental::any_cast<funcWithCont>(scope)(____identity_k, state, effs);
+    state->pop_back();
+    effs->pop_back();
     return k(o);
   }
 
   constexpr auto ____resumed_k = "____resumed_k";
 
   inline object ____call_with_resumed_k(const cont &k, states state, effects effs, const object &handler) {
-    auto l = py::cast<py::list>(state);
-    l.insert(0, py::dict());
-    auto m = py::cast<py::dict>(l[0]);
-    m[____resumed_k] = k;
-    auto h = py::cast<funcWithCont>(handler);
-    return h([state](const object &x) { auto l = py::cast<py::list>(state); l.attr("pop")(0); return x;}, state, effs);
+    state->push_back({});
+    state->back()[____resumed_k] = k;
+    auto h = std::experimental::any_cast<funcWithCont>(handler);
+    return h([state](const object &x) { state->pop_back(); return x;}, state, effs);
   }
 
-  inline object cone__resume(const cont &k, states s, effects effs, const object &a) {
-    auto l = py::cast<py::list>(s);
-    auto m = py::cast<py::dict>(l[0]);
-    return k(py::cast<cont>(m[____resumed_k])(a));
-  }
+  const std::function<object(const cont &, states, effects, const object &)> cone__resume = [=](const cont &k, states s, effects effs, const object &a) -> object {
+    return k(std::experimental::any_cast<cont>(s->back()[____resumed_k])(a));
+  };
 
 }
