@@ -33,6 +33,10 @@ namespace cone {
     return std::make_shared<std::vector<std::map<std::string, object>>>();
   }
 
+  inline py::object ____to_py_object(const object &o) {
+    return std::experimental::any_cast<py::object>(o);
+  }
+
   namespace core { namespace prelude {
   const std::function<object(const cont &, states, effects, const object &)> cone__print = [=](const cont &k, states s, effects effs, const object &a) -> object {
     py::print(std::experimental::any_cast<py::object>(a));

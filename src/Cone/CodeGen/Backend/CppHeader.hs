@@ -77,7 +77,7 @@ instance Backend CppHeader where
           foldl' (\s e -> s ++ [pretty $ "const py::object &t" ++ show (length s)]) init _typeConArgs
       genCntrArgs init =
         encloseSep lparen rparen comma $
-          foldl' (\s e -> s ++ [pretty $ "std::experimental::any_cast<py::object>(t" ++ show (length s) ++ ")"]) init _typeConArgs
+          foldl' (\s e -> s ++ [pretty $ "____to_py_object(t" ++ show (length s) ++ ")"]) init _typeConArgs
       genWrapperArgs init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s - 3)]) init _typeConArgs
@@ -101,7 +101,7 @@ instance Backend CppHeader where
       ctrFuncWrapper fn =
         "inline py::object" <+> fn <> "_w" <> genWrapperArgTypes []
           <> braces
-            ("return std::experimental::any_cast<py::object>(" <> (fn <> genWrapperArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"]) <> ")" <> semi)
+            ("return ____to_py_object(" <> (fn <> genWrapperArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"]) <> ")" <> semi)
 
   genEffectDef proxy EffectDef {..} = do
     prefix <- getEnv currentModuleName
@@ -141,7 +141,7 @@ instance Backend CppHeader where
             <> braces body
             <> semi,
           "inline py::object" <+> funcN proxy prefix _funcName <> "_w" <> genWrapperArgTypes [] prefix
-            <> braces ("return std::experimental::any_cast<py::object>(" <> funcN proxy prefix _funcName <> genWrapperArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"] prefix <> ")" <> semi)
+            <> braces ("return ____to_py_object(" <> funcN proxy prefix _funcName <> genWrapperArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"] prefix <> ")" <> semi)
         ]
     where
       genWrapperArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
@@ -249,19 +249,19 @@ instance Backend CppHeader where
   genExpr proxy EApp {..} =
     let fn = name2String $ (removeAnn _eappFunc) ^. evarName
      in case fn of
-          "core/prelude/____add" -> binary "std::experimental::any_cast<py::object>(____lhs) + std::experimental::any_cast<py::object>(____rhs)"
-          "core/prelude/____sub" -> binary "std::experimental::any_cast<py::object>(____lhs) - std::experimental::any_cast<py::object>(____rhs)"
-          "core/prelude/____mul" -> binary "std::experimental::any_cast<py::object>(____lhs) * std::experimental::any_cast<py::object>(____rhs)"
-          "core/prelude/____div" -> binary "std::experimental::any_cast<py::object>(____lhs) / std::experimental::any_cast<py::object>(____rhs)"
-          "core/prelude/____mod" -> binary "std::experimental::any_cast<py::object>(____lhs) % std::experimental::any_cast<py::object>(____rhs)"
-          "core/prelude/____eq" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs).attr(\"__eq__\")(std::experimental::any_cast<py::object>(____rhs)))"
-          "core/prelude/____ne" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs).attr(\"__ne__\")(std::experimental::any_cast<py::object>(____rhs)))"
-          "core/prelude/____gt" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) > std::experimental::any_cast<py::object>(____rhs))"
-          "core/prelude/____lt" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) < std::experimental::any_cast<py::object>(____rhs))"
-          "core/prelude/____ge" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) >= std::experimental::any_cast<py::object>(____rhs))"
-          "core/prelude/____le" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) <= std::experimental::any_cast<py::object>(____rhs))"
-          "core/prelude/____and" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) && std::experimental::any_cast<py::object>(____rhs))"
-          "core/prelude/____or" -> binary "py::bool_(std::experimental::any_cast<py::object>(____lhs) || std::experimental::any_cast<py::object>(____rhs))"
+          "core/prelude/____add" -> binary "____to_py_object(____lhs) + ____to_py_object(____rhs)"
+          "core/prelude/____sub" -> binary "____to_py_object(____lhs) - ____to_py_object(____rhs)"
+          "core/prelude/____mul" -> binary "____to_py_object(____lhs) * ____to_py_object(____rhs)"
+          "core/prelude/____div" -> binary "____to_py_object(____lhs) / ____to_py_object(____rhs)"
+          "core/prelude/____mod" -> binary "____to_py_object(____lhs) % ____to_py_object(____rhs)"
+          "core/prelude/____eq" -> binary "py::bool_(____to_py_object(____lhs).attr(\"__eq__\")(____to_py_object(____rhs)))"
+          "core/prelude/____ne" -> binary "py::bool_(____to_py_object(____lhs).attr(\"__ne__\")(____to_py_object(____rhs)))"
+          "core/prelude/____gt" -> binary "py::bool_(____to_py_object(____lhs) > ____to_py_object(____rhs))"
+          "core/prelude/____lt" -> binary "py::bool_(____to_py_object(____lhs) < ____to_py_object(____rhs))"
+          "core/prelude/____ge" -> binary "py::bool_(____to_py_object(____lhs) >= ____to_py_object(____rhs))"
+          "core/prelude/____le" -> binary "py::bool_(____to_py_object(____lhs) <= ____to_py_object(____rhs))"
+          "core/prelude/____and" -> binary "py::bool_(____to_py_object(____lhs) && ____to_py_object(____rhs))"
+          "core/prelude/____or" -> binary "py::bool_(____to_py_object(____lhs) || ____to_py_object(____rhs))"
           "core/prelude/____assign" -> do
             prefix <- getEnv currentModuleName
             e <- genExpr proxy (_eappArgs !! 1)
@@ -376,7 +376,7 @@ instance Backend CppHeader where
           <> comma <+> "____e); return py::object(py::bool_(true));}"
   genPatternMatch proxy PExpr {..} = do
     p <- (\e -> callWithCps e "____identity_k") <$> genExpr proxy _pExpr
-    return $ parens $ "[=](const object &____e) -> object { return py::object(py::bool_(std::experimental::any_cast<py::object>(" <+> p <+> ").attr(\"__eq__\")(std::experimental::any_cast<py::object>(____e))));}"
+    return $ parens $ "[=](const object &____e) -> object { return py::object(py::bool_(____to_py_object(" <+> p <+> ").attr(\"__eq__\")(____to_py_object(____e))));}"
   genPatternMatch proxy PApp {..} = do
     prefix <- getEnv currentModuleName
     bindings <-
@@ -385,10 +385,10 @@ instance Backend CppHeader where
             b <- genPatternMatch proxy p
             return $
               parens $
-                "py::isinstance(std::experimental::any_cast<py::object>(____e)" <> comma
-                  <+> pythonTypeNamePath (name2String $ _evarName _pappName) <> ") && py::cast<bool>(std::experimental::any_cast<py::object>(" <> b <> parens ee <> "))"
+                "py::isinstance(____to_py_object(____e)" <> comma
+                  <+> pythonTypeNamePath (name2String $ _evarName _pappName) <> ") && py::cast<bool>(____to_py_object(" <> b <> parens ee <> "))"
         )
-        [(arg, parens $ "py::object(std::experimental::any_cast<py::object>(____e).attr(\"f" <> pretty id <> "\"))") | arg <- _pappArgs | id <- [0 :: Int ..]]
+        [(arg, parens $ "py::object(____to_py_object(____e).attr(\"f" <> pretty id <> "\"))") | arg <- _pappArgs | id <- [0 :: Int ..]]
     return $ parens $ "[=](const object &____e) -> object { return py::object(py::bool_" <> encloseSep lparen rparen "&&" bindings <> ");}"
 
   genPrologue _ = return emptyDoc
