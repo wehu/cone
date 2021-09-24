@@ -23,6 +23,7 @@ import Control.Lens
 import Data.Proxy
 import qualified Data.Map as M
 import Prettyprinter
+import Debug.Trace
 
 type Eff s e = Fresh :+: State s :+: Error e
 

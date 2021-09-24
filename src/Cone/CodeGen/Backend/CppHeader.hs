@@ -37,6 +37,36 @@ pythonTypeNamePath n =
         <> pretty ("Cone__" ++ last ns)
         <> "\")"
 
+genTopFw :: (Has EnvEff sig m, Backend t) => t Target -> TopStmt -> m (Doc a)
+genTopFw proxy TDef {..} = do
+  cons <- mapM (genTypeCon proxy) (_typeCons _tdef)
+  return $ vsep cons
+  where
+    genTypeCon proxy TypeCon{..} = do
+      prefix <- getEnv currentModuleName
+      let fn = funcN proxy prefix _typeConName
+       in return $ vsep [ctrFunc fn]
+      where
+        genArgTypesInternal init =
+          encloseSep lparen rparen comma $
+            foldl' (\s e -> s ++ ["const object &"]) init _typeConArgs
+        ctrFunc fn =
+          "extern const std::function<object" <> genArgTypesInternal ["const cont &", "states", "effects"] <> ">" <+> fn <> semi
+
+genTopFw proxy EDef {..} = return emptyDoc
+genTopFw proxy FDef {..} = do
+  prefix <- getEnv currentModuleName
+  return $
+    vsep
+      [ "extern const std::function<object" <> genArgTypesInternal ["const cont &", "states", "effects"] <> ">"
+          <+> funcN proxy prefix (_funcName _fdef) <> semi
+      ]
+  where
+    genArgTypesInternal init = encloseSep lparen rparen comma $ 
+       init ++ (map (\a -> "const object &") $ (_funcArgs _fdef) ^.. traverse . _1)
+
+genTopFw proxy ImplFDef {..} = return emptyDoc
+
 instance Backend CppHeader where
   namePath proxy n = pretty n
 
@@ -400,6 +430,7 @@ instance Backend CppHeader where
     setEnv _moduleName currentModuleName
     pre <- genPrologue proxy
     imps <- mapM (genImport proxy) _imports
+    fws <- mapM (genTopFw proxy) _topStmts
     tops <- mapM (genTopStmt proxy) _topStmts
     pos <- genEpilogue proxy
     return $
@@ -415,6 +446,7 @@ instance Backend CppHeader where
                sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs
              ]
           ++ [pre]
+          ++ fws
           ++ tops
           ++ [pos]
           ++ ["}", sep $ map (\_ -> rbrace) modulePs]

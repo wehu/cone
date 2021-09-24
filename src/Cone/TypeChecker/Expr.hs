@@ -49,15 +49,15 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
   let fn = name2String fn'
   catchError
     ( do
-        getFuncType loc fn
-        return e
-    )
-    ( \(_ :: String) -> do
         let sel = uniqueFuncImplName fn t
         impls <- getEnv funcImpls
         case impls ^. at sel of
-          Nothing -> return e
+          Nothing -> throwError ""
           Just l -> return $ EAnnMeta l t loc
+    )
+    ( \(_ :: String) -> do
+        getFuncType loc fn
+        return e
     )
 selectFuncImpl e = return e
 
