@@ -114,10 +114,10 @@ namespace cone {
   }
 
   inline object ____case(const cont &k, states state, effects effs, const object &ce,
-                         const std::vector<object> &conds,
+                         const std::vector<cont> &conds,
                          const std::vector<object> &exprs) {
     for (unsigned i=0; i<conds.size(); ++i) {
-      const auto &p = py::cast<cont>(conds[i]);
+      const auto &p = conds[i];
       const auto &e = py::cast<funcWithCont>(exprs[i]);
       auto l = py::cast<py::list>(state);
       l.insert(0, py::dict());

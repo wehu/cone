@@ -333,12 +333,12 @@ instance Backend CppHeader where
     prefix <- getEnv currentModuleName
     return $
       parens $
-        "py::cpp_function([=](const object &____e) -> object {____add_var(____state, \"" <> funcN proxy prefix (name2String _pvar)
+        "[=](const object &____e) -> object {____add_var(____state, \"" <> funcN proxy prefix (name2String _pvar)
           <> "\""
-          <> comma <+> "____e); return py::bool_(true);})"
+          <> comma <+> "____e); return py::bool_(true);}"
   genPatternMatch proxy PExpr {..} = do
     p <- (\e -> callWithCps e "____identity_k") <$> genExpr proxy _pExpr
-    return $ parens $ "py::cpp_function([=](const object &____e) -> object { return py::bool_(" <+> p <+> ".attr(\"__eq__\")(____e));})"
+    return $ parens $ "[=](const object &____e) -> object { return py::bool_(" <+> p <+> ".attr(\"__eq__\")(____e));}"
   genPatternMatch proxy PApp {..} = do
     prefix <- getEnv currentModuleName
     bindings <-
@@ -351,7 +351,7 @@ instance Backend CppHeader where
                   <+> pythonTypeNamePath (name2String $ _evarName _pappName) <> ") && " <> b <> parens ee
         )
         [(arg, parens $ "____e.attr(\"f" <> pretty id <> "\")") | arg <- _pappArgs | id <- [0 :: Int ..]]
-    return $ parens $ "py::cpp_function([=](const object &____e) -> object { return py::bool_" <> encloseSep lparen rparen "&&" bindings <> ";})"
+    return $ parens $ "[=](const object &____e) -> object { return py::bool_" <> encloseSep lparen rparen "&&" bindings <> ";}"
 
   genPrologue _ = return emptyDoc
 
