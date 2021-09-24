@@ -36,35 +36,35 @@ coneUserDataDir = getAppUserDataDirectory "cone"
 checkAndCompileImport :: [FilePath] -> String -> String -> CompileEnv ()
 checkAndCompileImport paths i target = do
   userDataDir <- liftIO $ coneUserDataDir
-  let fn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) $ targetEx target)
-      pyTyFn = addExtension (dropExtension fn ++ "____t") (targetEx target)
-      cppHeaderFn = addExtension (dropExtension fn) ".h"
-      cppLibFn = addExtension (dropExtension fn ++ "____c") ".so"
-      d = takeDirectory fn
+  let pyFn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) $ targetEx target)
+      pyTyFn = addExtension (dropExtension pyFn ++ "____t") (targetEx target)
+      cppHeaderFn = addExtension (dropExtension pyFn) ".h"
+      cppLibFn = addExtension (dropExtension pyFn ++ "____c") ".so"
+      d = takeDirectory pyFn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
   liftIO $ createDirectoryIfMissing True d
-  found <- liftIO $ doesFileExist fn
+  found <- liftIO $ doesFileExist pyFn
   if found
     then do
-      fTS <- liftIO $ getModificationTime fn
+      fTS <- liftIO $ getModificationTime pyFn
       coneFTS <- liftIO $ getModificationTime coneFn
       if fTS < coneFTS
         then do
-          compileConeFile coneFn fn pyTyFn cppHeaderFn cppLibFn
+          compileConeFile coneFn pyFn pyTyFn cppHeaderFn cppLibFn
           addInitFile userDataDir i
         else return ()
     else do
-      compileConeFile coneFn fn pyTyFn cppHeaderFn cppLibFn
+      compileConeFile coneFn pyFn pyTyFn cppHeaderFn cppLibFn
       addInitFile userDataDir i
   where
-    compileConeFile coneFn fn pyTyFn cppHeaderFn cppLibFn = do
+    compileConeFile coneFn pyFn pyTyFn cppHeaderFn cppLibFn = do
       o <- compilePythonType paths coneFn target
       liftIO $ writeFile pyTyFn o 
       o <- compileToCppHeader paths coneFn target
       liftIO $ writeFile cppHeaderFn o
       compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
       o <- compilePythonWrapper paths coneFn target
-      liftIO $ writeFile fn o
+      liftIO $ writeFile pyFn o
     addInitFile userDataDir i = do
       let ds = splitOn "/" i
       foldM
