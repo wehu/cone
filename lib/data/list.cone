@@ -19,3 +19,12 @@ fun map<a, b>[e](l : [a], f : (a) -> e b) : e [b] {
     f(e)|map(r, f)
   }
 }
+
+fun length<a>(l : [a]) : i32 {
+  if l == [] {
+    0
+  } else {
+    val e|r = l
+    1 + length(r)
+  }
+}
