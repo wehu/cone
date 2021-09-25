@@ -12,6 +12,7 @@ module Cone.Parser.AST where
 import Control.Lens
 import Control.Lens.Plated
 import Data.Data
+import qualified Data.List as L
 import Data.Data.Lens (uniplate)
 import Data.Maybe
 import GHC.Generics (Generic)
@@ -106,19 +107,19 @@ parensList :: Pretty a => forall ann. [a] -> Doc ann
 parensList ls = encloseSep lparen rparen comma $ map pretty ls
 
 bracketsList :: Pretty a => forall ann. [a] -> Doc ann
-bracketsList ls = encloseSep lbracket rbracket comma $ map pretty ls
+bracketsList ls = if L.length ls == 0 then emptyDoc else encloseSep lbracket rbracket comma $ map pretty ls
 
 anglesList :: Pretty a => forall ann. [a] -> Doc ann
-anglesList ls = encloseSep langle rangle comma $ map pretty ls
+anglesList ls = if L.length ls == 0 then emptyDoc else encloseSep langle rangle comma $ map pretty ls
 
 parensList' :: [Doc ann] -> Doc ann
 parensList' ls = encloseSep lparen rparen comma ls
 
 bracketsList' :: [Doc ann] -> Doc ann
-bracketsList' ls = encloseSep lbracket rbracket comma ls
+bracketsList' ls = if L.length ls == 0 then emptyDoc else encloseSep lbracket rbracket comma ls
 
 anglesList' :: [Doc ann] -> Doc ann
-anglesList' ls = encloseSep langle rangle comma ls
+anglesList' ls = if L.length ls == 0 then emptyDoc else encloseSep langle rangle comma ls
 
 data Type
   = TPrim {_tprim :: PrimType, _tloc :: Location}
