@@ -711,4 +711,4 @@ checkType m env id =
       >>= checkEffIntfDefs
       >>= checkFuncDefs
       >>= checkImplFuncDefs
-      >>= (return . removeAnns)
+      -- >>= (return . removeAnns)
