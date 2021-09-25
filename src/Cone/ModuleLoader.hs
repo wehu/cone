@@ -52,7 +52,8 @@ loadModule' cache paths f' loaded = do
           let newLoaded = loaded & at f ?~ True
           handle <- liftIO $ openFile f ReadMode
           contents <- liftIO $ hGetContents handle
-          let result = parse f contents
+          relF <- liftIO $ makeRelativeToCurrentDirectory f
+          let result = parse relF contents
           case result of
             Left e -> throwError $ show e
             Right m -> do
