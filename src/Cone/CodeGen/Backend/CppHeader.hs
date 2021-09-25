@@ -319,9 +319,10 @@ instance Backend CppHeader where
                   ( \s (e, n) ->
                       parens $ callWithCps e ("[=](const object &" <> n <> ") -> object" <> braces ("return " <> s <> semi))
                   )
-                  ( "std::experimental::any_cast<std::function<object(const cont &, states, effects " <> sep argTypes
+                  ( "(____set_typeargs(____state, py::object(py::none())), " <>
+                    "std::experimental::any_cast<std::function<object(const cont &, states, effects " <> sep argTypes
                       <> ")>>(____f)"
-                      <> (encloseSep lparen rparen comma ("____k" : "____state" : "____effs" : argNames))
+                      <> (encloseSep lparen rparen comma ("____k" : "____state" : "____effs" : argNames)) <> ")"
                   )
                   [(e, n) | e <- (reverse $ f : args) | n <- (reverse $ "____f" : argNames)]
     where

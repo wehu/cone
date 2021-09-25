@@ -192,8 +192,9 @@ namespace cone {
 
   constexpr auto ____typeargs = "____typeargs";
 
-  inline void ____set_type_args(states state, const object &typeargs) {
+  inline object ____set_typeargs(states state, const object &typeargs) {
     state->back()[____typeargs] = typeargs;
+    return py::object(py::none());
   }
 
   namespace data {
