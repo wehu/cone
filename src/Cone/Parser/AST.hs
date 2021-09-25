@@ -231,7 +231,7 @@ instance Pretty Case where
       pretty _casePattern -- <+> "|"
       -- <+> pretty _caseGuard
         <+> "->"
-        <+> pretty _caseExpr
+        <+> align (braces $ line <> pretty _caseExpr <> line)
   pretty (BoundCase (B vs c) _) = bracketsList vs <+> pretty c
 
 type IndexVar = Name IndexExpr
@@ -324,7 +324,7 @@ instance Pretty Expr where
       (if _eletState then "var" else "val")
         <+> pretty _eletPattern
         <+> "="
-        <+> pretty _eletExpr
+        <+> align (pretty _eletExpr)
         ,pretty _eletBody]
   pretty EHandle {..} =
     parens $ vsep [
