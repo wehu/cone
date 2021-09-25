@@ -521,9 +521,9 @@ pat =
                     )
                       P.<?> "pattern application"
                   )
-            P.<|> P.try (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
+            P.<|> (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
             P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
-            P.<|> (A.PExpr <$> literal <*> getPos P.<?> "pattern literal")
+            P.<|> (A.PExpr <$> expr <*> getPos P.<?> "pattern expr")
         )
     <*> P.optionMaybe (pipe_ *> pat P.<?> "pattern list cons")
     <*> getPos
