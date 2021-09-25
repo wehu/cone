@@ -67,6 +67,71 @@ genTopFw proxy FDef {..} = do
 
 genTopFw proxy ImplFDef {..} = return emptyDoc
 
+evalType1 :: Type -> [Type] -> (Int -> Int) -> Type
+evalType1 t args f =
+  if all (not . isn't _TNum) args
+    then
+      let arg : rest = fmap _tnum args
+       in TNum (fmap f arg) (_tloc t)
+    else t
+
+evalType2 :: Type -> [Type] -> (Int -> Int -> Int) -> Type
+evalType2 t args f =
+  if all (not . isn't _TNum) args
+    then
+      let arg : rest = fmap _tnum args
+       in TNum (foldl' (\a b -> f <$> a <*> b) arg rest) (_tloc t)
+    else t
+
+inferType :: Type -> Type
+inferType a@TApp {..} =
+  let args = map inferType _tappArgs
+      t = a {_tappArgs = args}
+   in case name2String (_tvar _tappName) of
+    "core/prelude/neg" -> evalType1 t args (\e -> (-e))
+    "core/prelude/add" -> evalType2 t args (+)
+    "core/prelude/sub" -> evalType2 t args (-)
+    "core/prelude/mul" -> evalType2 t args (*)
+    "core/prelude/div" -> evalType2 t args div
+    "core/prelude/mod" -> evalType2 t args mod
+    "core/prelude/max" -> evalType2 t args max
+    "core/prelude/min" -> evalType2 t args min
+    _ -> t
+inferType a@TAnn {..} =
+  let t = inferType _tannType
+   in a {_tannType = t}
+inferType l@TList {..} =
+  let es = map inferType _tlist
+   in l {_tlist = es}
+inferType t = t
+
+genTypeInfo :: Type -> Doc a
+genTypeInfo t@TList {..} = "[]()" <> braces
+  (fst (foldl'
+    ( \(s, i) e ->
+        (s <>
+          "____t" <> brackets (pretty i) <> "=" <>
+           (case e of
+             TNum d _ -> case d of
+               Just d -> pretty d
+               Nothing -> "-1"
+             t -> genTypeInfo t) <> semi, 
+        i+1)
+    )
+    ("auto ____t =  py::tuple(" <> pretty (length _tlist) <> ");", 0::Int)
+    _tlist) <> "return ____t;") <> "()"
+genTypeInfo t = "py::none()"
+
+genTypeArgs :: [Type] -> Doc a
+genTypeArgs ts = "py::object([]()" <> braces
+  (fst (foldl'
+    ( \(s, i) t ->
+        (s <> "____t" <> brackets (pretty i) <> "=" <> genTypeInfo t <> semi, 
+        i+1)
+    )
+    ("auto ____t =  py::list(" <> pretty (length ts) <> ");", 0::Int)
+    (map inferType ts)) <> "return ____t;") <> "())"
+
 builtinFuncs = ["data/tensor/constants"]
 
 instance Backend CppHeader where
@@ -313,13 +378,14 @@ instance Backend CppHeader where
             args <- mapM (genExpr proxy) _eappArgs
             let argNames = map (\i -> "____arg" <> pretty i) [0 .. (length _eappArgs) - 1]
                 argTypes = map (\_ -> ", const object &") [0 .. (length _eappArgs) - 1]
+                typeArgs = genTypeArgs _eappTypeArgs
             return $
               exprToCps $
                 foldl'
                   ( \s (e, n) ->
                       parens $ callWithCps e ("[=](const object &" <> n <> ") -> object" <> braces ("return " <> s <> semi))
                   )
-                  ( "(____set_typeargs(____state, py::object(py::none())), " <>
+                  ( "(____set_typeargs(____state, " <> typeArgs <> "), " <>
                     "std::experimental::any_cast<std::function<object(const cont &, states, effects " <> sep argTypes
                       <> ")>>(____f)"
                       <> (encloseSep lparen rparen comma ("____k" : "____state" : "____effs" : argNames)) <> ")"

@@ -201,10 +201,8 @@ namespace cone {
     namespace tensor {
       const std::function<object(const cont &, states, effects, const object &)> cone__constants = 
       [=](const cont &k, states state, effects effs, const object &elem) {
-        auto typeargs = state->back()[____typeargs];
-        auto shape = py::tuple(2);
-        shape[0] = 2;
-        shape[1] = 2;
+        auto typeargs = ____to_py_object(state->back()[____typeargs]);
+        auto shape = py::cast<py::list>(typeargs)[0];
         return k(py::object(py::module_::import("numpy").attr("full")(shape, ____to_py_object(elem))));
       };
     }
