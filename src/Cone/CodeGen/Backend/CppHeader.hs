@@ -134,7 +134,9 @@ genTypeArgs ts = "py::object([]()" <> braces
 
 builtinFuncs = ["data/tensor/full", 
                 "data/tensor/matmul",
-                "data/tensor/convolve_full"]
+                "data/tensor/convolve_full",
+                "data/tensor/convolve_same",
+                "data/tensor/convolve_valid"]
 
 instance Backend CppHeader where
   namePath proxy n = pretty n
