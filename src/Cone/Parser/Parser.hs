@@ -433,6 +433,8 @@ tcTerm =
     P.<|> P.try (A.TCAccess <$> ident <*> brackets (P.sepBy1 indexExpr comma) <*> getPos P.<?> "tc access")
     P.<|> P.try (A.TCApp <$> ident <*> parens (P.sepBy1 tc comma) <*> getPos P.<?> "tc application")
     P.<|> (A.TCVar <$> ident <*> getPos P.<?> "tc variable")
+    P.<|> (lit <$> literal)
+  where lit (A.ELit s t loc) = A.TCLit s t loc
 
 tc :: Parser A.TCExpr
 tc =

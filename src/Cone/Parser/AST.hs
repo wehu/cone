@@ -252,12 +252,14 @@ data TCExpr
   = TCAccess {_tcVarName :: NamePath, _tcIndices :: [IndexExpr], _tcloc :: Location}
   | TCApp {_tcAppName :: NamePath, _tcAppArgs :: [TCExpr], _tcloc :: Location}
   | TCVar {_tcVarName :: NamePath, _tcloc :: Location}
+  | TCLit {_tcLit :: String, _tcLitType:: Type, _tcloc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty TCExpr where
   pretty TCAccess {..} = parens $ pretty _tcVarName <+> bracketsList _tcIndices
   pretty TCApp {..} = parens $ pretty _tcAppName <+> parensList _tcAppArgs
   pretty TCVar {..} = pretty _tcVarName
+  pretty TCLit {..} = pretty _tcLit <+> colon <+> pretty _tcLitType
 
 type EVar = Name Expr
 
