@@ -210,6 +210,11 @@ namespace cone {
       [=](const cont &k, states state, effects effs, const object &lhs, const object &rhs) {
         return k(py::object(py::module_::import("numpy").attr("matmul")(____to_py_object(lhs), ____to_py_object(rhs))));
       };
+
+      const std::function<object(const cont &, states, effects, const object &, const object &)> cone__convolve_full = 
+      [=](const cont &k, states state, effects effs, const object &lhs, const object &rhs) {
+        return k(py::object(py::module_::import("numpy").attr("convolve")(____to_py_object(lhs), ____to_py_object(rhs))));
+      };
     }
   }
 

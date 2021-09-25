@@ -3,3 +3,5 @@ module data/tensor
 fun full<shape: @[num], a>(c : a) : tensor<a, shape>
 
 fun matmul<n:num, k:num, m:num, a>(lhs : tensor<a, @[n, k]>, rhs : tensor<a, @[k, m]>) : tensor<a, @[n, m]>
+
+fun convolve_full<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[n+m-1]>

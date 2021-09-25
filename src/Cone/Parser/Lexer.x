@@ -116,11 +116,11 @@ tokens :-
   "handle"                              { \p s -> (p, Handle) }
   "with"                                { \p s -> (p, With) }
   "impl"                                { \p s -> (p, Impl) }
-  \-?@decimal 
-    | \-?0[oO] @octal
-    | \-?0[xX] @hexadecimal		            { \p s -> (p, LInt s) }
-  \-?@decimal \. @decimal @exponent?
-    | \-?@decimal @exponent	            	{ \p s -> (p, LFloat s) }
+  @decimal 
+    | 0[oO] @octal
+    | 0[xX] @hexadecimal		            { \p s -> (p, LInt s) }
+  @decimal \. @decimal @exponent?
+    | @decimal @exponent	            	{ \p s -> (p, LFloat s) }
   \' ($graphic # [\'\\] | " " | @escape) \'
 				                                { \p s -> (p, LChar s) }
   \" @string* \"	                    	{ \p s -> (p, LStr s) }

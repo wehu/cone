@@ -132,7 +132,9 @@ genTypeArgs ts = "py::object([]()" <> braces
     ("auto ____t =  py::list(" <> pretty (length ts) <> ");", 0::Int)
     (map inferType ts)) <> "return ____t;") <> "())"
 
-builtinFuncs = ["data/tensor/full", "data/tensor/matmul"]
+builtinFuncs = ["data/tensor/full", 
+                "data/tensor/matmul",
+                "data/tensor/convolve_full"]
 
 instance Backend CppHeader where
   namePath proxy n = pretty n
