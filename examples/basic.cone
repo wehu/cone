@@ -65,7 +65,10 @@ fun main() : io unit {
   print(handle nodet<i32> {
      handle state<i32> {
         test()
-        test()
+        while (a < 10) {
+          test()
+          a = a + 1
+        }
         test()
         test_branch(50)
      } with {
