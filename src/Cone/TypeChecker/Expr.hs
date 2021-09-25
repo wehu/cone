@@ -321,6 +321,9 @@ collectTCExprTypeInfo TCApp {..} = do
 collectTCExprTypeInfo TCVar {..} = do
   t <- getFuncType _tcloc _tcVarName
   return (t, [])
+collectTCExprTypeInfo TCLit {..} = do
+  t <- inferType _tcLitType
+  return (t, [])
 
 collectIndexVariables :: GenericSolverM (ST s) Rational -> TCExpr -> ST s (M.Map IndexVar Var)
 collectIndexVariables solver tc = do
