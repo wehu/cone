@@ -42,7 +42,7 @@ namespace cone {
 
   inline py::object ____to_py_object(const object &o) {
     if (o.type() != typeid(py::object)) {
-      throw ____cone_exception("cannot cast to py object");
+      throw ____cone_exception(std::string("cannot cast to py object, expected py object, but got ") + o.type().name());
     }
     return std::experimental::any_cast<py::object>(o);
   }
