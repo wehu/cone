@@ -151,7 +151,7 @@ instance Pretty Type where
         Just t -> pretty t
         Nothing -> "?"
     )
-  pretty TList {..} = pretty _tlist
+  pretty TList {..} = bracketsList _tlist
   pretty TFunc {..} = parens $ parensList _tfuncArgs <+> "->" <+> pretty _tfuncEff <+> pretty _tfuncResult
   pretty TApp {..} = parens $ pretty _tappName <+> parensList _tappArgs
   pretty TAnn {..} = parens $ pretty _tannType <+> colon <+> pretty _tannKind
@@ -184,7 +184,7 @@ data EffKind
 instance Pretty EffKind where
   pretty EKStar {..} = "*"
   pretty EKFunc {..} = parens $ parensList _ekfuncArgs <+> "->" <+> pretty _ekfuncResult
-  pretty EKList {..} = anglesList _ekList
+  pretty EKList {..} = bracketsList _ekList
 
 type EffVar = Name EffectType
 
@@ -237,7 +237,7 @@ instance Pretty Case where
       -- <+> pretty _caseGuard
         <+> "->"
         <+> pretty _caseExpr
-  pretty (BoundCase (B _ c) _) = pretty c
+  pretty (BoundCase (B vs c) _) = bracketsList vs <+> pretty c
 
 type IndexVar = Name IndexExpr
 
@@ -259,7 +259,7 @@ instance Pretty TCExpr where
   pretty TCAccess {..} = parens $ pretty _tcVarName <+> bracketsList _tcIndices
   pretty TCApp {..} = parens $ pretty _tcAppName <+> parensList _tcAppArgs
   pretty TCVar {..} = pretty _tcVarName
-  pretty TCLit {..} = pretty _tcLit <+> colon <+> pretty _tcLitType
+  pretty TCLit {..} = parens $ pretty _tcLit <+> colon <+> pretty _tcLitType
 
 type EVar = Name Expr
 
@@ -313,29 +313,30 @@ instance Pretty Expr where
   pretty EVar {..} = pretty _evarName
   pretty ELit {..} = pretty _lit
   pretty ELam {..} =
-    parens $
+    parens $ vsep [
       "fn" <+> anglesList _elamBoundVars <+> bracesList _elamBoundEffVars
         <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _elamArgs)
         <+> colon
         <+> pretty _elamEffType
-        <+> pretty _elamResultType
-        <+> pretty _elamExpr
-  pretty EWhile {..} = parens $ "while" <+> pretty _ewhileCond <+> braces (pretty _ewhileBody)
-  pretty ECase {..} = parens $ "case" <+> pretty _ecaseExpr <+> bracesList _ecaseBody
+        <+> pretty _elamResultType,
+        braces $ line <> (indent 4 $ pretty _elamExpr) <> line]
+  pretty EWhile {..} = parens $ vsep ["while" <+> pretty _ewhileCond, braces (line <> (indent 4 $ pretty _ewhileBody) <> line)]
+  pretty ECase {..} = parens $ vsep ["case" <+> pretty _ecaseExpr,
+                                     braces $ line <> (indent 4 $ vsep $ map (braces . indent 4 . pretty) _ecaseBody) <> line]
   pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs
   pretty ELet {..} =
-    parens $
+    parens $ vsep [
       (if _eletState then "var" else "val")
         <+> pretty _eletPattern
         <+> "="
         <+> pretty _eletExpr
-        <+> braces (pretty _eletBody)
+        ,pretty _eletBody]
   pretty EHandle {..} =
-    parens $
-      "handle" <+> pretty _ehandleEff <+> braces (pretty _ehandleScope)
-        <+> "with"
-        <+> bracesList _ehandleBindings
-  pretty ESeq {..} = vsep $ fmap pretty _eseq
+    parens $ vsep [
+      "handle" <+> pretty _ehandleEff,
+       braces (line <> (indent 4 $ pretty _ehandleScope) <> line), 
+       "with" <+> (braces $ line <> (vsep $ map (indent 4 . pretty) _ehandleBindings) <> line)]
+  pretty ESeq {..} = vsep $ map pretty _eseq
   pretty ETC {..} = pretty _etc
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType
   pretty EAnnMeta {..} = parens $ pretty _eannMetaExpr <+> colon <+> pretty _eannMetaType
@@ -363,11 +364,11 @@ data TypeDef
     )
 
 instance Pretty TypeDef where
-  pretty TypeDef {..} =
+  pretty TypeDef {..} = vsep [
     "type" <+> pretty _typeName
       <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _typeArgs)
-      <+> bracesList _typeCons
-  pretty (BoundTypeDef (B _ t) _) = pretty t
+      , braces $ line <> (vsep $ map (indent 4 . pretty) _typeCons) <> line]
+  pretty (BoundTypeDef (B vs t) _) = anglesList vs <+> pretty t
 
 data TypeCon = TypeCon
   { _typeConName :: String,
@@ -409,8 +410,8 @@ instance Pretty FuncIntf where
       <+> colon
       <+> pretty _intfEffectType
       <+> pretty _intfResultType
-  pretty (BoundFuncIntf (B _ f) _) = pretty f
-  pretty (BoundEffFuncIntf (B _ f) _) = pretty f
+  pretty (BoundFuncIntf (B vs f) _) = anglesList vs <+> pretty f
+  pretty (BoundEffFuncIntf (B vs f) _) = bracketsList vs <+> pretty f
 
 data EffectDef
   = EffectDef
@@ -432,11 +433,11 @@ data EffectDef
     )
 
 instance Pretty EffectDef where
-  pretty EffectDef {..} =
+  pretty EffectDef {..} = vsep [
     "effect" <+> pretty _effectName
       <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _effectArgs)
-      <+> bracesList _effectIntfs
-  pretty (BoundEffectDef (B _ e) _) = pretty e
+      ,braces $ line <> (vsep $ map (indent 4 . pretty) _effectIntfs) <> line]
+  pretty (BoundEffectDef (B vs e) _) = bracesList vs <+> pretty e
 
 data ImportStmt = ImportStmt
   { _importPath :: NamePath,
@@ -478,15 +479,15 @@ data FuncDef
     )
 
 instance Pretty FuncDef where
-  pretty FuncDef {..} =
+  pretty FuncDef {..} = vsep [
     "fun" <+> pretty _funcName <+> anglesList _funcBoundVars <+> bracketsList _funcBoundEffVars
       <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _funcArgs)
       <+> colon
       <+> pretty _funcEffectType
       <+> pretty _funcResultType
-      <+> bracesList [_funcExpr]
-  pretty (BoundFuncDef (B _ f) _) = pretty f
-  pretty (BoundEffFuncDef (B _ f) _) = pretty f
+      , braces $ line <> (indent 4 $ pretty _funcExpr) <> line]
+  pretty (BoundFuncDef (B vs f) _) = anglesList vs <+> pretty f
+  pretty (BoundEffFuncDef (B vs f) _) = bracesList vs <+> pretty f
 
 data ImplFuncDef = ImplFuncDef {_implFunDef :: FuncDef}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
