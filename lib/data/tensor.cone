@@ -1,5 +1,5 @@
 module data/tensor
 
-fun constant<a, shape: @[num]>(c : a) : tensor<a, shape>
+fun constants<shape: @[num], a>(c : a) : tensor<a, shape>
 
-fun matmul<a, n:num, k:num, m:num>(lhs : tensor<a, @[n, k]>, rhs : tensor<a, @[k, m]>) : tensor<a, @[n, m]>
+fun matmul<n:num, k:num, m:num, a>(lhs : tensor<a, @[n, k]>, rhs : tensor<a, @[k, m]>) : tensor<a, @[n, m]>

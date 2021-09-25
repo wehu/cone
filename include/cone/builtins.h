@@ -190,4 +190,23 @@ namespace cone {
       return k(std::experimental::any_cast<cont>(s->back()[____resumed_k])(a));
     };
 
+  constexpr auto ____typeargs = "____typeargs";
+
+  inline void ____set_type_args(states state, const object &typeargs) {
+    state->back()[____typeargs] = typeargs;
+  }
+
+  namespace data {
+    namespace tensor {
+      const std::function<object(const cont &, states, effects, const object &)> cone__constants = 
+      [=](const cont &k, states state, effects effs, const object &elem) {
+        auto typeargs = state->back()[____typeargs];
+        auto shape = py::tuple(2);
+        shape[0] = 2;
+        shape[1] = 2;
+        return k(py::object(py::module_::import("numpy").attr("full")(shape, ____to_py_object(elem))));
+      };
+    }
+  }
+
 }

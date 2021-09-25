@@ -67,6 +67,8 @@ genTopFw proxy FDef {..} = do
 
 genTopFw proxy ImplFDef {..} = return emptyDoc
 
+builtinFuncs = ["data/tensor/constants"]
+
 instance Backend CppHeader where
   namePath proxy n = pretty n
 
@@ -161,17 +163,19 @@ instance Backend CppHeader where
         es <- genExpr proxy e
         return $ "return" <+> parens ("std::experimental::any_cast<funcWithCont>(" <> es <> ")" <> parens "____k, ____make_empty_state(), ____effs") <> semi
       Nothing -> return $ "throw ____cone_exception(\"" <> pretty _funcName <> " is not implemented\");"
+    let fn = funcN proxy prefix _funcName
     return $
       vsep
-        [ "const std::function<object" <> genArgTypesInternal ["const cont &", "states", "effects"] <> ">"
-            <+> funcN proxy prefix _funcName
+        [ if _funcName `elem` builtinFuncs then emptyDoc
+          else "const std::function<object" <> genArgTypesInternal ["const cont &", "states", "effects"] <> ">"
+            <+> fn
             <> "= [=]"
             <> genArgsInternal ["const cont &____k", "states ____state", "effects ____effs"] prefix
             <> " -> object "
             <> braces body
             <> semi,
-          "inline py::object" <+> funcN proxy prefix _funcName <> "_w____" <> genWrapperArgTypes [] prefix
-            <> braces ("return ____to_py_object(" <> funcN proxy prefix _funcName <> genWrapperArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"] prefix <> ")" <> semi)
+          "inline py::object" <+> fn <> "_w____" <> genWrapperArgTypes [] prefix
+            <> braces ("return ____to_py_object(" <> fn <> genWrapperArgs ["____identity_k", "____make_empty_state()", "____make_empty_effs()"] prefix <> ")" <> semi)
         ]
     where
       genWrapperArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
