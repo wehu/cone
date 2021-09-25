@@ -38,11 +38,13 @@ $charesc = [abfnrtv\\\"\'\&]
 @escape  = \\ ($charesc | @ascii | @decimal | o @octal | x @hexadecimal)
 @gap     = \\ $whitechar+ \\
 @string  = $graphic # [\"\\] | " " | @escape | @gap
+@comment = . | $white | \n
 
 tokens :-
   ($white # [\n])+				;
   \\\n                    ;
   "//"[^\n]*              ;
+  "/*" @comment* "*/"     ;
   [\; \n]+                              { \p s -> (p, Semi) }
   module                                { \p s -> (p, Module) }
   import                                { \p s -> (p, Import) }

@@ -1,6 +1,10 @@
 module examples/basic
 
 import data/list as l
+/* 
+ ssfsfd
+ // sfdf
+  */
 
 type A {
    A(i32)
