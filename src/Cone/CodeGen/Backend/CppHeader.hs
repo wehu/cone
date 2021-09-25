@@ -513,6 +513,7 @@ instance Backend CppHeader where
         [ "#pragma once",
           "#include <iostream>",
           "#include \"cone/builtins.h\"",
+          "#include \"cone/tensor.h\"",
           "#include \"core/prelude.h\""
         ]
           ++ imps
