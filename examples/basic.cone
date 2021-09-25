@@ -67,7 +67,7 @@ fun main() : io unit {
   val t0 = t/full<@[4, 4+2]>(0.1)
   val t1 = t/full<@[6, 2]>(1.0)
 
-  print(t/matmul(t0, t1) + t/full<@[4, 4]>(0.9))
+  print(t/matmul(t0, t1) + t/full<@[4, 2]>(0.9))
 
   // [t2[i, j] += t0[i+3*r+1, j+s*2] * t1[r, s] * a + 2] : tensor<i32, @[3, 4+2]>
 
