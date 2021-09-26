@@ -6,7 +6,7 @@ fun sin<a>(a : a) : a
 impl fun sin(a : f32) : f32 {
   inline_python<f32>(      \
 "from math import sin\n" + \
-"____result = sin(a)"   \
+"____result = sin(a)"      \
   )
 }
 
@@ -16,6 +16,6 @@ fun cos<a>(a : a) : a
 impl fun cos(a : f32) : f32 {
   inline_python<f32>(      \
 "from math import cos\n" + \
-"____result = cos(a)"   \
+"____result = cos(a)"      \
   )
 }
