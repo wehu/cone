@@ -26,19 +26,19 @@ type CompileEnv a = ExceptT String IO a
 
 coneUserDataDir = getAppUserDataDirectory "cone"
 
-checkTimeStamp :: FilePath -> FilePath -> CompileEnv Bool
-checkTimeStamp f dep = do
+checkTimeStamp :: FilePath -> [FilePath] -> CompileEnv Bool
+checkTimeStamp f deps = do
   found <- liftIO $ doesFileExist f
   if found
   then do
     fTS <- liftIO $ getModificationTime f
-    depTS <- liftIO $ getModificationTime dep
-    return $ fTS < depTS
+    depsTS <- liftIO $ mapM getModificationTime deps
+    return $ any (fTS <) depsTS
   else return True
 
-checkTimeStampAndDo :: FilePath -> FilePath -> CompileEnv () -> CompileEnv ()
-checkTimeStampAndDo f dep action = do
-  doit <- checkTimeStamp f dep
+checkTimeStampAndDo :: FilePath -> [FilePath] -> CompileEnv () -> CompileEnv ()
+checkTimeStampAndDo f deps action = do
+  doit <- checkTimeStamp f deps
   if doit then action
   else return ()
 
@@ -54,23 +54,23 @@ checkAndCompile paths i target = do
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
   liftIO $ createDirectoryIfMissing True d
 
-  checkTimeStampAndDo pyTyFn coneFn $ do
+  checkTimeStampAndDo pyTyFn [coneFn] $ do
     o <- compilePythonType paths coneFn target
     liftIO $ writeFile pyTyFn o
   
-  checkTimeStampAndDo cppHeaderFn coneFn $ do
+  checkTimeStampAndDo cppHeaderFn [coneFn] $ do
     o <- compileToCppHeader paths coneFn target
     liftIO $ writeFile cppHeaderFn o
     
-  checkTimeStampAndDo cppLibFn coneFn $ do
+  checkTimeStampAndDo cppLibFn [coneFn] $ do
     compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
     return ()
   
-  checkTimeStampAndDo pyFn coneFn $ do
+  checkTimeStampAndDo pyFn [coneFn] $ do
     o <- compilePythonWrapper paths coneFn target
     liftIO $ writeFile pyFn o
 
-  checkTimeStampAndDo pyFn coneFn $ do
+  checkTimeStampAndDo pyFn [coneFn] $ do
     let ds = splitOn "/" i
     foldM
       ( \s d -> do
