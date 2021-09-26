@@ -63,10 +63,6 @@ type pair<a, b> {
   pair(a, b)
 }
 
-// tensor types
-
-type tensor<t, shape:@[num]>
-
 // python effect
 
 effect python {

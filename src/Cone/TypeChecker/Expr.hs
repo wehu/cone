@@ -6,7 +6,6 @@
 
 module Cone.TypeChecker.Expr where
 
-import Conduit
 import Cone.Parser.AST
 import Cone.TypeChecker.Env
 import Cone.TypeChecker.Type
@@ -28,9 +27,6 @@ import qualified Data.Map as M
 import Data.Maybe
 import Debug.Trace
 import GHC.Real
-import ToySolver.Arith.BoundsInference
-import ToySolver.Arith.Simplex
-import qualified ToySolver.Data.LA as LA
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 

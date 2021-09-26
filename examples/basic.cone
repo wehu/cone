@@ -69,8 +69,6 @@ fun main() : io unit {
 
   print(t/matmul(t0, t1) + t/full<@[4, 2]>(0.9))
 
-  // [t2[i, j] += t0[i+3*r+1, j+s*2] * t1[r, s] * a + 2] : tensor<i32, @[3, 4+2]>
-
   print(handle nodet<i32> {
      handle state<i32> {
         test()

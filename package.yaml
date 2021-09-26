@@ -40,8 +40,6 @@ dependencies:
 - process
 - pureMD5
 - utf8-string
-- toysolver
-- conduit
 - data-default-class
 - data-interval
 - extended-reals

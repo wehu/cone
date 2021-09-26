@@ -800,46 +800,6 @@ funcDefType f =
       bft = bindTypeEffVar bes ft
    in bft
 
--- | Extract a tensor type's shape
-extractTensorShape :: (Has EnvEff sig m) => Type -> m [Int]
-extractTensorShape t@TList {..} =
-  foldM
-    ( \s e -> do
-        case e of
-          TNum d _ -> case d of
-            Just d -> return $ s ++ [d]
-            Nothing -> throwError $ "expected a static shape, but got " ++ ppr e ++ ppr (e ^. tloc)
-          _ -> throwError $ "expected a number type, but got " ++ ppr e ++ ppr (e ^. tloc)
-    )
-    []
-    _tlist
-extractTensorShape t = throwError $ "expected a pair type, but got " ++ ppr t ++ ppr (_tloc t)
-
--- | Extract a tensor type's information
-extractTensorInfo :: (Has EnvEff sig m) => Type -> m (Type, [Int])
-extractTensorInfo t@TApp {..} =
-  if name2String (_tvar _tappName) /= "core/prelude/tensor"
-    then throwError $ "expected a tensor type, but got " ++ ppr t ++ ppr _tloc
-    else
-      if L.length _tappArgs /= 2
-        then throwError $ "expected 2 arguments, but got " ++ ppr t ++ ppr _tloc
-        else
-          let et : shape : [] = _tappArgs
-           in do
-                s <- extractTensorShape shape
-                return (et, s)
-extractTensorInfo t = throwError $ "expected a tensor type, but got " ++ ppr t ++ ppr (_tloc t)
-
--- | Construct a number list type based on pair types
-toTensorShape :: (Has EnvEff sig m) => Location -> [Int] -> m Type
-toTensorShape loc l = return $ TList [TNum (Just e) loc | e <- l] loc
-
--- | Construct a tensor type based on number list type
-toTensorType :: (Has EnvEff sig m) => Type -> [Int] -> m Type
-toTensorType t shape = do
-  shape' <- toTensorShape (_tloc t) shape
-  return $ TApp (TVar (s2n "core/prelude/tensor") (_tloc t)) [t, shape'] (_tloc t)
-
 -- | Test if a type is a subtype of another type
 isSubType :: (Has EnvEff sig m) => Type -> Type -> m Bool
 isSubType s t = do

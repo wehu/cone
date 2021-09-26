@@ -83,7 +83,6 @@ library
   build-depends:
       array
     , base >=4.7 && <5
-    , conduit
     , containers
     , data-default-class
     , data-interval
@@ -99,7 +98,6 @@ library
     , process
     , pureMD5
     , split
-    , toysolver
     , unbound-generics
     , utf8-string
   default-language: Haskell2010
@@ -114,7 +112,6 @@ executable cone-exe
   build-depends:
       array
     , base >=4.7 && <5
-    , conduit
     , cone
     , containers
     , data-default-class
@@ -131,7 +128,6 @@ executable cone-exe
     , process
     , pureMD5
     , split
-    , toysolver
     , unbound-generics
     , utf8-string
   default-language: Haskell2010
@@ -149,7 +145,6 @@ test-suite cone-test
   build-depends:
       array
     , base >=4.7 && <5
-    , conduit
     , cone
     , containers
     , data-default-class
@@ -169,7 +164,6 @@ test-suite cone-test
     , pureMD5
     , split
     , text
-    , toysolver
     , unbound-generics
     , utf8-string
   default-language: Haskell2010
