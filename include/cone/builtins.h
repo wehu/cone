@@ -203,7 +203,7 @@ namespace cone {
       auto scope = py::dict();
       for (auto it=s->begin(); it!=s->end(); ++it) {
         for (auto &p : *it) {
-          scope[py::str(p.first)] = ____to_py_object(p.second);
+          scope[py::str(p.first.substr(6))] = ____to_py_object(p.second);
         }
       }
       scope["____result"] = py::none();
