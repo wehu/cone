@@ -501,8 +501,8 @@ getNamePath m n =
         Just prefix -> prefix ++ "/" ++ n'
         Nothing -> n
 
-filterOutAliasImport :: Module -> String -> [String] -> [String]
-filterOutAliasImport m n ns =
+filterOutAliasImports :: Module -> String -> [String] -> [String]
+filterOutAliasImports m n ns =
   let aliasImports = L.nub $ 
         L.foldl'
           ( \s i ->
@@ -533,7 +533,7 @@ addPrefixForTypes m' = do
     foldM
       ( \s v -> do
           let vn' = getNamePath m (name2String v)
-          found <- (filterOutAliasImport m vn') <$>
+          found <- (filterOutAliasImports m vn') <$>
             (foldM
               ( \f p -> do
                   let vn = p ++ vn'
@@ -556,7 +556,7 @@ addPrefixForTypes m' = do
     foldM
       ( \s v -> do
           let vn' = getNamePath m (name2String v)
-          found <- (filterOutAliasImport m vn') <$>
+          found <- (filterOutAliasImports m vn') <$>
             (foldM
               ( \f p -> do
                   let vn = p ++ vn'
@@ -679,7 +679,7 @@ addPrefixForExprs m' = do
     foldM
       ( \s v -> do
           let vn' = getNamePath m (name2String v)
-          found <- (filterOutAliasImport m vn') <$>
+          found <- (filterOutAliasImports m vn') <$>
             (foldM
               ( \f p -> do
                   let vn = p ++ vn'
