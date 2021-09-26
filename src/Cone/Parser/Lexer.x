@@ -39,6 +39,7 @@ $charesc = [abfnrtv\\\"\'\&]
 @gap     = \\ $whitechar+ \\
 @string  = $graphic # [\"\\] | " " | @escape | @gap
 @comment = . | $white | \n
+@multiline_string = . | $white | \n
 
 tokens :-
   ($white # [\n])+				;
@@ -123,6 +124,7 @@ tokens :-
     | @decimal @exponent	            	{ \p s -> (p, LFloat s) }
   \' ($graphic # [\'\\] | " " | @escape) \'
 				                                { \p s -> (p, LChar s) }
+  R\"\( @multiline_string* \)\"       { \p s -> (p, LStr s) }
   \" @string* \"	                    	{ \p s -> (p, LStr s) }
   [$alpha \_] [$alpha $digit \_]*       { \p s -> (p, Ident s) }
 
