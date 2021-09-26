@@ -14,7 +14,7 @@ runCode exe args input fn =
     userDataDir <- coneUserDataDir
     path <- lookupEnv "PYTHONPATH"
     case path of
-     Just path -> setEnv "PYTHONPATH" $ (userDataDir </> "python") ++ ";" ++ path
-     Nothing -> setEnv "PYTHONPATH" $ (userDataDir </> "python")
+      Just path -> setEnv "PYTHONPATH" $ (userDataDir </> "python") ++ ";" ++ path
+      Nothing -> setEnv "PYTHONPATH" $ (userDataDir </> "python")
     readProcess exe (args ++ ["-m", join $ intersperse "." $ splitOn "/" $ dropExtension fn]) ""
   else return ""
