@@ -23,6 +23,7 @@ data-files:
     lib/core/state.cone
     lib/data/list.cone
     lib/data/map.cone
+    lib/data/set.cone
     lib/data/tensor.cone
     include/cone/builtins.h
     include/cone/data/map.h
