@@ -26,9 +26,9 @@ type CompileEnv a = ExceptT String IO a
 
 coneUserDataDir = getAppUserDataDirectory "cone"
 
--- | Check and compile imports
-checkAndCompileImport :: [FilePath] -> String -> String -> CompileEnv ()
-checkAndCompileImport paths i target = do
+-- | Check and compile
+checkAndCompile :: [FilePath] -> String -> String -> CompileEnv ()
+checkAndCompile paths i target = do
   userDataDir <- liftIO $ coneUserDataDir
   let pyFn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) "py")
       pyTyFn = addExtension (dropExtension pyFn ++ "____t") "py" 
@@ -131,6 +131,6 @@ compile paths f target = do
         Right doc -> return $ show doc
     "python" -> do
       forM_ (nub $ reverse $ (dropExtension f) : imports) $ \p ->
-        checkAndCompileImport paths p target
+        checkAndCompile paths p target
       return ""
     _ -> throwError $ "unknown target: " ++ target
