@@ -6,6 +6,8 @@ fun empty<k, v>() : map<k, v>
 
 fun first<k, v>(m : map<k, v>) : k
 
+fun has<k, v>(m : map<k, v>, k : k) : bool
+
 fun get<k, v>(m : map<k, v>, k : k) : v
 
 fun set<k, v>(m : map<k, v>, k : k, v : k) : map<k, v>

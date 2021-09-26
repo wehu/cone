@@ -14,6 +14,11 @@ namespace cone {
       [=](const cont_t &k, stack_t stack, effects_t effs, const object_t &m) {
         return k(py::reinterpret_borrow<py::object>(*____to_py_object(m).begin()));
       };
+
+      const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &, const object_t &)> cone__has = 
+      [=](const cont_t &k, stack_t stack, effects_t effs, const object_t &m, const object_t &key) {
+        return k(py::object(____to_py_object(m).attr("__contains__")(____to_py_object(key))));
+      };
   
       const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &, const object_t &)> cone__get = 
       [=](const cont_t &k, stack_t stack, effects_t effs, const object_t &m, const object_t &key) {

@@ -12,7 +12,7 @@ fun empty<a>() : set<a> {
 
 fun has<v>(s : set<v>, v : v) : bool {
   val set(data) = s
-  m/get(data, v)
+  m/has(data, v)
 }
 
 fun insert<v>(s : set<v>, v : v) : set<v> {

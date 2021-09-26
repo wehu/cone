@@ -140,6 +140,7 @@ builtinFuncs = ["core/prelude/inline_python",
                 "data/tensor/convolve_valid",
                 "data/map/empty",
                 "data/map/first",
+                "data/map/has",
                 "data/map/get",
                 "data/map/set",
                 "data/map/del"]
