@@ -43,18 +43,25 @@ typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr 
 selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
 selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
   let fn = name2String fn'
-  catchError
-    ( do
-        let sel = uniqueFuncImplName fn t
-        impls <- getEnv funcImpls
-        case impls ^. at sel of
-          Nothing -> throwError ""
-          Just l -> return $ EAnnMeta l t loc
-    )
-    ( \(_ :: String) -> do
-        getFuncType loc fn
-        return e
-    )
+  let sel = uniqueFuncImplName fn t
+  impls <- getFuncImpls fn
+  impls <- findSuperImpls impls >>= findBestImpls
+  if L.length impls == 1
+  then return $ EAnnMeta (impls !! 0 ^. _1) t loc
+  else if L.length impls > 1
+       then throwError $ "ambiguous implementations for " ++ fn ++ ppr impls ++ ppr loc
+       else do
+         getFuncType loc fn
+         return e
+  where 
+    findSuperImpls impls =
+      foldM (\f (e, it) -> do
+        is <- isEqOrSubType t it
+        if is then return $ f ++ [(e, it)]
+        else return f)
+        []
+        impls
+    findBestImpls impls = return impls
 selectFuncImpl e = return e
 
 -- | Infer expression's type

@@ -16,4 +16,9 @@ fun convolve_same<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>
 
 fun convolve_valid<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[max<n,m> - min<n,m> + 1]>
 
-impl fun sin<a, shape:@[num]>(a : tensor<a, shape>) : tensor<a, shape> 
+impl fun sin<shape:@[num]>(a : tensor<f32, shape>) : tensor<f32, shape> {
+  inline_python<tensor<f32, shape>>(      \
+"from numpy import sin\n" +             \
+"____result = sin(a)"                   \
+  )
+}

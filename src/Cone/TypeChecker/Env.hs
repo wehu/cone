@@ -34,7 +34,7 @@ type EffIntfs = M.Map String [String]
 
 type ExprTypes = M.Map String Type
 
-type FuncImpls = M.Map String Expr
+type FuncImpls = M.Map String [(Expr, Type)]
 
 type TypeBinds = M.Map String Type
 
@@ -88,6 +88,16 @@ setEnv :: (Has EnvEff sig m) => b -> Setter Env Env a b -> m ()
 setEnv v l = do
   env <- get @Env
   put $ set l v env
+
+addFuncImpl :: (Has EnvEff sig m) => String -> Expr -> Type -> m ()
+addFuncImpl n e t = do
+  impls <- getEnv $ funcImpls . at n
+  forMOf _Nothing impls $ \_ -> setEnv (Just []) $ funcImpls . at n
+  impls <- fromJust <$> (getEnv $ funcImpls . at n)
+  setEnv (Just $ impls ++ [(e, t)]) $ funcImpls . at n
+
+getFuncImpls :: (Has EnvEff sig m) => String -> m [(Expr, Type)]
+getFuncImpls n = getEnv $ funcImpls . at n . non []
 
 -- | Run under a local scope
 underScope :: (Has EnvEff sig m) => m a -> m a

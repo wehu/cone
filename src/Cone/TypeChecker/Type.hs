@@ -956,11 +956,7 @@ setFuncImpl prefix m impl = do
           ++ " vs "
           ++ ppr ft
           ++ ppr (_tloc ft)
-  impls <- getEnv $ funcImpls
   let sel = uniqueFuncImplName fn t
       i = EVar (s2n sel) loc
-      oldImpl = impls ^. at sel
-  forMOf _Just oldImpl $ \it -> do
-    throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
-  setEnv (Just i) $ funcImpls . at sel
+  addFuncImpl intfFn i t
   return impl {_implFunDef = funcD {_funcName = fn}}

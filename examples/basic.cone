@@ -82,6 +82,8 @@ fun main() : io unit {
 
   print(t/matmul(t0, t1) + t/full<@[4, 2]>(0.9))
 
+  print(sin(0.2))
+
   print(handle nodet<i32> {
      handle state<i32> {
         test()
