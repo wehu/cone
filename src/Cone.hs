@@ -20,12 +20,12 @@ import System.Info
 import Paths_cone (version)
 import Data.Version (showVersion)
 
-data Opts = Opts {inputFiles :: [String], target :: String, dump :: Bool}
+data BuildOpts = BuildOpts {inputFiles :: [String], target :: String}
 
--- | Option definitions
-coneOpts :: Parser Opts
-coneOpts =
-  Opts <$> some (argument str (metavar "FILES..."))
+data DumpOpts = DumpOpts
+
+buildOpts =
+  BuildOpts <$> some (argument str (metavar "FILES..."))
     <*> strOption
       ( long "target"
           <> short 't'
@@ -33,21 +33,24 @@ coneOpts =
           <> value "python"
           <> help "Target for codegen"
       )
-    <*> switch
-      ( long "dump"
-          <> short 'd'
-          <> help "Dump code"
-      )
+
+coneOpts :: Parser (IO ())
+coneOpts = subparser (
+  (command "build" (info (build <$> buildOpts) 
+    ( fullDesc <> progDesc "Compile cone files"
+               <> header "Cone - ")))
+  <> (command "run" (info (buildAndRun <$> buildOpts)
+    ( fullDesc <> progDesc "Compile and run cone files"
+               <> header "Cone - ")))
+  <> (command "dump" (info (dump <$> buildOpts)
+    ( fullDesc <> progDesc "Dump cone files"
+               <> header "Cone - "))))
 
 coneMain :: IO ()
-coneMain = play =<< execParser opts
-  where
-    opts =
-      info
-        (coneOpts <**> helper)
-        ( fullDesc <> progDesc "Compile cone files"
-            <> header "Cone - "
-        )
+coneMain = join $ execParser (info coneOpts
+             ( fullDesc <> progDesc "Compile/Run/Release cone files"
+              <> header "Cone - "
+             ))
 
 coneSearchPaths :: String -> IO [FilePath]
 coneSearchPaths f = do
@@ -69,15 +72,29 @@ coneSearchPaths f = do
   let paths = (takeDirectory f): currentPath : [libPath]
   return paths
 
--- | Run the compilier and executor
-play :: Opts -> IO ()
-play Opts {..} = do
+build :: BuildOpts -> IO ()
+build BuildOpts {..} = do
   forM_ inputFiles $ \f -> do
     paths <- coneSearchPaths f
     res <- runExceptT $ compile paths f target
     case res of
       Left err -> putStrLn err
-      Right code ->
-        if dump
-          then putStrLn code
-          else runCode target [] code f >>= putStrLn
+      Right code -> return ()
+
+buildAndRun :: BuildOpts -> IO ()
+buildAndRun BuildOpts {..} = do
+  forM_ inputFiles $ \f -> do
+    paths <- coneSearchPaths f
+    res <- runExceptT $ compile paths f target
+    case res of
+      Left err -> putStrLn err
+      Right code -> runCode target [] code f >>= putStrLn
+
+dump :: BuildOpts -> IO ()
+dump BuildOpts {..} = do
+  forM_ inputFiles $ \f -> do
+    paths <- coneSearchPaths f
+    res <- runExceptT $ compile paths f target
+    case res of
+      Left err -> putStrLn err
+      Right code -> putStrLn code
