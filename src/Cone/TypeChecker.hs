@@ -308,12 +308,12 @@ checkFuncDefs :: (Has EnvEff sig m) => Module -> m Module
 checkFuncDefs m = mapMOf (topStmts . traverse . _FDef) checkFuncDef m
 
 -- | Init a function implementation
-initImplFuncDef :: (Has EnvEff sig m) => String -> ImplFuncDef -> m ImplFuncDef
-initImplFuncDef prefix f = setFuncImpl prefix f
+initImplFuncDef :: (Has EnvEff sig m) => Module -> String -> ImplFuncDef -> m ImplFuncDef
+initImplFuncDef m prefix f = setFuncImpl prefix m f
 
 -- | Init function implementations
 initImplFuncDefs :: (Has EnvEff sig m) => Module -> m Module
-initImplFuncDefs m = mapMOf (topStmts . traverse . _ImplFDef) (initImplFuncDef $ m ^. moduleName) m
+initImplFuncDefs m = mapMOf (topStmts . traverse . _ImplFDef) (initImplFuncDef m $ m ^. moduleName) m
 
 -- | Check a function implementation
 checkImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ImplFuncDef
@@ -482,37 +482,6 @@ removeTypeBindings m =
         { _caseExpr = removeBindingsForExpr _caseExpr,
           _casePattern = removeBindingsForPattern _casePattern
         }
-
--- | Get real name if there is alias prefix
-getNamePath :: Module -> String -> String
-getNamePath m n =
-  let aliases =
-        L.foldl'
-          ( \s i ->
-              case i ^. importAlias of
-                Just alias -> s & at alias ?~ i ^. importPath
-                Nothing -> s
-          )
-          M.empty
-          $ m ^. imports
-      n' = last $ splitOn "/" n
-      ns = join $ L.intersperse "/" $ L.init $ splitOn "/" n
-   in case aliases ^. at ns of
-        Just prefix -> prefix ++ "/" ++ n'
-        Nothing -> n
-
-filterOutAliasImports :: Module -> String -> [String] -> [String]
-filterOutAliasImports m n ns =
-  let aliasImports = L.nub $ 
-        L.foldl'
-          ( \s i ->
-              case i ^. importAlias of
-                Just alias -> s ++ [(i ^. importPath) ++ "/" ++ n]
-                Nothing -> s
-          )
-          []
-          $ m ^. imports
-   in (L.nub ns) L.\\ aliasImports
 
 -- | Add module path for all types
 addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module

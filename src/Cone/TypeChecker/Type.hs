@@ -18,6 +18,7 @@ import Data.Digest.Pure.MD5
 import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Maybe
+import Data.List.Split
 import Debug.Trace
 import GHC.Stack
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
@@ -866,6 +867,37 @@ getFuncType pos n = do
         Just v -> inferType v
         Nothing -> throwError $ "cannot find variable: " ++ n ++ ppr pos
 
+-- | Get real name if there is alias prefix
+getNamePath :: Module -> String -> String
+getNamePath m n =
+  let aliases =
+        L.foldl'
+          ( \s i ->
+              case i ^. importAlias of
+                Just alias -> s & at alias ?~ i ^. importPath
+                Nothing -> s
+          )
+          M.empty
+          $ m ^. imports
+      n' = last $ splitOn "/" n
+      ns = join $ L.intersperse "/" $ L.init $ splitOn "/" n
+   in case aliases ^. at ns of
+        Just prefix -> prefix ++ "/" ++ n'
+        Nothing -> n
+
+filterOutAliasImports :: Module -> String -> [String] -> [String]
+filterOutAliasImports m n ns =
+  let aliasImports = L.nub $ 
+        L.foldl'
+          ( \s i ->
+              case i ^. importAlias of
+                Just alias -> s ++ [(i ^. importPath) ++ "/" ++ n]
+                Nothing -> s
+          )
+          []
+          $ m ^. imports
+   in (L.nub ns) L.\\ aliasImports
+
 -- | Func implementation selector
 funcImplSelector :: Type -> String
 -- TODO md5 is not good, better just replace the special chars
@@ -874,9 +906,37 @@ funcImplSelector t = show $ md5 $ BLU.fromString $ ppr t
 uniqueFuncImplName :: String -> Type -> String
 uniqueFuncImplName fn t = fn ++ (funcImplSelector t)
 
+searchFunc :: (Has EnvEff sig m) => Module -> String -> m String
+searchFunc m fn = do
+  let prefixes =
+        L.nub $
+          "" :
+          (m ^. moduleName ++ "/") :
+          "core/prelude/" :
+          (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
+      loc = m ^. moduleLoc
+      n = getNamePath m fn
+  fs <- getEnv funcs
+  found <- (filterOutAliasImports m n) <$>
+            (foldM
+              ( \f p -> do
+                  let ffn = p ++ n
+                  case fs ^. at ffn of
+                    Just _ -> return $ f ++ [ffn]
+                    Nothing -> return f
+              )
+              []
+              prefixes)
+  if found == []
+    then throwError $ "no function definition found for : " ++ fn
+    else
+      if L.length found == 1
+        then return $ found !! 0
+        else throwError $ "found more than one variable for " ++ fn ++ ppr found
+
 -- | Set a function implementation
-setFuncImpl :: (Has EnvEff sig m) => String -> ImplFuncDef -> m ImplFuncDef
-setFuncImpl prefix impl = do
+setFuncImpl :: (Has EnvEff sig m) => String -> Module -> ImplFuncDef -> m ImplFuncDef
+setFuncImpl prefix m impl = do
   let funcD = impl ^. implFunDef
       fn = prefix ++ "/" ++ funcD ^. funcName
       loc = funcD ^. funcLoc
@@ -884,26 +944,24 @@ setFuncImpl prefix impl = do
         bindTypeEffVar (funcD ^. funcBoundEffVars) $
           bindTypeVar (funcD ^. funcBoundVars) $
             TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
-  ft <- getEnv $ funcs . at fn
-  case ft of
-    Nothing -> throwError $ "cannot find general function definition: " ++ fn ++ ppr loc
-    Just ft -> do
-      isSubT <- isSubType t ft
-      if isSubT
-        then return ()
-        else
-          throwError $
-            "implementation type is not subtype of general type: "
-              ++ ppr t
-              ++ ppr loc
-              ++ " vs "
-              ++ ppr ft
-              ++ ppr (_tloc ft)
-      impls <- getEnv $ funcImpls
-      let sel = uniqueFuncImplName fn t
-          i = EVar (s2n sel) loc
-          oldImpl = impls ^. at sel
-      forMOf _Just oldImpl $ \it -> do
-        throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
-      setEnv (Just i) $ funcImpls . at sel
+  intfFn <- searchFunc m $ funcD ^. funcName
+  ft <- fromJust <$> (getEnv $ funcs . at intfFn)
+  isSubT <- isSubType t ft
+  if isSubT
+    then return ()
+    else
+      throwError $
+        "implementation type is not subtype of general type: "
+          ++ ppr t
+          ++ ppr loc
+          ++ " vs "
+          ++ ppr ft
+          ++ ppr (_tloc ft)
+  impls <- getEnv $ funcImpls
+  let sel = uniqueFuncImplName fn t
+      i = EVar (s2n sel) loc
+      oldImpl = impls ^. at sel
+  forMOf _Just oldImpl $ \it -> do
+    throwError $ "implementation conflict: " ++ ppr it ++ " vs " ++ ppr t ++ ppr (_tloc t)
+  setEnv (Just i) $ funcImpls . at sel
   return impl {_implFunDef = funcD {_funcName = fn}}
