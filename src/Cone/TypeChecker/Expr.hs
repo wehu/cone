@@ -272,111 +272,8 @@ inferExprType h@EHandle {..} = underScope $ do
 
   t <- inferType resT
   return $ annotateExpr h {_ehandleScope = scopeE, _ehandleBindings = bs} t
-inferExprType etc@(ETC e@TCApp {..} _) = do
-  let v : e : [] = _tcAppArgs
-  if _tcAppName /= "=" && _tcAppName /= "+="
-    && _tcAppName /= "-="
-    && _tcAppName /= "*="
-    && _tcAppName /= "/="
-    && _tcAppName /= "%="
-    then throwError $ "unsupported tc assign operator " ++ _tcAppName ++ ppr _tcloc
-    else do
-      t <- inferTCExprType v e >>= inferType
-      return $ annotateExpr etc t
 inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
-
--- | Collect the tensor informations
-collectTCExprTypeInfo :: (Has EnvEff sig m) => TCExpr -> m (Type, [(IndexExpr, Int)])
-collectTCExprTypeInfo TCAccess {..} = do
-  v <- getFuncType _tcloc _tcVarName
-  (t, shape) <- extractTensorInfo v
-  if L.length _tcIndices /= L.length shape
-    then
-      throwError $
-        "type shape rank mismatch: " ++ ppr shape
-          ++ " vs "
-          ++ ppr _tcIndices
-          ++ ppr _tcloc
-    else return (t, [(n, d) | n <- _tcIndices | d <- shape])
-collectTCExprTypeInfo TCApp {..} = do
-  args' <- mapM collectTCExprTypeInfo _tcAppArgs
-  let arg : args = args'
-  case _tcAppName of
-    an
-      | an == "+"
-          || an == "-"
-          || an == "*"
-          || an == "/"
-          || an == "%" ->
-        foldM
-          ( \(t, is) (et, eis) -> do
-              if aeq t et
-                then return (et, is ++ eis)
-                else throwError $ "+ expected same types, but got " ++ ppr t ++ " vs " ++ ppr et ++ ppr _tcloc
-          )
-          arg
-          args
-    _ -> throwError $ "unsupported tc function: " ++ _tcAppName ++ ppr _tcloc
-collectTCExprTypeInfo TCVar {..} = do
-  t <- getFuncType _tcloc _tcVarName
-  return (t, [])
-collectTCExprTypeInfo TCLit {..} = do
-  t <- inferType _tcLitType
-  return (t, [])
-
-collectIndexVariables :: GenericSolverM (ST s) Rational -> TCExpr -> ST s (M.Map IndexVar Var)
-collectIndexVariables solver tc = do
-  let vars = (tc ^.. fv) :: [IndexVar]
-  M.fromList <$> mapM (\v -> (v,) <$> if name2String v == "*" then return LA.unitVar else newVar solver) vars
-
-addIndexAtom :: M.Map IndexVar Var -> IndexExpr -> Int -> [Atom Rational]
-addIndexAtom checkVarBindings indexE upper =
-  let ts = map (\(i, x) -> (fromIntegral i, fromJust $ checkVarBindings ^. at x)) $ indexE ^. indexExpr
-   in [LA.fromTerms ts .<=. LA.constant (fromIntegral upper - 1), LA.fromTerms ts .>=. LA.constant 0]
-
-inferTCExprIndices :: (Has EnvEff sig m) => [IndexVar] -> TCExpr -> m (Type, [(IndexVar, Int)])
-inferTCExprIndices is tc = do
-  (t, indices) <- collectTCExprTypeInfo tc
-  let resolveIndex =
-        do
-          solver <- newSolver
-          checkVarBindings <- collectIndexVariables solver tc
-          let atoms =
-                join (map (\(i, u) -> addIndexAtom checkVarBindings i u) indices)
-                  ++ map (\i -> LA.var (fromJust $ checkVarBindings ^. at i) .>=. LA.constant 0) is
-              initBounds = IM.fromList [(i, I.whole) | i <- M.elems checkVarBindings]
-              iVars = IS.fromList $ M.elems checkVarBindings
-              bounds = inferBounds initBounds atoms iVars 1000
-          return [(i, fromJust $ IM.lookup (fromJust $ checkVarBindings ^. at i) bounds) | i <- is]
-      ds = runST resolveIndex
-  forM_ ds $ \(i, d) ->
-    if E.isInfinite $ I.lowerBound d
-      then throwError $ "lowerbound is infinite: " ++ ppr i
-      else
-        if E.isInfinite $ I.upperBound d
-          then throwError $ "upperbound is infinite: " ++ ppr i
-          else return ()
-  (t,) <$> mapM (\(i, d) -> return (i, fromInteger $ floor $ 1 + I.width d)) ds
-
--- | Infer a tensor comprehensive expression's type
-inferTCExprType :: (Has EnvEff sig m) => TCExpr -> TCExpr -> m Type
-inferTCExprType a@TCAccess {..} e = do
-  let outputIndices = map (\i -> (i ^. indexExpr) !! 0 ^. _2) _tcIndices
-  (t, dims) <- inferTCExprIndices outputIndices e
-  shape <-
-    foldM
-      ( \s i -> do
-          case (M.fromList dims) ^. at i of
-            Just d -> return $ s ++ [d]
-            Nothing -> throwError $ "cannot index var: " ++ ppr i ++ ppr _tcloc
-      )
-      []
-      outputIndices
-  tt <- toTensorType t shape
-  setFuncType _tcVarName tt
-  return tt
-inferTCExprType t0 t1 = throwError $ "unsupported tc expr: " ++ ppr t0 ++ " and " ++ ppr t1 ++ ppr (_tcloc t0)
 
 -- | Infer a pattern's type
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
@@ -522,7 +419,6 @@ inferExprEffType EHandle {..} = underScope $ do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   -- remove the handled effects
   removeEff effs _ehandleEff
-inferExprEffType ETC {..} = return $ EffList [] _eloc
 
 -- | Setup for effect inferface type
 setupEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()

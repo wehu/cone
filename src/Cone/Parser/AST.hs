@@ -234,28 +234,6 @@ instance Pretty Case where
         <+> align (braces $ line <> pretty _caseExpr <> line)
   pretty (BoundCase (B vs c) _) = bracketsList vs <+> pretty c
 
-type IndexVar = Name IndexExpr
-
-data IndexExpr 
-  = IndexExpr {_indexExpr :: [(Int, IndexVar)], _indexLoc :: Location}
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-instance Pretty IndexExpr where
-  pretty IndexExpr {..} = parensList _indexExpr
-
-data TCExpr
-  = TCAccess {_tcVarName :: NamePath, _tcIndices :: [IndexExpr], _tcloc :: Location}
-  | TCApp {_tcAppName :: NamePath, _tcAppArgs :: [TCExpr], _tcloc :: Location}
-  | TCVar {_tcVarName :: NamePath, _tcloc :: Location}
-  | TCLit {_tcLit :: String, _tcLitType:: Type, _tcloc :: Location}
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-instance Pretty TCExpr where
-  pretty TCAccess {..} = parens $ pretty _tcVarName <+> bracketsList _tcIndices
-  pretty TCApp {..} = parens $ pretty _tcAppName <+> parensList _tcAppArgs
-  pretty TCVar {..} = pretty _tcVarName
-  pretty TCLit {..} = parens $ pretty _tcLit <+> colon <+> pretty _tcLitType
-
 type EVar = Name Expr
 
 data Expr
@@ -287,7 +265,6 @@ data Expr
         _eloc :: Location
       }
   | ESeq {_eseq :: [Expr], _eloc :: Location}
-  | ETC {_etc :: TCExpr, _eloc :: Location}
   | EAnn {_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
   | EAnnMeta {_eannMetaExpr :: Expr, _eannMetaType :: Type, _eloc :: Location}
   | EBoundTypeVars {_eboundTypeVars :: Bind [TVar] Expr, _eloc :: Location}
@@ -332,7 +309,6 @@ instance Pretty Expr where
        braces (line <> (indent 4 $ pretty _ehandleScope) <> line), 
        "with" <+> (braces $ line <> (vsep $ map (indent 4 . pretty) _ehandleBindings) <> line)]
   pretty ESeq {..} = vsep $ map pretty _eseq
-  pretty ETC {..} = pretty _etc
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType
   pretty EAnnMeta {..} = parens $ pretty _eannMetaExpr <+> colon <+> pretty _eannMetaType
   pretty (EBoundTypeVars (B bs e) _) = anglesList bs <+> pretty e
@@ -677,40 +653,6 @@ instance Subst Expr Pattern
 makeLenses ''Pattern
 
 makePrisms ''Pattern
-
--------------------------------
-
-instance Plated IndexExpr where
-  plate = uniplate
-
-instance Alpha IndexExpr
-
-instance Subst Type IndexExpr
-
-instance Subst EffectType IndexExpr
-
-instance Subst Expr IndexExpr
-
-makeLenses ''IndexExpr
-
-makePrisms ''IndexExpr
-
--------------------------------
-
-instance Plated TCExpr where
-  plate = uniplate
-
-instance Alpha TCExpr
-
-instance Subst Type TCExpr
-
-instance Subst EffectType TCExpr
-
-instance Subst Expr TCExpr
-
-makeLenses ''TCExpr
-
-makePrisms ''TCExpr
 
 -------------------------------
 

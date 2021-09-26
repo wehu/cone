@@ -374,90 +374,6 @@ exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr) <*> getP
 
 funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
 
-indexExpr :: Parser A.IndexExpr
-indexExpr =
-  A.IndexExpr
-    <$> ( P.sepBy1
-            ( P.try ((,) <$> (read <$> literalInt) <* star <*> (s2n <$> ident))
-                P.<|> P.try ((\a b -> (b, a)) <$> (s2n <$> ident) <* star <*> (read <$> literalInt))
-                P.<|> P.try ((,) <$> return 1 <*> (s2n <$> ident))
-                P.<|> ((,) <$> (read <$> literalInt) <*> return (s2n "*"))
-            )
-            add
-        )
-    <*> getPos
-    P.<?> "index expr"
-
-tcExprTable =
-  [ [tcExprPrefix sub "-"],
-    [ tcExprBinary star "*" PE.AssocLeft,
-      tcExprBinary div_ "/" PE.AssocLeft,
-      tcExprBinary mod_ "%" PE.AssocLeft
-    ],
-    [ tcExprBinary add "+" PE.AssocLeft,
-      tcExprBinary sub "-" PE.AssocLeft
-    ],
-    [ tcExprBinary less "<" PE.AssocLeft,
-      tcExprBinary greater ">" PE.AssocLeft,
-      tcExprBinary le "<=" PE.AssocLeft,
-      tcExprBinary ge ">=" PE.AssocLeft
-    ],
-    [ tcExprBinary eq "==" PE.AssocLeft,
-      tcExprBinary ne "!=" PE.AssocLeft
-    ],
-    [tcExprPrefix not_ "!"],
-    [ tcExprBinary and_ "&&" PE.AssocLeft,
-      tcExprBinary or_ "||" PE.AssocLeft
-    ]
-  ]
-
-tcExprPrefix op name = PE.Prefix $ do
-  op
-  pos <- getPos
-  return $ \i -> A.TCApp name [i] pos
-
-tcExprBinary op name assoc =
-  PE.Infix
-    ( do
-        op
-        pos <- getPos
-        return $
-          \a b ->
-            let args = a : b : []
-             in A.TCApp name args pos
-    )
-    assoc
-
-tcTerm =
-  parens tc
-    P.<|> P.try (A.TCAccess <$> ident <*> brackets (P.sepBy1 indexExpr comma) <*> getPos P.<?> "tc access")
-    P.<|> P.try (A.TCApp <$> ident <*> parens (P.sepBy1 tc comma) <*> getPos P.<?> "tc application")
-    P.<|> (A.TCVar <$> ident <*> getPos P.<?> "tc variable")
-    P.<|> (lit <$> literal)
-  where lit (A.ELit s t loc) = A.TCLit s t loc
-
-tc :: Parser A.TCExpr
-tc =
-  brackets $
-    f
-      <$> ( A.TCAccess <$> ident
-              <*> brackets
-                (P.sepBy1 (A.IndexExpr <$> ((\n -> [(1 :: Int, s2n n)]) <$> ident) <*> getPos) comma)
-              <*> getPos
-              P.<?> "tc access"
-          )
-      <*> ( assign_ *> return "="
-              P.<|> addAssign *> return "+="
-              P.<|> subAssign *> return "-="
-              P.<|> mulAssign *> return "*="
-              P.<|> divAssign *> return "/="
-              P.<|> modAssign *> return "%="
-          )
-      <*> PE.buildExpressionParser tcExprTable tcTerm
-      <*> getPos
-  where
-    f a op e pos = A.TCApp op [a, e] pos
-
 exprTable =
   [ [exprPrefix sub "____negative"],
     [exprBinary pipe_ "cons" PE.AssocLeft],
@@ -565,7 +481,6 @@ term =
                                 P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 handle $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
                                 P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
                                 P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "var or assign expression")
-                                P.<|> P.try (A.ETC <$> tc P.<?> "tc expression")
                                 P.<|> (elist <$> brackets (P.sepBy expr comma) P.<?> "list expression")
                                 P.<|> (etuple <$> parens (P.sepBy1 expr comma) P.<?> "tuple expression")
                             )
