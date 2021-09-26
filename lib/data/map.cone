@@ -18,8 +18,8 @@ fun map<k, a, b>[e](m : map<k, a>, f : (a) -> e b) : e map<k, b> {
   } else {
     val k = first(m)
     val v = get(m, k)
-    val m2 = del(m, k)
-    val v2 = f(v)
-    set(map(m2, f), k, v2)
+    val m_new = del(m, k)
+    val v_new = f(v)
+    set(map(m_new, f), k, v_new)
   }
 }
