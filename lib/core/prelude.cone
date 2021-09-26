@@ -74,7 +74,6 @@ effect io {
   fun print<a>(a) : unit
 }
 
-
 // nodet effect
 effect nodet<a> {
   fun branch(a) : bool

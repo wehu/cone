@@ -71,6 +71,11 @@ fun main() : io unit {
   print(m/set(m,3,3))
   print(m/get(m,3))
 
+  print(m/map(m/set(m,3,3), fn (a:i32) : io i32 { 
+    print(a)
+    a+2 
+  }))
+
   val t0 = t/full<@[4, 4+2]>(0.1)
   val t1 = t/full<@[6, 2]>(1.0)
 
