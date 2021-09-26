@@ -943,8 +943,8 @@ setFuncImpl prefix m impl = do
         bindTypeEffVar (funcD ^. funcBoundEffVars) $
           bindTypeVar (funcD ^. funcBoundVars) $
             TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
-  intfFn <- searchFunc m (funcD ^. funcName) loc
-  ft <- fromJust <$> (getEnv $ funcs . at intfFn)
+  intfn <- searchFunc m (funcD ^. funcName) loc
+  ft <- fromJust <$> (getEnv $ funcs . at intfn)
   isSubT <- isSubType t ft
   if isSubT
     then return ()
@@ -958,5 +958,5 @@ setFuncImpl prefix m impl = do
           ++ ppr (_tloc ft)
   let sel = uniqueFuncImplName fn t
       i = EVar (s2n sel) loc
-  addFuncImpl intfFn i t
+  addFuncImpl intfn i t
   return impl {_implFunDef = funcD {_funcName = fn}}

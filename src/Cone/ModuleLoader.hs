@@ -7,10 +7,11 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.Except
 import Data.IORef
-import Data.List (elemIndex)
+import Data.List (elemIndex, nubBy)
 import Data.List.Split
 import qualified Data.Map as M
 import Data.Map.Merge.Strict
+import Unbound.Generics.LocallyNameless
 import System.Directory
 import System.FilePath
 import System.IO
@@ -119,13 +120,14 @@ importModules cache paths m loaded = do
             let g1 = mapMaybeMissing $ \k v -> Just v
                 g2 = mapMaybeMissing $ \k v -> Just v
                 f = zipWithMaybeMatched $ \k v1 v2 -> Just v1
+                mergeImpls = zipWithMaybeMatched $ \k v1 v2 -> Just $ nubBy aeq $ v1 ++ v2
             return
               ( oldEnv
                   { _types = (merge g1 g2 f (oldEnv ^. types) (env ^. types)),
                     _effs = (merge g1 g2 f (oldEnv ^. effs) (env ^. effs)),
                     _effIntfs = (merge g1 g2 f (oldEnv ^. effIntfs) (env ^. effIntfs)),
                     _funcs = (merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs)),
-                    _funcImpls = (merge g1 g2 f (oldEnv ^. funcImpls) (env ^. funcImpls))
+                    _funcImpls = (merge g1 g2 mergeImpls (oldEnv ^. funcImpls) (env ^. funcImpls))
                   },
                 id,
                 m,

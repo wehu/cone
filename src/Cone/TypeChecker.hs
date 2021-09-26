@@ -674,10 +674,11 @@ initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id =
   run . runError . (runState env) . runFresh id $
     do
-      (return $ convertFuncImplToFuncs m)
+      (return m)
       >>= initTypeDefs
       >>= initEffTypeDefs
       >>= addPrefixForTypes
+      >>= (\m -> return $ convertFuncImplToFuncs m)
       >>= initTypeConDefs
       >>= initEffIntfDefs
       >>= initFuncDefs
