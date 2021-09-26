@@ -3,6 +3,7 @@ module examples/basic
 import data/list as l
 import data/tensor as t
 import data/map as m
+import core/state
 /* 
  ssfsfd
  // sfdf

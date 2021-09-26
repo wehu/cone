@@ -20,6 +20,7 @@ extra-source-files:
     ChangeLog.md
 data-files:
     lib/core/prelude.cone
+    lib/core/state.cone
     lib/data/list.cone
     lib/data/map.cone
     lib/data/tensor.cone

@@ -4,8 +4,22 @@ type map<k, v>
 
 fun empty<k, v>() : map<k, v>
 
-fun get<k, v>(m : map<k, v>, k : k) : map<k, v>
+fun first<k, v>(m : map<k, v>) : k
+
+fun get<k, v>(m : map<k, v>, k : k) : v
 
 fun set<k, v>(m : map<k, v>, k : k, v : k) : map<k, v>
 
 fun del<k, v>(m : map<k, v>, k : k) : map<k, v>
+
+fun map<k, a, b>[e](m : map<k, a>, f : (a) -> e b) : e map<k, b> {
+  if m == empty<k, a>() {
+    empty<k, b>()
+  } else {
+    val k = first(m)
+    val v = get(m, k)
+    val m2 = del(m, k)
+    val v2 = f(v)
+    set(map(m2, f), k, v2)
+  }
+}
