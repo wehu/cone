@@ -25,7 +25,7 @@ data BuildOpts = BuildOpts {inputFiles :: [String], target :: String}
 data DumpOpts = DumpOpts
 
 buildOpts =
-  BuildOpts <$> some (argument str (metavar "FILES..."))
+  BuildOpts <$> some (argument str (metavar "MODULES..."))
     <*> strOption
       ( long "target"
           <> short 't'
@@ -37,10 +37,10 @@ buildOpts =
 coneOpts :: Parser (IO ())
 coneOpts = subparser (
   (command "build" (info (build <$> buildOpts) 
-    ( fullDesc <> progDesc "Compile cone files"
+    ( fullDesc <> progDesc "Compile cone modules"
                <> header "Cone - ")))
   <> (command "run" (info (buildAndRun <$> buildOpts)
-    ( fullDesc <> progDesc "Compile and run cone files"
+    ( fullDesc <> progDesc "Compile and run cone modules"
                <> header "Cone - ")))
   <> (command "dump" (info (dump <$> buildOpts)
     ( fullDesc <> progDesc "Dump cone files"
@@ -48,7 +48,7 @@ coneOpts = subparser (
 
 coneMain :: IO ()
 coneMain = join $ execParser (info coneOpts
-             ( fullDesc <> progDesc "Compile/Run/Release cone files"
+             ( fullDesc <> progDesc "Compile/Run/Release cone modules"
               <> header "Cone - "
              ))
 

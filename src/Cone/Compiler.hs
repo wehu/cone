@@ -135,7 +135,8 @@ compileCppToLib paths outputFile input = do
 
 -- | Compile a file
 compile :: [FilePath] -> FilePath -> String -> CompileEnv String
-compile paths f target = do
+compile paths f' target = do
+  let f = addExtension f' coneEx
   case target of
     "cone" -> do
       (env, id, m, imports) <- loadModule paths f
