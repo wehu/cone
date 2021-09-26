@@ -6,7 +6,6 @@ import Cone.CodeGen.Backend
 import Cone.CodeGen.Backend.Cone
 import Cone.CodeGen.Backend.CppHeader
 import Cone.CodeGen.Backend.CppSource
-import Cone.CodeGen.Backend.Python
 import Cone.CodeGen.Backend.PythonType
 import Cone.CodeGen.Backend.PythonWrapper
 import Cone.ModuleLoader
