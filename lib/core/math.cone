@@ -1,0 +1,23 @@
+module core/math
+
+// sin
+fun sin<a>(a : a) : a
+
+impl fun sin(a : f32) : f32 {
+  val arg0 = a
+  inline_python<f32>(      \
+"from math import sin\n" + \
+"____result = sin(arg0)"   \
+  )
+}
+
+// cos
+fun cos<a>(a : a) : a
+
+impl fun cos(a : f32) : f32 {
+  val arg0 = a
+  inline_python<f32>(      \
+"from math import cos\n" + \
+"____result = cos(arg0)"   \
+  )
+}
