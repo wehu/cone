@@ -71,7 +71,7 @@ fun main() : io unit {
   print(m/set(m,3,3))
   print(m/get(m,3))
 
-  print(m/map(m/set(m,3,3), fn (a:i32) : io i32 { 
+  print(m/mapv(m/set(m,3,3), fn (a:i32) : io i32 { 
     print(a)
     a+2 
   }))

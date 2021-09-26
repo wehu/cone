@@ -12,7 +12,7 @@ fun set<k, v>(m : map<k, v>, k : k, v : k) : map<k, v>
 
 fun del<k, v>(m : map<k, v>, k : k) : map<k, v>
 
-fun map<k, a, b>[e](m : map<k, a>, f : (a) -> e b) : e map<k, b> {
+fun mapv<k, a, b>[e](m : map<k, a>, f : (a) -> e b) : e map<k, b> {
   if m == empty() {
     empty()
   } else {
@@ -20,6 +20,30 @@ fun map<k, a, b>[e](m : map<k, a>, f : (a) -> e b) : e map<k, b> {
     val v = get(m, k)
     val m_new = del(m, k)
     val v_new = f(v)
-    set(map(m_new, f), k, v_new)
+    set(mapv(m_new, f), k, v_new)
+  }
+}
+
+fun mapk<a, b, v>[e](m : map<a, v>, f : (a) -> e b) : e map<b, v> {
+  if m == empty() {
+    empty()
+  } else {
+    val k = first(m)
+    val v = get(m, k)
+    val m_new = del(m, k)
+    val k_new = f(k)
+    set(mapk(m_new, f), k_new, v)
+  }
+}
+
+fun mapkv<ka, kb, va, vb>[e](m : map<ka, va>, f : (ka, va) -> e (kb, vb)) : e map<kb, vb> {
+  if m == empty() {
+    empty()
+  } else {
+    val k = first(m)
+    val v = get(m, k)
+    val m_new = del(m, k)
+    val (k_new, v_new) = f(k, v)
+    set(mapkv(m_new, f), k_new, v_new)
   }
 }
