@@ -65,6 +65,11 @@ fun main() : io unit {
      a + 1
   })
 
+  val m = m/empty<i32, i32>()
+
+  print(m/set(m,3,3))
+  print(m/get(m,3))
+
   val t0 = t/full<@[4, 4+2]>(0.1)
   val t1 = t/full<@[6, 2]>(1.0)
 
