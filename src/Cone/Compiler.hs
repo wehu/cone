@@ -43,12 +43,13 @@ checkTimeStampAndDo f deps action = do
   else return ()
 
 -- | Check and compile
-checkAndCompile :: [FilePath] -> String -> String -> CompileEnv ()
-checkAndCompile paths i target = do
+checkAndCompile :: [FilePath] -> String -> [String] -> String -> CompileEnv ()
+checkAndCompile paths i deps target = do
   userDataDir <- liftIO $ coneUserDataDir
   let pyFn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) "py")
       pyTyFn = addExtension (dropExtension pyFn ++ "____t") "py" 
       cppHeaderFn = addExtension (dropExtension pyFn) "h"
+      cppDeps = map (\i -> userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) "h")) deps
       cppLibFn = addExtension (dropExtension pyFn ++ "____c") "so"
       d = takeDirectory pyFn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
@@ -62,7 +63,7 @@ checkAndCompile paths i target = do
     o <- compileToCppHeader paths coneFn target
     liftIO $ writeFile cppHeaderFn o
     
-  checkTimeStampAndDo cppLibFn [coneFn] $ do
+  checkTimeStampAndDo cppLibFn (coneFn:cppDeps) $ do
     compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
     return ()
   
@@ -141,7 +142,10 @@ compile paths f target = do
         Left err -> throwError err
         Right doc -> return $ show doc
     "python" -> do
-      forM_ (nub $ reverse $ (dropExtension f) : imports) $ \p ->
-        checkAndCompile paths p target
+      foldM (\deps p -> do
+          checkAndCompile paths p deps target
+          return (deps ++ [p]))
+        []
+        (nub $ reverse $ (dropExtension f) : imports)
       return ""
     _ -> throwError $ "unknown target: " ++ target
