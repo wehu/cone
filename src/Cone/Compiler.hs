@@ -26,6 +26,22 @@ type CompileEnv a = ExceptT String IO a
 
 coneUserDataDir = getAppUserDataDirectory "cone"
 
+checkTimeStamp :: FilePath -> FilePath -> CompileEnv Bool
+checkTimeStamp f dep = do
+  found <- liftIO $ doesFileExist f
+  if found
+  then do
+    fTS <- liftIO $ getModificationTime f
+    depTS <- liftIO $ getModificationTime dep
+    return $ fTS < depTS
+  else return True
+
+checkTimeStampAndDo :: FilePath -> FilePath -> CompileEnv () -> CompileEnv ()
+checkTimeStampAndDo f dep action = do
+  doit <- checkTimeStamp f dep
+  if doit then action
+  else return ()
+
 -- | Check and compile
 checkAndCompile :: [FilePath] -> String -> String -> CompileEnv ()
 checkAndCompile paths i target = do
@@ -37,39 +53,34 @@ checkAndCompile paths i target = do
       d = takeDirectory pyFn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
   liftIO $ createDirectoryIfMissing True d
-  found <- liftIO $ doesFileExist pyFn
-  if found
-    then do
-      pyFTS <- liftIO $ getModificationTime pyFn
-      coneFTS <- liftIO $ getModificationTime coneFn
-      if pyFTS < coneFTS
-        then do
-          compileConeFile coneFn pyFn pyTyFn cppHeaderFn cppLibFn
-          addInitFile userDataDir i
-        else return ()
-    else do
-      compileConeFile coneFn pyFn pyTyFn cppHeaderFn cppLibFn
-      addInitFile userDataDir i
-  where
-    compileConeFile coneFn pyFn pyTyFn cppHeaderFn cppLibFn = do
-      o <- compilePythonType paths coneFn target
-      liftIO $ writeFile pyTyFn o
-      o <- compileToCppHeader paths coneFn target
-      liftIO $ writeFile cppHeaderFn o
-      compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
-      o <- compilePythonWrapper paths coneFn target
-      liftIO $ writeFile pyFn o
-    addInitFile userDataDir i = do
-      let ds = splitOn "/" i
-      foldM
-        ( \s d -> do
-            let initFn = userDataDir </> joinPath s </> (addExtension "__init__" "py")
-            liftIO $ writeFile initFn ""
-            return $ s ++ [d]
-        )
-        [target]
-        ds
-      return ()
+
+  checkTimeStampAndDo pyTyFn coneFn $ do
+    o <- compilePythonType paths coneFn target
+    liftIO $ writeFile pyTyFn o
+  
+  checkTimeStampAndDo cppHeaderFn coneFn $ do
+    o <- compileToCppHeader paths coneFn target
+    liftIO $ writeFile cppHeaderFn o
+    
+  checkTimeStampAndDo cppLibFn coneFn $ do
+    compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
+    return ()
+  
+  checkTimeStampAndDo pyFn coneFn $ do
+    o <- compilePythonWrapper paths coneFn target
+    liftIO $ writeFile pyFn o
+
+  checkTimeStampAndDo pyFn coneFn $ do
+    let ds = splitOn "/" i
+    foldM
+      ( \s d -> do
+          let initFn = userDataDir </> joinPath s </> (addExtension "__init__" "py")
+          liftIO $ writeFile initFn ""
+          return $ s ++ [d]
+      )
+      [target]
+      ds
+    return ()
 
 -- | Compile a file
 compilePythonWrapper :: [FilePath] -> FilePath -> String -> CompileEnv String
