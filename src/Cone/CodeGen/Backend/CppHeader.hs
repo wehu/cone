@@ -376,7 +376,12 @@ instance Backend CppHeader where
                       <> (funcN proxy prefix $ name2String $ removeAnn (_eappArgs !! 0) ^. evarName)
                       <> "\"," <+> "____e));}"
                   )
-          "core/prelude/inline_python" -> return $ exprToCps $ "____k((py::exec(" <> (pretty $ removeAnn (_eappArgs !! 0) ^. lit) <> "), py::object(py::none())))"
+          "core/prelude/inline_python" -> do
+            let exec = vsep ["[](){auto ____scope = py::dict();",
+                             "____scope[\"____result\"] = py::none();",
+                             "py::exec(" <> (pretty $ removeAnn (_eappArgs !! 0) ^. lit) <> ", ____scope);",
+                             "return ____scope[\"____result\"];}()"]
+            return $ exprToCps $ "____k(py::object("<> exec <>"))"
           _ -> do
             f <- genExpr proxy _eappFunc
             args <- mapM (genExpr proxy) _eappArgs
