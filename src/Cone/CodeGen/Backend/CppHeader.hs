@@ -237,7 +237,10 @@ instance Backend CppHeader where
     body <- case _funcExpr of
       Just e -> do
         es <- genExpr proxy e
-        return $ "return" <+> parens ("std::experimental::any_cast<func_with_cont_t>(" <> es <> ")" <> parens "____k, ____make_empty_stack(), ____effs") <> semi
+        let names = genParameterNames [] prefix
+            ps = genParameters [] prefix
+            stack = "____set_parameters(____make_empty_stack(), "<> names <> "," <> ps <>")"
+        return $ "return" <+> parens ("std::experimental::any_cast<func_with_cont_t>(" <> es <> ")" <> parens ("____k, " <> stack <> ", ____effs")) <> semi
       Nothing -> return $ "throw ____cone_exception(\"" <> pretty _funcName <> " is not implemented\");"
     let fn = funcN proxy prefix _funcName
     return $
@@ -254,6 +257,8 @@ instance Backend CppHeader where
             <> braces ("return ____to_py_object(" <> fn <> genWrapperArgs ["____identity_k", "____make_empty_stack()", "____make_empty_effs()"] prefix <> ")" <> semi)
         ]
     where
+      genParameterNames init prefix = encloseSep lbrace rbrace comma $ init ++ (map (\a -> "\"" <> funcN proxy prefix a <> "\"") $ _funcArgs ^.. traverse . _1)
+      genParameters init prefix = encloseSep lbrace rbrace comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
       genWrapperArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
       genWrapperArgTypes init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const py::object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
       genArgsInternal init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object_t &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
@@ -316,30 +321,32 @@ instance Backend CppHeader where
     es <- genBody _elamExpr
     return $ parens $ "object_t(func_with_cont_t([=](const cont_t &____k2, stack_t ____stack, effects_t ____effs) -> object_t" <+> braces ("return" <+> es <> semi) <> "))"
     where
-      genArgs prefix = encloseSep lparen rparen comma $ "const cont_t &____k" : "stack_t ____stack_unused" : "effects_t ____effs" : (map (\a -> "const object_t &" <> funcN proxy prefix a) $ _elamArgs ^.. traverse . _1)
-      genArgTypes = encloseSep lparen rparen comma $ "const cont_t &" : "stack_t" : "effects_t" : (map (\_ -> "const object_t &") $ _elamArgs ^.. traverse . _1)
-      genBody e = do
-        prefix <- getEnv currentModuleName
-        case e of
-          Just e -> do
-            es <- genExpr proxy e
-            return $
-              "____k2("
-                <> ( parens $
-                       "object_t(std::function<object_t" <> genArgTypes
-                         <> ">([=]" <+> genArgs prefix
-                         <> " -> object_t "
-                         <> braces
-                           ( "return "
-                               <> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es prefix)
-                               <> semi
-                           )
-                         <> ")))"
-                   )
-          Nothing -> throwError $ "lambda expected a expression"
-      callCpsWithclearedVars es prefix =
-        encloseSep lparen rparen comma $
-          "____k" : "____stack" : "____effs" : ("std::vector<std::string>" <> encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)) : [es]
+    genArgs prefix = encloseSep lparen rparen comma $ "const cont_t &____k" : "stack_t ____stack_unused" : "effects_t ____effs" : (map (\a -> "const object_t &" <> funcN proxy prefix a) $ _elamArgs ^.. traverse . _1)
+    genArgTypes = encloseSep lparen rparen comma $ "const cont_t &" : "stack_t" : "effects_t" : (map (\_ -> "const object_t &") $ _elamArgs ^.. traverse . _1)
+    genBody e = do
+      prefix <- getEnv currentModuleName
+      case e of
+        Just e -> do
+          es <- genExpr proxy e
+          return $
+            "____k2("
+              <> ( parens $
+                      "object_t(std::function<object_t" <> genArgTypes
+                        <> ">([=]" <+> genArgs prefix
+                        <> " -> object_t "
+                        <> braces
+                          ( "return "
+                              <> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es prefix)
+                              <> semi
+                          )
+                        <> ")))"
+                  )
+        Nothing -> throwError $ "lambda expected a expression"
+    parameterNames prefix = encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)
+    parameterValues prefix = encloseSep lbrace rbrace comma (map (funcN proxy prefix) $ _elamArgs ^.. traverse . _1)
+    callCpsWithclearedVars es prefix =
+      encloseSep lparen rparen comma $
+        "____k" : "____stack" : "____effs" : (parameterNames prefix) : (parameterValues prefix) : [es]
   genExpr proxy EWhile {..} = do
     c <- genExpr proxy _ewhileCond
     underScope $ do

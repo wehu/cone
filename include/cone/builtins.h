@@ -92,18 +92,25 @@ namespace cone {
     return py::object(py::none());
   }
 
+  inline stack_t ____set_parameters(
+    stack_t stack,
+    const std::vector<std::string> &names,
+    const std::vector<object_t> &values) {
+    for (unsigned i=0; i<names.size(); ++i) {
+      stack->back()[names[i]] = values[i];
+    }
+    return stack;
+  }
+
   inline object_t ____call_cps_with_cleared_vars(
     const cont_t &k, stack_t s, effects_t es,
-    const std::vector<std::string> &ks, const object_t &e) {
+    const std::vector<std::string> &names,
+    const std::vector<object_t> &values,
+    const object_t &e) {
     stack_t stack = ____make_empty_stack();
     *stack = *s; 
     effects_t effs = ____make_empty_effs();
-    for (auto it=stack->rbegin(); it!=stack->rend(); ++it) {
-      for (auto k : ks) {
-        it->erase(k);
-      }
-    }
-    return std::experimental::any_cast<func_with_cont_t>(e)(k, stack, effs);
+    return std::experimental::any_cast<func_with_cont_t>(e)(k, ____set_parameters(stack, names, values), effs);
   }
 
   struct ____deferred {
