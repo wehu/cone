@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 
 module Cone.TypeChecker (Env (..), types, funcs, effs, effIntfs, funcImpls, initialEnv, initModule, checkType) where
 
@@ -483,8 +484,8 @@ removeTypeBindings m =
         }
 
 -- | Get real name if there is alias prefix
-getNamePath :: (Has EnvEff sig m) => Module -> String -> m String
-getNamePath m n = do
+getNamePath :: Module -> String -> String
+getNamePath m n =
   let aliases =
         L.foldl'
           ( \s i ->
@@ -496,9 +497,22 @@ getNamePath m n = do
           $ m ^. imports
       n' = last $ splitOn "/" n
       ns = join $ L.intersperse "/" $ L.init $ splitOn "/" n
-  case aliases ^. at ns of
-    Just prefix -> return $ prefix ++ "/" ++ n'
-    Nothing -> return n
+   in case aliases ^. at ns of
+        Just prefix -> prefix ++ "/" ++ n'
+        Nothing -> n
+
+filterOutAliasImport :: Module -> String -> [String] -> [String]
+filterOutAliasImport m n ns =
+  let aliasImports = L.nub $ 
+        L.foldl'
+          ( \s i ->
+              case i ^. importAlias of
+                Just alias -> s ++ [(i ^. importPath) ++ "/" ++ n]
+                Nothing -> s
+          )
+          []
+          $ m ^. imports
+   in (L.nub ns) L.\\ aliasImports
 
 -- | Add module path for all types
 addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module
@@ -518,22 +532,22 @@ addPrefixForTypes m' = do
   bindTs <-
     foldM
       ( \s v -> do
-          vn' <- getNamePath m (name2String v)
-          found <-
-            foldM
+          let vn' = getNamePath m (name2String v)
+          found <- (filterOutAliasImport m vn') <$>
+            (foldM
               ( \f p -> do
                   let vn = p ++ vn'
                   case ts ^. at vn of
-                    Just _ -> return $ f ++ [(v, TVar (s2n vn) loc)]
+                    Just _ -> return $ f ++ [vn]
                     Nothing -> return f
               )
               []
-              prefixes
+              prefixes)
           if found == []
             then return s
             else
               if L.length found == 1
-                then return $ s ++ found
+                then return $ s ++ (map (\n -> (v, TVar (s2n n) loc)) found)
                 else throwError $ "found more than one type for " ++ ppr v ++ ppr found
       )
       []
@@ -541,22 +555,22 @@ addPrefixForTypes m' = do
   bindEffs <-
     foldM
       ( \s v -> do
-          vn' <- getNamePath m (name2String v)
-          found <-
-            foldM
+          let vn' = getNamePath m (name2String v)
+          found <- (filterOutAliasImport m vn') <$>
+            (foldM
               ( \f p -> do
                   let vn = p ++ vn'
                   case es ^. at vn of
-                    Just _ -> return $ f ++ [(v, EffVar (s2n vn) loc)]
+                    Just _ -> return $ f ++ [vn]
                     Nothing -> return f
               )
               []
-              prefixes
+              prefixes)
           if found == []
             then return s
             else
               if L.length found == 1
-                then return $ s ++ found
+                then return $ s ++ (map (\n -> (v, EffVar (s2n n) loc)) found)
                 else throwError $ "found more than one eff type for " ++ ppr v ++ ppr found
       )
       []
@@ -664,22 +678,22 @@ addPrefixForExprs m' = do
   binds <-
     foldM
       ( \s v -> do
-          vn' <- getNamePath m (name2String v)
-          found <-
-            foldM
+          let vn' = getNamePath m (name2String v)
+          found <- (filterOutAliasImport m vn') <$>
+            (foldM
               ( \f p -> do
                   let vn = p ++ vn'
                   case fs ^. at vn of
-                    Just _ -> return $ f ++ [(v, EVar (s2n vn) loc)]
+                    Just _ -> return $ f ++ [vn]
                     Nothing -> return f
               )
               []
-              prefixes
+              prefixes)
           if found == []
             then return s
             else
               if L.length found == 1
-                then return $ s ++ found
+                then return $ s ++ (map (\n -> (v, EVar (s2n n) loc)) found)
                 else throwError $ "found more than one variable for " ++ ppr v ++ ppr found
       )
       []

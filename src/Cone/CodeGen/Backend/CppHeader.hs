@@ -137,7 +137,11 @@ builtinFuncs = ["core/prelude/inline_python",
                 "data/tensor/matmul",
                 "data/tensor/convolve_full",
                 "data/tensor/convolve_same",
-                "data/tensor/convolve_valid"]
+                "data/tensor/convolve_valid",
+                "data/map/empty",
+                "data/map/get",
+                "data/map/set",
+                "data/map/del"]
 
 instance Backend CppHeader where
   namePath proxy n = pretty n
@@ -513,7 +517,8 @@ instance Backend CppHeader where
         [ "#pragma once",
           "#include <iostream>",
           "#include \"cone/builtins.h\"",
-          "#include \"cone/tensor.h\"",
+          "#include \"cone/data/tensor.h\"",
+          "#include \"cone/data/map.h\"",
           "#include \"core/prelude.h\""
         ]
           ++ imps
