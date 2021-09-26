@@ -906,15 +906,14 @@ funcImplSelector t = show $ md5 $ BLU.fromString $ ppr t
 uniqueFuncImplName :: String -> Type -> String
 uniqueFuncImplName fn t = fn ++ (funcImplSelector t)
 
-searchFunc :: (Has EnvEff sig m) => Module -> String -> m String
-searchFunc m fn = do
+searchFunc :: (Has EnvEff sig m) => Module -> String -> Location -> m String
+searchFunc m fn loc = do
   let prefixes =
         L.nub $
           "" :
           (m ^. moduleName ++ "/") :
           "core/prelude/" :
           (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
-      loc = m ^. moduleLoc
       n = getNamePath m fn
   fs <- getEnv funcs
   found <- (filterOutAliasImports m n) <$>
@@ -928,11 +927,11 @@ searchFunc m fn = do
               []
               prefixes)
   if found == []
-    then throwError $ "no function definition found for : " ++ fn
+    then throwError $ "no function definition found for : " ++ fn ++ ppr loc
     else
       if L.length found == 1
         then return $ found !! 0
-        else throwError $ "found more than one function for " ++ fn ++ ppr found
+        else throwError $ "found more than one function for " ++ fn ++ ppr found ++ ppr loc
 
 -- | Set a function implementation
 setFuncImpl :: (Has EnvEff sig m) => String -> Module -> ImplFuncDef -> m ImplFuncDef
@@ -944,7 +943,7 @@ setFuncImpl prefix m impl = do
         bindTypeEffVar (funcD ^. funcBoundEffVars) $
           bindTypeVar (funcD ^. funcBoundVars) $
             TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
-  intfFn <- searchFunc m $ funcD ^. funcName
+  intfFn <- searchFunc m (funcD ^. funcName) loc
   ft <- fromJust <$> (getEnv $ funcs . at intfFn)
   isSubT <- isSubType t ft
   if isSubT
