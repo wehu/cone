@@ -69,7 +69,7 @@ fun main() : io unit {
 
   val m = m/empty<i32, i32>()
 
-  print(m/set(m,3,3))
+  print(m/has(m/set(m,3,3), 3))
   print(m/get(m,3))
 
   print(m/mapv(m/set(m,3,3), fn (a:i32) : io i32 { 
