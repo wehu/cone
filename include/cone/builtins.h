@@ -39,7 +39,7 @@ namespace cone {
     return std::make_shared<std::vector<std::map<std::string, object_t>>>();
   }
 
-  inline py::object ____to_py_object_t(const object_t &o) {
+  inline py::object ____to_py_object(const object_t &o) {
     if (o.type() != typeid(py::object)) {
       throw ____cone_exception(std::string("cannot cast to py object_t, expected py object_t, but got ") + o.type().name());
     }
@@ -197,5 +197,14 @@ namespace cone {
     return py::object(py::none());
   }
 
+  namespace core { namespace prelude {
+    const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &)> cone__inline_python =
+    [=](const cont_t &k, stack_t s, effects_t effs, const object_t &str) -> object_t {
+      auto scope = py::dict();
+      scope["____result"] = py::none();
+      py::exec(____to_py_object(str), scope);
+      return py::object(scope["____result"]);
+    };
+  }}
 
 }
