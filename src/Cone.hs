@@ -49,26 +49,31 @@ coneMain = play =<< execParser opts
             <> header "Cone - "
         )
 
+coneSearchPaths :: String -> IO [FilePath]
+coneSearchPaths f = do
+  currentPath <- getCurrentDirectory
+  execPath <- getExecutablePath
+#if defined(__GLASGOW_HASKELL_PATCHLEVEL2__)
+  let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100) ++ "." 
+                     ++ show __GLASGOW_HASKELL_PATCHLEVEL1__ ++ "." ++ show __GLASGOW_HASKELL_PATCHLEVEL2__
+#else
+#if defined(__GLASGOW_HASKELL_PATCHLEVEL1__)
+  let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100) ++ "."
+                     ++ show __GLASGOW_HASKELL_PATCHLEVEL1__
+#else
+  let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100)
+#endif
+#endif
+  let coneVersion = showVersion version
+  let libPath = (takeDirectory $ takeDirectory execPath) </> "share" </> arch ++ "-" ++ os ++ "-ghc-" ++ ghcVersion </> "cone-" ++ coneVersion </> "lib"
+  let paths = (takeDirectory f): currentPath : [libPath]
+  return paths
+
 -- | Run the compilier and executor
 play :: Opts -> IO ()
 play Opts {..} = do
   forM_ inputFiles $ \f -> do
-    currentPath <- getCurrentDirectory
-    execPath <- getExecutablePath
-#if defined(__GLASGOW_HASKELL_PATCHLEVEL2__)
-    let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100) ++ "." 
-                     ++ show __GLASGOW_HASKELL_PATCHLEVEL1__ ++ "." ++ show __GLASGOW_HASKELL_PATCHLEVEL2__
-#else
-#if defined(__GLASGOW_HASKELL_PATCHLEVEL1__)
-    let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100) ++ "."
-                     ++ show __GLASGOW_HASKELL_PATCHLEVEL1__
-#else
-    let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100)
-#endif
-#endif
-    let coneVersion = showVersion version
-    let libPath = (takeDirectory $ takeDirectory execPath) </> "share" </> arch ++ "-" ++ os ++ "-ghc-" ++ ghcVersion </> "cone-" ++ coneVersion </> "lib"
-    let paths = (takeDirectory f): currentPath : [libPath]
+    paths <- coneSearchPaths f
     res <- runExceptT $ compile paths f target
     case res of
       Left err -> putStrLn err
