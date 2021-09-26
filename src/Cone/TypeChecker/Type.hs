@@ -932,7 +932,7 @@ searchFunc m fn = do
     else
       if L.length found == 1
         then return $ found !! 0
-        else throwError $ "found more than one variable for " ++ fn ++ ppr found
+        else throwError $ "found more than one function for " ++ fn ++ ppr found
 
 -- | Set a function implementation
 setFuncImpl :: (Has EnvEff sig m) => String -> Module -> ImplFuncDef -> m ImplFuncDef
