@@ -5,6 +5,7 @@
 namespace cone {
   namespace data {
     namespace map {
+
       const std::function<object_t(const cont_t &, stack_t, effects_t)> cone__empty = 
       [=](const cont_t &k, stack_t stack, effects_t effs) {
         return k(py::object(py::module_::import("immutables").attr("Map")()));

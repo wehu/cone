@@ -2,8 +2,6 @@ module core/prelude
 
 // builtin functions
 
-fun inline_python<a>(code:str) : a
-
 fun ____negative<a>(a: a) : a
 
 fun ____add<a>(a: a, b:a) : a 
@@ -62,6 +60,10 @@ type list<a> {
 type pair<a, b> {
   pair(a, b)
 }
+
+// inline python
+
+fun inline_python<a>(code:str) : a
 
 // python effect
 

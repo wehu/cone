@@ -21,6 +21,7 @@ extra-source-files:
 data-files:
     lib/control/nodet.cone
     lib/control/state.cone
+    lib/core/math.cone
     lib/core/prelude.cone
     lib/data/list.cone
     lib/data/map.cone

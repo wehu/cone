@@ -6,6 +6,7 @@ import data/map as m
 import data/set as s
 import control/state
 import control/nodet
+import core/math
 /* 
  ssfsfd
  // sfdf
@@ -56,6 +57,8 @@ fun main() : io unit {
   val (t0, t1, 0.1+0.2, t3|r) = t
 
   print(t3)
+
+  print(sin(0.2))
 
   if (l != []) {
      print("aaa")
