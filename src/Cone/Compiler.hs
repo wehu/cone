@@ -20,6 +20,7 @@ import System.Directory
 import System.FilePath
 import System.IO
 import System.Process
+import Debug.Trace
 
 type CompileEnv a = ExceptT String IO a
 
@@ -135,13 +136,14 @@ compileCppToLib paths outputFile input = do
 -- | Compile a file
 compile :: [FilePath] -> FilePath -> String -> CompileEnv String
 compile paths f target = do
-  (env, id, m, imports) <- loadModule paths f
   case target of
     "cone" -> do
+      (env, id, m, imports) <- loadModule paths f
       case gen (Cone :: (Cone Target)) m of
         Left err -> throwError err
         Right doc -> return $ show doc
     "python" -> do
+      imports <- getImportsRecursively paths f
       mapM_ (\p -> checkAndCompile paths p target)
         (nub $ reverse $ (dropExtension f) : imports)
       return ""

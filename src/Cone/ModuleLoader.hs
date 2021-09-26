@@ -1,4 +1,4 @@
-module Cone.ModuleLoader (loadModule, coneEx, preloadedModules, searchFile, getImports) where
+module Cone.ModuleLoader (loadModule, coneEx, preloadedModules, searchFile, getImports, getImportsRecursively) where
 
 import Cone.Parser.AST
 import Cone.Parser.Parser
@@ -46,7 +46,15 @@ getImports paths f' = do
   let result = parse f contents
   case result of
     Left err -> throwError $ show err
-    Right m -> return $ m ^..imports.traverse.importPath
+    Right m -> return $ (m ^..imports.traverse.importPath) ++ preloadedModules
+
+getImportsRecursively :: [FilePath] -> FilePath -> ExceptT String IO [String]
+getImportsRecursively paths f = do
+  imports <- getImports paths f
+  ims <- join <$> mapM (\i -> 
+    if i `elem` preloadedModules then return []
+    else getImportsRecursively paths (addExtension i coneEx)) imports
+  return $ imports ++ ims
 
 -- | Load a module
 loadModule' :: IORef Cache -> [FilePath] -> FilePath -> Loaded -> LoadEnv
