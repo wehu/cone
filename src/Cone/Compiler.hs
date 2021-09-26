@@ -45,7 +45,7 @@ checkTimeStampAndDo f deps action = do
 checkAndCompile :: [FilePath] -> String -> String -> CompileEnv ()
 checkAndCompile paths i target = do
   userDataDir <- liftIO $ coneUserDataDir
-  (_, _, _, deps) <- loadModule paths (addExtension i coneEx)
+  deps <- getImports paths (addExtension i coneEx)
   let pyFn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) "py")
       pyTyFn = addExtension (dropExtension pyFn ++ "____t") "py" 
       cppHeaderFn = addExtension (dropExtension pyFn) "h"

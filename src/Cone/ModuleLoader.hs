@@ -1,4 +1,4 @@
-module Cone.ModuleLoader (loadModule, coneEx, preloadedModules, searchFile) where
+module Cone.ModuleLoader (loadModule, coneEx, preloadedModules, searchFile, getImports) where
 
 import Cone.Parser.AST
 import Cone.Parser.Parser
@@ -37,6 +37,16 @@ searchFile (p : paths) f = do
         then return ff
         else searchFile paths f
 searchFile [] f = throwError $ "cannot find file: " ++ f
+
+getImports :: [FilePath] -> FilePath -> ExceptT String IO [String]
+getImports paths f' = do
+  f <- searchFile paths f'
+  handle <- liftIO $ openFile f ReadMode
+  contents <- liftIO $ hGetContents handle
+  let result = parse f contents
+  case result of
+    Left err -> throwError $ show err
+    Right m -> return $ m ^..imports.traverse.importPath
 
 -- | Load a module
 loadModule' :: IORef Cache -> [FilePath] -> FilePath -> Loaded -> LoadEnv
