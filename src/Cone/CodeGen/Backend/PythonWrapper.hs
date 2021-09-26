@@ -77,6 +77,8 @@ instance Backend PythonWrapper where
     let fn = funcN proxy prefix _funcName
     return $ fn <> "=" <> "____C." <> fn
 
+  genImplFuncDef _ _ = return emptyDoc
+
   genExpr _ _ = return emptyDoc
  
   genPatternMatch _ _ = return emptyDoc
