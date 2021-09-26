@@ -7,10 +7,6 @@ import data/set as s
 import control/state
 import control/nodet
 import core/math
-/* 
- ssfsfd
- // sfdf
-  */
 
 type A {
    A(i32)
