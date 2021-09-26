@@ -19,46 +19,46 @@ namespace cone {
      const char* what() const throw() { return s.c_str(); }
   };
 
-  typedef std::experimental::any object;
+  typedef std::experimental::any object_t;
 
-  typedef std::function<object(const object &)> cont_t;
+  typedef std::function<object_t(const object_t &)> cont_t;
 
-  typedef std::shared_ptr<std::vector<std::map<std::string, object>>> stack_t;
+  typedef std::shared_ptr<std::vector<std::map<std::string, object_t>>> stack_t;
 
-  typedef std::shared_ptr<std::vector<std::map<std::string, object>>> effects_t;
+  typedef std::shared_ptr<std::vector<std::map<std::string, object_t>>> effects_t;
 
-  typedef std::function<object(const cont_t &, stack_t, effects_t)> func_with_cont_t;
+  typedef std::function<object_t(const cont_t &, stack_t, effects_t)> func_with_cont_t;
 
   stack_t ____make_empty_stack() {
-    auto s = std::make_shared<std::vector<std::map<std::string, object>>>();
+    auto s = std::make_shared<std::vector<std::map<std::string, object_t>>>();
     s->push_back({});
     return s;
   }
 
   effects_t ____make_empty_effs() {
-    return std::make_shared<std::vector<std::map<std::string, object>>>();
+    return std::make_shared<std::vector<std::map<std::string, object_t>>>();
   }
 
-  inline py::object ____to_py_object(const object &o) {
+  inline py::object ____to_py_object_t(const object_t &o) {
     if (o.type() != typeid(py::object)) {
-      throw ____cone_exception(std::string("cannot cast to py object, expected py object, but got ") + o.type().name());
+      throw ____cone_exception(std::string("cannot cast to py object_t, expected py object_t, but got ") + o.type().name());
     }
     return std::experimental::any_cast<py::object>(o);
   }
 
   namespace core { namespace prelude {
-  const std::function<object(const cont_t &, stack_t, effects_t, const object &)> cone__print = 
-    [=](const cont_t &k, stack_t s, effects_t effs, const object &a) -> object {
+  const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &)> cone__print = 
+    [=](const cont_t &k, stack_t s, effects_t effs, const object_t &a) -> object_t {
       py::print(std::experimental::any_cast<py::object>(a));
       return k(a);
     };
   }}
 
-  inline bool ____is_none(const object &o) {
+  inline bool ____is_none(const object_t &o) {
     return o.type() == typeid(py::object) && std::experimental::any_cast<py::object>(o).is(py::none());
   }
 
-  inline object ____lookup_var(stack_t s, const std::string &key) {
+  inline object_t ____lookup_var(stack_t s, const std::string &key) {
     for (auto it=s->rbegin(); it != s->rend(); ++it) {
       if (it->find(key) != it->end()) {
         return (*it)[key];
@@ -67,7 +67,7 @@ namespace cone {
     return py::object(py::none());
   }
 
-  inline object ____lookup_eff(effects_t effs, const std::string &key) {
+  inline object_t ____lookup_eff(effects_t effs, const std::string &key) {
     for (auto it=effs->rbegin(); it != effs->rend(); ++it) {
       if (it->find(key) != it->end()) {
         return (*it)[key];
@@ -76,12 +76,12 @@ namespace cone {
     return py::object(py::none());
   }
 
-  inline object ____add_var(stack_t s, const std::string &key, const object &k) {
+  inline object_t ____add_var(stack_t s, const std::string &key, const object_t &k) {
     s->back()[key] = k;
     return py::object(py::none());
   }
 
-  inline object ____update_stack(stack_t s, const std::string &key, const object &k) {
+  inline object_t ____update_stack(stack_t s, const std::string &key, const object_t &k) {
     for (auto it=s->rbegin(); it != s->rend(); ++it) {
       if (it->find(key) != it->end()) {
         (*it)[key] = k;
@@ -92,9 +92,9 @@ namespace cone {
     return py::object(py::none());
   }
 
-  inline object ____call_cps_with_cleared_vars(
+  inline object_t ____call_cps_with_cleared_vars(
     const cont_t &k, stack_t s, effects_t es,
-    const std::vector<std::string> &ks, const object &e) {
+    const std::vector<std::string> &ks, const object_t &e) {
     stack_t stack = ____make_empty_stack();
     *stack = *s; 
     effects_t effs = ____make_empty_effs();
@@ -107,24 +107,24 @@ namespace cone {
   }
 
   struct ____deferred {
-    explicit ____deferred(const object &v) : value(v) {}
-    object value;
+    explicit ____deferred(const object_t &v) : value(v) {}
+    object_t value;
   };
 
-  inline object ____while(const cont_t &k, stack_t stack, effects_t effs,
-                          const object &cond0,
-                          const object &body0) {
+  inline object_t ____while(const cont_t &k, stack_t stack, effects_t effs,
+                          const object_t &cond0,
+                          const object_t &body0) {
     stack->push_back({});
     auto cond = std::experimental::any_cast<func_with_cont_t>(cond0);
     auto body = std::experimental::any_cast<func_with_cont_t>(body0);
-    cont_t k2 = [=](const object &o) -> object {
-      cont_t trampoline = [=](const object &o) -> object {
+    cont_t k2 = [=](const object_t &o) -> object_t {
+      cont_t trampoline = [=](const object_t &o) -> object_t {
          if (py::cast<bool>(std::experimental::any_cast<py::object>(o))) {
            stack->push_back({});
-           return body([=](const object &o) -> object {
+           return body([=](const object_t &o) -> object_t {
                         stack->pop_back();
-                        return cond([](const object &o) -> object { 
-                               return object(____deferred(o));},
+                        return cond([](const object_t &o) -> object_t { 
+                               return object_t(____deferred(o));},
                                stack, effs);}
                 , stack, effs);
          } else {
@@ -140,14 +140,14 @@ namespace cone {
     return cond(k2, stack, effs);
   }
 
-  inline object ____case(const cont_t &k, stack_t stack, effects_t effs, const object &ce,
+  inline object_t ____case(const cont_t &k, stack_t stack, effects_t effs, const object_t &ce,
                          const std::vector<cont_t> &conds,
-                         const std::vector<object> &exprs) {
+                         const std::vector<object_t> &exprs) {
     for (unsigned i=0; i<conds.size(); ++i) {
       const auto &p = conds[i];
       const auto &e = std::experimental::any_cast<func_with_cont_t>(exprs[i]);
       stack->push_back({});
-      cont_t k2 = [stack, k](const object &o) {
+      cont_t k2 = [stack, k](const object_t &o) {
         stack->pop_back();
         return k(o);
       };
@@ -161,10 +161,10 @@ namespace cone {
     return py::object(py::none());
   }
 
-  const cont_t ____identity_k = [](const object &x) { return x; };
+  const cont_t ____identity_k = [](const object_t &x) { return x; };
 
-  inline object ____handle(const cont_t &k, stack_t stack, effects_t effs,
-                           const object &scope, const std::map<std::string, object> &handlers) {
+  inline object_t ____handle(const cont_t &k, stack_t stack, effects_t effs,
+                           const object_t &scope, const std::map<std::string, object_t> &handlers) {
     stack->push_back({});
     effs->push_back({});
     for (auto &p : handlers) {
@@ -178,21 +178,21 @@ namespace cone {
 
   constexpr auto ____resumed_k = "____resumed_k";
 
-  inline object ____call_with_resumed_k(const cont_t &k, stack_t stack, effects_t effs, const object &handler) {
+  inline object_t ____call_with_resumed_k(const cont_t &k, stack_t stack, effects_t effs, const object_t &handler) {
     stack->push_back({});
     stack->back()[____resumed_k] = k;
     auto h = std::experimental::any_cast<func_with_cont_t>(handler);
-    return h([stack](const object &x) { stack->pop_back(); return x;}, stack, effs);
+    return h([stack](const object_t &x) { stack->pop_back(); return x;}, stack, effs);
   }
 
-  const std::function<object(const cont_t &, stack_t, effects_t, const object &)> cone__resume = 
-    [=](const cont_t &k, stack_t s, effects_t effs, const object &a) -> object {
+  const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &)> cone__resume = 
+    [=](const cont_t &k, stack_t s, effects_t effs, const object_t &a) -> object_t {
       return k(std::experimental::any_cast<cont_t>(s->back()[____resumed_k])(a));
     };
 
   constexpr auto ____typeargs = "____typeargs";
 
-  inline object ____set_typeargs(stack_t stack, const object &typeargs) {
+  inline object_t ____set_typeargs(stack_t stack, const object_t &typeargs) {
     stack->back()[____typeargs] = typeargs;
     return py::object(py::none());
   }
