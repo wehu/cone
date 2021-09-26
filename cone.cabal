@@ -19,8 +19,9 @@ extra-source-files:
     README.md
     ChangeLog.md
 data-files:
+    lib/control/nodet.cone
+    lib/control/state.cone
     lib/core/prelude.cone
-    lib/core/state.cone
     lib/data/list.cone
     lib/data/map.cone
     lib/data/set.cone

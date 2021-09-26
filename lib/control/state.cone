@@ -1,4 +1,4 @@
-module core/state
+module control/state
 
 // state effect
 effect state<a> {

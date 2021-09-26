@@ -4,7 +4,8 @@ import data/list as l
 import data/tensor as t
 import data/map as m
 import data/set as s
-import core/state
+import control/state
+import control/nodet
 /* 
  ssfsfd
  // sfdf
