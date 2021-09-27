@@ -4,9 +4,10 @@
 
 module Cone.Parser.Lexer (tokenize, Token(..), Tok(..), AlexPosn(..)) where
 import Data.Data
+import Debug.Trace
 }
 
-%wrapper "posn"
+%wrapper "monad"
 
 $alpha = [a-zA-Z]		-- alphabetic characters
 $whitechar = [ \t\n\r\f\v]
@@ -44,86 +45,86 @@ tokens :-
   ($white # [\n])+				;
   \\\n                    ;
   "//"[^\n]*              ;
-  [\; \n]+                              { \p s -> (p, Semi) }
-  module                                { \p s -> (p, Module) }
-  import                                { \p s -> (p, Import) }
-  fun                                   { \p s -> (p, Func) }
-  fn                                    { \p s -> (p, Fn) }
-  as                                    { \p s -> (p, As) }
-  var                                   { \p s -> (p, Var) }
-  val                                   { \p s -> (p, Val) }
-  \(                                    { \p s -> (p, LParen) }
-  \)                                    { \p s -> (p, RParen) }
-  \{                                    { \p s -> (p, LBrace) }
-  \}                                    { \p s -> (p, RBrace) }
-  \[                                    { \p s -> (p, LBracket) }
-  \]                                    { \p s -> (p, RBracket) }
-  \:                                    { \p s -> (p, Colon) }
-  \,                                    { \p s -> (p, Comma) }
-  \<                                    { \p s -> (p, Less) }
-  \>                                    { \p s -> (p, Greater) }
-  "<="                                  { \p s -> (p, Le) }
-  ">="                                  { \p s -> (p, Ge) }
-  \!                                    { \p s -> (p, Not) }
-  "=="                                  { \p s -> (p, Eq) }
-  "!="                                  { \p s -> (p, Ne) }
-  "&&"                                  { \p s -> (p, And) }
-  "||"                                  { \p s -> (p, Or) }
-  \|                                    { \p s -> (p, Pipe) }
-  "="                                   { \p s -> (p, Assign) }
-  "+="                                  { \p s -> (p, AddAssign) }
-  "-="                                  { \p s -> (p, SubAssign) }
-  "*="                                  { \p s -> (p, MulAssign) }
-  "/="                                  { \p s -> (p, DivAssign) }
-  "%="                                  { \p s -> (p, ModAssign) }
-  "+"                                   { \p s -> (p, Add) }
-  "-"                                   { \p s -> (p, Sub) }
-  "/"                                   { \p s -> (p, Div) }
-  "%"                                   { \p s -> (p, Mod) }
-  "#"                                   { \p s -> (p, Sharp) }
-  \\                                    { \p s -> (p, Backslash) }
-  "->"                                  { \p s -> (p, Arrow) }
-  \*                                    { \p s -> (p, Star) }
-  \?                                    { \p s -> (p, Question) }
-  \@                                    { \p s -> (p, At) }
-  "i8"                                  { \p s -> (p, I8) }
-  "i16"                                 { \p s -> (p, I16) }
-  "i32"                                 { \p s -> (p, I32) }
-  "i64"                                 { \p s -> (p, I64) }
-  "u8"                                  { \p s -> (p, U8) }
-  "u16"                                 { \p s -> (p, U16) }
-  "u32"                                 { \p s -> (p, U32) }
-  "u64"                                 { \p s -> (p, U64) }
-  "f16"                                 { \p s -> (p, F16) }
-  "f32"                                 { \p s -> (p, F32) }
-  "f64"                                 { \p s -> (p, F64) }
-  "bf16"                                { \p s -> (p, BF16) }
-  "bool"                                { \p s -> (p, Pred) }
-  "str"                                 { \p s -> (p, Str) }
-  "char"                                { \p s -> (p, Char) }
-  "type"                                { \p s -> (p, Type) }
-  "effect"                              { \p s -> (p, Effect) }
-  "case"                                { \p s -> (p, Case) }
-  "of"                                  { \p s -> (p, Of) }
-  "if"                                  { \p s -> (p, If) }
-  "else"                                { \p s -> (p, Else) }
-  "while"                               { \p s -> (p, While) }
-  "num"                                 { \p s -> (p, Num) }
-  "unit"                                { \p s -> (p, Unit) }
-  "true"                                { \p s -> (p, True_) }
-  "false"                               { \p s -> (p, False_) }
-  "handle"                              { \p s -> (p, Handle) }
-  "with"                                { \p s -> (p, With) }
-  "impl"                                { \p s -> (p, Impl) }
+  [\; \n]+                              { mkL Semi }
+  module                                { mkL Module }
+  import                                { mkL Import }
+  fun                                   { mkL Func }
+  fn                                    { mkL Fn }
+  as                                    { mkL As }
+  var                                   { mkL Var }
+  val                                   { mkL Val }
+  \(                                    { mkL LParen }
+  \)                                    { mkL RParen }
+  \{                                    { mkL LBrace }
+  \}                                    { mkL RBrace }
+  \[                                    { mkL LBracket }
+  \]                                    { mkL RBracket }
+  \:                                    { mkL Colon }
+  \,                                    { mkL Comma }
+  \<                                    { mkL Less }
+  \>                                    { mkL Greater }
+  "<="                                  { mkL Le }
+  ">="                                  { mkL Ge }
+  \!                                    { mkL Not }
+  "=="                                  { mkL Eq }
+  "!="                                  { mkL Ne }
+  "&&"                                  { mkL And }
+  "||"                                  { mkL Or }
+  \|                                    { mkL Pipe }
+  "="                                   { mkL Assign }
+  "+="                                  { mkL AddAssign }
+  "-="                                  { mkL SubAssign }
+  "*="                                  { mkL MulAssign }
+  "/="                                  { mkL DivAssign }
+  "%="                                  { mkL ModAssign }
+  "+"                                   { mkL Add }
+  "-"                                   { mkL Sub }
+  "/"                                   { mkL Div }
+  "%"                                   { mkL Mod }
+  "#"                                   { mkL Sharp }
+  \\                                    { mkL Backslash }
+  "->"                                  { mkL Arrow }
+  \*                                    { mkL Star }
+  \?                                    { mkL Question }
+  \@                                    { mkL At }
+  "i8"                                  { mkL I8 }
+  "i16"                                 { mkL I16 }
+  "i32"                                 { mkL I32 }
+  "i64"                                 { mkL I64 }
+  "u8"                                  { mkL U8 }
+  "u16"                                 { mkL U16 }
+  "u32"                                 { mkL U32 }
+  "u64"                                 { mkL U64 }
+  "f16"                                 { mkL F16 }
+  "f32"                                 { mkL F32 }
+  "f64"                                 { mkL F64 }
+  "bf16"                                { mkL BF16 }
+  "bool"                                { mkL Pred }
+  "str"                                 { mkL Str }
+  "char"                                { mkL Char }
+  "type"                                { mkL Type }
+  "effect"                              { mkL Effect }
+  "case"                                { mkL Case }
+  "of"                                  { mkL Of }
+  "if"                                  { mkL If }
+  "else"                                { mkL Else }
+  "while"                               { mkL While }
+  "num"                                 { mkL Num }
+  "unit"                                { mkL Unit }
+  "true"                                { mkL True_ }
+  "false"                               { mkL False_ }
+  "handle"                              { mkL Handle }
+  "with"                                { mkL With }
+  "impl"                                { mkL Impl }
   @decimal 
     | 0[oO] @octal
-    | 0[xX] @hexadecimal		            { \p s -> (p, LInt s) }
+    | 0[xX] @hexadecimal		            { mkL LInt }
   @decimal \. @decimal @exponent?
-    | @decimal @exponent	            	{ \p s -> (p, LFloat s) }
+    | @decimal @exponent	            	{ mkL LFloat }
   \' ($graphic # [\'\\] | " " | @escape) \'
-				                                { \p s -> (p, LChar s) }
-  \" @string* \"	                    	{ \p s -> (p, LStr s) }
-  [$alpha \_] [$alpha $digit \_]*       { \p s -> (p, Ident s) }
+				                                { mkL LChar }
+  \" @string* \"	                    	{ mkL LStr }
+  [$alpha \_] [$alpha $digit \_]*       { mkL Ident }
 
 {
 -- Each action has type :: String -> Token
@@ -137,11 +138,11 @@ data Tok =
     As              |
     Var             |
     Val             |
-    Ident String    |
-    LInt String     |
-    LFloat String   | 
-    LStr String     |
-    LChar String    |
+    Ident           |
+    LInt            |
+    LFloat          | 
+    LStr            |
+    LChar           |
     Semi            |
     LParen          |
     RParen          |
@@ -206,10 +207,35 @@ data Tok =
     Impl            |
     Num             |
     Question        |
+    EOF             |
     Unknown
   deriving (Eq, Ord, Show, Read, Data, Typeable)
 
-type Token = (AlexPosn, Tok)
+type Token = (AlexPosn, Tok, String)
 
-tokenize = alexScanTokens
+mkL :: Tok -> AlexInput -> Int -> Alex Token
+mkL tok (p,_,_,str) len = return (p, tok, (take len str))
+
+lexError s = do
+  (p,c,_,input) <- alexGetInput
+  alexError (showPosn p ++ ": " ++ s ++ 
+       (if (not (null input))
+         then " before " ++ show (head input)
+         else " at end of file"))
+
+scanner str = runAlex str $ do
+  let loop i = do tok@(p, t, str) <- alexMonadScan
+                  if t == EOF
+                  then return []
+                  else do rest <- loop $! (i+1)
+                          return $ tok : rest
+  loop 0
+
+alexEOF = return (AlexPn 0 0 0, EOF, "")
+
+showPosn (AlexPn _ line col) = show line ++ ':': show col
+
+tokenize str = case scanner str of
+   Left err -> error err
+   Right tokens -> tokens
 }

@@ -19,18 +19,18 @@ makePrisms ''L.Tok
 
 type Parser a = P.ParsecT [L.Token] () Identity a
 
-token :: (L.Tok -> Bool) -> (L.Tok -> a) -> Parser a
+token :: (L.Tok -> Bool) -> (L.Token -> a) -> Parser a
 token test getVal = do
   pos <- P.getPosition
   P.tokenPrim (showTok pos) nextPos testTok
   where
     nextPos :: P.SourcePos -> L.Token -> [L.Token] -> P.SourcePos
-    nextPos pos _ ((L.AlexPn _ l c, _) : _) =
+    nextPos pos _ ((L.AlexPn _ l c, _, _) : _) =
       P.setSourceColumn (P.setSourceLine pos l) c
     nextPos pos _ [] = pos
-    testTok (_, t) = if (test t) then Just (getVal t) else Nothing
-    showTok pos (L.AlexPn _ l c, t) =
-      (show t) ++ "@" ++ (P.sourceName pos) ++ "[" ++ (show l) ++ ":" ++ (show c) ++ "]"
+    testTok tok@(_, t, _) = if (test t) then Just (getVal tok) else Nothing
+    showTok pos (L.AlexPn _ l c, _, s) =
+      s ++ "@" ++ (P.sourceName pos) ++ "[" ++ (show l) ++ ":" ++ (show c) ++ "]"
 
 keyword :: L.Tok -> Parser L.Tok
 keyword t = token (== t) (\_ -> t)
@@ -179,8 +179,8 @@ false = keyword L.False_
 
 unit = keyword L.Unit
 
-tokenP :: Monoid a => Prism' L.Tok a -> Parser a
-tokenP p = token (not . isn't p) (view p)
+tokenP :: Monoid a => Prism' L.Tok a -> Parser String
+tokenP p = token (not . isn't p) (\(_, _, s) -> s)
 
 ident = tokenP _Ident
 
