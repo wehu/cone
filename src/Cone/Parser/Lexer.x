@@ -117,6 +117,7 @@ tokens :-
   <0> "handle"                              { mkL Handle }
   <0> "with"                                { mkL With }
   <0> "impl"                                { mkL Impl }
+  <0> "alias"                               { mkL Alias }
   <0> @decimal 
         | 0[oO] @octal
         | 0[xX] @hexadecimal		            { mkL LInt }
@@ -206,6 +207,7 @@ data Tok =
     Handle          |
     With            |
     Impl            |
+    Alias           |
     Num             |
     Question        |
     EOF             |

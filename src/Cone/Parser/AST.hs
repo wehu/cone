@@ -12,8 +12,8 @@ module Cone.Parser.AST where
 import Control.Lens
 import Control.Lens.Plated
 import Data.Data
-import qualified Data.List as L
 import Data.Data.Lens (uniplate)
+import qualified Data.List as L
 import Data.Maybe
 import GHC.Generics (Generic)
 import Prettyprinter
@@ -216,12 +216,13 @@ instance Pretty Pattern where
   pretty PApp {..} = parens $ pretty _pappName <+> anglesList _pappTypeArgs <+> parensList _pappArgs
   pretty PExpr {..} = pretty _pExpr
 
-data Case = Case
-  { _casePattern :: Pattern,
-    _caseGuard :: Maybe Expr,
-    _caseExpr :: Expr,
-    _caseLoc :: Location
-  }
+data Case
+  = Case
+      { _casePattern :: Pattern,
+        _caseGuard :: Maybe Expr,
+        _caseExpr :: Expr,
+        _caseLoc :: Location
+      }
   | BoundCase {_boundCase :: Bind [PVar] Case, _caseLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
@@ -271,8 +272,7 @@ data Expr
   | EBoundEffTypeVars {_eboundEffTypeVars :: Bind [EffVar] Expr, _eloc :: Location}
   | EBoundVars {_eboundVars :: Bind [EVar] Expr, _eloc :: Location}
   deriving
-    ( -- | BoundExpr{_exprBound :: Bind [TVar] Expr}
-      Eq,
+    ( Eq,
       Ord,
       Show,
       Read,
@@ -285,29 +285,39 @@ instance Pretty Expr where
   pretty EVar {..} = pretty _evarName
   pretty ELit {..} = pretty _lit
   pretty ELam {..} =
-    parens $ vsep [
-      "fn" <+> anglesList _elamBoundVars <+> bracketsList _elamBoundEffVars
-        <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _elamArgs)
-        <+> colon
-        <+> pretty _elamEffType
-        <+> pretty _elamResultType,
-        braces $ line <> (indent 4 $ pretty _elamExpr) <> line]
+    parens $
+      vsep
+        [ "fn" <+> anglesList _elamBoundVars <+> bracketsList _elamBoundEffVars
+            <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _elamArgs)
+            <+> colon
+            <+> pretty _elamEffType
+            <+> pretty _elamResultType,
+          braces $ line <> (indent 4 $ pretty _elamExpr) <> line
+        ]
   pretty EWhile {..} = parens $ vsep ["while" <+> pretty _ewhileCond, braces (line <> (indent 4 $ pretty _ewhileBody) <> line)]
-  pretty ECase {..} = parens $ vsep ["case" <+> pretty _ecaseExpr,
-                                     braces $ line <> (indent 4 $ vsep $ map (\c -> braces $ line <> (indent 4 $ pretty c) <> line) _ecaseBody) <> line]
+  pretty ECase {..} =
+    parens $
+      vsep
+        [ "case" <+> pretty _ecaseExpr,
+          braces $ line <> (indent 4 $ vsep $ map (\c -> braces $ line <> (indent 4 $ pretty c) <> line) _ecaseBody) <> line
+        ]
   pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs
   pretty ELet {..} =
-    parens $ vsep [
-      (if _eletState then "var" else "val")
-        <+> pretty _eletPattern
-        <+> "="
-        <+> align (pretty _eletExpr)
-        ,pretty _eletBody]
+    parens $
+      vsep
+        [ (if _eletState then "var" else "val")
+            <+> pretty _eletPattern
+            <+> "="
+            <+> align (pretty _eletExpr),
+          pretty _eletBody
+        ]
   pretty EHandle {..} =
-    parens $ vsep [
-      "handle" <+> pretty _ehandleEff,
-       braces (line <> (indent 4 $ pretty _ehandleScope) <> line), 
-       "with" <+> (braces $ line <> (vsep $ map (indent 4 . pretty) _ehandleBindings) <> line)]
+    parens $
+      vsep
+        [ "handle" <+> pretty _ehandleEff,
+          braces (line <> (indent 4 $ pretty _ehandleScope) <> line),
+          "with" <+> (braces $ line <> (vsep $ map (indent 4 . pretty) _ehandleBindings) <> line)
+        ]
   pretty ESeq {..} = vsep $ map pretty _eseq
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType
   pretty EAnnMeta {..} = parens $ pretty _eannMetaExpr <+> colon <+> pretty _eannMetaType
@@ -324,8 +334,7 @@ data TypeDef
       }
   | BoundTypeDef {_tbound :: Bind [TVar] TypeDef, _typeLoc :: Location}
   deriving
-    ( -- | BoundTypeDef{_typeBound :: Bind [TVar] TypeDef}
-      Eq,
+    ( Eq,
       Ord,
       Show,
       Read,
@@ -335,10 +344,12 @@ data TypeDef
     )
 
 instance Pretty TypeDef where
-  pretty TypeDef {..} = vsep [
-    "type" <+> pretty _typeName
-      <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _typeArgs)
-      , braces $ line <> (vsep $ map (indent 4 . pretty) _typeCons) <> line]
+  pretty TypeDef {..} =
+    vsep
+      [ "type" <+> pretty _typeName
+          <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _typeArgs),
+        braces $ line <> (vsep $ map (indent 4 . pretty) _typeCons) <> line
+      ]
   pretty (BoundTypeDef (B vs t) _) = anglesList vs <+> pretty t
 
 data TypeCon = TypeCon
@@ -350,6 +361,12 @@ data TypeCon = TypeCon
 
 instance Pretty TypeCon where
   pretty TypeCon {..} = pretty _typeConName <+> parensList _typeConArgs
+
+data TypeAlias = TypeAlias {_typeAliasName :: String, _typeAliasArgs :: [TVar], _typeAliasType :: Type}
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty TypeAlias where
+  pretty TypeAlias {..} = "alias" <+> pretty _typeAliasArgs <> parensList _typeAliasArgs <+> "=" <+> pretty _typeAliasType
 
 data FuncIntf
   = FuncIntf
@@ -364,8 +381,7 @@ data FuncIntf
   | BoundFuncIntf {_boundFuncIntf :: Bind [TVar] FuncIntf, _intfLoc :: Location}
   | BoundEffFuncIntf {_boundEffFuncIntf :: Bind [EffVar] FuncIntf, _intfLoc :: Location}
   deriving
-    ( -- | BoundFuncIntf{_intfBound :: Bind [TVar] FuncIntf}
-      Eq,
+    ( Eq,
       Ord,
       Show,
       Read,
@@ -393,8 +409,7 @@ data EffectDef
       }
   | BoundEffectDef {_boundEffDef :: Bind [TVar] EffectDef, _effectLoc :: Location}
   deriving
-    ( -- | BoundEffectDef{_effectBound :: Bind [TVar] EffectDef}
-      Eq,
+    ( Eq,
       Ord,
       Show,
       Read,
@@ -404,10 +419,12 @@ data EffectDef
     )
 
 instance Pretty EffectDef where
-  pretty EffectDef {..} = vsep [
-    "effect" <+> pretty _effectName
-      <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _effectArgs)
-      ,braces $ line <> (vsep $ map (indent 4 . pretty) _effectIntfs) <> line]
+  pretty EffectDef {..} =
+    vsep
+      [ "effect" <+> pretty _effectName
+          <+> anglesList' (fmap (\(t, k) -> pretty t <+> colon <+> pretty k) _effectArgs),
+        braces $ line <> (vsep $ map (indent 4 . pretty) _effectIntfs) <> line
+      ]
   pretty (BoundEffectDef (B vs e) _) = bracketsList vs <+> pretty e
 
 data ImportStmt = ImportStmt
@@ -450,13 +467,15 @@ data FuncDef
     )
 
 instance Pretty FuncDef where
-  pretty FuncDef {..} = vsep [
-    "fun" <+> pretty _funcName <+> anglesList _funcBoundVars <+> bracketsList _funcBoundEffVars
-      <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _funcArgs)
-      <+> colon
-      <+> pretty _funcEffectType
-      <+> pretty _funcResultType
-      , braces $ line <> (indent 4 $ pretty _funcExpr) <> line]
+  pretty FuncDef {..} =
+    vsep
+      [ "fun" <+> pretty _funcName <+> anglesList _funcBoundVars <+> bracketsList _funcBoundEffVars
+          <+> parensList' (fmap (\(v, t) -> pretty v <+> colon <+> pretty t) _funcArgs)
+          <+> colon
+          <+> pretty _funcEffectType
+          <+> pretty _funcResultType,
+        braces $ line <> (indent 4 $ pretty _funcExpr) <> line
+      ]
   pretty (BoundFuncDef (B vs f) _) = anglesList vs <+> pretty f
   pretty (BoundEffFuncDef (B vs f) _) = bracketsList vs <+> pretty f
 
@@ -469,6 +488,7 @@ instance Pretty ImplFuncDef where
 data TopStmt
   = FDef {_fdef :: FuncDef}
   | TDef {_tdef :: TypeDef}
+  | TAlias {_talias :: TypeAlias}
   | EDef {_edef :: EffectDef}
   | ImplFDef {_implFdef :: ImplFuncDef}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
@@ -476,6 +496,7 @@ data TopStmt
 instance Pretty TopStmt where
   pretty FDef {..} = pretty _fdef
   pretty TDef {..} = pretty _tdef
+  pretty TAlias {..} = pretty _talias
   pretty EDef {..} = pretty _edef
   pretty ImplFDef {..} = pretty _implFdef
 
@@ -706,6 +727,23 @@ instance Subst Expr TypeDef
 makeLenses ''TypeDef
 
 makePrisms ''TypeDef
+
+-------------------------------
+
+instance Plated TypeAlias where
+  plate = uniplate
+
+instance Alpha TypeAlias
+
+instance Subst Type TypeAlias
+
+instance Subst EffectType TypeAlias
+
+instance Subst Expr TypeAlias
+
+makeLenses ''TypeAlias
+
+makePrisms ''TypeAlias
 
 -------------------------------
 
