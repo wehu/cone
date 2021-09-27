@@ -5,15 +5,35 @@
 namespace cone {
   namespace data {
     namespace tensor {
+
+      std::vector<py::object> ____list_to_vector(const object_t &obj) {
+        auto nil = py::module_::import("core.prelude").attr("Cone__nil");
+        std::vector<py::object> vec;
+        py::object o = ____to_py_object(obj);
+        while (!py::isinstance(o, nil)) {
+          vec.push_back(o.attr("f0"));
+          o = o.attr("f1");
+        }
+        return vec;
+      }
+
       const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &, const object_t &)> cone__full = 
       [=](const cont_t &k, stack_t stack, effects_t effs, const object_t &elem, const object_t &dyn_dims) {
         auto typeargs = ____to_py_object(stack->back()[____typeargs]);
         auto shape = py::cast<py::list>(py::cast<py::list>(typeargs)[0]);
         auto rank = py::len(shape);
+        auto dyns = ____list_to_vector(dyn_dims);
+        int dyn_index = 0;
         for (unsigned i=0; i<rank; ++i) {
           if (py::cast<py::int_>(shape[i]) == -1) {
-            throw ____cone_exception("unsupported dynamic shape so far");
+            if (dyn_index >= dyns.size()) {
+              throw ____cone_exception("dynamic dims are less then required in shape annotations");
+            }
+            shape[i] = dyns[dyn_index++];
           }
+        }
+        if (dyn_index != dyns.size()) {
+          throw ____cone_exception("dynamic dims are more than required in shape annotations");
         }
         return k(py::object(py::module_::import("numpy").attr("full")(shape, ____to_py_object(elem))));
       };
