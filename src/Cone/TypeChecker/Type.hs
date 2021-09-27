@@ -101,9 +101,17 @@ inferTypeKind b@BoundEffVarType {..} = underScope $ do
   mapM_ (\v -> setEnv (Just star) $ effs . at (name2String v)) bvs
   inferTypeKind t
 inferTypeKind v@TVar {..} = do
-  let tvn = name2String _tvar
-      kstar = KStar _tloc
-  getKindOfTVar tvn kstar
+  let go = do
+        let tvn = name2String _tvar
+            kstar = KStar _tloc
+        getKindOfTVar tvn kstar
+  alias <- getEnv $ typeAliases . at (name2String _tvar)
+  case alias of
+    Just alias ->
+      if alias ^. typeAliasArgs == []
+        then inferTypeKind $ _typeAliasType alias
+        else go
+    Nothing -> go
 inferTypeKind f@TFunc {..} = do
   ks <- mapM inferTypeKind _tfuncArgs
   mapM_ checkTypeKind ks
@@ -180,10 +188,18 @@ inferType l@TList {..} = do
   es <- mapM inferType _tlist
   return l {_tlist = es}
 inferType v@TVar {..} = do
-  t <- getEnv $ typeBinds . at (name2String _tvar)
-  case t of
-    Just t -> inferType t
-    Nothing -> return v
+  let go = do
+        t <- getEnv $ typeBinds . at (name2String _tvar)
+        case t of
+          Just t -> inferType t
+          Nothing -> return v
+  alias <- getEnv $ typeAliases . at (name2String _tvar)
+  case alias of
+    Just alias ->
+      if alias ^. typeAliasArgs == []
+        then inferType $ _typeAliasType alias
+        else go
+    Nothing -> go
 inferType t = return t
 
 -- | Check a type kind
