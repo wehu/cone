@@ -365,7 +365,7 @@ inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m (Type,
 inferAppResultType f@TFunc {} bargs args = do
   let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
-    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args ++ ppr (_tloc f)
+    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^..traverse.tloc) ++ " vs " ++ ppr args ++ ppr (args ^..traverse.tloc)
     else return ()
   bindings <-
     foldM
@@ -383,7 +383,7 @@ inferAppResultEffType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m Eff
 inferAppResultEffType f@TFunc {} targs args = do
   let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
-    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ " vs " ++ ppr args ++ ppr (_tloc f)
+    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^..traverse.tloc) ++ " vs " ++ ppr args ++ ppr (args ^..traverse.tloc)
     else return ()
   bindings <-
     foldM

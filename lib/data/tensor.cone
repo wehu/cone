@@ -6,7 +6,7 @@ import core/math
 
 type tensor<t, shape:@[num]>
 
-fun full<shape: @[num], a>(c : a) : tensor<a, shape>
+fun full<shape: @[num], a>(c : a, s : [i32]) : tensor<a, shape>
 
 fun matmul<n:num, k:num, m:num, a>(lhs : tensor<a, @[n, k]>, rhs : tensor<a, @[k, m]>) : tensor<a, @[n, m]> {
   inline_python<tensor<a, @[n, m]>>("""
