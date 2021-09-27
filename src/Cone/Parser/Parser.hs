@@ -555,7 +555,7 @@ typeDef =
 
 typeAlias :: Parser A.TypeAlias
 typeAlias = A.TypeAlias <$ kAlias <*> ident <*> 
-     (parens (P.sepBy1 (s2n <$> ident) comma) P.<|> return []) 
+     (angles (P.sepBy1 (s2n <$> ident) comma) P.<|> return []) 
      <* assign_ <*> type_ <*> getPos P.<?> "type alias"
 
 funcIntf :: Parser A.FuncIntf

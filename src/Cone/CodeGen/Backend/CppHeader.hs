@@ -52,8 +52,6 @@ genTopFw proxy TDef {..} = do
             foldl' (\s e -> s ++ ["const object_t &"]) init _typeConArgs
         ctrFunc fn =
           "extern const std::function<object_t" <> genArgTypesInternal ["const cont_t &", "stack_t", "effects_t"] <> ">" <+> fn <> semi
-
-genTopFw proxy EDef {..} = return emptyDoc
 genTopFw proxy FDef {..} = do
   prefix <- getEnv currentModuleName
   return $
@@ -64,8 +62,7 @@ genTopFw proxy FDef {..} = do
   where
     genArgTypesInternal init = encloseSep lparen rparen comma $ 
        init ++ (map (\a -> "const object_t &") $ (_funcArgs _fdef) ^.. traverse . _1)
-
-genTopFw proxy ImplFDef {..} = return emptyDoc
+genTopFw proxy _ = return emptyDoc
 
 evalType1 :: Type -> [Type] -> (Int -> Int) -> Type
 evalType1 t args f =

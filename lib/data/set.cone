@@ -2,6 +2,8 @@ module data/set
 
 import data/map as m
 
+alias xxx<a> = m/map<a, bool>
+
 type set<a> {
   set(m/map<a, bool>)
 }

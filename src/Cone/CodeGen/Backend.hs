@@ -106,6 +106,7 @@ class Backend t where
   
   genTopStmt :: (Has EnvEff sig m) => t Target -> TopStmt -> m (Doc a)
   genTopStmt proxy TDef {..} = genTypeDef proxy _tdef
+  genTopStmt proxy TAlias{}  = return emptyDoc
   genTopStmt proxy EDef {..} = genEffectDef proxy _edef
   genTopStmt proxy FDef {..} = genFuncDef proxy _fdef
   genTopStmt proxy ImplFDef {..} = genImplFuncDef proxy _implFdef
