@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 
-module Cone.TypeChecker (Env (..), types, funcs, effs, effIntfs, funcImpls, initialEnv, initModule, checkType) where
+module Cone.TypeChecker (Env (..), types, typeAliases, funcs, effs, effIntfs, funcImpls, initialEnv, initModule, checkType) where
 
 import Cone.Parser.AST
 import Cone.TypeChecker.Env

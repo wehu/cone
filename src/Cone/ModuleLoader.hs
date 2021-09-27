@@ -124,6 +124,7 @@ importModules cache paths m loaded = do
             return
               ( oldEnv
                   { _types = (merge g1 g2 f (oldEnv ^. types) (env ^. types)),
+                    _typeAliases = (merge g1 g2 f (oldEnv ^. typeAliases) (env ^. typeAliases)),
                     _effs = (merge g1 g2 f (oldEnv ^. effs) (env ^. effs)),
                     _effIntfs = (merge g1 g2 f (oldEnv ^. effIntfs) (env ^. effIntfs)),
                     _funcs = (merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs)),

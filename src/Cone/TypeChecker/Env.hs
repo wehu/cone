@@ -28,6 +28,8 @@ type Eff s e = Fresh :+: State s :+: Error e
 
 type TypeKinds = M.Map String Kind
 
+type TypeAliases = M.Map String TypeAlias
+
 type EffKinds = M.Map String EffKind
 
 type EffIntfs = M.Map String [String]
@@ -47,6 +49,7 @@ type EffKindBinds = M.Map String EffKind
 -- | The environment
 data Env = Env
   { _types :: TypeKinds,
+    _typeAliases :: TypeAliases,
     _funcs :: ExprTypes,
     _funcImpls :: FuncImpls,
     _effs :: EffKinds,
@@ -64,6 +67,7 @@ makeLenses ''Env
 initialEnv =
   Env
     { _types = M.empty,
+      _typeAliases = M.empty,
       _funcs = M.empty,
       _funcImpls = M.empty,
       _effs = M.empty,
