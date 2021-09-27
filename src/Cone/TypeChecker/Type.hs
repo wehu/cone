@@ -16,9 +16,9 @@ import Control.Monad
 import qualified Data.ByteString.Lazy.UTF8 as BLU
 import Data.Digest.Pure.MD5
 import qualified Data.List as L
+import Data.List.Split
 import qualified Data.Map as M
 import Data.Maybe
-import Data.List.Split
 import Debug.Trace
 import GHC.Stack
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
@@ -39,42 +39,42 @@ getKindOfTVar n defaultK = do
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
 inferTypeKind a@TApp {..} = do
   let go = do
-             ak <-
-               if not $ isn't _TVar _tappName
-                 then do
-                       let tvn = name2String $ _tvar _tappName
-                           kstar = KStar _tloc
-                           kf =
-                             if _tappArgs == []
-                               then kstar
-                               else KFunc [kstar | _ <- _tappArgs] kstar _tloc
-                       getKindOfTVar tvn kf
-                 else inferTypeKind _tappName
-             case ak of
-               KStar {} ->
-                 if _tappArgs == []
-                   then return ak
-                   else throwError $ "expected a func kind, but got " ++ ppr ak ++ ppr _tloc
-               KFunc {..} ->
-                 if L.length _tappArgs /= L.length _kfuncArgs
-                   then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs ++ ppr a ++ ppr _tloc
-                   else do
-                     forM_
-                       [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
-                       $ \(a, b) -> do
-                         t <- inferTypeKind a
-                         checkKindMatch t b
-                     return _kfuncResult
+        ak <-
+          if not $ isn't _TVar _tappName
+            then do
+              let tvn = name2String $ _tvar _tappName
+                  kstar = KStar _tloc
+                  kf =
+                    if _tappArgs == []
+                      then kstar
+                      else KFunc [kstar | _ <- _tappArgs] kstar _tloc
+              getKindOfTVar tvn kf
+            else inferTypeKind _tappName
+        case ak of
+          KStar {} ->
+            if _tappArgs == []
+              then return ak
+              else throwError $ "expected a func kind, but got " ++ ppr ak ++ ppr _tloc
+          KFunc {..} ->
+            if L.length _tappArgs /= L.length _kfuncArgs
+              then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs ++ ppr a ++ ppr _tloc
+              else do
+                forM_
+                  [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
+                  $ \(a, b) -> do
+                    t <- inferTypeKind a
+                    checkKindMatch t b
+                return _kfuncResult
   if not $ isn't _TVar _tappName
-  then do
-        let tvn = name2String $ _tvar _tappName
-        alias <- getEnv $ typeAliases . at tvn
-        case alias of
-          Just alias -> do
-            let t = substs [(n, tv) | n <- alias ^.. typeAliasArgs.traverse._1 | tv <- _tappArgs] (_typeAliasType alias)
-            inferTypeKind t
-          Nothing -> go
-  else go
+    then do
+      let tvn = name2String $ _tvar _tappName
+      alias <- getEnv $ typeAliases . at tvn
+      case alias of
+        Just alias -> do
+          let t = substs [(n, tv) | n <- alias ^.. typeAliasArgs . traverse . _1 | tv <- _tappArgs] (_typeAliasType alias)
+          inferTypeKind t
+        Nothing -> go
+    else go
 inferTypeKind a@TAnn {..} = do
   k <-
     if not $ isn't _TVar _tannType
@@ -141,7 +141,7 @@ inferType a@TApp {..} = do
   alias <- getEnv $ typeAliases . at name
   case alias of
     Just alias -> do
-      let t' = substs [(n, tv) | n <- alias ^.. typeAliasArgs.traverse._1 | tv <- _tappArgs] (_typeAliasType alias)
+      let t' = substs [(n, tv) | n <- alias ^.. typeAliasArgs . traverse . _1 | tv <- _tappArgs] (_typeAliasType alias)
       inferType t'
     Nothing -> do
       case name of
@@ -383,7 +383,7 @@ inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m (Type,
 inferAppResultType f@TFunc {} bargs args = do
   let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
-    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^..traverse.tloc) ++ " vs " ++ ppr args ++ ppr (args ^..traverse.tloc)
+    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^.. traverse . tloc) ++ " vs " ++ ppr args ++ ppr (args ^.. traverse . tloc)
     else return ()
   bindings <-
     foldM
@@ -401,7 +401,7 @@ inferAppResultEffType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m Eff
 inferAppResultEffType f@TFunc {} targs args = do
   let fArgTypes = _tfuncArgs f
   if L.length fArgTypes /= L.length args
-    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^..traverse.tloc) ++ " vs " ++ ppr args ++ ppr (args ^..traverse.tloc)
+    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^.. traverse . tloc) ++ " vs " ++ ppr args ++ ppr (args ^.. traverse . tloc)
     else return ()
   bindings <-
     foldM
@@ -445,8 +445,9 @@ collectVarBindings bi a@TVar {..} t = do
             then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr _tloc
             else return [(_tvar, t)]
 collectVarBindings bi t a@TVar {..} = do
-  if bi then collectVarBindings bi a t
-  else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr _tloc
+  if bi
+    then collectVarBindings bi a t
+    else throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr _tloc
 collectVarBindings bi a@TFunc {} b@TFunc {} =
   if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
     then throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
@@ -520,8 +521,9 @@ isEffVar _ = return False
 collectVarBindingsInEff :: (Has EnvEff sig m) => Bool -> EffectType -> EffectType -> m [(TVar, Type)]
 collectVarBindingsInEff bi s@EffVar {} _ = return []
 collectVarBindingsInEff bi a b@EffVar {} = do
-  if bi then collectVarBindingsInEff bi b a
-  else throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
+  if bi
+    then collectVarBindingsInEff bi b a
+    else throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 collectVarBindingsInEff bi a@EffApp {} b@EffApp {} =
   if L.length (a ^. effAppArgs) /= L.length (b ^. effAppArgs)
     || not (aeq (_effAppName a) (_effAppName b))
@@ -569,8 +571,9 @@ collectEffVarBindings bi ev@EffVar {..} e = do
     then return [(_effVar, e)]
     else return []
 collectEffVarBindings bi a b@EffVar {} = do
-  if bi then collectEffVarBindings bi b a
-  else throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
+  if bi
+    then collectEffVarBindings bi b a
+    else throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 collectEffVarBindings bi a@EffApp {} b@EffApp {} = do
   if L.length (a ^. effAppArgs) /= L.length (b ^. effAppArgs)
     || not (aeq (_effAppName a) (_effAppName b))
@@ -643,8 +646,9 @@ collectEffVarBindingsInType bi a@TVar {..} t = do
             then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr _tloc
             else return []
 collectEffVarBindingsInType bi a b@TVar {} = do
-  if bi then collectEffVarBindingsInType bi b a
-  else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
+  if bi
+    then collectEffVarBindingsInType bi b a
+    else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType bi a@TFunc {} b@TFunc {} =
   if L.length (_tfuncArgs a) /= L.length (_tfuncArgs b)
     then throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
@@ -917,15 +921,16 @@ getNamePath m n =
 
 filterOutAliasImports :: Module -> String -> [String] -> [String]
 filterOutAliasImports m n ns =
-  let aliasImports = L.nub $ 
-        L.foldl'
-          ( \s i ->
-              case i ^. importAlias of
-                Just alias -> s ++ [(i ^. importPath) ++ "/" ++ n]
-                Nothing -> s
-          )
-          []
-          $ m ^. imports
+  let aliasImports =
+        L.nub $
+          L.foldl'
+            ( \s i ->
+                case i ^. importAlias of
+                  Just alias -> s ++ [(i ^. importPath) ++ "/" ++ n]
+                  Nothing -> s
+            )
+            []
+            $ m ^. imports
    in (L.nub ns) L.\\ aliasImports
 
 -- | Func implementation selector
@@ -946,8 +951,9 @@ searchFunc m fn loc = do
           (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
       n = getNamePath m fn
   fs <- getEnv funcs
-  found <- (filterOutAliasImports m n) <$>
-            (foldM
+  found <-
+    (filterOutAliasImports m n)
+      <$> ( foldM
               ( \f p -> do
                   let ffn = p ++ n
                   case fs ^. at ffn of
@@ -955,7 +961,8 @@ searchFunc m fn loc = do
                     Nothing -> return f
               )
               []
-              prefixes)
+              prefixes
+          )
   if found == []
     then throwError $ "no function definition found for : " ++ fn ++ ppr loc
     else
