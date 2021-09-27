@@ -2,17 +2,38 @@ module data/map
 
 type map<k, v>
 
-fun empty<k, v>() : map<k, v>
+fun empty<k, v>() : map<k, v> {
+  inline_python<map<k, v>>("""
+from immutables import Map
+____result = Map()
+""")
+}
 
 fun first<k, v>(m : map<k, v>) : k
 
-fun has<k, v>(m : map<k, v>, k : k) : bool
+fun has<k, v>(m : map<k, v>, k : k) : bool {
+  inline_python<bool>("""
+____result = k in m
+""")
+}
 
-fun get<k, v>(m : map<k, v>, k : k) : v
+fun get<k, v>(m : map<k, v>, k : k) : v {
+  inline_python<v>("""
+____result = m.get(k)
+""")
+}
 
-fun set<k, v>(m : map<k, v>, k : k, v : k) : map<k, v>
+fun set<k, v>(m : map<k, v>, k : k, v : k) : map<k, v>  {
+  inline_python<map<k, v>>("""
+____result = m.set(k, v)
+""")
+}
 
-fun del<k, v>(m : map<k, v>, k : k) : map<k, v>
+fun del<k, v>(m : map<k, v>, k : k) : map<k, v> {
+  inline_python<map<k, v>>("""
+____result = m.delete(k)
+""")
+}
 
 fun mapv<k, a, b>[e](m : map<k, a>, f : (a) -> e b) : e map<k, b> {
   if m == empty() {

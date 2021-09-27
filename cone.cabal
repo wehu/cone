@@ -89,10 +89,7 @@ library
       array
     , base >=4.7 && <5
     , containers
-    , data-default-class
-    , data-interval
     , directory
-    , extended-reals
     , filepath
     , fused-effects
     , lens
@@ -119,10 +116,7 @@ executable cone-exe
     , base >=4.7 && <5
     , cone
     , containers
-    , data-default-class
-    , data-interval
     , directory
-    , extended-reals
     , filepath
     , fused-effects
     , lens
@@ -152,10 +146,7 @@ test-suite cone-test
     , base >=4.7 && <5
     , cone
     , containers
-    , data-default-class
-    , data-interval
     , directory
-    , extended-reals
     , filepath
     , fused-effects
     , hspec

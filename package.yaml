@@ -40,9 +40,6 @@ dependencies:
 - process
 - pureMD5
 - utf8-string
-- data-default-class
-- data-interval
-- extended-reals
 
 library:
   source-dirs: src

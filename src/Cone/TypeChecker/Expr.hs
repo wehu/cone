@@ -15,12 +15,6 @@ import Control.Effect.State
 import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
-import Control.Monad.ST
-import Data.Default.Class (def)
-import qualified Data.ExtendedReal as E
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import qualified Data.Interval as I
 import qualified Data.List as L
 import Data.List.Split
 import qualified Data.Map as M

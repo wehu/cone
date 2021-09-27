@@ -134,12 +134,7 @@ genTypeArgs ts = "py::object([]()" <> braces
 
 builtinFuncs = ["core/prelude/inline_python",
                 "data/tensor/full",
-                "data/map/empty",
-                "data/map/first",
-                "data/map/has",
-                "data/map/get",
-                "data/map/set",
-                "data/map/del"]
+                "data/map/first"]
 
 instance Backend CppHeader where
   namePath proxy n = pretty n
