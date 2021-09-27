@@ -60,7 +60,22 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
         else return f)
         []
         impls
-    findBestImpls impls = return $ L.nubBy aeq impls
+    findBestImpls impls' = do
+      let impls = L.nubBy aeq impls'
+      indegrees <- foldM (\s (a, b) -> do
+        is <- isSubType (a ^. _2) (b ^. _2)
+        if is then return $ s & at b ?~ (1 + (fromJust $ s ^. at b))
+        else do
+               is <- isSubType (b ^. _2) (a ^. _2)
+               if is then return $ s & at a ?~ (1 + (fromJust $ s ^. at a))
+               else return s)
+        (L.foldl' (\s e -> s & at e ?~ (0::Int)) M.empty impls)
+        [(a, b) | a <- impls, b <- impls]
+      foldM (\s (i, c) ->
+        if c == 0 then return $ s ++ [i]
+        else return s)
+        []
+        (M.toList indegrees)
 selectFuncImpl e = return e
 
 -- | Infer expression's type
