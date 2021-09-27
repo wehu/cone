@@ -166,7 +166,7 @@ inferExprType a@EAnn {..} = do
   k <- inferTypeKind _eannType
   checkTypeKind k
   at <- inferType _eannType
-  bindings <- collectVarBindings t at >>= checkVarBindings
+  bindings <- collectVarBindings False t at >>= checkVarBindings
   let aet = substs bindings t
   return $ annotateExpr a {_eannExpr = et} aet
 inferExprType l@ELit {..} = do
@@ -265,7 +265,7 @@ inferExprType h@EHandle {..} = underScope $ do
       -- check if interface defintion match with implemention's or not
       let handleT' = handleT {_tfuncEff = emptyEff, _tfuncResult = unit}
           intfT' = intfT {_tfuncEff = emptyEff, _tfuncResult = unit}
-      collectVarBindings intfT' handleT' >>= checkVarBindings
+      collectVarBindings False intfT' handleT' >>= checkVarBindings
 
       -- check expression result type
       intfE <- inferExprType $ fromJust $ _funcExpr intf
@@ -335,7 +335,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
   appFuncType <- applyTypeArgs appFuncType _pappTypeArgs >>= unbindType
   let argTypes = appFuncType ^. tfuncArgs
       appResT = _tfuncResult appFuncType
-  bindings <- collectVarBindings appResT t
+  bindings <- collectVarBindings False appResT t
   foldM
     ( \s e ->
         (++) <$> return s <*> e

@@ -85,10 +85,10 @@ fun main() : io unit {
     a+2 
   }))
 
-  val t0 = t/full<@[4, 4+2]>(0.1, []:[i32])
-  val t1 = t/full<@[6, 2]>(1.0, []:[i32])
+  val t0 = t/full<@[4, 4+2]>(0.1, [])
+  val t1 = t/full<@[6, 2]>(1.0, [])
 
-  print(t/matmul(t0, t1) + t/full<@[4, 2]>(0.9, []:[i32]))
+  print(t/matmul(t0, t1) + t/full<@[4, 2]>(0.9, []))
 
   print(sin(t1))
 
