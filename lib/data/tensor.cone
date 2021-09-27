@@ -8,13 +8,33 @@ type tensor<t, shape:@[num]>
 
 fun full<shape: @[num], a>(c : a) : tensor<a, shape>
 
-fun matmul<n:num, k:num, m:num, a>(lhs : tensor<a, @[n, k]>, rhs : tensor<a, @[k, m]>) : tensor<a, @[n, m]>
+fun matmul<n:num, k:num, m:num, a>(lhs : tensor<a, @[n, k]>, rhs : tensor<a, @[k, m]>) : tensor<a, @[n, m]> {
+  inline_python<tensor<a, @[n, m]>>("""
+from numpy import matmul
+____result = matmul(lhs, rhs)
+""")  
+}
 
-fun convolve_full<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[n+m-1]>
+fun convolve_full<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[n+m-1]> {
+  inline_python<tensor<a, @[n+m-1]>>("""
+from numpy import convolve
+____result = convolve(lhs, rhs)
+""")    
+}
 
-fun convolve_same<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[max<n,m>]>
+fun convolve_same<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[max<n,m>]> {
+  inline_python<tensor<a, @[max<n,m>]>>("""
+from numpy import convolve
+____result = convolve(lhs, rhs, mode="same")
+""")    
+}
 
-fun convolve_valid<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[max<n,m> - min<n,m> + 1]>
+fun convolve_valid<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[max<n,m> - min<n,m> + 1]> {
+  inline_python<tensor<a, @[max<n,m> - min<n,m> + 1]>>("""
+from numpy import convolve
+____result = convolve(lhs, rhs, mode="valid")
+""")  
+}
 
 impl fun sin<shape:@[num]>(a : tensor<f32, shape>) : tensor<f32, shape> {
   inline_python<tensor<f32, shape>>("""

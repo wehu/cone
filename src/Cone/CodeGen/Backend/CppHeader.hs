@@ -133,11 +133,7 @@ genTypeArgs ts = "py::object([]()" <> braces
     (map inferType ts)) <> "return ____t;") <> "())"
 
 builtinFuncs = ["core/prelude/inline_python",
-                "data/tensor/full", 
-                "data/tensor/matmul",
-                "data/tensor/convolve_full",
-                "data/tensor/convolve_same",
-                "data/tensor/convolve_valid",
+                "data/tensor/full",
                 "data/map/empty",
                 "data/map/first",
                 "data/map/has",
