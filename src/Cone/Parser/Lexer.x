@@ -4,7 +4,7 @@
 
 module Cone.Parser.Lexer (tokenize, Token(..), Tok(..), AlexPosn(..)) where
 import Data.Data
-import Debug.Trace
+import Data.Char (chr)
 }
 
 %wrapper "monad"
@@ -42,92 +42,92 @@ $charesc = [abfnrtv\\\"\'\&]
 @comment = . | $white | \n
 
 tokens :-
-  ($white # [\n])+				;
-  \\\n                    ;
-  "//"[^\n]*              ;
-  [\; \n]+                              { mkL Semi }
-  module                                { mkL Module }
-  import                                { mkL Import }
-  fun                                   { mkL Func }
-  fn                                    { mkL Fn }
-  as                                    { mkL As }
-  var                                   { mkL Var }
-  val                                   { mkL Val }
-  \(                                    { mkL LParen }
-  \)                                    { mkL RParen }
-  \{                                    { mkL LBrace }
-  \}                                    { mkL RBrace }
-  \[                                    { mkL LBracket }
-  \]                                    { mkL RBracket }
-  \:                                    { mkL Colon }
-  \,                                    { mkL Comma }
-  \<                                    { mkL Less }
-  \>                                    { mkL Greater }
-  "<="                                  { mkL Le }
-  ">="                                  { mkL Ge }
-  \!                                    { mkL Not }
-  "=="                                  { mkL Eq }
-  "!="                                  { mkL Ne }
-  "&&"                                  { mkL And }
-  "||"                                  { mkL Or }
-  \|                                    { mkL Pipe }
-  "="                                   { mkL Assign }
-  "+="                                  { mkL AddAssign }
-  "-="                                  { mkL SubAssign }
-  "*="                                  { mkL MulAssign }
-  "/="                                  { mkL DivAssign }
-  "%="                                  { mkL ModAssign }
-  "+"                                   { mkL Add }
-  "-"                                   { mkL Sub }
-  "/"                                   { mkL Div }
-  "%"                                   { mkL Mod }
-  "#"                                   { mkL Sharp }
-  \\                                    { mkL Backslash }
-  "->"                                  { mkL Arrow }
-  \*                                    { mkL Star }
-  \?                                    { mkL Question }
-  \@                                    { mkL At }
-  "i8"                                  { mkL I8 }
-  "i16"                                 { mkL I16 }
-  "i32"                                 { mkL I32 }
-  "i64"                                 { mkL I64 }
-  "u8"                                  { mkL U8 }
-  "u16"                                 { mkL U16 }
-  "u32"                                 { mkL U32 }
-  "u64"                                 { mkL U64 }
-  "f16"                                 { mkL F16 }
-  "f32"                                 { mkL F32 }
-  "f64"                                 { mkL F64 }
-  "bf16"                                { mkL BF16 }
-  "bool"                                { mkL Pred }
-  "str"                                 { mkL Str }
-  "char"                                { mkL Char }
-  "type"                                { mkL Type }
-  "effect"                              { mkL Effect }
-  "case"                                { mkL Case }
-  "of"                                  { mkL Of }
-  "if"                                  { mkL If }
-  "else"                                { mkL Else }
-  "while"                               { mkL While }
-  "num"                                 { mkL Num }
-  "unit"                                { mkL Unit }
-  "true"                                { mkL True_ }
-  "false"                               { mkL False_ }
-  "handle"                              { mkL Handle }
-  "with"                                { mkL With }
-  "impl"                                { mkL Impl }
-  @decimal 
-    | 0[oO] @octal
-    | 0[xX] @hexadecimal		            { mkL LInt }
-  @decimal \. @decimal @exponent?
-    | @decimal @exponent	            	{ mkL LFloat }
-  \' ($graphic # [\'\\] | " " | @escape) \'
-				                                { mkL LChar }
-  \" @string* \"	                    	{ mkL LStr }
-  [$alpha \_] [$alpha $digit \_]*       { mkL Ident }
+  <0> ($white # [\n])+				;
+  <0> \\\n                    ;
+  <0> "//"[^\n]*              ;
+  <0> "/*"                                  { nestedComments }
+  <0> [\; \n]+                              { mkL Semi }
+  <0> module                                { mkL Module }
+  <0> import                                { mkL Import }
+  <0> fun                                   { mkL Func }
+  <0> fn                                    { mkL Fn }
+  <0> as                                    { mkL As }
+  <0> var                                   { mkL Var }
+  <0> val                                   { mkL Val }
+  <0> \(                                    { mkL LParen }
+  <0> \)                                    { mkL RParen }
+  <0> \{                                    { mkL LBrace }
+  <0> \}                                    { mkL RBrace }
+  <0> \[                                    { mkL LBracket }
+  <0> \]                                    { mkL RBracket }
+  <0> \:                                    { mkL Colon }
+  <0> \,                                    { mkL Comma }
+  <0> \<                                    { mkL Less }
+  <0> \>                                    { mkL Greater }
+  <0> "<="                                  { mkL Le }
+  <0> ">="                                  { mkL Ge }
+  <0> \!                                    { mkL Not }
+  <0> "=="                                  { mkL Eq }
+  <0> "!="                                  { mkL Ne }
+  <0> "&&"                                  { mkL And }
+  <0> "||"                                  { mkL Or }
+  <0> \|                                    { mkL Pipe }
+  <0> "="                                   { mkL Assign }
+  <0> "+="                                  { mkL AddAssign }
+  <0> "-="                                  { mkL SubAssign }
+  <0> "*="                                  { mkL MulAssign }
+  <0> "/="                                  { mkL DivAssign }
+  <0> "%="                                  { mkL ModAssign }
+  <0> "+"                                   { mkL Add }
+  <0> "-"                                   { mkL Sub }
+  <0> "/"                                   { mkL Div }
+  <0> "%"                                   { mkL Mod }
+  <0> "#"                                   { mkL Sharp }
+  <0> \\                                    { mkL Backslash }
+  <0> "->"                                  { mkL Arrow }
+  <0> \*                                    { mkL Star }
+  <0> \?                                    { mkL Question }
+  <0> \@                                    { mkL At }
+  <0> "i8"                                  { mkL I8 }
+  <0> "i16"                                 { mkL I16 }
+  <0> "i32"                                 { mkL I32 }
+  <0> "i64"                                 { mkL I64 }
+  <0> "u8"                                  { mkL U8 }
+  <0> "u16"                                 { mkL U16 }
+  <0> "u32"                                 { mkL U32 }
+  <0> "u64"                                 { mkL U64 }
+  <0> "f16"                                 { mkL F16 }
+  <0> "f32"                                 { mkL F32 }
+  <0> "f64"                                 { mkL F64 }
+  <0> "bf16"                                { mkL BF16 }
+  <0> "bool"                                { mkL Pred }
+  <0> "str"                                 { mkL Str }
+  <0> "char"                                { mkL Char }
+  <0> "type"                                { mkL Type }
+  <0> "effect"                              { mkL Effect }
+  <0> "case"                                { mkL Case }
+  <0> "of"                                  { mkL Of }
+  <0> "if"                                  { mkL If }
+  <0> "else"                                { mkL Else }
+  <0> "while"                               { mkL While }
+  <0> "num"                                 { mkL Num }
+  <0> "unit"                                { mkL Unit }
+  <0> "true"                                { mkL True_ }
+  <0> "false"                               { mkL False_ }
+  <0> "handle"                              { mkL Handle }
+  <0> "with"                                { mkL With }
+  <0> "impl"                                { mkL Impl }
+  <0> @decimal 
+        | 0[oO] @octal
+        | 0[xX] @hexadecimal		            { mkL LInt }
+  <0> @decimal \. @decimal @exponent?
+        | @decimal @exponent	            	{ mkL LFloat }
+      \' ($graphic # [\'\\] | " " | @escape) \'
+          	                                { mkL LChar }
+  <0> \" @string* \"	                    	{ mkL LStr }
+  <0> [$alpha \_] [$alpha $digit \_]*       { mkL Ident }
 
 {
--- Each action has type :: String -> Token
 
 -- The token type:
 data Tok =
@@ -215,6 +215,33 @@ type Token = (AlexPosn, Tok, String)
 
 mkL :: Tok -> AlexInput -> Int -> Alex Token
 mkL tok (p,_,_,str) len = return (p, tok, (take len str))
+
+nestedComments :: AlexInput -> Int -> Alex Token
+nestedComments (p,_,_,str) len = do 
+  input <- alexGetInput
+  go 1 input
+  where go 0 input = do alexSetInput input; alexMonadScan
+        go n input = do
+          let slashN = fromIntegral (ord '/')
+              starN  = fromIntegral (ord '*')
+          case alexGetByte input of
+            Nothing  -> err input
+            Just (c,input) -> do
+              case chr (fromIntegral c) of
+                '*' -> do
+                  let temp = input
+                  case alexGetByte input of
+                    Nothing  -> err input
+                    Just (c,input) | c == slashN -> go (n-1) input
+                    Just (c,input) | c == starN -> go n temp
+                    Just (c,input)   -> go n input
+                '/' -> do
+                  case alexGetByte input of
+                    Nothing  -> err input
+                    Just (c,input) | c == starN -> go (n+1) input
+                    Just (c,input)   -> go n input
+                c -> go n input
+        err input = do alexSetInput input; lexError "error in nested comments"  
 
 lexError s = do
   (p,c,_,input) <- alexGetInput

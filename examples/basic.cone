@@ -8,6 +8,11 @@ import control/state
 import control/nodet
 import core/math
 
+/*  fdfjld
+dfdljfjdl
+
+*/
+
 type A {
    A(i32)
    B(i32)
@@ -17,6 +22,9 @@ fun test() : state<i32> unit {
    val a = get<i32>()
    set(a+1)
 }
+
+/* dfdljfjdl
+fdf */
 
 fun test2<a>(a: a) : a {
    a
