@@ -179,6 +179,8 @@ false = keyword L.False_
 
 unit = keyword L.Unit
 
+kAlias = keyword L.Alias
+
 tokenP :: Monoid a => Prism' L.Tok a -> Parser String
 tokenP p = token (not . isn't p) (\(_, _, s) -> s)
 
@@ -551,6 +553,11 @@ typeDef =
         )
     <*> getPos P.<?> "type definition"
 
+typeAlias :: Parser A.TypeAlias
+typeAlias = A.TypeAlias <$ kAlias <*> ident <*> 
+     (parens (P.sepBy1 (s2n <$> ident) comma) P.<|> return []) 
+     <* assign_ <*> type_ <*> getPos P.<?> "type alias"
+
 funcIntf :: Parser A.FuncIntf
 funcIntf =
   f <$ kFunc <*> ident <*> boundTVars <*> boundEffVars
@@ -578,6 +585,7 @@ topStmt :: Parser A.TopStmt
 topStmt =
   ( (A.FDef <$> func)
       P.<|> A.TDef <$> typeDef
+      P.<|> A.TAlias <$> typeAlias
       P.<|> A.EDef <$> effectDef
       P.<|> (A.ImplFDef <$ kImpl <*> (A.ImplFuncDef <$> func) P.<?> "function implementation")
   )

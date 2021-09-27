@@ -362,7 +362,7 @@ data TypeCon = TypeCon
 instance Pretty TypeCon where
   pretty TypeCon {..} = pretty _typeConName <+> parensList _typeConArgs
 
-data TypeAlias = TypeAlias {_typeAliasName :: String, _typeAliasArgs :: [TVar], _typeAliasType :: Type}
+data TypeAlias = TypeAlias {_typeAliasName :: String, _typeAliasArgs :: [TVar], _typeAliasType :: Type, _typeAliasLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty TypeAlias where
