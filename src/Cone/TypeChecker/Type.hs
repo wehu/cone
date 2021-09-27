@@ -71,6 +71,12 @@ inferTypeKind a@TApp {..} = do
       alias <- getEnv $ typeAliases . at tvn
       case alias of
         Just alias -> do
+          let kstar = KStar _tloc
+          forM_
+            [(a, b) | a <- alias ^.. typeAliasArgs . traverse . _2 . non kstar | b <- _tappArgs]
+            $ \(a, b) -> do
+              t <- inferTypeKind b
+              checkKindMatch t a
           let t = substs [(n, tv) | n <- alias ^.. typeAliasArgs . traverse . _1 | tv <- _tappArgs] (_typeAliasType alias)
           inferTypeKind t
         Nothing -> go
