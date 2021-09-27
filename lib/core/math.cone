@@ -4,18 +4,18 @@ module core/math
 fun sin<a>(a : a) : a
 
 impl fun sin(a : f32) : f32 {
-  inline_python<f32>(      \
-"from math import sin\n" + \
-"____result = sin(a)"      \
-  )
+  inline_python<f32>("""
+from math import sin
+____result = sin(a)
+""")
 }
 
 // cos
 fun cos<a>(a : a) : a
 
 impl fun cos(a : f32) : f32 {
-  inline_python<f32>(      \
-"from math import cos\n" + \
-"____result = cos(a)"      \
-  )
+  inline_python<f32>("""
+from math import cos
+____result = cos(a)
+""")
 }

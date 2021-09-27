@@ -124,6 +124,7 @@ tokens :-
         | @decimal @exponent	            	{ mkL LFloat }
       \' ($graphic # [\'\\] | " " | @escape) \'
           	                                { mkL LChar }
+  <0> \"\"\"                                { multilineString }
   <0> \" @string* \"	                    	{ mkL LStr }
   <0> [$alpha \_] [$alpha $digit \_]*       { mkL Ident }
 
@@ -242,6 +243,30 @@ nestedComments (p,_,_,str) len = do
                     Just (c,input)   -> go n input
                 c -> go n input
         err input = do alexSetInput input; lexError "error in nested comments"  
+
+multilineString :: AlexInput -> Int -> Alex Token
+multilineString (p,_,_,str) len = do 
+  input <- alexGetInput
+  rlen <- go 1 input 0
+  return (p, LStr, "R\"cone(" ++ (drop 3 (take (len+rlen-3) str)) ++ ")cone\"")
+  where go 0 input len = do alexSetInput input; return len
+        go n input len = do
+          let strQN = fromIntegral (ord '"')
+          case alexGetByte input of
+            Nothing  -> err input
+            Just (c,input) -> do
+              case chr (fromIntegral c) of
+                '"' -> do
+                  case alexGetByte input of
+                    Nothing -> err input
+                    Just (c,input) | c == strQN -> do
+                      case alexGetByte input of
+                        Nothing -> err input
+                        Just (c,input) | c == strQN -> go (n-1) input (len+3)
+                        Just (c,input) -> go n input (len+3)
+                    Just (c,input) -> go n input (len+2)
+                c -> go n input (len+1)
+        err input = do alexSetInput input; lexError "error in multiline string"
 
 lexError s = do
   (p,c,_,input) <- alexGetInput
