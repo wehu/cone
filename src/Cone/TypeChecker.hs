@@ -134,6 +134,59 @@ checkTypeConDef t =
 checkTypeConDefs :: (Has EnvEff sig m) => Module -> m Module
 checkTypeConDefs m = mapMOf (topStmts . traverse . _TDef) checkTypeConDef m
 
+-- | Initialize type alias definitions
+initTypeAlias :: (Has EnvEff sig m) => String -> TypeAlias -> m TypeAlias
+initTypeAlias prefix t = do
+  let args = t ^. typeAliasArgs
+      name = prefix ++ "/" ++ t ^. typeAliasName
+      pos = _typeAliasLoc t
+      star = KStar pos
+      kind = if args == [] -- if no arguments, it is just a simple enum
+            then star
+            else KFunc (args ^.. traverse . _2 . non star) star pos
+  -- check if inteface exists or not
+  ot <- getEnv $ types . at name
+  forMOf _Just ot $ \t ->
+    throwError $
+      "type alias has conflict name: " ++ name ++ " vs " ++ ppr t ++ ppr pos
+  setEnv (Just kind) $ types . at name
+  return t {_typeAliasName = name}
+
+-- | Initialize all type aliases
+initTypeAliases :: (Has EnvEff sig m) => Module -> m Module
+initTypeAliases m = mapMOf (topStmts . traverse . _TAlias) (initTypeAlias $ m ^. moduleName) $ m
+
+-- | Check type alias
+checkTypeAlias :: (Has EnvEff sig m) => TypeAlias -> m TypeAlias
+checkTypeAlias t = do
+  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+  let args = t ^.. typeAliasArgs . traverse . _1
+      aliasType = _typeAliasType t
+      name = t ^. typeAliasName
+      b = bind (args ++ globalTypes) aliasType
+      fvars = (b ^.. fv) :: [TVar]
+      pos = _typeAliasLoc t
+  -- check if has free type variables
+  if fvars /= []
+    then
+      throwError $
+        "type alias's type variables should "
+          ++ "only exists in eff type arguments: "
+          ++ ppr fvars
+          ++ ppr pos
+    else return ()
+  -- check if inteface exists or not
+  ot <- getEnv $ typeAliases . at name
+  forMOf _Just ot $ \t ->
+    throwError $
+      "type alias has conflict name: " ++ name ++ " vs " ++ ppr t ++ ppr pos
+  setEnv (Just t) $ typeAliases . at name
+  return t
+
+-- | Initialize all effect interfaces
+checkTypeAliases :: (Has EnvEff sig m) => Module -> m Module
+checkTypeAliases m = mapMOf (topStmts . traverse . _TAlias) checkTypeAlias $ m
+
 -- | Initializa effect type definition
 initEffTypeDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
 initEffTypeDef prefix e = do
@@ -367,7 +420,8 @@ addTypeBindings m =
   over (topStmts . traverse . _EDef) bindEDef $
     over (topStmts . traverse . _TDef) bindTDef $
       over (topStmts . traverse . _FDef) bindFDef $
-        over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef m
+        over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef $
+          over (topStmts . traverse . _TAlias) bindTAlias m
   where
     bindEDef edef =
       let boundVars = L.nub $ edef ^.. effectArgs . traverse
@@ -381,6 +435,9 @@ addTypeBindings m =
     bindTDef tdef =
       let boundVars = L.nub $ tdef ^.. typeArgs . traverse . _1
        in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef)
+    bindTAlias talias =
+      let boundVars = L.nub $ talias ^.. typeAliasArgs . traverse. _1
+        in BoundTypeAlias (bind boundVars talias) (_typeAliasLoc talias)
     bindFDef fdef =
       let boundVars = L.nub $ fdef ^. funcBoundVars
           boundEffVars = L.nub $ fdef ^. funcBoundEffVars
@@ -406,7 +463,8 @@ removeTypeBindings m =
   over (topStmts . traverse . _EDef) removeBindingsForEDef $
     over (topStmts . traverse . _TDef) removeBindingsForTDef $
       over (topStmts . traverse . _FDef) removeBindingsForFDef $
-        over (topStmts . traverse . _ImplFDef . implFunDef) removeBindingsForFDef m
+        over (topStmts . traverse . _ImplFDef . implFunDef) removeBindingsForFDef $
+          over (topStmts . traverse . _TAlias) removeBindingsForTypeAlias m
   where
     removeBindingsForEDef (BoundEffectDef b _) =
       let (_, e) = unsafeUnbind b
@@ -424,6 +482,10 @@ removeTypeBindings m =
       let (_, t) = unsafeUnbind b
        in removeBindingsForTDef t
     removeBindingsForTDef t = t
+    removeBindingsForTypeAlias (BoundTypeAlias b _) =
+      let (_, t) = unsafeUnbind b
+        in removeBindingsForTypeAlias t
+    removeBindingsForTypeAlias t = t
     removeBindingsForFDef (BoundFuncDef b _) =
       let (_, f) = unsafeUnbind b
        in removeBindingsForFDef f
@@ -677,6 +739,7 @@ initModule m env id =
       (return m)
       >>= initTypeDefs
       >>= initEffTypeDefs
+      >>= initTypeAliases
       >>= addPrefixForTypes
       >>= (\m -> return $ convertFuncImplToFuncs m)
       >>= initTypeConDefs
@@ -691,6 +754,7 @@ checkType m env id =
   run . runError . (runState env) . runFresh id $
     do
       return m
+      >>= checkTypeAliases
       >>= checkTypeConDefs
       >>= checkEffIntfDefs
       >>= checkFuncDefs

@@ -38,32 +38,43 @@ getKindOfTVar n defaultK = do
 -- | Infer type's kind
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
 inferTypeKind a@TApp {..} = do
-  ak <-
-    if not $ isn't _TVar _tappName
-      then do
+  let go = do
+             ak <-
+               if not $ isn't _TVar _tappName
+                 then do
+                       let tvn = name2String $ _tvar _tappName
+                           kstar = KStar _tloc
+                           kf =
+                             if _tappArgs == []
+                               then kstar
+                               else KFunc [kstar | _ <- _tappArgs] kstar _tloc
+                       getKindOfTVar tvn kf
+                 else inferTypeKind _tappName
+             case ak of
+               KStar {} ->
+                 if _tappArgs == []
+                   then return ak
+                   else throwError $ "expected a func kind, but got " ++ ppr ak ++ ppr _tloc
+               KFunc {..} ->
+                 if L.length _tappArgs /= L.length _kfuncArgs
+                   then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs ++ ppr a ++ ppr _tloc
+                   else do
+                     forM_
+                       [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
+                       $ \(a, b) -> do
+                         t <- inferTypeKind a
+                         checkKindMatch t b
+                     return _kfuncResult
+  if not $ isn't _TVar _tappName
+  then do
         let tvn = name2String $ _tvar _tappName
-            kstar = KStar _tloc
-            kf =
-              if _tappArgs == []
-                then kstar
-                else KFunc [kstar | _ <- _tappArgs] kstar _tloc
-        getKindOfTVar tvn kf
-      else inferTypeKind _tappName
-  case ak of
-    KStar {} ->
-      if _tappArgs == []
-        then return ak
-        else throwError $ "expected a func kind, but got " ++ ppr ak ++ ppr _tloc
-    KFunc {..} ->
-      if L.length _tappArgs /= L.length _kfuncArgs
-        then throwError $ "kind arguments mismatch: " ++ ppr _tappArgs ++ " vs " ++ ppr _kfuncArgs ++ ppr a ++ ppr _tloc
-        else do
-          forM_
-            [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
-            $ \(a, b) -> do
-              t <- inferTypeKind a
-              checkKindMatch t b
-          return _kfuncResult
+        alias <- getEnv $ typeAliases . at tvn
+        case alias of
+          Just alias -> do
+            let t = substs [(n, tv) | n <- alias ^.. typeAliasArgs.traverse._1 | tv <- _tappArgs] (_typeAliasType alias)
+            inferTypeKind t
+          Nothing -> go
+  else go
 inferTypeKind a@TAnn {..} = do
   k <-
     if not $ isn't _TVar _tannType
@@ -126,16 +137,23 @@ inferType :: (Has EnvEff sig m) => Type -> m Type
 inferType a@TApp {..} = do
   args <- mapM inferType _tappArgs
   let t = a {_tappArgs = args}
-  case name2String (_tvar _tappName) of
-    "core/prelude/neg" -> return $ evalType1 t args (\e -> (-e))
-    "core/prelude/add" -> return $ evalType2 t args (+)
-    "core/prelude/sub" -> return $ evalType2 t args (-)
-    "core/prelude/mul" -> return $ evalType2 t args (*)
-    "core/prelude/div" -> return $ evalType2 t args div
-    "core/prelude/mod" -> return $ evalType2 t args mod
-    "core/prelude/max" -> return $ evalType2 t args max
-    "core/prelude/min" -> return $ evalType2 t args min
-    _ -> return t
+      name = name2String (_tvar _tappName)
+  alias <- getEnv $ typeAliases . at name
+  case alias of
+    Just alias -> do
+      let t' = substs [(n, tv) | n <- alias ^.. typeAliasArgs.traverse._1 | tv <- _tappArgs] (_typeAliasType alias)
+      inferType t'
+    Nothing -> do
+      case name of
+        "core/prelude/neg" -> return $ evalType1 t args (\e -> (-e))
+        "core/prelude/add" -> return $ evalType2 t args (+)
+        "core/prelude/sub" -> return $ evalType2 t args (-)
+        "core/prelude/mul" -> return $ evalType2 t args (*)
+        "core/prelude/div" -> return $ evalType2 t args div
+        "core/prelude/mod" -> return $ evalType2 t args mod
+        "core/prelude/max" -> return $ evalType2 t args max
+        "core/prelude/min" -> return $ evalType2 t args min
+        _ -> return t
 inferType a@TAnn {..} = do
   t <- inferType _tannType
   return a {_tannType = t}

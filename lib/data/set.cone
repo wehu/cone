@@ -2,32 +2,24 @@ module data/set
 
 import data/map as m
 
-alias xxx<a> = m/map<a, bool>
-
-type set<a> {
-  set(m/map<a, bool>)
-}
+alias set<a> = m/map<a, bool>
 
 fun empty<a>() : set<a> {
-  set(m/empty<a, bool>())
+  m/empty<a, bool>()
 }
 
 fun has<v>(s : set<v>, v : v) : bool {
-  val set(data) = s
-  m/has(data, v)
+  m/has(s, v)
 }
 
 fun insert<v>(s : set<v>, v : v) : set<v> {
-  val set(data) = s
-  set(m/set(data, v, true))
+  m/set(s, v, true)
 }
 
 fun del<v>(s : set<v>, v : v) : set<v> {
-  val set(data) = s
-  set(m/del(data, v))
+  m/del(s, v)
 }
 
 fun map<a, b>[e](s : set<a>, f : (a) -> e b) : e set<b> {
-  val set(data) = s
-  set(m/mapk(data, f))
+  m/mapk(s, f)
 }
