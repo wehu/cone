@@ -28,7 +28,6 @@ data-files:
     lib/data/set.cone
     lib/data/tensor.cone
     include/cone/builtins.h
-    include/cone/data/map.h
     include/cone/data/tensor.h
     include/pybind11/attr.h
     include/pybind11/buffer_info.h

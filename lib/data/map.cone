@@ -9,7 +9,11 @@ ____result = Map()
 """)
 }
 
-fun first<k, v>(m : map<k, v>) : k
+fun first<k, v>(m : map<k, v>) : k {
+  inline_python<k>("""
+____result = next(iter(m.keys())) if len(m) > 0 else None
+""")
+}
 
 fun has<k, v>(m : map<k, v>, k : k) : bool {
   inline_python<bool>("""

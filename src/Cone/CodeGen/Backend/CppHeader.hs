@@ -133,8 +133,7 @@ genTypeArgs ts = "py::object([]()" <> braces
     (map inferType ts)) <> "return ____t;") <> "())"
 
 builtinFuncs = ["core/prelude/inline_python",
-                "data/tensor/full",
-                "data/map/first"]
+                "data/tensor/full"]
 
 instance Backend CppHeader where
   namePath proxy n = pretty n
@@ -518,7 +517,6 @@ instance Backend CppHeader where
           "#include <iostream>",
           "#include \"cone/builtins.h\"",
           "#include \"cone/data/tensor.h\"",
-          "#include \"cone/data/map.h\"",
           "#include \"core/prelude.h\""
         ]
           ++ imps
