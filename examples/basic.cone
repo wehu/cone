@@ -85,6 +85,9 @@ fun main() : io unit {
     a+2 
   }))
 
+  val s0 = s/empty<i32>()
+  print(s/insert(s0, 4))
+
   val t0 = t/full<@[4, 4+2]>(0.1, [])
   val t1 = t/full<@[6, 2]>(1.0, [])
 
