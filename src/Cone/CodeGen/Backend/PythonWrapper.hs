@@ -34,7 +34,7 @@ instance Backend PythonWrapper where
 
   typeN proxy prefix n' =
     let prefixLen = length prefix
-        n = if prefix == (take prefixLen n') then (drop (prefixLen + 1) n') else n'
+        n = if prefix == take prefixLen n' then drop (prefixLen + 1) n' else n'
         ns = splitOn "/" n
         ps = init ns
         tn = "Cone__" ++ last ns
@@ -42,7 +42,7 @@ instance Backend PythonWrapper where
 
   funcN proxy prefix n' =
     let prefixLen = length prefix
-        n = if prefix == (take prefixLen n') then (drop (prefixLen + 1) n') else n'
+        n = if prefix == take prefixLen n' then drop (prefixLen + 1) n' else n'
         ns = splitOn "/" n
         ps = init ns
         fn = "cone__" ++ last ns
@@ -80,7 +80,7 @@ instance Backend PythonWrapper where
   genImplFuncDef _ _ = return emptyDoc
 
   genExpr _ _ = return emptyDoc
- 
+
   genPatternMatch _ _ = return emptyDoc
 
   genPrologue _ = return emptyDoc

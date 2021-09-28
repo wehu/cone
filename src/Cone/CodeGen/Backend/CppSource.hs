@@ -35,7 +35,7 @@ instance Backend CppSource where
 
   typeN proxy prefix n' =
     let prefixLen = length prefix
-        n = if prefix == (take prefixLen n') then (drop (prefixLen + 1) n') else n'
+        n = if prefix == take prefixLen n' then drop (prefixLen + 1) n' else n'
         ns = splitOn "/" n
         ps = init ns
         tn = "Cone__" ++ last ns
@@ -43,7 +43,7 @@ instance Backend CppSource where
 
   funcN proxy prefix n' =
     let prefixLen = length prefix
-        n = if prefix == (take prefixLen n') then (drop (prefixLen + 1) n') else n'
+        n = if prefix == take prefixLen n' then drop (prefixLen + 1) n' else n'
         ns = splitOn "/" n
         ps = init ns
         fn = "cone__" ++ last ns
@@ -66,7 +66,7 @@ instance Backend CppSource where
     where
       ctrFuncWrapper fn =
         "m.def(\"" <> fn <> "\", &" <> fn <> "_w____);"
-  
+
   genEffectDef _ _ = return emptyDoc
 
   genFuncDef proxy FuncDef {..} = do
@@ -79,7 +79,7 @@ instance Backend CppSource where
   genExpr _ _ = return emptyDoc
 
   genPatternMatch _ _ = return emptyDoc
- 
+
   genPrologue _ = return emptyDoc
 
   genEpilogue _ = return emptyDoc
@@ -105,4 +105,4 @@ instance Backend CppSource where
           ++ tops
           ++ [pos]
           ++ ["}"]
-         ++ ["}", sep $ map (\_ -> rbrace) modulePs]
+         ++ ["}", sep $ map (const rbrace) modulePs]

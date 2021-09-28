@@ -35,7 +35,7 @@ instance Backend PythonType where
 
   typeN proxy prefix n' =
     let prefixLen = length prefix
-        n = if prefix == (take prefixLen n') then (drop (prefixLen + 1) n') else n'
+        n = if prefix == take prefixLen n' then drop (prefixLen + 1) n' else n'
         ns = splitOn "/" n
         ps = init ns
         tn = "Cone__" ++ last ns
@@ -43,7 +43,7 @@ instance Backend PythonType where
 
   funcN proxy prefix n' =
     let prefixLen = length prefix
-        n = if prefix == (take prefixLen n') then (drop (prefixLen + 1) n') else n'
+        n = if prefix == take prefixLen n' then drop (prefixLen + 1) n' else n'
         ns = splitOn "/" n
         ps = init ns
         fn = "cone__" ++ last ns
@@ -88,7 +88,7 @@ instance Backend PythonType where
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
       genFields =
-        if _typeConArgs == []
+        if null _typeConArgs
           then ["pass"]
           else
             foldl'
@@ -108,7 +108,7 @@ instance Backend PythonType where
   genExpr _ _ = return emptyDoc
 
   genPatternMatch _ _ = return emptyDoc
- 
+
   genPrologue _ = return emptyDoc
 
   genEpilogue _ = return emptyDoc

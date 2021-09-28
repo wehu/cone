@@ -72,7 +72,7 @@ class Backend t where
   -- | Generate a module
   gen :: t Target -> Module -> Either String (Doc a)
   gen proxy m = do
-    (env, (id, doc)) <- run . runError . (runState initialEnv) . runFresh 0 $ genModule proxy m
+    (env, (id, doc)) <- run . runError . runState initialEnv . runFresh 0 $ genModule proxy m
     return doc
 
   namePath :: t Target -> String -> Doc a
@@ -94,7 +94,7 @@ class Backend t where
   genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m (Doc a)
 
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
- 
+
   genPrologue :: (Has EnvEff sig m) => t Target -> m (Doc a)
 
   genEpilogue :: (Has EnvEff sig m) => t Target -> m (Doc a)
@@ -103,7 +103,7 @@ class Backend t where
 
   genImplFuncDef :: (Has EnvEff sig m) => t Target -> ImplFuncDef -> m (Doc a)
   genImplFuncDef proxy ImplFuncDef {..} = genFuncDef proxy _implFunDef
-  
+
   genTopStmt :: (Has EnvEff sig m) => t Target -> TopStmt -> m (Doc a)
   genTopStmt proxy TDef {..} = genTypeDef proxy _tdef
   genTopStmt proxy TAlias{}  = return emptyDoc
