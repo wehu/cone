@@ -1,12 +1,12 @@
-module examples/basic
+module examples.basic
 
-import data/list as l
-import data/tensor as t
-import data/map as m
-import data/set as s
-import control/state
-import control/nodet
-import core/math
+import data.list as l
+import data.tensor as t
+import data.map as m
+import data.set as s
+import control.state
+import control.nodet
+import core.math
 
 /*  fdfjld
 dfdljfjdl
@@ -54,7 +54,7 @@ fun main() : io unit {
 
   val l = [1, 2, 3]
 
-  print(l/length(l))
+  print(l.length(l))
 
   val t = (2, "string", 0.2+0.1, [1]) : (i32, str, f32, [i32])
 
@@ -70,31 +70,31 @@ fun main() : io unit {
      print("bbb")
   }
 
-  val ll = l/map(l, fn(a:i32) : io i32{
+  val ll = l.map(l, fn(a:i32) : io i32{
      print(a)
      a + 1
   })
 
-  val m = m/empty<i32, i32>()
+  val m = m.empty<i32, i32>()
 
-  print(m/has(m/set(m,3,3), 3))
-  print(m/get(m,3))
+  print(m.has(m.set(m,3,3), 3))
+  print(m.get(m,3))
 
-  print(m/mapv(m/set(m,3,3), fn (a:i32) : io i32 { 
+  print(m.mapv(m.set(m,3,3), fn (a:i32) : io i32 { 
     print(a)
     a+2 
   }))
 
-  val s0 = s/empty<i32>()
-  print(s/insert(s0, 4))
+  val s0 = s.empty<i32>()
+  print(s.insert(s0, 4))
 
-  val t0 = t/full<@[4, 4+2]>(0.1, [])
-  val t1 = t/full<@[6, 2]>(1.0, [])
+  val t0 = t.full<@[4, 4+2]>(0.1, [])
+  val t1 = t.full<@[6, 2]>(1.0, [])
 
-  val t3 = t/full<@[4, ?, ?]>(2.0, [4, 4])
+  val t3 = t.full<@[4, ?, ?]>(2.0, [4, 4])
   print(t3)
 
-  print(t/matmul(t0, t1) + t/full<@[4, 2]>(0.9, []))
+  print(t.matmul(t0, t1) + t.full<@[4, 2]>(0.9, []))
 
   print(sin(t1))
 

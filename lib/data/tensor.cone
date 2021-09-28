@@ -1,6 +1,6 @@
-module data/tensor
+module data.tensor
 
-import core/math
+import core.math
 
 // tensor types
 

@@ -1,27 +1,27 @@
-module data/set
+module data.set
 
-import data/map as m
+import data.map as m
 
-alias set<a> = m/map<a, bool>
+alias set<a> = m.map<a, bool>
 
 alias intset = set<i32>
 
 fun empty<a>() : set<a> {
-  m/empty<a, bool>()
+  m.empty<a, bool>()
 }
 
 fun has<v>(s : set<v>, v : v) : bool {
-  m/has(s, v)
+  m.has(s, v)
 }
 
 fun insert<v>(s : set<v>, v : v) : set<v> {
-  m/set(s, v, true)
+  m.set(s, v, true)
 }
 
 fun del<v>(s : set<v>, v : v) : set<v> {
-  m/del(s, v)
+  m.del(s, v)
 }
 
 fun map<a, b>[e](s : set<a>, f : (a) -> e b) : e set<b> {
-  m/mapk(s, f)
+  m.mapk(s, f)
 }

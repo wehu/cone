@@ -141,6 +141,8 @@ arrow = symbol L.Arrow
 
 star = symbol L.Star
 
+dot = symbol L.Dot
+
 sharp = symbol L.Sharp
 
 i8 = keyword L.I8
@@ -210,7 +212,7 @@ brackets e = lBracket *> e <* rBracket
 angles e = less *> e <* greater
 
 namePath :: Parser A.NamePath
-namePath = intercalate "/" <$> P.sepBy1 ident div_
+namePath = intercalate "/" <$> P.sepBy1 ident dot
 
 imports :: Parser [A.ImportStmt]
 imports =

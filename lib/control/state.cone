@@ -1,4 +1,4 @@
-module control/state
+module control.state
 
 // state effect
 effect state<a> {

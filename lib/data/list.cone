@@ -1,4 +1,4 @@
-module data/list
+module data.list
 
 fun reverse<a>(l : [a]) : [a] {
   var rest = l

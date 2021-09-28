@@ -1,4 +1,4 @@
-module data/map
+module data.map
 
 type map<k, v>
 

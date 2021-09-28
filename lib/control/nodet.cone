@@ -1,4 +1,4 @@
-module control/nodet
+module control.nodet
 
 // nodet effect
 effect nodet<a> {

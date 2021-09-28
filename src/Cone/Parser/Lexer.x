@@ -88,6 +88,7 @@ tokens :-
   <0> \*                                    { mkL Star }
   <0> \?                                    { mkL Question }
   <0> \@                                    { mkL At }
+  <0> \.                                    { mkL Dot }
   <0> "i8"                                  { mkL I8 }
   <0> "i16"                                 { mkL I16 }
   <0> "i32"                                 { mkL I32 }
@@ -164,6 +165,7 @@ data Tok =
     And             |
     Or              |
     At              |
+    Dot             |
     Sharp           |
     Assign          |
     AddAssign       |

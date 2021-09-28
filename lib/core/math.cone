@@ -1,4 +1,4 @@
-module core/math
+module core.math
 
 // sin
 fun sin<a>(a : a) : a
