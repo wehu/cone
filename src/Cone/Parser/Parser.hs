@@ -425,8 +425,8 @@ pat =
     <$> ( P.try (parens pat)
             P.<|> ( ( P.try
                         ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-                            <*> (angles (P.sepBy1 type_ comma) P.<|> return [])
-                            <*> parens (P.sepBy1 pat comma)
+                            <*> (angles (P.sepBy type_ comma) P.<|> return [])
+                            <*> parens (P.sepBy pat comma)
                             <*> getPos
                         )
                     )
@@ -434,7 +434,7 @@ pat =
                   )
             P.<|> ( ( P.try
                         ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-                            <*> angles (P.sepBy1 type_ comma)
+                            <*> angles (P.sepBy type_ comma)
                             <*> return []
                             <*> getPos
                         )
