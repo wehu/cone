@@ -268,7 +268,8 @@ typePrefix op name = PE.Prefix $ do
   pos <- getPos
   return $ \i -> A.TApp (A.TVar (s2n name) pos) [i] pos
 
-typeBinary op name = PE.Infix
+typeBinary op name =
+  PE.Infix
     ( do
         op
         pos <- getPos
@@ -348,9 +349,9 @@ effType :: Parser A.EffectType
 effType =
   parens effType
     P.<|> ( ( P.try
-                  ( A.EffApp <$> (A.EffVar . s2n <$> namePath <*> getPos)
-                      <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"
-                  )
+                ( A.EffApp <$> (A.EffVar . s2n <$> namePath <*> getPos)
+                    <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"
+                )
                 P.<|> (brackets (A.EffList <$> P.sepBy effType comma) P.<?> "eff type list")
                 P.<|> (A.EffVar <$> (s2n <$> namePath) P.<?> "eff var")
             )
@@ -405,7 +406,8 @@ exprPrefix op name = PE.Prefix $ do
   pos <- getPos
   return $ \i -> A.EApp (A.EVar (s2n name) pos) [] [i] pos
 
-exprBinary op name = PE.Infix
+exprBinary op name =
+  PE.Infix
     ( do
         op
         pos <- getPos
@@ -420,19 +422,19 @@ pat =
   pcons
     <$> ( P.try (parens pat)
             P.<|> ( P.try
-                        ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-                            <*> (angles (P.sepBy type_ comma) P.<|> return [])
-                            <*> parens (P.sepBy pat comma)
-                            <*> getPos
-                        )
+                      ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+                          <*> (angles (P.sepBy type_ comma) P.<|> return [])
+                          <*> parens (P.sepBy pat comma)
+                          <*> getPos
+                      )
                       P.<?> "pattern application"
                   )
             P.<|> ( P.try
-                        ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-                            <*> angles (P.sepBy type_ comma)
-                            <*> return []
-                            <*> getPos
-                        )
+                      ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+                          <*> angles (P.sepBy type_ comma)
+                          <*> return []
+                          <*> getPos
+                      )
                       P.<?> "pattern application"
                   )
             P.<|> (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
@@ -462,37 +464,39 @@ literal =
     <*> getPos P.<?> "literal"
 
 term :: Parser A.Expr
-term = eann <$>
-  (eapp
-    <$> ( eann
-            <$> ( P.try (parens expr)
-                    P.<|> ( ( ( (\((pos, bts, bes, args, (effT, resT)), e) -> A.ELam bts bes args effT resT e)
-                                  <$ kFn <*> funcDef P.<?> "lambda expression"
-                              )
-                                P.<|> (A.ELet <$ kVar <*> pat <* assign_ <*> expr <* semi <*> exprSeq <*> return True P.<?> "var experssion")
-                                P.<|> (A.ELet <$ kVal <*> pat <* assign_ <*> expr <* semi <*> exprSeq <*> return False P.<?> "val experssion")
-                                P.<|> ( A.ECase <$ kCase <*> expr
-                                          <*> braces
-                                            (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
-                                            P.<?> "case expression"
+term =
+  eann
+    <$> ( eapp
+            <$> ( eann
+                    <$> ( P.try (parens expr)
+                            P.<|> ( ( ( (\((pos, bts, bes, args, (effT, resT)), e) -> A.ELam bts bes args effT resT e)
+                                          <$ kFn <*> funcDef P.<?> "lambda expression"
                                       )
-                                P.<|> (A.EWhile <$ kWhile <*> expr <*> braces exprSeq P.<?> "while expression")
-                                P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> braces (P.sepBy1 handle $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
-                                P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
-                                P.<|> (varOrAssign <$> namePath <*> P.optionMaybe (assign_ *> expr) P.<?> "var or assign expression")
-                                P.<|> (elist <$> brackets (P.sepBy expr comma) P.<?> "list expression")
-                                P.<|> (etuple <$> parens (P.sepBy1 expr comma) P.<?> "tuple expression")
-                            )
-                              <*> getPos
-                          )
-                    P.<|> literal
+                                        P.<|> (A.ELet <$ kVar <*> pat <* assign_ <*> expr <* semi <*> exprSeq <*> return True P.<?> "var experssion")
+                                        P.<|> (A.ELet <$ kVal <*> pat <* assign_ <*> expr <* semi <*> exprSeq <*> return False P.<?> "val experssion")
+                                        P.<|> ( A.ECase <$ kCase <*> expr
+                                                  <*> braces
+                                                    (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
+                                                    P.<?> "case expression"
+                                              )
+                                        P.<|> (A.EWhile <$ kWhile <*> expr <*> braces exprSeq P.<?> "while expression")
+                                        P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> braces (P.sepBy1 handle $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
+                                        P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
+                                        P.<|> (varOrAssign <$> namePath <*> P.optionMaybe (assign_ *> expr) P.<?> "var or assign expression")
+                                        P.<|> (elist <$> brackets (P.sepBy expr comma) P.<?> "list expression")
+                                        P.<|> (etuple <$> parens (P.sepBy1 expr comma) P.<?> "tuple expression")
+                                    )
+                                      <*> getPos
+                                  )
+                            P.<|> literal
+                        )
+                    <*> P.optionMaybe (colon *> type_ P.<?> "expression type annotation")
+                    <*> getPos
                 )
-            <*> P.optionMaybe (colon *> type_ P.<?> "expression type annotation")
+            <*> P.optionMaybe (P.try (angles (P.sepBy type_ comma P.<?> "application expression type argument list")))
+            <*> P.optionMaybe (P.try (parens (P.sepBy expr comma P.<?> "application expression argument list")))
             <*> getPos
         )
-    <*> P.optionMaybe (P.try (angles (P.sepBy type_ comma P.<?> "application expression type argument list")))
-    <*> P.optionMaybe (P.try (parens (P.sepBy expr comma P.<?> "application expression argument list")))
-    <*> getPos)
     <*> P.optionMaybe (colon *> type_ P.<?> "expression type annotation")
     <*> getPos
   where
@@ -517,7 +521,7 @@ term = eann <$>
     elist [] pos = A.EApp (A.EVar (s2n "nil") pos) [] [] pos
     etuple (e0 : e1 : es) pos = A.EApp (A.EVar (s2n "pair") pos) [] [e0, etuple (e1 : es) pos] pos
     etuple [e] pos = e
-    etuple _ _ = undefined 
+    etuple _ _ = undefined
     econs e0 e1 pos = A.EApp (A.EVar (s2n "cons") pos) [] [e0, e1] pos
 
 handle :: Parser A.FuncDef
@@ -554,8 +558,9 @@ typeDef =
     <*> getPos P.<?> "type definition"
 
 typeAlias :: Parser A.TypeAlias
-typeAlias = A.TypeAlias <$ kAlias <*> ident <*> typeArgs
-     <* assign_ <*> type_ <*> getPos P.<?> "type alias"
+typeAlias =
+  A.TypeAlias <$ kAlias <*> ident <*> typeArgs
+    <* assign_ <*> type_ <*> getPos P.<?> "type alias"
 
 funcIntf :: Parser A.FuncIntf
 funcIntf =

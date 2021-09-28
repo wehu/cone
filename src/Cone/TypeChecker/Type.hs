@@ -428,9 +428,9 @@ inferAppResultEffType f@TFunc {} targs args = do
   effBindings <-
     ( (++)
         <$> foldM
-                (\s e -> (++) s <$> e)
-                []
-                [collectEffVarBindingsInType True a b | a <- fArgTypes | b <- args]
+          (\s e -> (++) s <$> e)
+          []
+          [collectEffVarBindingsInType True a b | a <- fArgTypes | b <- args]
         <*> collectEffVarBindings True funcEff resEff
       )
       >>= checkEffVarBindings
@@ -469,9 +469,9 @@ collectVarBindings bi a@TFunc {} b@TFunc {} =
       (++)
         <$> ( (++)
                 <$> foldM
-                        (\s e -> (++) s <$> e)
-                        []
-                        [collectVarBindings bi aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
+                  (\s e -> (++) s <$> e)
+                  []
+                  [collectVarBindings bi aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
                 <*> collectVarBindings bi (_tfuncResult a) (_tfuncResult b)
             )
         <*> collectVarBindingsInEff bi al bl
@@ -549,17 +549,17 @@ collectVarBindingsInEff bi a@EffList {} b@EffList {} = do
   let bl = b ^. effList
   let error = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
   when (L.length al > L.length bl) $
-      if L.length al == L.length bl + 1
-        then do
-          is <- isEffVar $ last al
-          unless is error
-        else error
+    if L.length al == L.length bl + 1
+      then do
+        is <- isEffVar $ last al
+        unless is error
+      else error
   when (L.length al < L.length bl) $ do
-      if null al
-        then error
-        else do
-          is <- isEffVar $ last al
-          unless is error
+    if null al
+      then error
+      else do
+        is <- isEffVar $ last al
+        unless is error
   foldM
     (\s e -> (++) s <$> e)
     []
@@ -593,17 +593,17 @@ collectEffVarBindings bi a@EffList {} b@EffList {} = do
   let bl = b ^. effList
   let error = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
   when (L.length al > L.length bl) $
-      if L.length al == L.length bl + 1
-        then do
-          is <- isEffVar $ last al
-          unless is error
-        else error
+    if L.length al == L.length bl + 1
+      then do
+        is <- isEffVar $ last al
+        unless is error
+      else error
   when (L.length al < L.length bl) $
-      if null al
-        then error
-        else do
-          is <- isEffVar $ last al
-          unless is error
+    if null al
+      then error
+      else do
+        is <- isEffVar $ last al
+        unless is error
   if L.length al < L.length bl
     then do
       bindings <-
@@ -653,9 +653,9 @@ collectEffVarBindingsInType bi a@TFunc {} b@TFunc {} =
       (++)
         <$> ( (++)
                 <$> foldM
-                        (\s e -> (++) s <$> e)
-                        []
-                        [collectEffVarBindingsInType bi aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
+                  (\s e -> (++) s <$> e)
+                  []
+                  [collectEffVarBindingsInType bi aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
                 <*> collectEffVarBindingsInType bi (_tfuncResult a) (_tfuncResult b)
             )
         <*> collectEffVarBindings bi al bl
@@ -899,18 +899,18 @@ getFuncType pos n = do
 getNamePath :: (Has EnvEff sig m) => Module -> String -> m String
 getNamePath m n = do
   aliases <-
-        foldM
-          ( \s i ->
-              case i ^. importAlias of
-                Just alias -> do
-                  let old = s ^. at alias
-                  case old of
-                    Just old -> throwError $ "import alias conflict: import " ++ ppr old ++ " as " ++ ppr alias ++ " vs " ++ ppr i ++ ppr (_importLoc i)
-                    Nothing -> return $ s & at alias ?~ i ^. importPath
-                Nothing -> return s
-          )
-          M.empty
-          $ m ^. imports
+    foldM
+      ( \s i ->
+          case i ^. importAlias of
+            Just alias -> do
+              let old = s ^. at alias
+              case old of
+                Just old -> throwError $ "import alias conflict: import " ++ ppr old ++ " as " ++ ppr alias ++ " vs " ++ ppr i ++ ppr (_importLoc i)
+                Nothing -> return $ s & at alias ?~ i ^. importPath
+            Nothing -> return s
+      )
+      M.empty
+      $ m ^. imports
   let n' = last $ splitOn "/" n
       ns = join $ L.intersperse "/" $ L.init $ splitOn "/" n
   case aliases ^. at ns of
@@ -952,14 +952,14 @@ searchFunc m fn loc = do
   found <-
     filterOutAliasImports m n
       <$> foldM
-              ( \f p -> do
-                  let ffn = p ++ n
-                  case fs ^. at ffn of
-                    Just _ -> return $ f ++ [ffn]
-                    Nothing -> return f
-              )
-              []
-              prefixes
+        ( \f p -> do
+            let ffn = p ++ n
+            case fs ^. at ffn of
+              Just _ -> return $ f ++ [ffn]
+              Nothing -> return f
+        )
+        []
+        prefixes
   if null found
     then throwError $ "no function definition found for : " ++ fn ++ ppr loc
     else

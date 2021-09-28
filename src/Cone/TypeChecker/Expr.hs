@@ -40,34 +40,46 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
   impls <- getFuncImpls fn
   impls <- findSuperImpls impls >>= findBestImpls
   if L.length impls == 1
-  then return $ EAnnMeta (head impls ^. _1) t loc
-  else if L.length impls > 1
-       then throwError $ "ambiguous implementations for " ++ fn ++ ppr impls ++ ppr loc
-       else do
-         getFuncType loc fn
-         return e
+    then return $ EAnnMeta (head impls ^. _1) t loc
+    else
+      if L.length impls > 1
+        then throwError $ "ambiguous implementations for " ++ fn ++ ppr impls ++ ppr loc
+        else do
+          getFuncType loc fn
+          return e
   where
     findSuperImpls impls =
-      foldM (\f (e, it) -> do
-        is <- isEqOrSubType t it
-        if is then return $ f ++ [(e, it)]
-        else return f)
+      foldM
+        ( \f (e, it) -> do
+            is <- isEqOrSubType t it
+            if is
+              then return $ f ++ [(e, it)]
+              else return f
+        )
         []
         impls
     findBestImpls impls' = do
       let impls = L.nubBy aeq impls'
-      indegrees <- foldM (\s (a, b) -> do
-        is <- isSubType (a ^. _2) (b ^. _2)
-        if is then return $ s & at b ?~ (1 + fromJust (s ^. at b))
-        else do
-               is <- isSubType (b ^. _2) (a ^. _2)
-               if is then return $ s & at a ?~ (1 + fromJust (s ^. at a))
-               else return s)
-        (L.foldl' (\s e -> s & at e ?~ (0::Int)) M.empty impls)
-        [(a, b) | a <- impls, b <- impls]
-      foldM (\s (i, c) ->
-        if c == 0 then return $ s ++ [i]
-        else return s)
+      indegrees <-
+        foldM
+          ( \s (a, b) -> do
+              is <- isSubType (a ^. _2) (b ^. _2)
+              if is
+                then return $ s & at b ?~ (1 + fromJust (s ^. at b))
+                else do
+                  is <- isSubType (b ^. _2) (a ^. _2)
+                  if is
+                    then return $ s & at a ?~ (1 + fromJust (s ^. at a))
+                    else return s
+          )
+          (L.foldl' (\s e -> s & at e ?~ (0 :: Int)) M.empty impls)
+          [(a, b) | a <- impls, b <- impls]
+      foldM
+        ( \s (i, c) ->
+            if c == 0
+              then return $ s ++ [i]
+              else return s
+        )
         []
         (M.toList indegrees)
 selectFuncImpl e = return e
@@ -80,18 +92,18 @@ inferExprType e@EVar {..} = do
 inferExprType a@EApp {..} = do
   -- check assign variable
   when (name2String (_eappFunc ^. evarName) == "____assign") $ do
-      if L.length _eappArgs /= 2
-        then throwError $ "expected 2 arguments: " ++ ppr a ++ ppr _eloc
-        else
-          if isn't _EVar $ head _eappArgs
-            then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs) ++ ppr _eloc
-            else -- first argument is the assigned variable which should be in local state
-            do
-              let vn = name2String $ head _eappArgs ^. evarName
-              v <- getEnv $ localState . at vn
-              case v of
-                Just v -> return ()
-                Nothing -> throwError $ "cannot find local variable " ++ vn ++ ppr _eloc
+    if L.length _eappArgs /= 2
+      then throwError $ "expected 2 arguments: " ++ ppr a ++ ppr _eloc
+      else
+        if isn't _EVar $ head _eappArgs
+          then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs) ++ ppr _eloc
+          else -- first argument is the assigned variable which should be in local state
+          do
+            let vn = name2String $ head _eappArgs ^. evarName
+            v <- getEnv $ localState . at vn
+            case v of
+              Just v -> return ()
+              Nothing -> throwError $ "cannot find local variable " ++ vn ++ ppr _eloc
   -- infer all type arguments
   mapM_ inferTypeKind _eappTypeArgs
   typeArgs <- mapM inferType _eappTypeArgs
@@ -232,7 +244,7 @@ inferExprType h@EHandle {..} = underScope $ do
       prefix = join $ L.intersperse "/" $ init (splitOn "/" effN)
 
   when (effN == "core/prelude/io" || effN == "core/prelude/python") $
-     throwError $ effN ++ " effect cannot be handled"
+    throwError $ effN ++ " effect cannot be handled"
 
   bs <- forM _ehandleBindings $ \intf -> underScope $ do
     let fn =

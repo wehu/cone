@@ -16,11 +16,11 @@ import Control.Monad.Except
 import Data.List
 import Data.List.Split
 import Data.Proxy
+import Debug.Trace
 import System.Directory
 import System.FilePath
 import System.IO
 import System.Process
-import Debug.Trace
 
 type CompileEnv a = ExceptT String IO a
 
@@ -30,11 +30,11 @@ checkTimeStamp :: FilePath -> [FilePath] -> CompileEnv Bool
 checkTimeStamp f deps = do
   found <- liftIO $ doesFileExist f
   if found
-  then do
-    fTS <- liftIO $ getModificationTime f
-    depsTS <- liftIO $ mapM getModificationTime deps
-    return $ any (fTS <) depsTS
-  else return True
+    then do
+      fTS <- liftIO $ getModificationTime f
+      depsTS <- liftIO $ mapM getModificationTime deps
+      return $ any (fTS <) depsTS
+    else return True
 
 checkTimeStampAndDo :: FilePath -> [FilePath] -> CompileEnv () -> CompileEnv ()
 checkTimeStampAndDo f deps action = do
@@ -63,7 +63,7 @@ checkAndCompile paths i target = do
     o <- compileToCppHeader paths coneFn target
     liftIO $ writeFile cppHeaderFn o
 
-  checkTimeStampAndDo cppLibFn (coneFn:cppDeps) $ do
+  checkTimeStampAndDo cppLibFn (coneFn : cppDeps) $ do
     compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
     return ()
 
@@ -143,7 +143,8 @@ compile paths f' target = do
         Right doc -> return $ show doc
     "python" -> do
       imports <- getImportsRecursively paths f
-      mapM_ (\p -> checkAndCompile paths p target)
+      mapM_
+        (\p -> checkAndCompile paths p target)
         (nub $ reverse $ dropExtension f : imports)
       return ""
     _ -> throwError $ "unknown target: " ++ target

@@ -43,7 +43,7 @@ genTopFw proxy TDef {..} = do
   cons <- mapM (genTypeCon proxy) (_typeCons _tdef)
   return $ vsep cons
   where
-    genTypeCon proxy TypeCon{..} = do
+    genTypeCon proxy TypeCon {..} = do
       prefix <- getEnv currentModuleName
       let fn = funcN proxy prefix _typeConName
        in return $ vsep [ctrFunc fn]
@@ -61,8 +61,9 @@ genTopFw proxy FDef {..} = do
           <+> funcN proxy prefix (_funcName _fdef) <> semi
       ]
   where
-    genArgTypesInternal init = encloseSep lparen rparen comma $
-       init ++ map (const "const object_t &") (_funcArgs _fdef ^.. traverse . _1)
+    genArgTypesInternal init =
+      encloseSep lparen rparen comma $
+        init ++ map (const "const object_t &") (_funcArgs _fdef ^.. traverse . _1)
 genTopFw proxy _ = return emptyDoc
 
 evalType1 :: Type -> [Type] -> (Int -> Int) -> Type
@@ -86,15 +87,15 @@ inferType a@TApp {..} =
   let args = map inferType _tappArgs
       t = a {_tappArgs = args}
    in case name2String (_tvar _tappName) of
-    "core/prelude/neg" -> evalType1 t args (\e -> (-e))
-    "core/prelude/add" -> evalType2 t args (+)
-    "core/prelude/sub" -> evalType2 t args (-)
-    "core/prelude/mul" -> evalType2 t args (*)
-    "core/prelude/div" -> evalType2 t args div
-    "core/prelude/mod" -> evalType2 t args mod
-    "core/prelude/max" -> evalType2 t args max
-    "core/prelude/min" -> evalType2 t args min
-    _ -> t
+        "core/prelude/neg" -> evalType1 t args (\e -> (-e))
+        "core/prelude/add" -> evalType2 t args (+)
+        "core/prelude/sub" -> evalType2 t args (-)
+        "core/prelude/mul" -> evalType2 t args (*)
+        "core/prelude/div" -> evalType2 t args div
+        "core/prelude/mod" -> evalType2 t args mod
+        "core/prelude/max" -> evalType2 t args max
+        "core/prelude/min" -> evalType2 t args min
+        _ -> t
 inferType a@TAnn {..} =
   let t = inferType _tannType
    in a {_tannType = t}
@@ -104,25 +105,37 @@ inferType l@TList {..} =
 inferType t = t
 
 genTypeInfo :: Type -> Doc a
-genTypeInfo t@TList {..} = "[]()" <> braces
-  (fst (foldl'
-    ( \(s, i) e ->
-        (s <>
-          "____t" <> brackets (pretty i) <> "=" <>
-           (case e of
-             TNum d _ -> maybe "-1" pretty d
-             t -> genTypeInfo t) <> semi,
-        i+1)
-    )
-    ("auto ____t =  py::tuple(" <> pretty (length _tlist) <> ");", 0::Int)
-    _tlist) <> "return ____t;") <> "()"
-genTypeInfo TPrim{..} =
+genTypeInfo t@TList {..} =
+  "[]()"
+    <> braces
+      ( fst
+          ( foldl'
+              ( \(s, i) e ->
+                  ( s
+                      <> "____t"
+                      <> brackets (pretty i)
+                      <> "="
+                      <> ( case e of
+                             TNum d _ -> maybe "-1" pretty d
+                             t -> genTypeInfo t
+                         )
+                      <> semi,
+                    i + 1
+                  )
+              )
+              ("auto ____t =  py::tuple(" <> pretty (length _tlist) <> ");", 0 :: Int)
+              _tlist
+          )
+          <> "return ____t;"
+      )
+    <> "()"
+genTypeInfo TPrim {..} =
   case _tprim of
-    I8  -> "py::module_::import(\"numpy\").attr(\"int8\")"
+    I8 -> "py::module_::import(\"numpy\").attr(\"int8\")"
     I16 -> "py::module_::import(\"numpy\").attr(\"int16\")"
     I32 -> "py::module_::import(\"numpy\").attr(\"int32\")"
     I64 -> "py::module_::import(\"numpy\").attr(\"int64\")"
-    U8  -> "py::module_::import(\"numpy\").attr(\"uint8\")"
+    U8 -> "py::module_::import(\"numpy\").attr(\"uint8\")"
     U16 -> "py::module_::import(\"numpy\").attr(\"uint16\")"
     U32 -> "py::module_::import(\"numpy\").attr(\"uint32\")"
     U64 -> "py::module_::import(\"numpy\").attr(\"uint64\")"
@@ -135,17 +148,27 @@ genTypeInfo TPrim{..} =
 genTypeInfo t = "py::none()"
 
 genTypeArgs :: [Type] -> Doc a
-genTypeArgs ts = "py::object([]()" <> braces
-  (fst (foldl'
-    ( \(s, i) t ->
-        (s <> "____t" <> brackets (pretty i) <> "=" <> genTypeInfo t <> semi,
-        i+1)
-    )
-    ("auto ____t =  py::list(" <> pretty (length ts) <> ");", 0::Int)
-    (map inferType ts)) <> "return ____t;") <> "())"
+genTypeArgs ts =
+  "py::object([]()"
+    <> braces
+      ( fst
+          ( foldl'
+              ( \(s, i) t ->
+                  ( s <> "____t" <> brackets (pretty i) <> "=" <> genTypeInfo t <> semi,
+                    i + 1
+                  )
+              )
+              ("auto ____t =  py::list(" <> pretty (length ts) <> ");", 0 :: Int)
+              (map inferType ts)
+          )
+          <> "return ____t;"
+      )
+    <> "())"
 
-builtinFuncs = ["core/prelude/inline_python",
-                "data/tensor/full"]
+builtinFuncs =
+  [ "core/prelude/inline_python",
+    "data/tensor/full"
+  ]
 
 instance Backend CppHeader where
   namePath proxy n = pretty n
@@ -247,20 +270,22 @@ instance Backend CppHeader where
         es <- genExpr proxy e
         let names = genParameterNames [] prefix
             ps = genParameters [] prefix
-            stack = "____set_parameters(____make_empty_stack(), "<> names <> "," <> ps <>")"
+            stack = "____set_parameters(____make_empty_stack(), " <> names <> "," <> ps <> ")"
         return $ "return" <+> parens ("std::experimental::any_cast<func_with_cont_t>(" <> es <> ")" <> parens ("____k, " <> stack <> ", ____effs")) <> semi
       Nothing -> return $ "throw ____cone_exception(\"" <> pretty _funcName <> " is not implemented\");"
     let fn = funcN proxy prefix _funcName
     return $
       vsep
-        [ if _funcName `elem` builtinFuncs then emptyDoc
-          else "const std::function<object_t" <> genArgTypesInternal ["const cont_t &", "stack_t", "effects_t"] <> ">"
-            <+> fn
-            <> "= [=]"
-            <> genArgsInternal ["const cont_t &____k", "stack_t ____stack", "effects_t ____effs"] prefix
-            <> " -> object_t "
-            <> braces body
-            <> semi,
+        [ if _funcName `elem` builtinFuncs
+            then emptyDoc
+            else
+              "const std::function<object_t" <> genArgTypesInternal ["const cont_t &", "stack_t", "effects_t"] <> ">"
+                <+> fn
+                <> "= [=]"
+                <> genArgsInternal ["const cont_t &____k", "stack_t ____stack", "effects_t ____effs"] prefix
+                <> " -> object_t "
+                <> braces body
+                <> semi,
           "inline py::object" <+> fn <> "_w____" <> genWrapperArgTypes [] prefix
             <> braces ("return ____to_py_object(" <> fn <> genWrapperArgs ["____identity_k", "____make_empty_stack()", "____make_empty_effs()"] prefix <> ")" <> semi)
         ]
@@ -307,22 +332,22 @@ instance Backend CppHeader where
       es
   genExpr proxy ELit {..} = do
     lit <- case _litType of
-             TPrim Pred _ -> return $ "py::bool_(" <> pretty _lit <> ")"
-             TPrim Unit _ -> return $ "py::none()"
-             TPrim I8 _ ->   return $ "py::int_(" <> pretty _lit <> ")"
-             TPrim I16 _ ->  return $ "py::int_(" <> pretty _lit <> ")"
-             TPrim I32 _ -> return $ "py::int_(" <> pretty _lit <> ")"
-             TPrim I64 _ -> return $ "py::int_(" <> pretty _lit <> ")"
-             TPrim U8 _ ->  return $ "py::int_(" <> pretty _lit <> ")"
-             TPrim U16 _ -> return $ "py::int_(" <> pretty _lit <> ")"
-             TPrim U32 _ -> return $ "py::int_(" <> pretty _lit <> ")"
-             TPrim U64 _ -> return $ "py::int_(" <> pretty _lit <> ")"
-             TPrim F16 _ -> return $ "py::float_(" <> pretty _lit <> ")"
-             TPrim F32 _ -> return $ "py::float_(" <> pretty _lit <> ")"
-             TPrim F64 _ -> return $ "py::float_(" <> pretty _lit <> ")"
-             TPrim Str _ -> return $ "py::str(" <> pretty _lit <> ")"
-             TPrim Ch _ -> return $ "py::str(\"" <> pretty (read _lit :: Char) <> "\")"
-             _ -> throwError $ "unsupported literal type: " ++ ppr _litType
+      TPrim Pred _ -> return $ "py::bool_(" <> pretty _lit <> ")"
+      TPrim Unit _ -> return $ "py::none()"
+      TPrim I8 _ -> return $ "py::int_(" <> pretty _lit <> ")"
+      TPrim I16 _ -> return $ "py::int_(" <> pretty _lit <> ")"
+      TPrim I32 _ -> return $ "py::int_(" <> pretty _lit <> ")"
+      TPrim I64 _ -> return $ "py::int_(" <> pretty _lit <> ")"
+      TPrim U8 _ -> return $ "py::int_(" <> pretty _lit <> ")"
+      TPrim U16 _ -> return $ "py::int_(" <> pretty _lit <> ")"
+      TPrim U32 _ -> return $ "py::int_(" <> pretty _lit <> ")"
+      TPrim U64 _ -> return $ "py::int_(" <> pretty _lit <> ")"
+      TPrim F16 _ -> return $ "py::float_(" <> pretty _lit <> ")"
+      TPrim F32 _ -> return $ "py::float_(" <> pretty _lit <> ")"
+      TPrim F64 _ -> return $ "py::float_(" <> pretty _lit <> ")"
+      TPrim Str _ -> return $ "py::str(" <> pretty _lit <> ")"
+      TPrim Ch _ -> return $ "py::str(\"" <> pretty (read _lit :: Char) <> "\")"
+      _ -> throwError $ "unsupported literal type: " ++ ppr _litType
     return $
       exprToCps $
         "____k(py::object(" <> lit <> "))"
@@ -334,31 +359,32 @@ instance Backend CppHeader where
     es <- genBody _elamExpr
     return $ parens $ "object_t(func_with_cont_t([=](const cont_t &____k2, stack_t ____stack, effects_t ____effs) -> object_t" <+> braces ("return" <+> es <> semi) <> "))"
     where
-    genArgs prefix = encloseSep lparen rparen comma $ "const cont_t &____k" : "stack_t ____stack_unused" : "effects_t ____effs" : map (\a -> "const object_t &" <> funcN proxy prefix a) (_elamArgs ^.. traverse . _1)
-    genArgTypes = encloseSep lparen rparen comma $ "const cont_t &" : "stack_t" : "effects_t" : map (const "const object_t &") (_elamArgs ^.. traverse . _1)
-    genBody e = do
-      prefix <- getEnv currentModuleName
-      case e of
-        Just e -> do
-          es <- genExpr proxy e
-          return $
-            "____k2("
-              <> parens (
-                      "object_t(std::function<object_t" <> genArgTypes
-                        <> ">([=]" <+> genArgs prefix
-                        <> " -> object_t "
-                        <> braces
-                          ( "return "
-                              <> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es prefix)
-                              <> semi
-                          )
-                        <> ")))")
-        Nothing -> throwError $ "lambda expected a expression"
-    parameterNames prefix = encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)
-    parameterValues prefix = encloseSep lbrace rbrace comma (map (funcN proxy prefix) $ _elamArgs ^.. traverse . _1)
-    callCpsWithclearedVars es prefix =
-      encloseSep lparen rparen comma $
-        "____k" : "____stack" : "____effs" : parameterNames prefix : parameterValues prefix : [es]
+      genArgs prefix = encloseSep lparen rparen comma $ "const cont_t &____k" : "stack_t ____stack_unused" : "effects_t ____effs" : map (\a -> "const object_t &" <> funcN proxy prefix a) (_elamArgs ^.. traverse . _1)
+      genArgTypes = encloseSep lparen rparen comma $ "const cont_t &" : "stack_t" : "effects_t" : map (const "const object_t &") (_elamArgs ^.. traverse . _1)
+      genBody e = do
+        prefix <- getEnv currentModuleName
+        case e of
+          Just e -> do
+            es <- genExpr proxy e
+            return $
+              "____k2("
+                <> parens
+                  ( "object_t(std::function<object_t" <> genArgTypes
+                      <> ">([=]" <+> genArgs prefix
+                      <> " -> object_t "
+                      <> braces
+                        ( "return "
+                            <> parens ("____call_cps_with_cleared_vars" <> callCpsWithclearedVars es prefix)
+                            <> semi
+                        )
+                      <> ")))"
+                  )
+          Nothing -> throwError $ "lambda expected a expression"
+      parameterNames prefix = encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)
+      parameterValues prefix = encloseSep lbrace rbrace comma (map (funcN proxy prefix) $ _elamArgs ^.. traverse . _1)
+      callCpsWithclearedVars es prefix =
+        encloseSep lparen rparen comma $
+          "____k" : "____stack" : "____effs" : parameterNames prefix : parameterValues prefix : [es]
   genExpr proxy EWhile {..} = do
     c <- genExpr proxy _ewhileCond
     underScope $ do
@@ -371,8 +397,13 @@ instance Backend CppHeader where
     return $
       exprToCps $
         callWithCps
-          (exprToCps $ callWithCps e ("[=](const object_t &____e) -> object_t {auto ____matched = " <> p <> parens "____e" <>
-                              "; if(!py::cast<bool>(____to_py_object(____matched))) throw ____cone_exception(\"let decont_truction failed\"); return ____k(____matched);}"))
+          ( exprToCps $
+              callWithCps
+                e
+                ( "[=](const object_t &____e) -> object_t {auto ____matched = " <> p <> parens "____e"
+                    <> "; if(!py::cast<bool>(____to_py_object(____matched))) throw ____cone_exception(\"let decont_truction failed\"); return ____k(____matched);}"
+                )
+          )
           ("[=](const object_t &____unused) -> object_t " <> braces ("return" <+> callWithCps b "____k" <> semi))
   genExpr proxy EAnn {..} = genExpr proxy _eannExpr
   genExpr proxy EApp {..} =
@@ -414,10 +445,12 @@ instance Backend CppHeader where
                   ( \s (e, n) ->
                       parens $ callWithCps e ("[=](const object_t &" <> n <> ") -> object_t" <> braces ("return " <> s <> semi))
                   )
-                  ( "(____set_typeargs(____stack, " <> typeArgs <> "), " <>
-                    "std::experimental::any_cast<std::function<object_t(const cont_t &, stack_t, effects_t " <> sep argTypes
+                  ( "(____set_typeargs(____stack, " <> typeArgs <> "), "
+                      <> "std::experimental::any_cast<std::function<object_t(const cont_t &, stack_t, effects_t "
+                      <> sep argTypes
                       <> ")>>(____f)"
-                      <> encloseSep lparen rparen comma ("____k" : "____stack" : "____effs" : argNames) <> ")"
+                      <> encloseSep lparen rparen comma ("____k" : "____stack" : "____effs" : argNames)
+                      <> ")"
                   )
                   [(e, n) | e <- reverse $ f : args | n <- reverse $ "____f" : argNames]
     where
@@ -517,8 +550,15 @@ instance Backend CppHeader where
               parens $ "py::cast<bool>(____to_py_object(" <> b <> parens ee <> "))"
         )
         [(arg, parens $ "py::object(____to_py_object(____e).attr(\"f" <> pretty id <> "\"))") | arg <- _pappArgs | id <- [0 :: Int ..]]
-    return $ parens $ "[=](const object_t &____e) -> object_t { return py::object(py::bool_" <> encloseSep lparen rparen "&&"
-                  (("py::isinstance(____to_py_object(____e)" <> comma <+> pythonTypeNamePath (name2String $ _evarName _pappName) <> ")") : bindings) <> ");}"
+    return $
+      parens $
+        "[=](const object_t &____e) -> object_t { return py::object(py::bool_"
+          <> encloseSep
+            lparen
+            rparen
+            "&&"
+            (("py::isinstance(____to_py_object(____e)" <> comma <+> pythonTypeNamePath (name2String $ _evarName _pappName) <> ")") : bindings)
+          <> ");}"
 
   genPrologue _ = return emptyDoc
 
@@ -563,4 +603,4 @@ exprToCps e =
 
 -- | Call a cps function
 callWithCps :: Doc a -> Doc a -> Doc a
-callWithCps e k = parens $ "std::experimental::any_cast<func_with_cont_t>(" <> e <> ")" <> encloseSep lparen rparen comma ((parens k) : "____stack" : ["____effs"])
+callWithCps e k = parens $ "std::experimental::any_cast<func_with_cont_t>(" <> e <> ")" <> encloseSep lparen rparen comma (parens k : "____stack" : ["____effs"])

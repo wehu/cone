@@ -20,26 +20,26 @@ import Control.Effect.Fresh
 import Control.Effect.State
 import Control.Effect.Sum
 import Control.Lens
-import Data.Proxy
 import qualified Data.Map as M
-import Prettyprinter
+import Data.Proxy
 import Debug.Trace
+import Prettyprinter
 
 type Eff s e = Fresh :+: State s :+: Error e
 
 data Env = Env
-  { _currentModuleName :: String
-    ,_localState :: M.Map String Bool
-    ,_parameters :: M.Map String Bool
+  { _currentModuleName :: String,
+    _localState :: M.Map String Bool,
+    _parameters :: M.Map String Bool
   }
 
 makeLenses ''Env
 
 initialEnv =
   Env
-    { _currentModuleName = ""
-     ,_localState = M.empty
-     ,_parameters = M.empty
+    { _currentModuleName = "",
+      _localState = M.empty,
+      _parameters = M.empty
     }
 
 type EnvEff = Eff Env String
@@ -106,7 +106,7 @@ class Backend t where
 
   genTopStmt :: (Has EnvEff sig m) => t Target -> TopStmt -> m (Doc a)
   genTopStmt proxy TDef {..} = genTypeDef proxy _tdef
-  genTopStmt proxy TAlias{}  = return emptyDoc
+  genTopStmt proxy TAlias {} = return emptyDoc
   genTopStmt proxy EDef {..} = genEffectDef proxy _edef
   genTopStmt proxy FDef {..} = genFuncDef proxy _fdef
   genTopStmt proxy ImplFDef {..} = genImplFuncDef proxy _implFdef

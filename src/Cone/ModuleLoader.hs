@@ -11,10 +11,10 @@ import Data.List (elemIndex, nubBy)
 import Data.List.Split
 import qualified Data.Map as M
 import Data.Map.Merge.Strict
-import Unbound.Generics.LocallyNameless
 import System.Directory
 import System.FilePath
 import System.IO
+import Unbound.Generics.LocallyNameless
 
 type Loaded = M.Map FilePath Bool
 
@@ -47,14 +47,20 @@ getImports paths f' = do
   let result = parse f contents
   case result of
     Left err -> throwError $ show err
-    Right m -> return $ (m ^..imports.traverse.importPath) ++ preloadedModules
+    Right m -> return $ (m ^.. imports . traverse . importPath) ++ preloadedModules
 
 getImportsRecursively :: [FilePath] -> FilePath -> ExceptT String IO [String]
 getImportsRecursively paths f = do
   imports <- getImports paths f
-  ims <- join <$> mapM (\i ->
-    if i `elem` preloadedModules then return []
-    else getImportsRecursively paths (addExtension i coneEx)) imports
+  ims <-
+    join
+      <$> mapM
+        ( \i ->
+            if i `elem` preloadedModules
+              then return []
+              else getImportsRecursively paths (addExtension i coneEx)
+        )
+        imports
   return $ imports ++ ims
 
 -- | Load a module

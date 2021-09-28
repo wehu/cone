@@ -79,10 +79,10 @@ initTypeConDef prefix t = do
             b = bind targs cargs
             fvars = (b ^.. fv) :: [TVar]
         when (fvars /= []) $
-            throwError $
-              "type constructor's type variables should "
-                ++ "only exists in type arguments: "
-                ++ ppr fvars
+          throwError $
+            "type constructor's type variables should "
+              ++ "only exists in type arguments: "
+              ++ ppr fvars
         -- check if the type constructor exists or not
         ot <- getEnv $ funcs . at cn
         forMOf _Just ot $ \t ->
@@ -139,9 +139,10 @@ preInitTypeAlias prefix t = do
       name = prefix ++ "/" ++ t ^. typeAliasName
       pos = _typeAliasLoc t
       star = KStar pos
-      kind = if null args -- if no arguments, it is just a simple enum
-            then star
-            else KFunc (args ^.. traverse . _2 . non star) star pos
+      kind =
+        if null args -- if no arguments, it is just a simple enum
+          then star
+          else KFunc (args ^.. traverse . _2 . non star) star pos
   -- check if inteface exists or not
   ot <- getEnv $ types . at name
   forMOf _Just ot $ \t ->
@@ -166,11 +167,11 @@ initTypeAlias t = do
       pos = _typeAliasLoc t
   -- check if has free type variables
   when (fvars /= []) $
-      throwError $
-        "type alias's type variables should "
-          ++ "only exists in eff type arguments: "
-          ++ ppr fvars
-          ++ ppr pos
+    throwError $
+      "type alias's type variables should "
+        ++ "only exists in eff type arguments: "
+        ++ ppr fvars
+        ++ ppr pos
   -- check if inteface exists or not
   ot <- getEnv $ typeAliases . at name
   forMOf _Just ot $ \t ->
@@ -225,11 +226,11 @@ initEffIntfDef prefix e = do
         addEffIntfs en intfn
         -- check if has free type variables
         when (fvars /= []) $
-            throwError $
-              "eff interfaces's type variables should "
-                ++ "only exists in eff type arguments: "
-                ++ ppr fvars
-                ++ ppr pos
+          throwError $
+            "eff interfaces's type variables should "
+              ++ "only exists in eff type arguments: "
+              ++ ppr fvars
+              ++ ppr pos
         -- check if inteface exists or not
         ot <- getEnv $ funcs . at intfn
         forMOf _Just ot $ \t ->
@@ -430,8 +431,8 @@ addTypeBindings m =
       let boundVars = L.nub $ tdef ^.. typeArgs . traverse . _1
        in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef)
     bindTAlias talias =
-      let boundVars = L.nub $ talias ^.. typeAliasArgs . traverse. _1
-        in BoundTypeAlias (bind boundVars talias) (_typeAliasLoc talias)
+      let boundVars = L.nub $ talias ^.. typeAliasArgs . traverse . _1
+       in BoundTypeAlias (bind boundVars talias) (_typeAliasLoc talias)
     bindFDef fdef =
       let boundVars = L.nub $ fdef ^. funcBoundVars
           boundEffVars = L.nub $ fdef ^. funcBoundEffVars
@@ -478,7 +479,7 @@ removeTypeBindings m =
     removeBindingsForTDef t = t
     removeBindingsForTypeAlias (BoundTypeAlias b _) =
       let (_, t) = unsafeUnbind b
-        in removeBindingsForTypeAlias t
+       in removeBindingsForTypeAlias t
     removeBindingsForTypeAlias t = t
     removeBindingsForFDef (BoundFuncDef b _) =
       let (_, f) = unsafeUnbind b
@@ -559,16 +560,17 @@ addPrefixForTypes m' = do
     foldM
       ( \s v -> do
           vn' <- getNamePath m (name2String v)
-          found <- filterOutAliasImports m vn' <$>
-            foldM
-              ( \f p -> do
-                  let vn = p ++ vn'
-                  case ts ^. at vn of
-                    Just _ -> return $ f ++ [vn]
-                    Nothing -> return f
-              )
-              []
-              prefixes
+          found <-
+            filterOutAliasImports m vn'
+              <$> foldM
+                ( \f p -> do
+                    let vn = p ++ vn'
+                    case ts ^. at vn of
+                      Just _ -> return $ f ++ [vn]
+                      Nothing -> return f
+                )
+                []
+                prefixes
           if null found
             then return s
             else
@@ -582,16 +584,17 @@ addPrefixForTypes m' = do
     foldM
       ( \s v -> do
           vn' <- getNamePath m (name2String v)
-          found <- filterOutAliasImports m vn' <$>
-            foldM
-              ( \f p -> do
-                  let vn = p ++ vn'
-                  case es ^. at vn of
-                    Just _ -> return $ f ++ [vn]
-                    Nothing -> return f
-              )
-              []
-              prefixes
+          found <-
+            filterOutAliasImports m vn'
+              <$> foldM
+                ( \f p -> do
+                    let vn = p ++ vn'
+                    case es ^. at vn of
+                      Just _ -> return $ f ++ [vn]
+                      Nothing -> return f
+                )
+                []
+                prefixes
           if null found
             then return s
             else
@@ -705,16 +708,17 @@ addPrefixForExprs m' = do
     foldM
       ( \s v -> do
           vn' <- getNamePath m (name2String v)
-          found <- filterOutAliasImports m vn' <$>
-            foldM
-              ( \f p -> do
-                  let vn = p ++ vn'
-                  case fs ^. at vn of
-                    Just _ -> return $ f ++ [vn]
-                    Nothing -> return f
-              )
-              []
-              prefixes
+          found <-
+            filterOutAliasImports m vn'
+              <$> foldM
+                ( \f p -> do
+                    let vn = p ++ vn'
+                    case fs ^. at vn of
+                      Just _ -> return $ f ++ [vn]
+                      Nothing -> return f
+                )
+                []
+                prefixes
           if null found
             then return s
             else

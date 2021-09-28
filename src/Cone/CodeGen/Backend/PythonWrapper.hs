@@ -57,7 +57,7 @@ instance Backend PythonWrapper where
     return $ vsep cons
   genTypeDef proxy (BoundTypeDef b _) = do
     let (_, t) = unsafeUnbind b
-    genTypeDef proxy t  
+    genTypeDef proxy t
 
   genTypeCon proxy ptn TypeCon {..} = do
     prefix <- getEnv currentModuleName
@@ -118,4 +118,3 @@ instance Backend PythonWrapper where
           ++ [pre]
           ++ tops
           ++ [pos]
-

@@ -31,7 +31,6 @@ import Unbound.Generics.LocallyNameless.Unsafe
 data CppSource a = CppSource
 
 instance Backend CppSource where
-
   namePath proxy n = pretty n
 
   typeN proxy prefix n' =
@@ -94,7 +93,7 @@ instance Backend CppSource where
 
   genEpilogue _ = return emptyDoc
 
-  genModule proxy Module{..} = do
+  genModule proxy Module {..} = do
     let modulePs = splitOn "/" _moduleName
     setEnv _moduleName currentModuleName
     pre <- genPrologue proxy
@@ -103,16 +102,18 @@ instance Backend CppSource where
     pos <- genEpilogue proxy
     return $
       vsep $
-         [ "#include \"pybind11/pybind11.h\""
-         , "#include \"pybind11/functional.h\""
-         , "#include \"" <> pretty _moduleName <> ".h\""]
+        [ "#include \"pybind11/pybind11.h\"",
+          "#include \"pybind11/functional.h\"",
+          "#include \"" <> pretty _moduleName <> ".h\""
+        ]
           ++ imps
           ++ ["namespace cone{", sep $ map (\n -> "namespace" <+> pretty n <+> lbrace) modulePs]
-          ++ ["namespace py = pybind11;"
-             ,"PYBIND11_MODULE(" <> pretty (last modulePs) <> "____c, m) {"
-             ,"m.doc() = \""<> pretty _moduleName <>"\";"]
+          ++ [ "namespace py = pybind11;",
+               "PYBIND11_MODULE(" <> pretty (last modulePs) <> "____c, m) {",
+               "m.doc() = \"" <> pretty _moduleName <> "\";"
+             ]
           ++ [pre]
           ++ tops
           ++ [pos]
           ++ ["}"]
-         ++ ["}", sep $ map (const rbrace) modulePs]
+          ++ ["}", sep $ map (const rbrace) modulePs]

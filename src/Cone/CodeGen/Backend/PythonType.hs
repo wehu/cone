@@ -31,7 +31,6 @@ import Unbound.Generics.LocallyNameless.Unsafe
 data PythonType a = PythonType
 
 instance Backend PythonType where
-
   namePath proxy n = pretty $ join $ intersperse "." $ splitOn "/" n
 
   typeN proxy prefix n' =
@@ -69,7 +68,8 @@ instance Backend PythonType where
             [ "class" <+> tn {- <> parens (typeN proxy ptn) -} <> ":",
               indent 4 constructor,
               indent 4 hash,
-              indent 4 $ eq tn]
+              indent 4 $ eq tn
+            ]
     where
       constructor =
         vsep
@@ -125,7 +125,7 @@ instance Backend PythonType where
     pos <- genEpilogue proxy
     return $
       vsep $
-          imps
+        imps
           ++ [pre]
           ++ tops
           ++ [pos]
