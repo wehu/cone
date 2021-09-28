@@ -39,17 +39,14 @@ getKindOfTVar n defaultK = do
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
 inferTypeKind a@TApp {..} = do
   let go = do
-        ak <-
-          if not $ isn't _TVar _tappName
-            then do
-              let tvn = name2String $ _tvar _tappName
-                  kstar = KStar _tloc
-                  kf =
-                    if _tappArgs == []
-                      then kstar
-                      else KFunc [kstar | _ <- _tappArgs] kstar _tloc
-              getKindOfTVar tvn kf
-            else inferTypeKind _tappName
+        ak <- do
+          let tvn = name2String $ _tvar _tappName
+              kstar = KStar _tloc
+              kf =
+                if _tappArgs == []
+                  then kstar
+                  else KFunc [kstar | _ <- _tappArgs] kstar _tloc
+          getKindOfTVar tvn kf
         case ak of
           KStar {} ->
             if _tappArgs == []
@@ -65,22 +62,19 @@ inferTypeKind a@TApp {..} = do
                     t <- inferTypeKind a
                     checkKindMatch t b
                 return _kfuncResult
-  if not $ isn't _TVar _tappName
-    then do
-      let tvn = name2String $ _tvar _tappName
-      alias <- getEnv $ typeAliases . at tvn
-      case alias of
-        Just alias -> do
-          let kstar = KStar _tloc
-          forM_
-            [(a, b) | a <- alias ^.. typeAliasArgs . traverse . _2 . non kstar | b <- _tappArgs]
-            $ \(a, b) -> do
-              t <- inferTypeKind b
-              checkKindMatch t a
-          let t = substs [(n, tv) | n <- alias ^.. typeAliasArgs . traverse . _1 | tv <- _tappArgs] (_typeAliasType alias)
-          inferTypeKind t
-        Nothing -> go
-    else go
+  let tvn = name2String $ _tvar _tappName
+  alias <- getEnv $ typeAliases . at tvn
+  case alias of
+    Just alias -> do
+      let kstar = KStar _tloc
+      forM_
+        [(a, b) | a <- alias ^.. typeAliasArgs . traverse . _2 . non kstar | b <- _tappArgs]
+        $ \(a, b) -> do
+          t <- inferTypeKind b
+          checkKindMatch t a
+      let t = substs [(n, tv) | n <- alias ^.. typeAliasArgs . traverse . _1 | tv <- _tappArgs] (_typeAliasType alias)
+      inferTypeKind t
+    Nothing -> go
 inferTypeKind a@TAnn {..} = do
   k <-
     if not $ isn't _TVar _tannType
