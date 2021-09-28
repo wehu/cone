@@ -285,7 +285,7 @@ typeTerm =
   ( tann
       <$> ( ( P.try
                 ( ( A.TApp <$> ((\n pos -> A.TVar (s2n n) pos) <$> namePath <*> getPos)
-                      <*> angles (P.sepBy1 type_ comma)
+                      <*> angles (P.sepBy type_ comma)
                   )
                     P.<?> "application type"
                 )
