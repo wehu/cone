@@ -79,8 +79,7 @@ inferExprType e@EVar {..} = do
   return $ annotateExpr e t
 inferExprType a@EApp {..} = do
   -- check assign variable
-  if name2String (_eappFunc ^. evarName) == "____assign"
-    then do
+  when (name2String (_eappFunc ^. evarName) == "____assign") $ do
       if L.length _eappArgs /= 2
         then throwError $ "expected 2 arguments: " ++ ppr a ++ ppr _eloc
         else
@@ -88,12 +87,11 @@ inferExprType a@EApp {..} = do
             then throwError $ "cannot assign to an expression: " ++ ppr (head _eappArgs) ++ ppr _eloc
             else -- first argument is the assigned variable which should be in local state
             do
-              let vn = name2String $ (head _eappArgs) ^. evarName
+              let vn = name2String $ head _eappArgs ^. evarName
               v <- getEnv $ localState . at vn
               case v of
                 Just v -> return ()
                 Nothing -> throwError $ "cannot find local variable " ++ vn ++ ppr _eloc
-    else return ()
   -- infer all type arguments
   mapM_ inferTypeKind _eappTypeArgs
   typeArgs <- mapM inferType _eappTypeArgs
@@ -220,9 +218,7 @@ inferExprType w@EWhile {..} = do
     return e
   return $ annotateExpr w {_ewhileCond = c, _ewhileBody = b} (TPrim Unit _eloc)
 inferExprType h@EHandle {..} = underScope $ do
-  if not (isn't _EffList _ehandleEff)
-    then throwError $ "expected an eff application, but got " ++ ppr _ehandleEff ++ ppr _eloc
-    else return ()
+  unless (isn't _EffList _ehandleEff) $ throwError $ "expected an eff application, but got " ++ ppr _ehandleEff ++ ppr _eloc
   -- infer handle's effect kind
   ek <- inferEffKind _ehandleEff
   checkEffKind ek

@@ -43,7 +43,7 @@ inferTypeKind a@TApp {..} = do
           let tvn = name2String $ _tvar _tappName
               kstar = KStar _tloc
               kf =
-                if _tappArgs == []
+                if null _tappArgs
                   then kstar
                   else KFunc [kstar | _ <- _tappArgs] kstar _tloc
           getKindOfTVar tvn kf
@@ -937,7 +937,7 @@ funcImplSelector :: Type -> String
 funcImplSelector t = show $ md5 $ BLU.fromString $ ppr t
 
 uniqueFuncImplName :: String -> Type -> String
-uniqueFuncImplName fn t = fn ++ (funcImplSelector t)
+uniqueFuncImplName fn t = fn ++ funcImplSelector t
 
 searchFunc :: (Has EnvEff sig m) => Module -> String -> Location -> m String
 searchFunc m fn loc = do

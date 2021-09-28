@@ -334,8 +334,8 @@ instance Backend CppHeader where
     es <- genBody _elamExpr
     return $ parens $ "object_t(func_with_cont_t([=](const cont_t &____k2, stack_t ____stack, effects_t ____effs) -> object_t" <+> braces ("return" <+> es <> semi) <> "))"
     where
-    genArgs prefix = encloseSep lparen rparen comma $ "const cont_t &____k" : "stack_t ____stack_unused" : "effects_t ____effs" : (map (\a -> "const object_t &" <> funcN proxy prefix a) $ _elamArgs ^.. traverse . _1)
-    genArgTypes = encloseSep lparen rparen comma $ "const cont_t &" : "stack_t" : "effects_t" : (map (\_ -> "const object_t &") $ _elamArgs ^.. traverse . _1)
+    genArgs prefix = encloseSep lparen rparen comma $ "const cont_t &____k" : "stack_t ____stack_unused" : "effects_t ____effs" : map (\a -> "const object_t &" <> funcN proxy prefix a) (_elamArgs ^.. traverse . _1)
+    genArgTypes = encloseSep lparen rparen comma $ "const cont_t &" : "stack_t" : "effects_t" : map (const "const object_t &") (_elamArgs ^.. traverse . _1)
     genBody e = do
       prefix <- getEnv currentModuleName
       case e of
