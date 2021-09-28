@@ -296,7 +296,7 @@ typeTerm =
                       <*> parens (P.sepBy type_ comma) <* arrow
                       <*> resultType P.<?> "function type"
                   )
-                P.<|> (A.TVar <$> (s2n <$> ident) P.<?> "type variable")
+                P.<|> (A.TVar <$> (s2n <$> namePath) P.<?> "type variable")
                 P.<|> (A.TPrim <$> primType P.<?> "primitive type")
                 P.<|> (A.TNum <$> (Just . read <$> literalInt) P.<?> "number type")
                 P.<|> (A.TNum Nothing <$ question P.<?> "unknown number type")
@@ -354,7 +354,7 @@ effType =
                   )
               )
                 P.<|> ((brackets (A.EffList <$> (P.sepBy effType comma))) P.<?> "eff type list")
-                P.<|> (A.EffVar <$> (s2n <$> ident) P.<?> "eff var")
+                P.<|> (A.EffVar <$> (s2n <$> namePath) P.<?> "eff var")
             )
               <*> getPos
           )
