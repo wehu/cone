@@ -117,6 +117,22 @@ genTypeInfo t@TList {..} = "[]()" <> braces
     )
     ("auto ____t =  py::tuple(" <> pretty (length _tlist) <> ");", 0::Int)
     _tlist) <> "return ____t;") <> "()"
+genTypeInfo TPrim{..} =
+  case _tprim of
+    I8  -> "py::module_::import(\"numpy\").attr(\"int8\")"
+    I16 -> "py::module_::import(\"numpy\").attr(\"int16\")"
+    I32 -> "py::module_::import(\"numpy\").attr(\"int32\")"
+    I64 -> "py::module_::import(\"numpy\").attr(\"int64\")"
+    U8  -> "py::module_::import(\"numpy\").attr(\"uint8\")"
+    U16 -> "py::module_::import(\"numpy\").attr(\"uint16\")"
+    U32 -> "py::module_::import(\"numpy\").attr(\"uint32\")"
+    U64 -> "py::module_::import(\"numpy\").attr(\"uint64\")"
+    F16 -> "py::module_::import(\"numpy\").attr(\"float16\")"
+    F32 -> "py::module_::import(\"numpy\").attr(\"float32\")"
+    F64 -> "py::module_::import(\"numpy\").attr(\"float64\")"
+    Pred -> "py::module_::import(\"numpy\").attr(\"bool8\")"
+    Str -> "py::module_::import(\"numpy\").attr(\"string_\")"
+    _ -> "py::none()"
 genTypeInfo t = "py::none()"
 
 genTypeArgs :: [Type] -> Doc a

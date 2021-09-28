@@ -19,8 +19,8 @@ namespace cone {
 
       const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &, const object_t &)> cone__full = 
       [=](const cont_t &k, stack_t stack, effects_t effs, const object_t &elem, const object_t &dyn_dims) {
-        auto typeargs = ____to_py_object(stack->back()[____typeargs]);
-        auto shape = py::cast<py::list>(py::cast<py::list>(typeargs)[0]);
+        auto typeargs = py::cast<py::list>(____to_py_object(stack->back()[____typeargs]));
+        auto shape = py::cast<py::list>(typeargs[0]);
         auto rank = py::len(shape);
         auto dyns = ____list_to_vector(dyn_dims);
         int dyn_index = 0;
@@ -35,7 +35,11 @@ namespace cone {
         if (dyn_index != dyns.size()) {
           throw ____cone_exception("dynamic dims are more than required in shape annotations");
         }
-        return k(py::object(py::module_::import("numpy").attr("full")(shape, ____to_py_object(elem))));
+        py::object dtype = py::none();
+        if (py::len(typeargs) > 1) {
+          dtype = typeargs[1];
+        }
+        return k(py::object(py::module_::import("numpy").attr("full")(shape, ____to_py_object(elem), py::arg("dtype") = dtype)));
       };
   
     }
