@@ -4,6 +4,8 @@ import data/map as m
 
 alias set<a> = m/map<a, bool>
 
+alias intset = set<i32>
+
 fun empty<a>() : set<a> {
   m/empty<a, bool>()
 }

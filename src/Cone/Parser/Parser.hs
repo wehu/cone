@@ -465,8 +465,8 @@ literal =
     <*> getPos P.<?> "literal"
 
 term :: Parser A.Expr
-term =
-  eapp
+term = eann <$>
+  (eapp
     <$> ( eann
             <$> ( P.try (parens expr)
                     P.<|> ( ( ( (\((pos, bts, bes, args, (effT, resT)), e) -> A.ELam bts bes args effT resT e)
@@ -495,6 +495,8 @@ term =
         )
     <*> (P.optionMaybe $ P.try $ angles (P.sepBy type_ comma P.<?> "application expression type argument list"))
     <*> (P.optionMaybe $ P.try $ parens (P.sepBy expr comma P.<?> "application expression argument list"))
+    <*> getPos)
+    <*> (P.optionMaybe (colon *> type_ P.<?> "expression type annotation"))
     <*> getPos
   where
     eapp e targs args pos =
