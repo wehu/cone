@@ -135,8 +135,8 @@ checkTypeConDefs :: (Has EnvEff sig m) => Module -> m Module
 checkTypeConDefs m = mapMOf (topStmts . traverse . _TDef) checkTypeConDef m
 
 -- | Initialize type alias definitions
-initTypeAlias :: (Has EnvEff sig m) => String -> TypeAlias -> m TypeAlias
-initTypeAlias prefix t = do
+preInitTypeAlias :: (Has EnvEff sig m) => String -> TypeAlias -> m TypeAlias
+preInitTypeAlias prefix t = do
   let args = t ^. typeAliasArgs
       name = prefix ++ "/" ++ t ^. typeAliasName
       pos = _typeAliasLoc t
@@ -153,12 +153,12 @@ initTypeAlias prefix t = do
   return t {_typeAliasName = name}
 
 -- | Initialize all type aliases
-initTypeAliases :: (Has EnvEff sig m) => Module -> m Module
-initTypeAliases m = mapMOf (topStmts . traverse . _TAlias) (initTypeAlias $ m ^. moduleName) $ m
+preInitTypeAliases :: (Has EnvEff sig m) => Module -> m Module
+preInitTypeAliases m = mapMOf (topStmts . traverse . _TAlias) (preInitTypeAlias $ m ^. moduleName) $ m
 
 -- | Check type alias
-checkTypeAlias :: (Has EnvEff sig m) => TypeAlias -> m TypeAlias
-checkTypeAlias t = do
+initTypeAlias :: (Has EnvEff sig m) => TypeAlias -> m TypeAlias
+initTypeAlias t = do
   globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
   let args = t ^.. typeAliasArgs . traverse . _1
       aliasType = _typeAliasType t
@@ -184,8 +184,8 @@ checkTypeAlias t = do
   return t
 
 -- | Initialize all effect interfaces
-checkTypeAliases :: (Has EnvEff sig m) => Module -> m Module
-checkTypeAliases m = mapMOf (topStmts . traverse . _TAlias) checkTypeAlias $ m
+initTypeAliases :: (Has EnvEff sig m) => Module -> m Module
+initTypeAliases m = mapMOf (topStmts . traverse . _TAlias) initTypeAlias $ m
 
 -- | Initializa effect type definition
 initEffTypeDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
@@ -739,9 +739,10 @@ initModule m env id =
       (return m)
       >>= initTypeDefs
       >>= initEffTypeDefs
-      >>= initTypeAliases
+      >>= preInitTypeAliases
       >>= addPrefixForTypes
-      >>= (\m -> return $ convertFuncImplToFuncs m)
+      >>= (return . convertFuncImplToFuncs)
+      >>= initTypeAliases
       >>= initTypeConDefs
       >>= initEffIntfDefs
       >>= initFuncDefs
@@ -754,7 +755,6 @@ checkType m env id =
   run . runError . (runState env) . runFresh id $
     do
       return m
-      >>= checkTypeAliases
       >>= checkTypeConDefs
       >>= checkEffIntfDefs
       >>= checkFuncDefs
