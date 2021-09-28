@@ -49,7 +49,7 @@ inferTypeKind a@TApp {..} = do
           getKindOfTVar tvn kf
         case ak of
           KStar {} ->
-            if _tappArgs == []
+            if null _tappArgs
               then return ak
               else throwError $ "expected a func kind, but got " ++ ppr ak ++ ppr _tloc
           KFunc {..} ->
@@ -62,6 +62,7 @@ inferTypeKind a@TApp {..} = do
                     t <- inferTypeKind a
                     checkKindMatch t b
                 return _kfuncResult
+          _ -> throwError $ "expected a func kind or star kind, but got " ++ ppr ak ++ ppr _tloc
   let tvn = name2String $ _tvar _tappName
   alias <- getEnv $ typeAliases . at tvn
   case alias of
@@ -102,7 +103,7 @@ inferTypeKind v@TVar {..} = do
   alias <- getEnv $ typeAliases . at (name2String _tvar)
   case alias of
     Just alias ->
-      if alias ^. typeAliasArgs == []
+      if null (alias ^. typeAliasArgs)
         then inferTypeKind $ _typeAliasType alias
         else go
     Nothing -> go
@@ -126,7 +127,7 @@ inferTypeKind t = return $ KStar $ _tloc t
 -- | Eval a type if there is number calc
 evalType1 :: Type -> [Type] -> (Int -> Int) -> Type
 evalType1 t args f =
-  if all (not . isn't _TNum) args
+  if not (any (isn't _TNum) args)
     then
       let arg : rest = fmap _tnum args
        in TNum (fmap f arg) (_tloc t)
@@ -134,7 +135,7 @@ evalType1 t args f =
 
 evalType2 :: Type -> [Type] -> (Int -> Int -> Int) -> Type
 evalType2 t args f =
-  if all (not . isn't _TNum) args
+  if not (any (isn't _TNum) args)
     then
       let arg : rest = fmap _tnum args
        in TNum (L.foldl' (\a b -> f <$> a <*> b) arg rest) (_tloc t)
@@ -190,7 +191,7 @@ inferType v@TVar {..} = do
   alias <- getEnv $ typeAliases . at (name2String _tvar)
   case alias of
     Just alias ->
-      if alias ^. typeAliasArgs == []
+      if null (alias ^. typeAliasArgs)
         then inferType $ _typeAliasType alias
         else go
     Nothing -> go
@@ -317,10 +318,10 @@ toEffList eff = do
         L.partition
           ( \e ->
               isn't _EffVar e
-                || (isn't _Nothing $ M.lookup (name2String $ _effVar e) es)
+                || isn't _Nothing (M.lookup (name2String $ _effVar e) es)
           )
           (_effList effs)
-  al <- mapM inferEffType $ (L.sortBy acompare el) ++ (L.sortBy acompare vl)
+  al <- mapM inferEffType $ L.sortBy acompare el ++ L.sortBy acompare vl
   return effs {_effList = al}
 
 -- | Merge two effect types
@@ -354,7 +355,7 @@ removeEff f@EffList {} e@EffList {} = do
       ( \l e ->
           return $
             -- l L.\\ (map (l !!) (L.findIndices (\a -> acompare e a /= LT) l))
-            l L.\\ (map (l !!) (L.findIndices (aeq e) l))
+            l L.\\ map (l !!) (L.findIndices (aeq e) l)
       )
       fl
       el
@@ -365,7 +366,7 @@ removeEff f@EffList {} e@EffList {} = do
   --     )
   --     fvl
   --     evl
-  return $ EffList (l {-L.sortBy acompare l ++ L.sortBy acompare vl -}) pos
+  return $ EffList l pos
 removeEff f e = do
   fl <- toEffList f
   el <- toEffList e
@@ -398,9 +399,7 @@ applyTypeArgs t args = do
 inferAppResultType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m (Type, Type)
 inferAppResultType f@TFunc {} bargs args = do
   let fArgTypes = _tfuncArgs f
-  if L.length fArgTypes /= L.length args
-    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^.. traverse . tloc) ++ " vs " ++ ppr args ++ ppr (args ^.. traverse . tloc)
-    else return ()
+  when (L.length fArgTypes /= L.length args) $ throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^.. traverse . tloc) ++ " vs " ++ ppr args ++ ppr (args ^.. traverse . tloc)
   bindings <-
     foldM
       (\s e -> (++) <$> return s <*> e)
@@ -416,12 +415,10 @@ inferAppResultType t _ _ = throwError $ "expected a function type, but got " ++ 
 inferAppResultEffType :: (Has EnvEff sig m) => Type -> [Type] -> [Type] -> m EffectType
 inferAppResultEffType f@TFunc {} targs args = do
   let fArgTypes = _tfuncArgs f
-  if L.length fArgTypes /= L.length args
-    then throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^.. traverse . tloc) ++ " vs " ++ ppr args ++ ppr (args ^.. traverse . tloc)
-    else return ()
+  when (L.length fArgTypes /= L.length args) $ throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^.. traverse . tloc) ++ " vs " ++ ppr args ++ ppr (args ^.. traverse . tloc)
   bindings <-
     foldM
-      (\s e -> (++) <$> return s <*> e)
+      (\s e -> (++) s <$> e)
       []
       [collectVarBindings True a b | a <- fArgTypes | b <- args]
       >>= checkVarBindings
@@ -430,11 +427,10 @@ inferAppResultEffType f@TFunc {} targs args = do
   let eff = substs bindings resEff
   effBindings <-
     ( (++)
-        <$> ( foldM
-                (\s e -> (++) <$> return s <*> e)
+        <$> foldM
+                (\s e -> (++) s <$> e)
                 []
                 [collectEffVarBindingsInType True a b | a <- fArgTypes | b <- args]
-            )
         <*> collectEffVarBindings True funcEff resEff
       )
       >>= checkEffVarBindings
@@ -472,11 +468,10 @@ collectVarBindings bi a@TFunc {} b@TFunc {} =
       bl <- toEffList $ _tfuncEff b
       (++)
         <$> ( (++)
-                <$> ( foldM
-                        (\s e -> (++) <$> (return s) <*> e)
+                <$> foldM
+                        (\s e -> (++) s <$> e)
                         []
                         [collectVarBindings bi aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
-                    )
                 <*> collectVarBindings bi (_tfuncResult a) (_tfuncResult b)
             )
         <*> collectVarBindingsInEff bi al bl
@@ -484,9 +479,9 @@ collectVarBindings bi a@TList {} b@TList {} =
   if L.length (_tlist a) == L.length (_tlist b)
     then
       foldM
-        (\s e -> (++) <$> (return s) <*> e)
+        (\s e -> (++) s <$> e)
         []
-        [collectVarBindings bi ae be | ae <- (a ^. tlist) | be <- (b ^. tlist)]
+        [collectVarBindings bi ae be | ae <- a ^. tlist | be <- b ^. tlist]
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectVarBindings bi a@TApp {} b@TApp {} =
   if L.length (_tappArgs a) == L.length (_tappArgs b)
@@ -494,9 +489,9 @@ collectVarBindings bi a@TApp {} b@TApp {} =
       f <- collectVarBindings bi (_tappName a) (_tappName b)
       args <-
         foldM
-          (\s e -> (++) <$> (return s) <*> e)
+          (\s e -> (++) s <$> e)
           []
-          [collectVarBindings bi aarg barg | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
+          [collectVarBindings bi aarg barg | aarg <- a ^. tappArgs | barg <- b ^. tappArgs]
       return $ f ++ args
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectVarBindings bi a@TAnn {} b@TAnn {} =
@@ -518,7 +513,7 @@ collectVarBindings bi a@BoundEffVarType {} b@BoundType {} = do
   bt <- unbindType b
   collectVarBindings bi at bt
 collectVarBindings bi a@TNum {} b@TNum {} =
-  if (_tnum a) == (_tnum b)
+  if _tnum a == _tnum b
     then return []
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectVarBindings bi a b = throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
@@ -546,35 +541,27 @@ collectVarBindingsInEff bi a@EffApp {} b@EffApp {} =
     then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
     else
       foldM
-        (\s e -> (++) <$> return s <*> e)
+        (\s e -> (++) s <$> e)
         []
-        [collectVarBindings bi aarg barg | aarg <- (a ^. effAppArgs) | barg <- (b ^. effAppArgs)]
+        [collectVarBindings bi aarg barg | aarg <- a ^. effAppArgs | barg <- b ^. effAppArgs]
 collectVarBindingsInEff bi a@EffList {} b@EffList {} = do
   let al = a ^. effList
   let bl = b ^. effList
   let error = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-  if L.length al > L.length bl
-    then
-      if L.length al == (L.length bl) + 1
+  when (L.length al > L.length bl) $
+      if L.length al == L.length bl + 1
         then do
           is <- isEffVar $ last al
-          if is
-            then return ()
-            else error
+          unless is error
         else error
-    else return ()
-  if L.length al < L.length bl
-    then do
-      if al == []
+  when (L.length al < L.length bl) $ do
+      if null al
         then error
         else do
           is <- isEffVar $ last al
-          if not is
-            then error
-            else return ()
-    else return ()
+          unless is error
   foldM
-    (\s e -> (++) <$> return s <*> e)
+    (\s e -> (++) s <$> e)
     []
     [collectVarBindingsInEff bi aarg barg | aarg <- al | barg <- bl]
 collectVarBindingsInEff bi a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
@@ -596,50 +583,42 @@ collectEffVarBindings bi a@EffApp {} b@EffApp {} = do
     then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
     else do
       foldM
-        (\s e -> (++) <$> return s <*> e)
+        (\s e -> (++) s <$> e)
         []
-        [collectVarBindings bi aarg barg | aarg <- (a ^. effAppArgs) | barg <- (b ^. effAppArgs)]
+        [collectVarBindings bi aarg barg | aarg <- a ^. effAppArgs | barg <- b ^. effAppArgs]
         >>= checkVarBindings
   return []
 collectEffVarBindings bi a@EffList {} b@EffList {} = do
   let al = a ^. effList
   let bl = b ^. effList
   let error = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
-  if L.length al > L.length bl
-    then
-      if L.length al == (L.length bl) + 1
+  when (L.length al > L.length bl) $
+      if L.length al == L.length bl + 1
         then do
           is <- isEffVar $ last al
-          if is
-            then return ()
-            else error
+          unless is error
         else error
-    else return ()
-  if L.length al < L.length bl
-    then
-      if al == []
+  when (L.length al < L.length bl) $
+      if null al
         then error
         else do
           is <- isEffVar $ last al
-          if not is
-            then error
-            else return ()
-    else return ()
+          unless is error
   if L.length al < L.length bl
     then do
       bindings <-
         foldM
-          (\s e -> (++) <$> return s <*> e)
+          (\s e -> (++) s <$> e)
           []
           [collectEffVarBindings bi aarg barg | aarg <- init al | barg <- bl]
-      return $ bindings ++ [(_effVar (last al), EffList (drop ((L.length al) - 1) bl) (_effLoc b))]
+      return $ bindings ++ [(_effVar (last al), EffList (drop (L.length al - 1) bl) (_effLoc b))]
     else do
       bindings <-
         foldM
-          (\s e -> (++) <$> return s <*> e)
+          (\s e -> (++) s <$> e)
           []
           [collectEffVarBindings bi aarg barg | aarg <- al | barg <- bl]
-      if L.length al == (L.length bl) + 1
+      if L.length al == L.length bl + 1
         then return $ bindings ++ [(_effVar (last al), EffList [] (_effLoc b))]
         else return bindings
 collectEffVarBindings bi a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
@@ -673,11 +652,10 @@ collectEffVarBindingsInType bi a@TFunc {} b@TFunc {} =
       bl <- toEffList $ _tfuncEff b
       (++)
         <$> ( (++)
-                <$> ( foldM
-                        (\s e -> (++) <$> (return s) <*> e)
+                <$> foldM
+                        (\s e -> (++) s <$> e)
                         []
                         [collectEffVarBindingsInType bi aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
-                    )
                 <*> collectEffVarBindingsInType bi (_tfuncResult a) (_tfuncResult b)
             )
         <*> collectEffVarBindings bi al bl
@@ -685,9 +663,9 @@ collectEffVarBindingsInType bi a@TList {} b@TList {} =
   if L.length (_tlist a) == L.length (_tlist b)
     then
       foldM
-        (\s e -> (++) <$> (return s) <*> e)
+        (\s e -> (++) s <$> e)
         []
-        [collectEffVarBindingsInType bi ae be | ae <- (a ^. tlist) | be <- (b ^. tlist)]
+        [collectEffVarBindingsInType bi ae be | ae <- a ^. tlist | be <- b ^. tlist]
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType bi a@TApp {} b@TApp {} =
   if L.length (_tappArgs a) == L.length (_tappArgs b)
@@ -695,9 +673,9 @@ collectEffVarBindingsInType bi a@TApp {} b@TApp {} =
       f <- collectEffVarBindingsInType bi (_tappName a) (_tappName b)
       args <-
         foldM
-          (\s e -> (++) <$> (return s) <*> e)
+          (\s e -> (++) s <$> e)
           []
-          [collectEffVarBindingsInType bi aarg barg | aarg <- (a ^. tappArgs) | barg <- (b ^. tappArgs)]
+          [collectEffVarBindingsInType bi aarg barg | aarg <- a ^. tappArgs | barg <- b ^. tappArgs]
       return $ f ++ args
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType bi a@TAnn {} b@TAnn {} =
@@ -719,7 +697,7 @@ collectEffVarBindingsInType bi a@BoundEffVarType {} b@BoundType {} = do
   bt <- unbindType b
   collectEffVarBindingsInType bi at bt
 collectEffVarBindingsInType bi a@TNum {} b@TNum {} =
-  if (_tnum a) == (_tnum b)
+  if _tnum a == _tnum b
     then return []
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType bi a b = throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
@@ -748,15 +726,15 @@ getSpecialTypes [] = return []
 
 groupTypes :: (Has EnvEff sig m) => [(Type, Type)] -> m [[Type]]
 groupTypes rels = do
-  ts <- (L.nubBy aeq) <$> mapM inferType (join $ map (\(a, b) -> [a, b]) rels)
-  return $ L.groupBy (\a b -> elem (a, b) rels) ts
+  ts <- L.nubBy aeq <$> mapM inferType (join $ map (\(a, b) -> [a, b]) rels)
+  return $ L.groupBy (\a b -> (a, b) `elem` rels) ts
   where
-    elem a (e : es) = if aeq a e then True else elem a es
+    elem a (e : es) = aeq a e || elem a es
     elem a [] = False
 
 checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m [(TVar, Type)]
 checkVarBindings bindings = do
-  groups <- groupTypes $ map (\(v, t) -> ((TVar v $ _tloc t), t)) bindings
+  groups <- groupTypes $ map (\(v, t) -> (TVar v $ _tloc t, t)) bindings
   bs <- forM groups $ \g -> do
     (vars, nonVars) <-
       foldM
@@ -804,15 +782,15 @@ getSpecialEffTypes [] = return []
 
 groupEffTypes :: (Has EnvEff sig m) => [(EffectType, EffectType)] -> m [[EffectType]]
 groupEffTypes rels = do
-  ts <- (L.nubBy aeq) <$> mapM inferEffType (join $ map (\(a, b) -> [a, b]) rels)
-  return $ L.groupBy (\a b -> elem (a, b) rels) ts
+  ts <- L.nubBy aeq <$> mapM inferEffType (join $ map (\(a, b) -> [a, b]) rels)
+  return $ L.groupBy (\a b -> (a, b) `elem` rels) ts
   where
-    elem a (e : es) = if aeq a e then True else elem a es
+    elem a (e : es) = aeq a e || elem a es
     elem a [] = False
 
 checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m [(EffVar, EffectType)]
 checkEffVarBindings bindings = do
-  groups <- groupEffTypes $ map (\(v, t) -> ((EffVar v $ _effLoc t), t)) bindings
+  groups <- groupEffTypes $ map (\(v, t) -> (EffVar v $ _effLoc t, t)) bindings
   bs <- forM groups $ \g -> do
     (vars, nonVars) <-
       foldM
@@ -951,7 +929,7 @@ filterOutAliasImports m n ns =
             )
             []
             $ m ^. imports
-   in (L.nub ns) L.\\ aliasImports
+   in L.nub ns L.\\ aliasImports
 
 -- | Func implementation selector
 funcImplSelector :: Type -> String
@@ -968,12 +946,12 @@ searchFunc m fn loc = do
           "" :
           (m ^. moduleName ++ "/") :
           "core/prelude/" :
-          (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
+          map (\i -> i ^. importPath ++ "/") (m ^. imports)
   n <- getNamePath m fn
   fs <- getEnv funcs
   found <-
-    (filterOutAliasImports m n)
-      <$> ( foldM
+    filterOutAliasImports m n
+      <$> foldM
               ( \f p -> do
                   let ffn = p ++ n
                   case fs ^. at ffn of
@@ -982,12 +960,11 @@ searchFunc m fn loc = do
               )
               []
               prefixes
-          )
-  if found == []
+  if null found
     then throwError $ "no function definition found for : " ++ fn ++ ppr loc
     else
       if L.length found == 1
-        then return $ found !! 0
+        then return $ head found
         else throwError $ "found more than one function for " ++ fn ++ ppr found ++ ppr loc
 
 -- | Set a function implementation
@@ -1001,7 +978,7 @@ setFuncImpl prefix m impl = do
           bindTypeVar (funcD ^. funcBoundVars) $
             TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
   intfn <- searchFunc m (funcD ^. funcName) loc
-  ft <- fromJust <$> (getEnv $ funcs . at intfn)
+  ft <- fromJust <$> getEnv (funcs . at intfn)
   isSubT <- isSubType t ft
   if isSubT
     then return ()

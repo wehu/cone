@@ -40,13 +40,13 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
   impls <- getFuncImpls fn
   impls <- findSuperImpls impls >>= findBestImpls
   if L.length impls == 1
-  then return $ EAnnMeta (impls !! 0 ^. _1) t loc
+  then return $ EAnnMeta (head impls ^. _1) t loc
   else if L.length impls > 1
        then throwError $ "ambiguous implementations for " ++ fn ++ ppr impls ++ ppr loc
        else do
          getFuncType loc fn
          return e
-  where 
+  where
     findSuperImpls impls =
       foldM (\f (e, it) -> do
         is <- isEqOrSubType t it
@@ -58,10 +58,10 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
       let impls = L.nubBy aeq impls'
       indegrees <- foldM (\s (a, b) -> do
         is <- isSubType (a ^. _2) (b ^. _2)
-        if is then return $ s & at b ?~ (1 + (fromJust $ s ^. at b))
+        if is then return $ s & at b ?~ (1 + fromJust (s ^. at b))
         else do
                is <- isSubType (b ^. _2) (a ^. _2)
-               if is then return $ s & at a ?~ (1 + (fromJust $ s ^. at a))
+               if is then return $ s & at a ?~ (1 + fromJust (s ^. at a))
                else return s)
         (L.foldl' (\s e -> s & at e ?~ (0::Int)) M.empty impls)
         [(a, b) | a <- impls, b <- impls]
@@ -75,11 +75,11 @@ selectFuncImpl e = return e
 -- | Infer expression's type
 inferExprType :: (Has EnvEff sig m) => Expr -> m Expr
 inferExprType e@EVar {..} = do
-  t <- (getFuncType _eloc $ name2String _evarName) >>= inferType
+  t <- getFuncType _eloc (name2String _evarName) >>= inferType
   return $ annotateExpr e t
 inferExprType a@EApp {..} = do
   -- check assign variable
-  if (name2String $ _eappFunc ^. evarName) == "____assign"
+  if name2String (_eappFunc ^. evarName) == "____assign"
     then do
       if L.length _eappArgs /= 2
         then throwError $ "expected 2 arguments: " ++ ppr a ++ ppr _eloc
@@ -139,13 +139,13 @@ inferExprType l@ELam {..} = underScope $ do
       checkEffKind ek
       -- add lambda argument types into env's local scope
       mapM_
-        (\(n, t) -> setFuncType n t)
+        (uncurry setFuncType)
         [(n, t) | (n, _) <- _elamArgs | t <- args]
       case _elamExpr of
         Just e -> return ()
         Nothing -> throwError $ "expected an expression for lambda" ++ ppr _eloc
       -- infer the lambda's expression type
-      lamE <- (inferExprType $ fromJust _elamExpr)
+      lamE <- inferExprType $ fromJust _elamExpr
       eType <- typeOfExpr lamE
       -- infer the lambda's result type
       k <- inferTypeKind _elamResultType
@@ -197,13 +197,12 @@ inferExprType c@ECase {..} = do
     return (pt, et, c {_caseExpr = e})
   -- check if condition's type match with case exprs' type or not
   sts <- getSpecialTypes (ts ^.. traverse . _2)
-  if L.length sts /= 1 then throwError $ "case exprs type conflict: " ++ ppr [(t, _tloc t) | t <- sts]
-  else return ()
+  when (L.length sts /= 1) $ throwError $ "case exprs type conflict: " ++ ppr [(t, _tloc t) | t <- sts]
   -- check if all pattern expressions' type match or not
   forM_ (ts ^.. traverse . _1) $ \e ->
     checkTypeMatch ct e
   -- return case's type
-  t <- inferType $ (last sts)
+  t <- inferType $ last sts
   return $ annotateExpr c {_ecaseExpr = ce, _ecaseBody = ts ^.. traverse . _3} t
 inferExprType w@EWhile {..} = do
   -- infer while condition's type
@@ -234,16 +233,15 @@ inferExprType h@EHandle {..} = underScope $ do
   checkTypeKind btk
 
   let effN = name2String $ if isn't _EffVar _ehandleEff then _ehandleEff ^. effAppName . effVar else _ehandleEff ^. effVar
-      prefix = join $ L.intersperse "/" $ (init $ splitOn "/" effN)
-  
-  if effN == "core/prelude/io" || effN == "core/prelude/python"
-    then throwError $ effN ++ " effect cannot be handled"
-    else return ()
+      prefix = join $ L.intersperse "/" $ init (splitOn "/" effN)
+
+  when (effN == "core/prelude/io" || effN == "core/prelude/python") $
+     throwError $ effN ++ " effect cannot be handled"
 
   bs <- forM _ehandleBindings $ \intf -> underScope $ do
     let fn =
-          if prefix == (take (L.length prefix) (intf ^. funcName))
-            then (intf ^. funcName)
+          if prefix == take (L.length prefix) (intf ^. funcName)
+            then intf ^. funcName
             else prefix ++ "/" ++ (intf ^. funcName)
         emptyEff = EffList [] _eloc
         unit = TPrim Unit _eloc
@@ -288,7 +286,7 @@ inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
 -- | Infer a pattern's type
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type
-inferPatternType PVar {..} = (inferExprType $ EVar (s2n $ name2String _pvar) _ploc) >>= typeOfExpr
+inferPatternType PVar {..} = inferExprType (EVar (s2n $ name2String _pvar) _ploc) >>= typeOfExpr
 inferPatternType PApp {..} = do
   args <- mapM inferPatternType _pappArgs
   mapM_ inferTypeKind _pappTypeArgs
@@ -305,7 +303,7 @@ bindPatternVarTypes isState p e = do
   eWithType <- inferExprType e
   eType <- typeOfExpr eWithType
   typeBindings <- extracePatternVarTypes p eType
-  foldM
+  foldM_
     ( \bs (v, t) -> do
         let n = name2String v
         case bs ^. at n of
@@ -313,9 +311,7 @@ bindPatternVarTypes isState p e = do
           Nothing -> do
             setFuncType n t
             -- set localState
-            if isState
-              then setEnv (Just t) $ localState . at n
-              else return ()
+            when isState $ setEnv (Just t) $ localState . at n
             return $ bs & at n ?~ True
     )
     M.empty
@@ -338,7 +334,7 @@ extracePatternVarTypes a@PApp {..} t = underScope $ do
   bindings <- collectVarBindings False appResT t
   foldM
     ( \s e ->
-        (++) <$> return s <*> e
+        (++) s <$> e
     )
     []
     [extracePatternVarTypes arg argt | arg <- _pappArgs | argt <- substs bindings argTypes]
@@ -361,7 +357,7 @@ inferExprEffType l@ELam {..} = do
       _elamArgs
   -- add lambda argument types into env's local scope
   mapM_
-    (\(n, t) -> setFuncType n t)
+    (uncurry setFuncType)
     [(n, t) | (n, _) <- _elamArgs | t <- args]
   forMOf _Nothing _elamExpr $ \_ ->
     throwError $ "expected an expression for lambda" ++ ppr _eloc
@@ -392,7 +388,7 @@ inferExprEffType EApp {..} = do
   appFuncType <- inferExprType _eappFunc >>= typeOfExpr
   inferExprEffType _eappFunc
   appFuncType <- applyTypeArgs appFuncType _eappTypeArgs >>= unbindType
-  argTypes <- mapM (\e -> inferExprType e >>= typeOfExpr) _eappArgs
+  argTypes <- mapM (inferExprType >=> typeOfExpr) _eappArgs
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
   mapM_ inferExprEffType _eappArgs
@@ -430,6 +426,7 @@ inferExprEffType EHandle {..} = underScope $ do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   -- remove the handled effects
   removeEff effs _ehandleEff
+inferExprEffType e = throwError $ "unsupported expr " ++ ppr e ++ ppr (_eloc e)
 
 -- | Setup for effect inferface type
 setupEffIntfType :: (Has EnvEff sig m) => FuncDef -> m ()
@@ -440,5 +437,5 @@ setupEffIntfType f = do
   forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
   forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
   mapM_
-    (\(n, t) -> setFuncType n t)
+    (uncurry setFuncType)
     (f ^. funcArgs)

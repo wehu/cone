@@ -28,12 +28,12 @@ token test getVal = do
     nextPos pos _ ((L.AlexPn _ l c, _, _) : _) =
       P.setSourceColumn (P.setSourceLine pos l) c
     nextPos pos _ [] = pos
-    testTok tok@(_, t, _) = if (test t) then Just (getVal tok) else Nothing
+    testTok tok@(_, t, _) = if test t then Just (getVal tok) else Nothing
     showTok pos (L.AlexPn _ l c, _, s) =
-      s ++ "@" ++ (P.sourceName pos) ++ "[" ++ (show l) ++ ":" ++ (show c) ++ "]"
+      s ++ "@" ++ P.sourceName pos ++ "[" ++ show l ++ ":" ++ show c ++ "]"
 
 keyword :: L.Tok -> Parser L.Tok
-keyword t = token (== t) (\_ -> t)
+keyword t = token (== t) (const t)
 
 symbol = keyword
 
@@ -205,7 +205,7 @@ getPos =
 
 parens e = lParen *> e <* rParen
 
-braces e = lBrace *> (P.optional semi) *> e <* (P.optional semi) <* rBrace
+braces e = lBrace *> P.optional semi *> e <* P.optional semi <* rBrace
 
 brackets e = lBracket *> e <* rBracket
 
@@ -218,7 +218,7 @@ imports :: Parser [A.ImportStmt]
 imports =
   P.many
     ( f <$ kImport <*> namePath <*> getPos
-        <*> (P.optionMaybe $ kAs *> ident)
+        <*> P.optionMaybe (kAs *> ident)
         <* semi P.<?> "import stmt"
     )
   where
@@ -268,23 +268,21 @@ typePrefix op name = PE.Prefix $ do
   pos <- getPos
   return $ \i -> A.TApp (A.TVar (s2n name) pos) [i] pos
 
-typeBinary op name assoc =
-  PE.Infix
+typeBinary op name = PE.Infix
     ( do
         op
         pos <- getPos
         return $
           \a b ->
-            let args = a : b : []
+            let args = a : [b]
              in A.TApp (A.TVar (s2n name) pos) args pos
     )
-    assoc
 
 typeTerm :: Parser A.Type
 typeTerm =
   ( tann
       <$> ( ( P.try
-                ( ( A.TApp <$> ((\n pos -> A.TVar (s2n n) pos) <$> namePath <*> getPos)
+                ( ( A.TApp <$> (A.TVar . s2n <$> namePath <*> getPos)
                       <*> angles (P.sepBy type_ comma)
                   )
                     P.<?> "application type"
@@ -307,7 +305,7 @@ typeTerm =
               <*> getPos
           )
   )
-    <*> (P.optionMaybe $ colon *> kind)
+    <*> P.optionMaybe (colon *> kind)
     <*> getPos
     P.<|> parens type_
   where
@@ -319,23 +317,24 @@ typeTerm =
       _ -> t
     tlist t pos = A.TApp (A.TVar (s2n "list") pos) [t] pos
     ttuple (t0 : t1 : ts) pos = A.TApp (A.TVar (s2n "pair") pos) [t0, ttuple (t1 : ts) pos] pos
-    ttuple (t : []) pos = t
+    ttuple [t] pos = t
+    ttuple _ _ = undefined
 
 type_ :: Parser A.Type
 type_ = PE.buildExpressionParser typeTable typeTerm
 
 boundTVars :: Parser [(A.TVar, Maybe A.Kind)]
 boundTVars =
-  ((angles $ P.sepBy1 ((,) <$> (s2n <$> ident) <*> (P.optionMaybe $ colon *> kind)) comma) P.<?> "type variable list")
+  (angles (P.sepBy1 ((,) <$> (s2n <$> ident) <*> P.optionMaybe (colon *> kind)) comma) P.<?> "type variable list")
     P.<|> return []
 
 boundEffVars :: Parser [A.EffVar]
 boundEffVars =
-  ((brackets $ P.sepBy1 (s2n <$> ident) comma) P.<?> "eff type variable list")
+  (brackets (P.sepBy1 (s2n <$> ident) comma) P.<?> "eff type variable list")
     P.<|> return []
 
 resultType :: Parser (A.EffectType, A.Type)
-resultType = (,) <$> ((P.try $ effType <* P.lookAhead type_) P.<|> (A.EffList []) <$> getPos) <*> type_
+resultType = (,) <$> (P.try (effType <* P.lookAhead type_) P.<|> A.EffList [] <$> getPos) <*> type_
 
 effKind :: Parser A.EffKind
 effKind =
@@ -348,19 +347,18 @@ effKind =
 effType :: Parser A.EffectType
 effType =
   parens effType
-    P.<|> ( ( ( P.try
-                  ( A.EffApp <$> ((\n pos -> (A.EffVar (s2n n) pos)) <$> namePath <*> getPos)
+    P.<|> ( ( P.try
+                  ( A.EffApp <$> (A.EffVar . s2n <$> namePath <*> getPos)
                       <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"
                   )
-              )
-                P.<|> ((brackets (A.EffList <$> (P.sepBy effType comma))) P.<?> "eff type list")
+                P.<|> (brackets (A.EffList <$> P.sepBy effType comma) P.<?> "eff type list")
                 P.<|> (A.EffVar <$> (s2n <$> namePath) P.<?> "eff var")
             )
               <*> getPos
           )
 
 funcArgs :: Parser [(String, A.Type)]
-funcArgs = (P.sepBy ((,) <$> ident <* colon <*> type_) comma) P.<?> "function argument types"
+funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma P.<?> "function argument types"
 
 funcProto =
   f <$> getPos <*> boundTVars <*> boundEffVars
@@ -376,7 +374,7 @@ exprSeq = f <$> expr <*> P.optionMaybe (P.many1 $ P.try $ semi *> expr) <*> getP
       Just es' -> A.ESeq (e : es') pos
       Nothing -> e
 
-funcDef = (,) <$> funcProto <*> (P.optionMaybe $ braces exprSeq)
+funcDef = (,) <$> funcProto <*> P.optionMaybe (braces exprSeq)
 
 exprTable =
   [ [exprPrefix sub "____negative"],
@@ -407,8 +405,7 @@ exprPrefix op name = PE.Prefix $ do
   pos <- getPos
   return $ \i -> A.EApp (A.EVar (s2n name) pos) [] [i] pos
 
-exprBinary op name assoc =
-  PE.Infix
+exprBinary op name = PE.Infix
     ( do
         op
         pos <- getPos
@@ -417,28 +414,25 @@ exprBinary op name assoc =
             let args = a : b : []
              in A.EApp (A.EVar (s2n name) pos) [] args pos
     )
-    assoc
 
 pat :: Parser A.Pattern
 pat =
   pcons
     <$> ( P.try (parens pat)
-            P.<|> ( ( P.try
+            P.<|> ( P.try
                         ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
                             <*> (angles (P.sepBy type_ comma) P.<|> return [])
                             <*> parens (P.sepBy pat comma)
                             <*> getPos
                         )
-                    )
                       P.<?> "pattern application"
                   )
-            P.<|> ( ( P.try
+            P.<|> ( P.try
                         ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
                             <*> angles (P.sepBy type_ comma)
                             <*> return []
                             <*> getPos
                         )
-                    )
                       P.<?> "pattern application"
                   )
             P.<|> (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple")
@@ -449,20 +443,21 @@ pat =
     <*> getPos
   where
     ptuple (p0 : p1 : ps) pos = A.PApp (A.EVar (s2n "pair") pos) [] [p0, ptuple (p1 : ps) pos] pos
-    ptuple (p : []) pos = p
+    ptuple [p] pos = p
+    ptuple _ _ = undefined
     pcons p ps pos =
       case ps of
         Just ps -> A.PApp (A.EVar (s2n "cons") pos) [] [p, ps] pos
         Nothing -> p
 
 literal =
-  ( A.ELit <$ true <*> return "true" <*> ((A.TPrim A.Pred) <$> getPos)
-      P.<|> A.ELit <$ false <*> return "false" <*> ((A.TPrim A.Pred) <$> getPos)
-      P.<|> A.ELit <$ unit <*> return "unit" <*> ((A.TPrim A.Unit) <$> getPos)
-      P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> (A.TPrim A.I32) <$> getPos)
-      P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> (A.TPrim A.F32) <$> getPos)
-      P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> (A.TPrim A.Ch) <$> getPos)
-      P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> (A.TPrim A.Str) <$> getPos)
+  ( A.ELit <$ true <*> return "true" <*> (A.TPrim A.Pred <$> getPos)
+      P.<|> A.ELit <$ false <*> return "false" <*> (A.TPrim A.Pred <$> getPos)
+      P.<|> A.ELit <$ unit <*> return "unit" <*> (A.TPrim A.Unit <$> getPos)
+      P.<|> A.ELit <$> literalInt <*> (colon *> type_ P.<|> A.TPrim A.I32 <$> getPos)
+      P.<|> A.ELit <$> literalFloat <*> (colon *> type_ P.<|> A.TPrim A.F32 <$> getPos)
+      P.<|> A.ELit <$> literalChar <*> (colon *> type_ P.<|> A.TPrim A.Ch <$> getPos)
+      P.<|> A.ELit <$> literalStr <*> (colon *> type_ P.<|> A.TPrim A.Str <$> getPos)
   )
     <*> getPos P.<?> "literal"
 
@@ -482,9 +477,9 @@ term = eann <$>
                                             P.<?> "case expression"
                                       )
                                 P.<|> (A.EWhile <$ kWhile <*> expr <*> braces exprSeq P.<?> "while expression")
-                                P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> (braces $ P.sepBy1 handle $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
+                                P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> braces (P.sepBy1 handle $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
                                 P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
-                                P.<|> (varOrAssign <$> namePath <*> (P.optionMaybe $ assign_ *> expr) P.<?> "var or assign expression")
+                                P.<|> (varOrAssign <$> namePath <*> P.optionMaybe (assign_ *> expr) P.<?> "var or assign expression")
                                 P.<|> (elist <$> brackets (P.sepBy expr comma) P.<?> "list expression")
                                 P.<|> (etuple <$> parens (P.sepBy1 expr comma) P.<?> "tuple expression")
                             )
@@ -492,17 +487,17 @@ term = eann <$>
                           )
                     P.<|> literal
                 )
-            <*> (P.optionMaybe (colon *> type_ P.<?> "expression type annotation"))
+            <*> P.optionMaybe (colon *> type_ P.<?> "expression type annotation")
             <*> getPos
         )
-    <*> (P.optionMaybe $ P.try $ angles (P.sepBy type_ comma P.<?> "application expression type argument list"))
-    <*> (P.optionMaybe $ P.try $ parens (P.sepBy expr comma P.<?> "application expression argument list"))
+    <*> P.optionMaybe (P.try (angles (P.sepBy type_ comma P.<?> "application expression type argument list")))
+    <*> P.optionMaybe (P.try (parens (P.sepBy expr comma P.<?> "application expression argument list")))
     <*> getPos)
-    <*> (P.optionMaybe (colon *> type_ P.<?> "expression type annotation"))
+    <*> P.optionMaybe (colon *> type_ P.<?> "expression type annotation")
     <*> getPos
   where
     eapp e targs args pos =
-      if (isn't _Nothing targs) || (isn't _Nothing args)
+      if isn't _Nothing targs || isn't _Nothing args
         then A.EApp e (targs ^. _Just) (args ^. _Just) pos
         else e
     eann e t pos = case t of
@@ -538,7 +533,7 @@ expr = PE.buildExpressionParser exprTable term
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
 typeArgs =
-  ((angles (P.sepBy ((,) <$> (s2n <$> ident) <*> (P.optionMaybe $ colon *> kind)) comma)) P.<?> "type arguments")
+  (angles (P.sepBy ((,) <$> (s2n <$> ident) <*> P.optionMaybe (colon *> kind)) comma) P.<?> "type arguments")
     P.<|> return []
 
 typeCon :: Parser A.TypeCon
@@ -558,7 +553,7 @@ typeDef =
     <*> getPos P.<?> "type definition"
 
 typeAlias :: Parser A.TypeAlias
-typeAlias = A.TypeAlias <$ kAlias <*> ident <*> typeArgs 
+typeAlias = A.TypeAlias <$ kAlias <*> ident <*> typeArgs
      <* assign_ <*> type_ <*> getPos P.<?> "type alias"
 
 funcIntf :: Parser A.FuncIntf
@@ -596,9 +591,9 @@ topStmt =
 
 module_ :: Parser A.Module
 module_ =
-  f <$ (P.optional semi) <* kModule <*> namePath <*> getPos <* semi
+  f <$ P.optional semi <* kModule <*> namePath <*> getPos <* semi
     <*> imports
-    <*> (P.many topStmt)
+    <*> P.many topStmt
     <* P.eof
   where
     f n pos ims stmts = A.Module n [] [] ims stmts pos

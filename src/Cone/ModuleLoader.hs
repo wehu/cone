@@ -52,7 +52,7 @@ getImports paths f' = do
 getImportsRecursively :: [FilePath] -> FilePath -> ExceptT String IO [String]
 getImportsRecursively paths f = do
   imports <- getImports paths f
-  ims <- join <$> mapM (\i -> 
+  ims <- join <$> mapM (\i ->
     if i `elem` preloadedModules then return []
     else getImportsRecursively paths (addExtension i coneEx)) imports
   return $ imports ++ ims
@@ -123,12 +123,12 @@ importModules cache paths m loaded = do
                 mergeImpls = zipWithMaybeMatched $ \k v1 v2 -> Just $ nubBy aeq $ v1 ++ v2
             return
               ( oldEnv
-                  { _types = (merge g1 g2 f (oldEnv ^. types) (env ^. types)),
-                    _typeAliases = (merge g1 g2 f (oldEnv ^. typeAliases) (env ^. typeAliases)),
-                    _effs = (merge g1 g2 f (oldEnv ^. effs) (env ^. effs)),
-                    _effIntfs = (merge g1 g2 f (oldEnv ^. effIntfs) (env ^. effIntfs)),
-                    _funcs = (merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs)),
-                    _funcImpls = (merge g1 g2 mergeImpls (oldEnv ^. funcImpls) (env ^. funcImpls))
+                  { _types = merge g1 g2 f (oldEnv ^. types) (env ^. types),
+                    _typeAliases = merge g1 g2 f (oldEnv ^. typeAliases) (env ^. typeAliases),
+                    _effs = merge g1 g2 f (oldEnv ^. effs) (env ^. effs),
+                    _effIntfs = merge g1 g2 f (oldEnv ^. effIntfs) (env ^. effIntfs),
+                    _funcs = merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs),
+                    _funcImpls = merge g1 g2 mergeImpls (oldEnv ^. funcImpls) (env ^. funcImpls)
                   },
                 id,
                 m,
@@ -136,7 +136,7 @@ importModules cache paths m loaded = do
               )
     )
     (initialEnv, 0, m, preloadedModules ++ (is ^.. traverse . importPath))
-    ((map (\f -> ImportStmt f Nothing [] (m ^. moduleLoc)) preloadedModules) ++ is)
+    (map (\f -> ImportStmt f Nothing [] (m ^. moduleLoc)) preloadedModules ++ is)
 
 -- | Load a module
 loadModule :: [FilePath] -> FilePath -> LoadEnv

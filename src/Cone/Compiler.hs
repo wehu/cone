@@ -39,18 +39,17 @@ checkTimeStamp f deps = do
 checkTimeStampAndDo :: FilePath -> [FilePath] -> CompileEnv () -> CompileEnv ()
 checkTimeStampAndDo f deps action = do
   doit <- checkTimeStamp f deps
-  if doit then action
-  else return ()
+  when doit action
 
 -- | Check and compile
 checkAndCompile :: [FilePath] -> String -> String -> CompileEnv ()
 checkAndCompile paths i target = do
   userDataDir <- liftIO $ coneUserDataDir
   deps <- getImports paths (addExtension i coneEx)
-  let pyFn = userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) "py")
-      pyTyFn = addExtension (dropExtension pyFn ++ "____t") "py" 
+  let pyFn = userDataDir </> target </> addExtension (joinPath $ splitOn "/" i) "py"
+      pyTyFn = addExtension (dropExtension pyFn ++ "____t") "py"
       cppHeaderFn = addExtension (dropExtension pyFn) "h"
-      cppDeps = map (\i -> userDataDir </> target </> (addExtension (joinPath $ splitOn "/" i) "h")) deps
+      cppDeps = map (\i -> userDataDir </> target </> addExtension (joinPath $ splitOn "/" i) "h") deps
       cppLibFn = addExtension (dropExtension pyFn ++ "____c") "so"
       d = takeDirectory pyFn
   coneFn <- searchFile paths (addExtension (joinPath $ splitOn "/" i) coneEx)
@@ -59,30 +58,29 @@ checkAndCompile paths i target = do
   checkTimeStampAndDo pyTyFn [coneFn] $ do
     o <- compilePythonType paths coneFn target
     liftIO $ writeFile pyTyFn o
-  
+
   checkTimeStampAndDo cppHeaderFn [coneFn] $ do
     o <- compileToCppHeader paths coneFn target
     liftIO $ writeFile cppHeaderFn o
-  
+
   checkTimeStampAndDo cppLibFn (coneFn:cppDeps) $ do
     compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
     return ()
-  
+
   checkTimeStampAndDo pyFn [coneFn] $ do
     o <- compilePythonWrapper paths coneFn target
     liftIO $ writeFile pyFn o
 
   checkTimeStampAndDo pyFn [coneFn] $ do
     let ds = splitOn "/" i
-    foldM
+    foldM_
       ( \s d -> do
-          let initFn = userDataDir </> joinPath s </> (addExtension "__init__" "py")
+          let initFn = userDataDir </> joinPath s </> addExtension "__init__" "py"
           liftIO $ writeFile initFn ""
           return $ s ++ [d]
       )
       [target]
       ds
-    return ()
 
 -- | Compile a file
 compilePythonWrapper :: [FilePath] -> FilePath -> String -> CompileEnv String
@@ -123,7 +121,7 @@ getPythonIncludePaths = do
 compileCppToLib :: [FilePath] -> String -> FilePath -> CompileEnv String
 compileCppToLib paths outputFile input = do
   pythonHeaderPaths <- liftIO getPythonIncludePaths
-  userDataDir <- liftIO $ coneUserDataDir
+  userDataDir <- liftIO coneUserDataDir
   let cc = "g++"
       args =
         ["-fstack-usage", "-lstdc++", "-O3", "-std=c++14", "-shared", "-fPIC", "-I" ++ userDataDir </> "python"]
@@ -146,6 +144,6 @@ compile paths f' target = do
     "python" -> do
       imports <- getImportsRecursively paths f
       mapM_ (\p -> checkAndCompile paths p target)
-        (nub $ reverse $ (dropExtension f) : imports)
+        (nub $ reverse $ dropExtension f : imports)
       return ""
     _ -> throwError $ "unknown target: " ++ target

@@ -36,15 +36,15 @@ buildOpts =
 
 coneOpts :: Parser (IO ())
 coneOpts = subparser (
-  (command "build" (info (build <$> buildOpts) 
+  command "build" (info (build <$> buildOpts)
     ( fullDesc <> progDesc "Compile cone modules"
-               <> header "Cone - ")))
-  <> (command "run" (info (buildAndRun <$> buildOpts)
+               <> header "Cone - "))
+  <> command "run" (info (buildAndRun <$> buildOpts)
     ( fullDesc <> progDesc "Compile and run cone modules"
-               <> header "Cone - ")))
-  <> (command "dump" (info (dump <$> buildOpts)
+               <> header "Cone - "))
+  <> command "dump" (info (dump <$> buildOpts)
     ( fullDesc <> progDesc "Dump cone files"
-               <> header "Cone - "))))
+               <> header "Cone - ")))
 
 coneMain :: IO ()
 coneMain = join $ execParser (info coneOpts
@@ -56,20 +56,20 @@ coneSearchPaths :: String -> IO [FilePath]
 coneSearchPaths f = do
   currentPath <- getCurrentDirectory
   execPath <- getExecutablePath
-#if defined(__GLASGOW_HASKELL_PATCHLEVEL2__)
-  let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100) ++ "." 
-                     ++ show __GLASGOW_HASKELL_PATCHLEVEL1__ ++ "." ++ show __GLASGOW_HASKELL_PATCHLEVEL2__
-#else
-#if defined(__GLASGOW_HASKELL_PATCHLEVEL1__)
-  let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100) ++ "."
-                     ++ show __GLASGOW_HASKELL_PATCHLEVEL1__
-#else
-  let ghcVersion = show (div __GLASGOW_HASKELL__ 100) ++ "." ++ show (mod __GLASGOW_HASKELL__ 100)
-#endif
-#endif
+
+
+
+
+
+  let ghcVersion = show (div 810 100) ++ "." ++ show (mod 810 100) ++ "."
+                     ++ show 4
+
+
+
+
   let coneVersion = showVersion version
-  let libPath = (takeDirectory $ takeDirectory execPath) </> "share" </> arch ++ "-" ++ os ++ "-ghc-" ++ ghcVersion </> "cone-" ++ coneVersion </> "lib"
-  let paths = (takeDirectory f): currentPath : [libPath]
+  let libPath = takeDirectory (takeDirectory execPath) </> "share" </> arch ++ "-" ++ os ++ "-ghc-" ++ ghcVersion </> "cone-" ++ coneVersion </> "lib"
+  let paths = takeDirectory f: currentPath : [libPath]
   return paths
 
 build :: BuildOpts -> IO ()

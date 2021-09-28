@@ -35,7 +35,7 @@ initTypeDef prefix t = do
   -- check if it exists or not
   forMOf _Just ot $ \ot ->
     throwError $
-      "redefine a type: " ++ tn ++ " vs " ++ ppr ot ++ (ppr $ _typeLoc t)
+      "redefine a type: " ++ tn ++ " vs " ++ ppr ot ++ ppr (_typeLoc t)
   -- record the kind of type
   let k = Just $ typeKindOf t
   setEnv k $ types . at tn
@@ -46,7 +46,7 @@ initTypeDef prefix t = do
           args = t ^. typeArgs
           star = KStar loc
           num = KNum loc
-          resK = case (t ^. typeName) of
+          resK = case t ^. typeName of
             "neg" -> num
             "add" -> num
             "sub" -> num
@@ -56,7 +56,7 @@ initTypeDef prefix t = do
             "max" -> num
             "min" -> num
             _ -> star
-       in if args == [] -- if no arguments, it is just a simple enum
+       in if null args -- if no arguments, it is just a simple enum
             then star
             else KFunc (args ^.. traverse . _2 . non star) resK loc
 
@@ -67,7 +67,7 @@ initTypeDefs m = mapMOf (topStmts . traverse . _TDef) (initTypeDef $ m ^. module
 -- | Initialize a constructor in type definition
 initTypeConDef :: (Has EnvEff sig m) => String -> TypeDef -> m TypeDef
 initTypeConDef prefix t = do
-  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+  globalTypes <- fmap s2n . M.keys <$> getEnv types
   mapMOf
     (typeCons . traverse)
     ( \c -> do
@@ -78,13 +78,11 @@ initTypeConDef prefix t = do
             targs = (t ^.. typeArgs . traverse . _1) ++ globalTypes
             b = bind targs cargs
             fvars = (b ^.. fv) :: [TVar]
-        if fvars /= [] -- if there are any free type variable, it failed
-          then
+        when (fvars /= []) $
             throwError $
               "type constructor's type variables should "
                 ++ "only exists in type arguments: "
                 ++ ppr fvars
-          else return ()
         -- check if the type constructor exists or not
         ot <- getEnv $ funcs . at cn
         forMOf _Just ot $ \t ->
@@ -103,12 +101,12 @@ initTypeConDef prefix t = do
           pos = c ^. typeConLoc
           tvars = t ^. typeArgs
           rt =
-            if tvars == []
+            if null tvars
               then TVar (s2n tn) pos
               else TApp (TVar (s2n tn) pos) (fmap (\t -> TVar (t ^. _1) pos) tvars) pos
           bt =
             bindTypeVar tvars $
-              if targs == []
+              if null targs
                 then rt
                 else TFunc targs (EffList [] pos) rt pos
        in bindTypeEffVar [] bt
@@ -125,14 +123,14 @@ checkTypeConDef t =
     tt <- getEnv $ funcs . at cn
     forMOf _Nothing tt $ \_ ->
       throwError $
-        "cannot find type constructor : " ++ cn ++ (ppr $ _typeLoc t)
+        "cannot find type constructor : " ++ cn ++ ppr (_typeLoc t)
     k <- underScope $ inferTypeKind $ fromJust tt
     checkTypeKind k
     return c
 
 -- | Check all type constructor's types
 checkTypeConDefs :: (Has EnvEff sig m) => Module -> m Module
-checkTypeConDefs m = mapMOf (topStmts . traverse . _TDef) checkTypeConDef m
+checkTypeConDefs = mapMOf (topStmts . traverse . _TDef) checkTypeConDef
 
 -- | Initialize type alias definitions
 preInitTypeAlias :: (Has EnvEff sig m) => String -> TypeAlias -> m TypeAlias
@@ -141,7 +139,7 @@ preInitTypeAlias prefix t = do
       name = prefix ++ "/" ++ t ^. typeAliasName
       pos = _typeAliasLoc t
       star = KStar pos
-      kind = if args == [] -- if no arguments, it is just a simple enum
+      kind = if null args -- if no arguments, it is just a simple enum
             then star
             else KFunc (args ^.. traverse . _2 . non star) star pos
   -- check if inteface exists or not
@@ -159,7 +157,7 @@ preInitTypeAliases m = mapMOf (topStmts . traverse . _TAlias) (preInitTypeAlias 
 -- | Check type alias
 initTypeAlias :: (Has EnvEff sig m) => TypeAlias -> m TypeAlias
 initTypeAlias t = do
-  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+  globalTypes <- fmap s2n . M.keys <$> getEnv types
   let args = t ^.. typeAliasArgs . traverse . _1
       aliasType = _typeAliasType t
       name = t ^. typeAliasName
@@ -167,14 +165,12 @@ initTypeAlias t = do
       fvars = (b ^.. fv) :: [TVar]
       pos = _typeAliasLoc t
   -- check if has free type variables
-  if fvars /= []
-    then
+  when (fvars /= []) $
       throwError $
         "type alias's type variables should "
           ++ "only exists in eff type arguments: "
           ++ ppr fvars
           ++ ppr pos
-    else return ()
   -- check if inteface exists or not
   ot <- getEnv $ typeAliases . at name
   forMOf _Just ot $ \t ->
@@ -185,7 +181,7 @@ initTypeAlias t = do
 
 -- | Initialize all effect interfaces
 initTypeAliases :: (Has EnvEff sig m) => Module -> m Module
-initTypeAliases m = mapMOf (topStmts . traverse . _TAlias) initTypeAlias $ m
+initTypeAliases = mapMOf (topStmts . traverse . _TAlias) initTypeAlias
 
 -- | Initializa effect type definition
 initEffTypeDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
@@ -194,7 +190,7 @@ initEffTypeDef prefix e = do
   oe <- getEnv $ effs . at en
   forMOf _Just oe $ \oe ->
     throwError $
-      "redefine an effect: " ++ en ++ " vs " ++ ppr oe ++ (ppr $ _effectLoc e)
+      "redefine an effect: " ++ en ++ " vs " ++ ppr oe ++ ppr (_effectLoc e)
   setEnv (Just $ effKind e) $ effs . at en
   return e {_effectName = en}
   where
@@ -203,7 +199,7 @@ initEffTypeDef prefix e = do
           args = e ^. effectArgs
           star = KStar loc
           estar = EKStar loc
-       in if args == []
+       in if null args
             then estar
             else EKFunc (args ^.. traverse . _2 . non star) estar loc
 
@@ -214,7 +210,7 @@ initEffTypeDefs m = mapMOf (topStmts . traverse . _EDef) (initEffTypeDef $ m ^. 
 -- | Initialize effect inteface definitions
 initEffIntfDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
 initEffIntfDef prefix e = do
-  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+  globalTypes <- fmap s2n . M.keys <$> getEnv types
   let is = e ^. effectIntfs
       en = e ^. effectName
       f = \i -> do
@@ -222,20 +218,18 @@ initEffIntfDef prefix e = do
             iargs = i ^. intfArgs
             iresult = _intfResultType i
             pos = i ^. intfLoc
-            bvars = (i ^.. intfBoundVars . traverse . _1)
+            bvars = i ^.. intfBoundVars . traverse . _1
             targs = (e ^.. effectArgs . traverse . _1) ++ globalTypes
             b = bind (targs ++ bvars) $ iresult : iargs
             fvars = (b ^.. fv) :: [TVar]
         addEffIntfs en intfn
         -- check if has free type variables
-        if fvars /= []
-          then
+        when (fvars /= []) $
             throwError $
               "eff interfaces's type variables should "
                 ++ "only exists in eff type arguments: "
                 ++ ppr fvars
                 ++ ppr pos
-          else return ()
         -- check if inteface exists or not
         ot <- getEnv $ funcs . at intfn
         forMOf _Just ot $ \t ->
@@ -245,12 +239,12 @@ initEffIntfDef prefix e = do
         let eff = _intfEffectType i
         effs <-
           mergeEffs eff $
-            if e ^. effectArgs == []
+            if null (e ^. effectArgs)
               then EffVar (s2n $ e ^. effectName) pos
               else
                 EffApp
                   (EffVar (s2n $ e ^. effectName) pos)
-                  (map (\v -> TVar v pos) $ e ^.. effectArgs . traverse . _1)
+                  (map (`TVar` pos) $ e ^.. effectArgs . traverse . _1)
                   pos
         --  add effect type to interface's effect list
         let bt = intfType i e effs
@@ -277,7 +271,7 @@ initEffIntfDefs m = mapMOf (topStmts . traverse . _EDef) (initEffIntfDef $ m ^. 
 -- | Check an effect interface
 checkEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m EffectDef
 checkEffIntfDef e = do
-  globalTypes <- (\ts -> fmap (\n -> s2n n) $ M.keys ts) <$> getEnv types
+  globalTypes <- fmap s2n . M.keys <$> getEnv types
   let en = e ^. effectName
       f = \i -> do
         let intfn = i ^. intfName
@@ -292,7 +286,7 @@ checkEffIntfDef e = do
 
 -- | Check all effect interfaces
 checkEffIntfDefs :: (Has EnvEff sig m) => Module -> m Module
-checkEffIntfDefs m = mapMOf (topStmts . traverse . _EDef) checkEffIntfDef m
+checkEffIntfDefs = mapMOf (topStmts . traverse . _EDef) checkEffIntfDef
 
 -- | Initializa function definition
 initFuncDef :: (Has EnvEff sig m) => String -> FuncDef -> m FuncDef
@@ -325,7 +319,7 @@ checkFuncType f = underScope $ do
   forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
   -- add function type into env
   mapM_
-    (\(n, t) -> setFuncType n t)
+    (uncurry setFuncType)
     (f ^. funcArgs)
   case _funcExpr f of
     Just e -> do
@@ -358,11 +352,11 @@ checkFuncDef f = underScope $ do
 
 -- | Check all function definitons
 checkFuncDefs :: (Has EnvEff sig m) => Module -> m Module
-checkFuncDefs m = mapMOf (topStmts . traverse . _FDef) checkFuncDef m
+checkFuncDefs = mapMOf (topStmts . traverse . _FDef) checkFuncDef
 
 -- | Init a function implementation
 initImplFuncDef :: (Has EnvEff sig m) => Module -> String -> ImplFuncDef -> m ImplFuncDef
-initImplFuncDef m prefix f = setFuncImpl prefix m f
+initImplFuncDef m prefix = setFuncImpl prefix m
 
 -- | Init function implementations
 initImplFuncDefs :: (Has EnvEff sig m) => Module -> m Module
@@ -383,7 +377,7 @@ checkImplFuncDef i = underScope $ do
 
 -- | Check all function implementations
 checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m Module
-checkImplFuncDefs m = mapMOf (topStmts . traverse . _ImplFDef) checkImplFuncDef m
+checkImplFuncDefs = mapMOf (topStmts . traverse . _ImplFDef) checkImplFuncDef
 
 -- | Remove meta annotation
 removeAnn :: Expr -> Expr
@@ -493,7 +487,7 @@ removeTypeBindings m =
       let (_, f) = unsafeUnbind b
        in removeBindingsForFDef f
     removeBindingsForFDef fdef =
-      let expr = fmap removeBindingsForExpr $ _funcExpr fdef
+      let expr = removeBindingsForExpr <$> _funcExpr fdef
        in fdef {_funcExpr = expr}
     removeBindingsForExpr (EBoundTypeVars b _) =
       let (_, e) = unsafeUnbind b
@@ -544,6 +538,7 @@ removeTypeBindings m =
         { _caseExpr = removeBindingsForExpr _caseExpr,
           _casePattern = removeBindingsForPattern _casePattern
         }
+    removeBindingsForCase c = c
 
 -- | Add module path for all types
 addPrefixForTypes :: (Has EnvEff sig m) => Module -> m Module
@@ -556,7 +551,7 @@ addPrefixForTypes m' = do
           "" :
           (m ^. moduleName ++ "/") :
           "core/prelude/" :
-          (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
+          map (\i -> i ^. importPath ++ "/") (m ^. imports)
       loc = m ^. moduleLoc
   ts <- getEnv types
   es <- getEnv effs
@@ -564,8 +559,8 @@ addPrefixForTypes m' = do
     foldM
       ( \s v -> do
           vn' <- getNamePath m (name2String v)
-          found <- (filterOutAliasImports m vn') <$>
-            (foldM
+          found <- filterOutAliasImports m vn' <$>
+            foldM
               ( \f p -> do
                   let vn = p ++ vn'
                   case ts ^. at vn of
@@ -573,12 +568,12 @@ addPrefixForTypes m' = do
                     Nothing -> return f
               )
               []
-              prefixes)
-          if found == []
+              prefixes
+          if null found
             then return s
             else
               if L.length found == 1
-                then return $ s ++ (map (\n -> (v, TVar (s2n n) loc)) found)
+                then return $ s ++ map (\n -> (v, TVar (s2n n) loc)) found
                 else throwError $ "found more than one type for " ++ ppr v ++ ppr found
       )
       []
@@ -587,8 +582,8 @@ addPrefixForTypes m' = do
     foldM
       ( \s v -> do
           vn' <- getNamePath m (name2String v)
-          found <- (filterOutAliasImports m vn') <$>
-            (foldM
+          found <- filterOutAliasImports m vn' <$>
+            foldM
               ( \f p -> do
                   let vn = p ++ vn'
                   case es ^. at vn of
@@ -596,12 +591,12 @@ addPrefixForTypes m' = do
                     Nothing -> return f
               )
               []
-              prefixes)
-          if found == []
+              prefixes
+          if null found
             then return s
             else
               if L.length found == 1
-                then return $ s ++ (map (\n -> (v, EffVar (s2n n) loc)) found)
+                then return $ s ++ map (\n -> (v, EffVar (s2n n) loc)) found
                 else throwError $ "found more than one eff type for " ++ ppr v ++ ppr found
       )
       []
@@ -617,7 +612,7 @@ addVarBindings m =
     bindFDef fdef =
       let boundVars = map s2n $ L.nub $ fdef ^.. funcArgs . traverse . _1
           loc = fdef ^. funcLoc
-          expr = fmap (transform bindExpr) $ _funcExpr fdef
+          expr = transform bindExpr <$> _funcExpr fdef
        in fdef {_funcExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) expr}
     bindExpr l@ELam {..} =
       let boundVars = map s2n $ L.nub $ _elamArgs ^.. traverse . _1
@@ -703,15 +698,15 @@ addPrefixForExprs m' = do
           "" :
           (m ^. moduleName ++ "/") :
           "core/prelude/" :
-          (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
+          map (\i -> i ^. importPath ++ "/") (m ^. imports)
       loc = m ^. moduleLoc
   fs <- getEnv funcs
   binds <-
     foldM
       ( \s v -> do
           vn' <- getNamePath m (name2String v)
-          found <- (filterOutAliasImports m vn') <$>
-            (foldM
+          found <- filterOutAliasImports m vn' <$>
+            foldM
               ( \f p -> do
                   let vn = p ++ vn'
                   case fs ^. at vn of
@@ -719,12 +714,12 @@ addPrefixForExprs m' = do
                     Nothing -> return f
               )
               []
-              prefixes)
+              prefixes
           if found == []
             then return s
             else
               if L.length found == 1
-                then return $ s ++ (map (\n -> (v, EVar (s2n n) loc)) found)
+                then return $ s ++ map (\n -> (v, EVar (s2n n) loc)) found
                 else throwError $ "found more than one variable for " ++ ppr v ++ ppr found
       )
       []
@@ -734,9 +729,9 @@ addPrefixForExprs m' = do
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id =
-  run . runError . (runState env) . runFresh id $
+  run . runError . runState env . runFresh id $
     do
-      (return m)
+      return m
       >>= initTypeDefs
       >>= initEffTypeDefs
       >>= preInitTypeAliases
@@ -752,7 +747,7 @@ initModule m env id =
 -- | Type checking a module
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 checkType m env id =
-  run . runError . (runState env) . runFresh id $
+  run . runError . runState env . runFresh id $
     do
       return m
       >>= checkTypeConDefs

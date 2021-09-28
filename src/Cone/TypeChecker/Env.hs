@@ -97,7 +97,7 @@ addFuncImpl :: (Has EnvEff sig m) => String -> Expr -> Type -> m ()
 addFuncImpl n e t = do
   impls <- getEnv $ funcImpls . at n
   forMOf _Nothing impls $ \_ -> setEnv (Just []) $ funcImpls . at n
-  impls <- fromJust <$> (getEnv $ funcImpls . at n)
+  impls <- fromJust <$> getEnv (funcImpls . at n)
   setEnv (Just $ impls ++ [(e, t)]) $ funcImpls . at n
 
 getFuncImpls :: (Has EnvEff sig m) => String -> m [(Expr, Type)]
