@@ -333,7 +333,7 @@ instance Backend CppHeader where
   genExpr proxy ELit {..} = do
     lit <- case _litType of
       TPrim Pred _ -> return $ "py::bool_(" <> pretty _lit <> ")"
-      TPrim Unit _ -> return $ "py::none()"
+      TPrim Unit _ -> return "py::none()"
       TPrim I8 _ -> return $ "py::int_(" <> pretty _lit <> ")"
       TPrim I16 _ -> return $ "py::int_(" <> pretty _lit <> ")"
       TPrim I32 _ -> return $ "py::int_(" <> pretty _lit <> ")"
@@ -379,7 +379,7 @@ instance Backend CppHeader where
                         )
                       <> ")))"
                   )
-          Nothing -> throwError $ "lambda expected a expression"
+          Nothing -> throwError "lambda expected a expression"
       parameterNames prefix = encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)
       parameterValues prefix = encloseSep lbrace rbrace comma (map (funcN proxy prefix) $ _elamArgs ^.. traverse . _1)
       callCpsWithclearedVars es prefix =
@@ -510,7 +510,7 @@ instance Backend CppHeader where
           <+> encloseSep lbrace rbrace comma handlers <> ")"
   genExpr proxy ECase {..} = do
     c <- genExpr proxy _ecaseExpr
-    pes <- mapM (\pe -> underScope $ (,) <$> genPatternMatch proxy (_casePattern pe) <*> genExpr proxy (_caseExpr pe)) $ _ecaseBody
+    pes <- mapM (\pe -> underScope $ (,) <$> genPatternMatch proxy (_casePattern pe) <*> genExpr proxy (_caseExpr pe)) _ecaseBody
     let cs = [fst pe | pe <- pes]
         es = [snd pe | pe <- pes]
     return $
