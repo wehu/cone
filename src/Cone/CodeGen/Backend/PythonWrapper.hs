@@ -55,6 +55,9 @@ instance Backend PythonWrapper where
   genTypeDef proxy TypeDef {..} = do
     cons <- mapM (genTypeCon proxy _typeName) _typeCons
     return $ vsep cons
+  genTypeDef proxy (BoundTypeDef b _) = do
+    let (_, t) = unsafeUnbind b
+    genTypeDef proxy t  
 
   genTypeCon proxy ptn TypeCon {..} = do
     prefix <- getEnv currentModuleName
