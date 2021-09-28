@@ -27,6 +27,7 @@ import Data.Proxy
 import Debug.Trace
 import Prettyprinter
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
+import Unbound.Generics.LocallyNameless.Unsafe
 
 data CppHeader a = CppHeader
 
@@ -174,6 +175,9 @@ instance Backend CppHeader where
   genTypeDef proxy TypeDef {..} = do
     cons <- mapM (genTypeCon proxy _typeName) _typeCons
     return $ vsep cons
+  genTypeDef proxy (BoundTypeDef b _) = do
+    let (_, t) = unsafeUnbind b
+    genTypeDef proxy t
 
   genTypeCon proxy ptn TypeCon {..} = underScope $ do
     prefix <- getEnv currentModuleName
@@ -218,7 +222,7 @@ instance Backend CppHeader where
       vsep $
         map
           ( \intf ->
-              if (_intfName intf) == "core/prelude/print"
+              if _intfName intf == "core/prelude/print"
                 then ""
                 else
                   "inline object_t" <+> funcN proxy prefix (_intfName intf)
@@ -227,7 +231,10 @@ instance Backend CppHeader where
           )
           _effectIntfs
     where
-      genArgs intf init prefix = encloseSep lparen rparen comma $ init ++ (map (\_ -> "const object_t &") $ (_intfArgs intf))
+      genArgs intf init prefix = encloseSep lparen rparen comma $ init ++ map (const "const object_t &") (_intfArgs intf)
+  genEffectDef proxy (BoundEffectDef b _) = do
+    let (_, e) = unsafeUnbind b
+    genEffectDef proxy e
 
   genFuncDef proxy FuncDef {..} = underScope $ do
     forM_ (_funcArgs ^.. traverse . _1) $ \n -> do
@@ -258,13 +265,18 @@ instance Backend CppHeader where
             <> braces ("return ____to_py_object(" <> fn <> genWrapperArgs ["____identity_k", "____make_empty_stack()", "____make_empty_effs()"] prefix <> ")" <> semi)
         ]
     where
-      genParameterNames init prefix = encloseSep lbrace rbrace comma $ init ++ (map (\a -> "\"" <> funcN proxy prefix a <> "\"") $ _funcArgs ^.. traverse . _1)
-      genParameters init prefix = encloseSep lbrace rbrace comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
-      genWrapperArgs init prefix = encloseSep lparen rparen comma $ init ++ (map (funcN proxy prefix) $ _funcArgs ^.. traverse . _1)
-      genWrapperArgTypes init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const py::object &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
-      genArgsInternal init prefix = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object_t &" <+> funcN proxy prefix a) $ _funcArgs ^.. traverse . _1)
-      genArgTypesInternal init = encloseSep lparen rparen comma $ init ++ (map (\a -> "const object_t &") $ _funcArgs ^.. traverse . _1)
-
+      genParameterNames init prefix = encloseSep lbrace rbrace comma $ init ++ map (\a -> "\"" <> funcN proxy prefix a <> "\"") (_funcArgs ^.. traverse . _1)
+      genParameters init prefix = encloseSep lbrace rbrace comma $ init ++ map (funcN proxy prefix) (_funcArgs ^.. traverse . _1)
+      genWrapperArgs init prefix = encloseSep lparen rparen comma $ init ++ map (funcN proxy prefix) (_funcArgs ^.. traverse . _1)
+      genWrapperArgTypes init prefix = encloseSep lparen rparen comma $ init ++ map (\a -> "const py::object &" <+> funcN proxy prefix a) (_funcArgs ^.. traverse . _1)
+      genArgsInternal init prefix = encloseSep lparen rparen comma $ init ++ map (\a -> "const object_t &" <+> funcN proxy prefix a) (_funcArgs ^.. traverse . _1)
+      genArgTypesInternal init = encloseSep lparen rparen comma $ init ++ map (const "const object_t &") (_funcArgs ^.. traverse . _1)
+  genFuncDef proxy (BoundFuncDef b _) = do
+    let (_, f) = unsafeUnbind b
+    genFuncDef proxy f
+  genFuncDef proxy (BoundEffFuncDef b _) = do
+    let (_, f) = unsafeUnbind b
+    genFuncDef proxy f
   genImplFuncDef _ _ = return emptyDoc
 
   genExpr proxy EVar {..} = do

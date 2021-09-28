@@ -26,6 +26,7 @@ import Data.Proxy
 import Debug.Trace
 import Prettyprinter
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
+import Unbound.Generics.LocallyNameless.Unsafe
 
 data PythonType a = PythonType
 
@@ -55,6 +56,9 @@ instance Backend PythonType where
   genTypeDef proxy TypeDef {..} = do
     cons <- mapM (genTypeCon proxy _typeName) _typeCons
     return $ vsep cons
+  genTypeDef proxy (BoundTypeDef b _) = do
+    let (_, t) = unsafeUnbind b
+    genTypeDef proxy t
 
   genTypeCon proxy ptn TypeCon {..} = do
     prefix <- getEnv currentModuleName

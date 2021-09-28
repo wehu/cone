@@ -26,6 +26,7 @@ import Data.Proxy
 import Debug.Trace
 import Prettyprinter
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
+import Unbound.Generics.LocallyNameless.Unsafe
 
 data PythonWrapper a = PythonWrapper
 
@@ -76,6 +77,12 @@ instance Backend PythonWrapper where
     prefix <- getEnv currentModuleName
     let fn = funcN proxy prefix _funcName
     return $ fn <> "=" <> "____C." <> fn
+  genFuncDef proxy (BoundFuncDef b _) = do
+    let (_, f) = unsafeUnbind b
+    genFuncDef proxy f
+  genFuncDef proxy (BoundEffFuncDef b _) = do
+    let (_, f) = unsafeUnbind b
+    genFuncDef proxy f
 
   genImplFuncDef _ _ = return emptyDoc
 
