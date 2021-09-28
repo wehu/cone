@@ -563,7 +563,7 @@ addPrefixForTypes m' = do
   bindTs <-
     foldM
       ( \s v -> do
-          let vn' = getNamePath m (name2String v)
+          vn' <- getNamePath m (name2String v)
           found <- (filterOutAliasImports m vn') <$>
             (foldM
               ( \f p -> do
@@ -586,7 +586,7 @@ addPrefixForTypes m' = do
   bindEffs <-
     foldM
       ( \s v -> do
-          let vn' = getNamePath m (name2String v)
+          vn' <- getNamePath m (name2String v)
           found <- (filterOutAliasImports m vn') <$>
             (foldM
               ( \f p -> do
@@ -709,7 +709,7 @@ addPrefixForExprs m' = do
   binds <-
     foldM
       ( \s v -> do
-          let vn' = getNamePath m (name2String v)
+          vn' <- getNamePath m (name2String v)
           found <- (filterOutAliasImports m vn') <$>
             (foldM
               ( \f p -> do

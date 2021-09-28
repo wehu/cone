@@ -918,22 +918,26 @@ getFuncType pos n = do
         Nothing -> throwError $ "cannot find variable: " ++ n ++ ppr pos
 
 -- | Get real name if there is alias prefix
-getNamePath :: Module -> String -> String
-getNamePath m n =
-  let aliases =
-        L.foldl'
+getNamePath :: (Has EnvEff sig m) => Module -> String -> m String
+getNamePath m n = do
+  aliases <-
+        foldM
           ( \s i ->
               case i ^. importAlias of
-                Just alias -> s & at alias ?~ i ^. importPath
-                Nothing -> s
+                Just alias -> do
+                  let old = s ^. at alias
+                  case old of
+                    Just old -> throwError $ "import alias conflict for " ++ ppr alias ++ ": " ++ ppr old ++ " vs " ++ ppr i
+                    Nothing -> return $ s & at alias ?~ i ^. importPath
+                Nothing -> return s
           )
           M.empty
           $ m ^. imports
-      n' = last $ splitOn "/" n
+  let n' = last $ splitOn "/" n
       ns = join $ L.intersperse "/" $ L.init $ splitOn "/" n
-   in case aliases ^. at ns of
-        Just prefix -> prefix ++ "/" ++ n'
-        Nothing -> n
+  case aliases ^. at ns of
+    Just prefix -> return $ prefix ++ "/" ++ n'
+    Nothing -> return n
 
 filterOutAliasImports :: Module -> String -> [String] -> [String]
 filterOutAliasImports m n ns =
@@ -965,7 +969,7 @@ searchFunc m fn loc = do
           (m ^. moduleName ++ "/") :
           "core/prelude/" :
           (map (\i -> i ^. importPath ++ "/") $ m ^. imports)
-      n = getNamePath m fn
+  n <- getNamePath m fn
   fs <- getEnv funcs
   found <-
     (filterOutAliasImports m n)
