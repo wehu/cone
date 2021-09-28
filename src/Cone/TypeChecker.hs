@@ -436,7 +436,7 @@ addTypeBindings m =
       let boundVars = L.nub $ fdef ^. funcBoundVars
           boundEffVars = L.nub $ fdef ^. funcBoundEffVars
           loc = fdef ^. funcLoc
-          expr = fmap (transform bindExpr) $ _funcExpr fdef
+          expr = transform bindExpr <$> _funcExpr fdef
        in BoundEffFuncDef (bind boundEffVars $ BoundFuncDef (bind (boundVars ^.. traverse . _1) fdef {_funcExpr = expr}) loc) loc
     bindExpr l@ELam {..} =
       let boundVars = L.nub $ _elamBoundVars
@@ -715,7 +715,7 @@ addPrefixForExprs m' = do
               )
               []
               prefixes
-          if found == []
+          if null found
             then return s
             else
               if L.length found == 1

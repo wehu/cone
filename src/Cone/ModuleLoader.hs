@@ -100,7 +100,7 @@ importModules cache paths m loaded = do
         case (m ^. moduleName) `elemIndex` preloadedModules of
           Just _ -> return (oldEnv, oldId, oldM, imports)
           Nothing -> do
-            let fn = (addExtension (joinPath $ splitOn "/" $ i ^. importPath) coneEx)
+            let fn = addExtension (joinPath $ splitOn "/" (i ^. importPath)) coneEx
             (env, id, m, is) <- loadModule' cache paths fn loaded
             -- let g1' = mapMaybeMissing $ \k v -> Nothing
             --     g2' = mapMaybeMissing $ \k v -> Nothing

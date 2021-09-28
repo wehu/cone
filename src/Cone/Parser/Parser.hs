@@ -411,7 +411,7 @@ exprBinary op name = PE.Infix
         pos <- getPos
         return $
           \a b ->
-            let args = a : b : []
+            let args = a : [b]
              in A.EApp (A.EVar (s2n name) pos) [] args pos
     )
 

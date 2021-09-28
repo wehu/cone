@@ -86,13 +86,13 @@ inferTypeKind a@TAnn {..} = do
   checkKindMatch k _tannKind
   return _tannKind
 inferTypeKind b@BoundType {..} = underScope $ do
-  let (bvs, t) = unsafeUnbind $ _boundType
-      star = KStar $ _tloc
+  let (bvs, t) = unsafeUnbind _boundType
+      star = KStar _tloc
   mapM_ (\(v, k) -> setEnv (Just $ k ^. non star) $ types . at (name2String v)) bvs
   inferTypeKind t
 inferTypeKind b@BoundEffVarType {..} = underScope $ do
-  let (bvs, t) = unsafeUnbind $ _boundEffVarType
-      star = EKStar $ _tloc
+  let (bvs, t) = unsafeUnbind _boundEffVarType
+      star = EKStar _tloc
   mapM_ (\v -> setEnv (Just star) $ effs . at (name2String v)) bvs
   inferTypeKind t
 inferTypeKind v@TVar {..} = do
@@ -402,7 +402,7 @@ inferAppResultType f@TFunc {} bargs args = do
   when (L.length fArgTypes /= L.length args) $ throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^.. traverse . tloc) ++ " vs " ++ ppr args ++ ppr (args ^.. traverse . tloc)
   bindings <-
     foldM
-      (\s e -> (++) <$> return s <*> e)
+      (\s e -> (++) s <$> e)
       []
       [collectVarBindings True a b | a <- fArgTypes | b <- args]
       >>= checkVarBindings
