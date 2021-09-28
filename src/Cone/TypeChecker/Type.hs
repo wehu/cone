@@ -927,7 +927,7 @@ getNamePath m n = do
                 Just alias -> do
                   let old = s ^. at alias
                   case old of
-                    Just old -> throwError $ "import alias conflict for " ++ ppr alias ++ ": " ++ ppr old ++ " vs " ++ ppr i
+                    Just old -> throwError $ "import alias conflict: import " ++ ppr old ++ " as " ++ ppr alias ++ " vs " ++ ppr i ++ ppr (_importLoc i)
                     Nothing -> return $ s & at alias ?~ i ^. importPath
                 Nothing -> return s
           )
