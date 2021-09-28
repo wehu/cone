@@ -516,7 +516,8 @@ term = eann <$>
     elist (e : es) pos = A.EApp (A.EVar (s2n "cons") pos) [] [e, elist es pos] pos
     elist [] pos = A.EApp (A.EVar (s2n "nil") pos) [] [] pos
     etuple (e0 : e1 : es) pos = A.EApp (A.EVar (s2n "pair") pos) [] [e0, etuple (e1 : es) pos] pos
-    etuple (e : []) pos = e
+    etuple [e] pos = e
+    etuple _ _ = undefined 
     econs e0 e1 pos = A.EApp (A.EVar (s2n "cons") pos) [] [e0, e1] pos
 
 handle :: Parser A.FuncDef
