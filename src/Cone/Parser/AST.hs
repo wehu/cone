@@ -594,13 +594,31 @@ makePrisms ''PrimType
 instance Plated Type where
   plate = uniplate
 
+instance Alpha Kind
+
+instance Alpha EffectType
+
 instance Alpha Type
+
+instance Subst Type Kind
+
+instance Subst Type EffectType
 
 instance Subst Type Type where
   isvar (TVar x _) = Just (SubstName x)
   isvar _ = Nothing
 
+instance Subst EffectType Kind
+
+instance Subst EffectType EffectType where
+  isvar (EffVar x _) = Just (SubstName x)
+  isvar _ = Nothing
+
+instance Subst Expr Kind
+
 instance Subst EffectType Type
+
+instance Subst Expr EffectType
 
 instance Subst Expr Type
 
@@ -612,14 +630,6 @@ makePrisms ''Type
 
 instance Plated Kind where
   plate = uniplate
-
-instance Alpha Kind
-
-instance Subst Type Kind
-
-instance Subst EffectType Kind
-
-instance Subst Expr Kind
 
 makeLenses ''Kind
 
@@ -636,8 +646,6 @@ instance Subst Type EffKind
 
 instance Subst EffectType EffKind
 
-instance Subst Expr EffKind
-
 makeLenses ''EffKind
 
 makePrisms ''EffKind
@@ -646,16 +654,6 @@ makePrisms ''EffKind
 
 instance Plated EffectType where
   plate = uniplate
-
-instance Alpha EffectType
-
-instance Subst EffectType EffectType where
-  isvar (EffVar x _) = Just (SubstName x)
-  isvar _ = Nothing
-
-instance Subst Type EffectType
-
-instance Subst Expr EffectType
 
 makeLenses ''EffectType
 
@@ -666,11 +664,37 @@ makePrisms ''EffectType
 instance Plated Pattern where
   plate = uniplate
 
+instance Alpha FuncDef
+
+instance Alpha Case
+
+instance Alpha Expr
+
 instance Alpha Pattern
+
+instance Subst Type Case
+
+instance Subst Type FuncDef
+
+instance Subst Type Expr
 
 instance Subst Type Pattern
 
+instance Subst EffectType Case
+
+instance Subst EffectType FuncDef
+
+instance Subst EffectType Expr
+
 instance Subst EffectType Pattern
+
+instance Subst Expr FuncDef
+
+instance Subst Expr Case
+
+instance Subst Expr Expr where
+  isvar (EVar x _) = Just (SubstName x)
+  isvar _ = Nothing
 
 instance Subst Expr Pattern
 
@@ -683,16 +707,6 @@ makePrisms ''Pattern
 instance Plated Expr where
   plate = uniplate
 
-instance Alpha Expr
-
-instance Subst Type Expr
-
-instance Subst EffectType Expr
-
-instance Subst Expr Expr where
-  isvar (EVar x _) = Just (SubstName x)
-  isvar _ = Nothing
-
 makeLenses ''Expr
 
 makePrisms ''Expr
@@ -701,14 +715,6 @@ makePrisms ''Expr
 
 instance Plated Case where
   plate = uniplate
-
-instance Alpha Case
-
-instance Subst Type Case
-
-instance Subst EffectType Case
-
-instance Subst Expr Case
 
 makeLenses ''Case
 
@@ -719,11 +725,19 @@ makePrisms ''Case
 instance Plated TypeDef where
   plate = uniplate
 
+instance Alpha TypeCon
+
 instance Alpha TypeDef
+
+instance Subst Type TypeCon
 
 instance Subst Type TypeDef
 
+instance Subst EffectType TypeCon
+
 instance Subst EffectType TypeDef
+
+instance Subst Expr TypeCon
 
 instance Subst Expr TypeDef
 
@@ -753,14 +767,6 @@ makePrisms ''TypeAlias
 instance Plated TypeCon where
   plate = uniplate
 
-instance Alpha TypeCon
-
-instance Subst Type TypeCon
-
-instance Subst EffectType TypeCon
-
-instance Subst Expr TypeCon
-
 makeLenses ''TypeCon
 
 makePrisms ''TypeCon
@@ -770,11 +776,19 @@ makePrisms ''TypeCon
 instance Plated EffectDef where
   plate = uniplate
 
+instance Alpha FuncIntf
+
 instance Alpha EffectDef
+
+instance Subst Type FuncIntf
 
 instance Subst Type EffectDef
 
+instance Subst EffectType FuncIntf
+
 instance Subst EffectType EffectDef
+
+instance Subst Expr FuncIntf
 
 instance Subst Expr EffectDef
 
@@ -804,14 +818,6 @@ makePrisms ''ImportStmt
 instance Plated FuncIntf where
   plate = uniplate
 
-instance Alpha FuncIntf
-
-instance Subst Type FuncIntf
-
-instance Subst EffectType FuncIntf
-
-instance Subst Expr FuncIntf
-
 makeLenses ''FuncIntf
 
 makePrisms ''FuncIntf
@@ -820,14 +826,6 @@ makePrisms ''FuncIntf
 
 instance Plated FuncDef where
   plate = uniplate
-
-instance Alpha FuncDef
-
-instance Subst Type FuncDef
-
-instance Subst EffectType FuncDef
-
-instance Subst Expr FuncDef
 
 makeLenses ''FuncDef
 
