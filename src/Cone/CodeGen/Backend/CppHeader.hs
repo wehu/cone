@@ -489,12 +489,11 @@ instance Backend CppHeader where
         ( \(p, ee) -> do
             b <- genPatternMatch proxy p
             return $
-              parens $
-                "py::isinstance(____to_py_object(____e)" <> comma
-                  <+> pythonTypeNamePath (name2String $ _evarName _pappName) <> ") && py::cast<bool>(____to_py_object(" <> b <> parens ee <> "))"
+              parens $ "py::cast<bool>(____to_py_object(" <> b <> parens ee <> "))"
         )
         [(arg, parens $ "py::object(____to_py_object(____e).attr(\"f" <> pretty id <> "\"))") | arg <- _pappArgs | id <- [0 :: Int ..]]
-    return $ parens $ "[=](const object_t &____e) -> object_t { return py::object(py::bool_" <> encloseSep lparen rparen "&&" bindings <> ");}"
+    return $ parens $ "[=](const object_t &____e) -> object_t { return py::object(py::bool_" <> encloseSep lparen rparen "&&" 
+                  (("py::isinstance(____to_py_object(____e)" <> comma <+> pythonTypeNamePath (name2String $ _evarName _pappName) <> ")") : bindings) <> ");}"
 
   genPrologue _ = return emptyDoc
 
