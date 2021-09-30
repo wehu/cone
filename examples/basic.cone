@@ -45,7 +45,7 @@ fun test_branch(a:i32) : [nodet<i32>] i32 {
 }
 
 fun test_inline(o : str) : io unit {
-   inline_python<unit>("print(\"" + o + "\")")
+   inline_python<unit>("print(o)")
 }
 
 fun main() : io unit {
