@@ -591,7 +591,7 @@ func = f <$ kFunc <*> ident <*> funcDef P.<?> "function definition"
 
 diffDef :: Parser A.DiffDef
 diffDef = A.DiffDef <$ kDiff <* kFunc <*> (s2n <$> namePath) <* kWrt
-           <*> P.sepBy1 (read <$> literalInt) comma <* assign_ <*> (s2n <$> namePath) <*> getPos P.<?> "diff definition"
+           <*> brackets (P.sepBy1 (read <$> literalInt) comma) <* assign_ <*> (s2n <$> namePath) <*> getPos P.<?> "diff definition"
 
 topStmt :: Parser A.TopStmt
 topStmt =
