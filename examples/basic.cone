@@ -48,6 +48,8 @@ fun test_inline(o : str) : io unit {
    inline_python<unit>("print(o)")
 }
 
+diff fun test2 wrt 0 = test2
+
 fun main() : io unit {
   var a = 0
   val A(b) = A(2)
