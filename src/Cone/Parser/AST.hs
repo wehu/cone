@@ -20,6 +20,7 @@ import Prettyprinter
 import Unbound.Generics.LocallyNameless
 import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Name
+import Unbound.Generics.LocallyNameless (Alpha)
 
 deriving instance Data a => Data (Name a)
 
@@ -479,17 +480,27 @@ instance Pretty FuncDef where
   pretty (BoundFuncDef (B vs f) _) = anglesList vs <+> pretty f
   pretty (BoundEffFuncDef (B vs f) _) = bracketsList vs <+> pretty f
 
-data ImplFuncDef = ImplFuncDef {_implFunDef :: FuncDef}
+data ImplFuncDef = ImplFuncDef { _implFunDef :: FuncDef}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty ImplFuncDef where
   pretty ImplFuncDef {..} = "impl" <+> pretty _implFunDef
+
+data DiffDef =
+  DiffDef {_diffFunc :: EVar, _diffWRT :: Int, _diffAdj :: EVar, _diffLoc :: Location}
+  | BoundDiffDef {_boundDiff :: Bind [EVar] DiffDef, _diffLoc :: Location}
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+instance Pretty DiffDef where
+  pretty DiffDef {..} = "diff" <+> pretty _diffFunc <+> "wrt" <+> pretty _diffWRT <+> "=" <+> pretty _diffAdj
+  pretty (BoundDiffDef (B vs d) _) = anglesList vs <+> pretty d
 
 data TopStmt
   = FDef {_fdef :: FuncDef}
   | TDef {_tdef :: TypeDef}
   | TAlias {_talias :: TypeAlias}
   | EDef {_edef :: EffectDef}
+  | DDef {_ddef :: DiffDef}
   | ImplFDef {_implFdef :: ImplFuncDef}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
@@ -498,6 +509,7 @@ instance Pretty TopStmt where
   pretty TDef {..} = pretty _tdef
   pretty TAlias {..} = pretty _talias
   pretty EDef {..} = pretty _edef
+  pretty DDef {..} = pretty _ddef
   pretty ImplFDef {..} = pretty _implFdef
 
 data Module = Module
@@ -827,6 +839,23 @@ instance Plated FuncDef where
 makeLenses ''FuncDef
 
 makePrisms ''FuncDef
+
+-------------------------------
+
+instance Plated DiffDef where
+  plate = uniplate
+
+instance Alpha DiffDef
+
+instance Subst Type DiffDef
+
+instance Subst EffectType DiffDef
+
+instance Subst Expr DiffDef
+
+makeLenses ''DiffDef
+
+makePrisms ''DiffDef
 
 -------------------------------
 

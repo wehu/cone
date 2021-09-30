@@ -95,6 +95,9 @@ class Backend t where
 
   genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
 
+  genDiffDef :: (Has EnvEff sig m) => t Target -> DiffDef -> m (Doc a)
+  genDiffDef _ _ = return emptyDoc 
+
   genPrologue :: (Has EnvEff sig m) => t Target -> m (Doc a)
 
   genEpilogue :: (Has EnvEff sig m) => t Target -> m (Doc a)
@@ -109,4 +112,5 @@ class Backend t where
   genTopStmt proxy TAlias {} = return emptyDoc
   genTopStmt proxy EDef {..} = genEffectDef proxy _edef
   genTopStmt proxy FDef {..} = genFuncDef proxy _fdef
+  genTopStmt proxy DDef {..} = genDiffDef proxy _ddef
   genTopStmt proxy ImplFDef {..} = genImplFuncDef proxy _implFdef

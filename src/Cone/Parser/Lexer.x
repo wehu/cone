@@ -119,6 +119,8 @@ tokens :-
   <0> "with"                                { mkL With }
   <0> "impl"                                { mkL Impl }
   <0> "alias"                               { mkL Alias }
+  <0> "diff"                                { mkL Diff }
+  <0> "wrt"                                 { mkL WRT }
   <0> @decimal 
         | 0[oO] @octal
         | 0[xX] @hexadecimal		            { mkL LInt }
@@ -210,6 +212,8 @@ data Tok =
     With            |
     Impl            |
     Alias           |
+    Diff            |
+    WRT             |
     Num             |
     Question        |
     EOF             |

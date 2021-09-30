@@ -183,6 +183,10 @@ unit = keyword L.Unit
 
 kAlias = keyword L.Alias
 
+kDiff = keyword L.Diff
+
+kWrt  = keyword L.WRT
+
 tokenP :: Monoid a => Prism' L.Tok a -> Parser String
 tokenP p = token (not . isn't p) (\(_, _, s) -> s)
 
