@@ -610,13 +610,15 @@ addPrefixForTypes m' = do
 addVarBindings :: Module -> Module
 addVarBindings m =
   over (topStmts . traverse . _FDef) bindFDef $
-    over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef m
+    over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef $
+      over (topStmts . traverse . _DDef) bindDiffDef m
   where
     bindFDef fdef =
       let boundVars = map s2n $ L.nub $ fdef ^.. funcArgs . traverse . _1
           loc = fdef ^. funcLoc
           expr = transform bindExpr <$> _funcExpr fdef
        in fdef {_funcExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) expr}
+    bindDiffDef ddef = BoundDiffDef (bind [] ddef) (_diffLoc ddef)
     bindExpr l@ELam {..} =
       let boundVars = map s2n $ L.nub $ _elamArgs ^.. traverse . _1
           loc = _eloc
@@ -639,8 +641,13 @@ addVarBindings m =
 removeVarBindings :: Module -> Module
 removeVarBindings m =
   over (topStmts . traverse . _FDef . funcExpr . _Just) removeBindingsForExpr $
-    over (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeBindingsForExpr m
+    over (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeBindingsForExpr $
+      over (topStmts . traverse . _DDef) removeBindingsForDiffDef m
   where
+    removeBindingsForDiffDef (BoundDiffDef b _) =
+      let (_, d) = unsafeUnbind b
+       in removeBindingsForDiffDef d
+    removeBindingsForDiffDef d = d 
     removeBindingsForExpr (EBoundVars b _) =
       let (_, e) = unsafeUnbind b
        in removeBindingsForExpr e

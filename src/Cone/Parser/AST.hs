@@ -487,7 +487,7 @@ instance Pretty ImplFuncDef where
   pretty ImplFuncDef {..} = "impl" <+> pretty _implFunDef
 
 data DiffDef =
-  DiffDef {_diffFunc :: EVar, _diffWRT :: [Int], _diffAdj :: EVar, _diffLoc :: Location}
+  DiffDef {_diffFunc :: Expr, _diffWRT :: [Int], _diffAdj :: Expr, _diffLoc :: Location}
   | BoundDiffDef {_boundDiff :: Bind [EVar] DiffDef, _diffLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
