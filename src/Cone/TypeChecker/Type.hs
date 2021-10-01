@@ -6,7 +6,7 @@
 module Cone.TypeChecker.Type where
 
 import Cone.Parser.AST
-import Cone.TypeChecker.Env
+import Cone.Env
 import Control.Effect.Error
 import Control.Effect.Fresh
 import Control.Effect.State

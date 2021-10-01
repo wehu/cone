@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Cone.TypeChecker.Env where
+module Cone.Env where
 
 import Cone.Parser.AST
 import Control.Effect.Error

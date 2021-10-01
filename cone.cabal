@@ -71,13 +71,13 @@ library
       Cone.CodeGen.Backend.PythonType
       Cone.CodeGen.Backend.PythonWrapper
       Cone.Compiler
+      Cone.Env
       Cone.Executor
       Cone.ModuleLoader
       Cone.Parser.AST
       Cone.Parser.Lexer
       Cone.Parser.Parser
       Cone.TypeChecker
-      Cone.TypeChecker.Env
       Cone.TypeChecker.Expr
       Cone.TypeChecker.Type
   other-modules:

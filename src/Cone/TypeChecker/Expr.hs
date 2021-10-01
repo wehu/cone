@@ -7,7 +7,7 @@
 module Cone.TypeChecker.Expr where
 
 import Cone.Parser.AST
-import Cone.TypeChecker.Env
+import Cone.Env
 import Cone.TypeChecker.Type
 import Control.Effect.Error
 import Control.Effect.Fresh

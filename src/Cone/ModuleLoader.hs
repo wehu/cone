@@ -2,6 +2,7 @@ module Cone.ModuleLoader (loadModule, coneEx, preloadedModules, searchFile, getI
 
 import Cone.Parser.AST
 import Cone.Parser.Parser
+import Cone.Env
 import Cone.TypeChecker
 import Control.Lens
 import Control.Monad
