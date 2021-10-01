@@ -514,7 +514,7 @@ term =
   where
     eapp (d, e, targs, args, pos)
       | isn't _Nothing targs || isn't _Nothing args = return $ A.EApp d e (targs ^. _Just) (args ^. _Just) pos
-      | d = P.unexpected "diff"
+      | d = P.unexpected "diff for non function call"
       | otherwise = return e
     eann (e, t, pos) = case t of
       Just t' -> return $ A.EAnn e t' pos
