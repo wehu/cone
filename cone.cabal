@@ -64,6 +64,7 @@ source-repository head
 library
   exposed-modules:
       Cone
+      Cone.AutoDiff
       Cone.CodeGen.Backend
       Cone.CodeGen.Backend.Cone
       Cone.CodeGen.Backend.CppHeader

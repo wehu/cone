@@ -4,6 +4,7 @@ import Cone.Parser.AST
 import Cone.Parser.Parser
 import Cone.Env
 import Cone.TypeChecker
+import Cone.AutoDiff
 import Control.Lens
 import Control.Monad
 import Control.Monad.Except
@@ -87,12 +88,15 @@ loadModule' cache paths f' loaded = do
               case initModule m env id of
                 Left e -> throwError e
                 Right (env, (id, m)) -> do
-                  case checkType m env id of
-                    Left err -> throwError err
+                  case autoDiffs m env id of
+                    Left e -> throwError e
                     Right (env, (id, m)) -> do
-                      let res = (env, id, m, imports)
-                      liftIO $ modifyIORef cache $ at f ?~ res
-                      return res
+                      case checkType m env id of
+                        Left err -> throwError err
+                        Right (env, (id, m)) -> do
+                          let res = (env, id, m, imports)
+                          liftIO $ modifyIORef cache $ at f ?~ res
+                          return res
 
 coneEx = "cone"
 
