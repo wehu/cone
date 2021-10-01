@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 
-module Cone.TypeChecker (Env (..), types, typeAliases, funcs, effs, effIntfs, funcImpls, initialEnv, initModule, checkType) where
+module Cone.TypeChecker (Env (..), types, typeAliases, funcs, effs, effIntfs, funcImpls, diffAdjs, initialEnv, initModule, checkType) where
 
 import Cone.Parser.AST
 import Cone.TypeChecker.Env
@@ -380,6 +380,21 @@ checkImplFuncDef i = underScope $ do
 checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m Module
 checkImplFuncDefs = mapMOf (topStmts . traverse . _ImplFDef) checkImplFuncDef
 
+-- | Initializa diff rule
+initDiffDef :: (Has EnvEff sig m) => DiffDef -> m DiffDef
+initDiffDef d = do
+  let pos = d ^. diffLoc
+      fn = name2String $ d ^. diffFunc . evarName
+  o <- getEnv $ diffAdjs . at fn
+  forMOf _Just o $ \o ->
+    throwError $ "diff function redefine: " ++ fn ++ ppr pos
+  setEnv (Just d) $ diffAdjs . at fn
+  return d
+
+-- | Initialize all diff function rules
+initDiffDefs :: (Has EnvEff sig m) => Module -> m Module
+initDiffDefs = mapMOf (topStmts . traverse . _DDef) initDiffDef
+
 -- | Remove meta annotation
 removeAnn :: Expr -> Expr
 removeAnn e = transform remove e
@@ -754,6 +769,7 @@ initModule m env id =
       >>= initFuncDefs
       >>= initImplFuncDefs
       >>= addPrefixForExprs
+      >>= initDiffDefs
 
 -- | Type checking a module
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
