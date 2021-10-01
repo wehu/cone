@@ -249,7 +249,7 @@ data Expr
       }
   | ECase {_ecaseExpr :: Expr, _ecaseBody :: [Case], _eloc :: Location}
   | EWhile {_ewhileCond :: Expr, _ewhileBody :: Expr, _eloc :: Location}
-  | EApp {_eappFunc :: Expr, _eappTypeArgs :: [Type], _eappArgs :: [Expr], _eloc :: Location}
+  | EApp {_eappDiff :: Bool, _eappFunc :: Expr, _eappTypeArgs :: [Type], _eappArgs :: [Expr], _eloc :: Location}
   | ELet
       { _eletPattern :: Pattern,
         _eletExpr :: Expr,
@@ -299,7 +299,7 @@ instance Pretty Expr where
         [ "case" <+> pretty _ecaseExpr,
           braces $ line <> indent 4 (vsep (map (\c -> braces (line <> indent 4 (pretty c) <> line)) _ecaseBody)) <> line
         ]
-  pretty EApp {..} = parens $ pretty _eappFunc <+> parensList _eappArgs
+  pretty EApp {..} = parens $ (if _eappDiff then "diff " else "") <+> pretty _eappFunc <+> parensList _eappArgs
   pretty ELet {..} =
     parens $
       vsep
@@ -322,6 +322,9 @@ instance Pretty Expr where
   pretty (EBoundTypeVars (B bs e) _) = anglesList bs <+> pretty e
   pretty (EBoundEffTypeVars (B bs e) _) = bracketsList bs <+> pretty e
   pretty (EBoundVars (B bs e) _) = bracketsList bs <+> pretty e
+
+eappBool :: Bool
+eappBool = error "not implemented"
 
 data TypeDef
   = TypeDef

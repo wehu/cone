@@ -8,11 +8,13 @@ module Cone.Parser.Parser (parse) where
 import qualified Cone.Parser.AST as A
 import qualified Cone.Parser.Lexer as L
 import Control.Lens
+import Data.Functor
 import Data.Functor.Identity
 import Data.List
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Expr as PE
 import Text.Parsec.Pos (newPos)
+import Text.Parsec.Prim (parserFail)
 import Unbound.Generics.LocallyNameless
 
 makePrisms ''L.Tok
@@ -185,7 +187,7 @@ kAlias = keyword L.Alias
 
 kDiff = keyword L.Diff
 
-kWrt  = keyword L.WRT
+kWrt = keyword L.WRT
 
 tokenP :: Monoid a => Prism' L.Tok a -> Parser String
 tokenP p = token (not . isn't p) (\(_, _, s) -> s)
@@ -408,7 +410,7 @@ exprTable =
 exprPrefix op name = PE.Prefix $ do
   op
   pos <- getPos
-  return $ \i -> A.EApp (A.EVar (s2n name) pos) [] [i] pos
+  return $ \i -> A.EApp False (A.EVar (s2n name) pos) [] [i] pos
 
 exprBinary op name =
   PE.Infix
@@ -418,7 +420,7 @@ exprBinary op name =
         return $
           \a b ->
             let args = a : [b]
-             in A.EApp (A.EVar (s2n name) pos) [] args pos
+             in A.EApp False (A.EVar (s2n name) pos) [] args pos
     )
 
 pat :: Parser A.Pattern
@@ -469,48 +471,54 @@ literal =
 
 term :: Parser A.Expr
 term =
-  eann
-    <$> ( eapp
-            <$> ( eann
-                    <$> ( P.try (parens expr)
-                            P.<|> ( ( ( (\((pos, bts, bes, args, (effT, resT)), e) -> A.ELam bts bes args effT resT e)
-                                          <$ kFn <*> funcDef P.<?> "lambda expression"
-                                      )
-                                        P.<|> (A.ELet <$ kVar <*> pat <* assign_ <*> expr <* semi <*> exprSeq <*> return True P.<?> "var experssion")
-                                        P.<|> (A.ELet <$ kVal <*> pat <* assign_ <*> expr <* semi <*> exprSeq <*> return False P.<?> "val experssion")
-                                        P.<|> ( A.ECase <$ kCase <*> expr
-                                                  <*> braces
-                                                    (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
-                                                    P.<?> "case expression"
-                                              )
-                                        P.<|> (A.EWhile <$ kWhile <*> expr <*> braces exprSeq P.<?> "while expression")
-                                        P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> braces (P.sepBy1 handle $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
-                                        P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
-                                        P.<|> (varOrAssign <$> namePath <*> P.optionMaybe (assign_ *> expr) P.<?> "var or assign expression")
-                                        P.<|> (elist <$> brackets (P.sepBy expr comma) P.<?> "list expression")
-                                        P.<|> (etuple <$> parens (P.sepBy1 expr comma) P.<?> "tuple expression")
-                                    )
-                                      <*> getPos
-                                  )
-                            P.<|> literal
-                        )
-                    <*> P.optionMaybe (colon *> type_ P.<?> "expression type annotation")
-                    <*> getPos
-                )
-            <*> P.optionMaybe (P.try (angles (P.sepBy type_ comma P.<?> "application expression type argument list")))
-            <*> P.optionMaybe (P.try (parens (P.sepBy expr comma P.<?> "application expression argument list")))
-            <*> getPos
-        )
-    <*> P.optionMaybe (colon *> type_ P.<?> "expression type annotation")
-    <*> getPos
+  ( (,,)
+      <$> ( ( (,,,,) <$> (kDiff $> True P.<|> return False)
+                <*> ( ( (,,)
+                          <$> ( P.try (parens expr)
+                                  P.<|> ( ( ( (\((pos, bts, bes, args, (effT, resT)), e) -> A.ELam bts bes args effT resT e)
+                                                <$ kFn <*> funcDef P.<?> "lambda expression"
+                                            )
+                                              P.<|> (A.ELet <$ kVar <*> pat <* assign_ <*> expr <* semi <*> exprSeq <*> return True P.<?> "var experssion")
+                                              P.<|> (A.ELet <$ kVal <*> pat <* assign_ <*> expr <* semi <*> exprSeq <*> return False P.<?> "val experssion")
+                                              P.<|> ( A.ECase <$ kCase <*> expr
+                                                        <*> braces
+                                                          (P.sepBy1 (A.Case <$> pat <* arrow <*> return Nothing <*> braces exprSeq <*> getPos) $ P.try $ semi <* P.notFollowedBy rBrace)
+                                                          P.<?> "case expression"
+                                                    )
+                                              P.<|> (A.EWhile <$ kWhile <*> expr <*> braces exprSeq P.<?> "while expression")
+                                              P.<|> (A.EHandle <$ kHandle <*> effType <*> braces exprSeq <* kWith <*> braces (P.sepBy1 handle $ P.try $ semi <* P.notFollowedBy rBrace) P.<?> "handle expression")
+                                              P.<|> (eif <$ kIf <*> expr <*> braces exprSeq <* kElse <*> braces exprSeq P.<?> "ifelse experssion")
+                                              P.<|> (varOrAssign <$> namePath <*> P.optionMaybe (assign_ *> expr) P.<?> "var or assign expression")
+                                              P.<|> (elist <$> brackets (P.sepBy expr comma) P.<?> "list expression")
+                                              P.<|> (etuple <$> parens (P.sepBy1 expr comma) P.<?> "tuple expression")
+                                          )
+                                            <*> getPos
+                                        )
+                                  P.<|> literal
+                              )
+                          <*> P.optionMaybe (colon *> type_ P.<?> "expression type annotation")
+                          <*> getPos
+                      )
+                        >>= eann
+                    )
+                <*> P.optionMaybe (P.try (angles (P.sepBy type_ comma P.<?> "application expression type argument list")))
+                <*> P.optionMaybe (P.try (parens (P.sepBy expr comma P.<?> "application expression argument list")))
+                <*> getPos
+            )
+              >>= eapp
+          )
+      <*> P.optionMaybe (colon *> type_ P.<?> "expression type annotation")
+      <*> getPos
+  )
+    >>= eann
   where
-    eapp e targs args pos =
-      if isn't _Nothing targs || isn't _Nothing args
-        then A.EApp e (targs ^. _Just) (args ^. _Just) pos
-        else e
-    eann e t pos = case t of
-      Just t' -> A.EAnn e t' pos
-      _ -> e
+    eapp (d, e, targs, args, pos)
+      | isn't _Nothing targs || isn't _Nothing args = return $ A.EApp d e (targs ^. _Just) (args ^. _Just) pos
+      | d = P.unexpected "diff"
+      | otherwise = return e
+    eann (e, t, pos) = case t of
+      Just t' -> return $ A.EAnn e t' pos
+      _ -> return e
     eif c t f pos =
       A.ECase
         c
@@ -520,13 +528,13 @@ term =
         pos
     varOrAssign v e pos = case e of
       Nothing -> A.EVar (s2n v) pos
-      Just e -> A.EApp (A.EVar (s2n "____assign") pos) [] [A.EVar (s2n v) pos, e] pos
-    elist (e : es) pos = A.EApp (A.EVar (s2n "cons") pos) [] [e, elist es pos] pos
-    elist [] pos = A.EApp (A.EVar (s2n "nil") pos) [] [] pos
-    etuple (e0 : e1 : es) pos = A.EApp (A.EVar (s2n "pair") pos) [] [e0, etuple (e1 : es) pos] pos
+      Just e -> A.EApp False (A.EVar (s2n "____assign") pos) [] [A.EVar (s2n v) pos, e] pos
+    elist (e : es) pos = A.EApp False (A.EVar (s2n "cons") pos) [] [e, elist es pos] pos
+    elist [] pos = A.EApp False (A.EVar (s2n "nil") pos) [] [] pos
+    etuple (e0 : e1 : es) pos = A.EApp False (A.EVar (s2n "pair") pos) [] [e0, etuple (e1 : es) pos] pos
     etuple [e] pos = e
     etuple _ _ = undefined
-    econs e0 e1 pos = A.EApp (A.EVar (s2n "cons") pos) [] [e0, e1] pos
+    econs e0 e1 pos = A.EApp False (A.EVar (s2n "cons") pos) [] [e0, e1] pos
 
 handle :: Parser A.FuncDef
 handle = do
@@ -590,9 +598,11 @@ func = f <$ kFunc <*> ident <*> funcDef P.<?> "function definition"
     f n ((pos, bts, ets, args, (effT, resT)), e) = A.FuncDef n bts ets args effT resT e pos
 
 diffDef :: Parser A.DiffDef
-diffDef = A.DiffDef <$ kDiff <* kFunc <*> (A.EVar <$> (s2n <$> namePath) <*> getPos) <* kWrt
-          <*> brackets (P.sepBy1 (read <$> literalInt) comma) <* assign_ <*> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-          <*> getPos P.<?> "diff rule"
+diffDef =
+  A.DiffDef <$ kDiff <* kFunc <*> (A.EVar <$> (s2n <$> namePath) <*> getPos) <* kWrt
+    <*> brackets (P.sepBy1 (read <$> literalInt) comma) <* assign_
+    <*> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+    <*> getPos P.<?> "diff rule"
 
 topStmt :: Parser A.TopStmt
 topStmt =
