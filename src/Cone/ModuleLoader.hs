@@ -85,18 +85,18 @@ loadModule' cache paths f' loaded = do
             Left e -> throwError $ show e
             Right m -> do
               (env, id, _, imports) <- importModules cache paths m newLoaded
-              case initModule m env id of
+              (env, (id, m)) <- case initModule m env id of
                 Left e -> throwError e
-                Right (env, (id, m)) -> do
-                  case autoDiffs m env id of
-                    Left e -> throwError e
-                    Right (env, (id, m)) -> do
-                      case checkType m env id of
-                        Left err -> throwError err
-                        Right (env, (id, m)) -> do
-                          let res = (env, id, m, imports)
-                          liftIO $ modifyIORef cache $ at f ?~ res
-                          return res
+                Right v -> return v
+              (env, (id, m)) <- case autoDiffs m env id of
+                Left e -> throwError e
+                Right v -> return v
+              (env, (id, m)) <- case checkType m env id of
+                Left err -> throwError err
+                Right v -> return v
+              let res = (env, id, m, imports)
+              liftIO $ modifyIORef cache $ at f ?~ res
+              return res
 
 coneEx = "cone"
 
