@@ -601,7 +601,7 @@ diffDef :: Parser A.DiffDef
 diffDef =
   A.DiffDef <$ kDiff <* kFunc <*> (A.EVar <$> (s2n <$> namePath) <*> getPos) <* kWrt
     <*> brackets (P.sepBy1 (read <$> literalInt) comma) <* assign_
-    <*> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+    <*> P.optionMaybe (A.EVar <$> (s2n <$> namePath) <*> getPos)
     <*> getPos P.<?> "diff rule"
 
 topStmt :: Parser A.TopStmt

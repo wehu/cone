@@ -24,15 +24,26 @@ import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
-genDiff :: (Has EnvEff sig m) => FuncDef -> m FuncDef
-genDiff f@FuncDef{..} = do
-  d <- getEnv $ diffAdjs . at _funcName
-  case d of
-    Just _ -> return f
-    Nothing -> return f
+genDiff :: (Has EnvEff sig m) => DiffDef -> FuncDef -> m FuncDef
+genDiff d f@FuncDef{..} = return f
+genDiff d BoundFuncDef{..} = do
+  let (_, f) = unsafeUnbind _boundFuncDef
+  genDiff d f
+genDiff d BoundEffFuncDef {..} = do
+  let (_, f) = unsafeUnbind _boundEffFuncDef
+  genDiff d f
 
 genDiffs :: (Has EnvEff sig m) => Module -> m Module
-genDiffs = mapMOf (topStmts . traverse . _FDef) genDiff
+genDiffs m = do
+  let fs = m ^.. topStmts . traverse . _FDef
+  diffs <- foldM (\ds f -> do
+    d <- getEnv $ diffAdjs . at (_funcName f)
+    case d of
+      Just d -> (\d -> FDef d:ds) <$> genDiff d f
+      Nothing -> return ds)
+    []
+    fs
+  return m{_topStmts=m^.topStmts ++ diffs}
 
 autoDiffs :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 autoDiffs m env id =
