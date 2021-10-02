@@ -381,20 +381,19 @@ checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m Module
 checkImplFuncDefs = mapMOf (topStmts . traverse . _ImplFDef) checkImplFuncDef
 
 -- | Initializa diff rule
-initDiffDef :: (Has EnvEff sig m) => DiffDef -> m DiffDef
-initDiffDef d = do
+initDiffDef :: (Has EnvEff sig m) => String -> DiffDef -> m DiffDef
+initDiffDef prefix d = do
   let pos = d ^. diffLoc
-      fn = name2String $ d ^. diffFunc . evarName
+      fn = prefix ++ "/" ++ d ^. diffFunc
   o <- getEnv $ diffAdjs . at fn
   forMOf _Just o $ \o ->
     throwError $ "diff function redefine: " ++ fn ++ ppr pos
   setEnv (Just d) $ diffAdjs . at fn
-  return d
+  return d{_diffFunc = fn}
 
 -- | Initialize all diff function rules
 initDiffDefs :: (Has EnvEff sig m) => Module -> m Module
-initDiffDefs = mapMOf (topStmts . traverse . _DDef) initDiffDef
-
+initDiffDefs m = mapMOf (topStmts . traverse . _DDef) (initDiffDef $ m ^. moduleName) m
 -- | Remove meta annotation
 removeAnn :: Expr -> Expr
 removeAnn e = transform remove e
@@ -768,8 +767,8 @@ initModule m env id =
       >>= initEffIntfDefs
       >>= initFuncDefs
       >>= initImplFuncDefs
-      >>= addPrefixForExprs
       >>= initDiffDefs
+      >>= addPrefixForExprs
 
 -- | Type checking a module
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
