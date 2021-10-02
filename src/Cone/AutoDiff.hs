@@ -25,7 +25,19 @@ import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
 genDiff :: (Has EnvEff sig m) => DiffDef -> FuncDef -> m FuncDef
-genDiff d f@FuncDef{..} = return f
+genDiff d f@FuncDef{..} = do
+  resultTypes <- foldM (\ts a -> do
+    let i = L.findIndex (\(e, _) -> a == e) _funcArgs
+    case i of
+      Just i -> return $ ts ++ [_funcArgs !! i ^. _2]
+      Nothing -> throwError $ "cannot find wrt " ++ a ++ " in " ++ ppr f ++ ppr _funcLoc
+    ) [] (_diffWRT d)
+  let t:ts = reverse resultTypes
+      resType = L.foldl' (\t e -> TApp (TVar (s2n "core/prelude/pair") _funcLoc) [e, t] _funcLoc) t ts
+      fType = TFunc (_funcArgs ^.. traverse . _2) (EffList [] _funcLoc) resType _funcLoc
+  id <- fresh
+  let fn = _funcName ++ "____diff" ++ show id
+  return f{_funcName = fn, _funcArgs = _funcArgs, _funcResultType = resType}
 genDiff d BoundFuncDef{..} = do
   let (_, f) = unsafeUnbind _boundFuncDef
   genDiff d f
@@ -53,7 +65,10 @@ genDiffs m = do
     replace diffs d = do
       let n = _diffFunc d
       case diffs ^. at n of
-        Just f -> return d{_diffAdj=Just $ EVar (s2n $ _funcName f) (_funcLoc f)}
+        Just f -> do
+          when (isn't _Nothing $ _diffAdj d) $
+            throwError $ "diff adj conflict " ++ ppr (_diffAdj d) ++ " vs " ++ ppr f ++ ppr (_diffLoc d)
+          return d{_diffAdj=Just $ EVar (s2n $ _funcName f) (_funcLoc f)}
         Nothing -> return d
 
 replaceDiffFuncCalls :: (Has EnvEff sig m) => Module -> m Module
