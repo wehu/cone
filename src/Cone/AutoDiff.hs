@@ -39,7 +39,10 @@ genDiffs m = do
   diffs <- foldM (\ds f -> do
     d <- getEnv $ diffAdjs . at (_funcName f)
     case d of
-      Just d -> (\d -> FDef d:ds) <$> genDiff d f
+      Just d ->
+        if isn't _Just $ _diffAdj d
+        then (\d -> FDef d:ds) <$> genDiff d f
+        else return ds
       Nothing -> return ds)
     []
     fs
