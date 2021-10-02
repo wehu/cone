@@ -767,8 +767,8 @@ initModule m env id =
       >>= initEffIntfDefs
       >>= initFuncDefs
       >>= initImplFuncDefs
-      >>= initDiffDefs
       >>= addPrefixForExprs
+      >>= initDiffDefs
 
 -- | Type checking a module
 checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
