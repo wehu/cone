@@ -41,12 +41,20 @@ genDiffs m = do
     case d of
       Just d ->
         if isn't _Just $ _diffAdj d
-        then (\d -> FDef d:ds) <$> genDiff d f
+        then (\f -> (d ^. diffFunc, f):ds) <$> genDiff d f
         else return ds
       Nothing -> return ds)
     []
     fs
-  return m{_topStmts=m^.topStmts ++ diffs}
+  mapMOf (topStmts . traverse . _DDef) (replace $ M.fromList diffs)
+   m{_topStmts=m^.topStmts ++ map FDef (diffs ^.. traverse . _2)}
+  where
+    replace :: (Has EnvEff sig m) => M.Map String FuncDef -> DiffDef -> m DiffDef
+    replace diffs d = do
+      let n = _diffFunc d
+      case diffs ^. at n of
+        Just f -> return d{_diffAdj=Just $ EVar (s2n $ _funcName f) (_funcLoc f)}
+        Nothing -> return d
 
 replaceDiffFuncCalls :: (Has EnvEff sig m) => Module -> m Module
 replaceDiffFuncCalls m = 
