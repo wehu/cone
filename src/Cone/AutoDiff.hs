@@ -55,6 +55,8 @@ replaceDiffFuncCalls m =
   where replaceDiffFuncCall expr = transformM replace expr
         replace e@EApp{..} = do
           if _eappDiff then do
+            when (isn't _EVar _eappFunc) $ 
+               throwError $ "expected a function name, but got " ++ ppr _eappFunc ++ ppr _eloc
             let n = name2String $ _evarName _eappFunc
             d <- getEnv $ diffAdjs . at n
             case d of
