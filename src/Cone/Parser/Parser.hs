@@ -600,7 +600,7 @@ func = f <$ kFunc <*> ident <*> funcDef P.<?> "function definition"
 diffDef :: Parser A.DiffDef
 diffDef =
   A.DiffDef <$ kDiff <* kFunc <*> namePath <* kWrt
-    <*> brackets (P.sepBy1 (read <$> literalInt) comma) <* assign_
+    <*> parens (P.sepBy1 ident comma) <* assign_
     <*> P.optionMaybe (A.EVar <$> (s2n <$> namePath) <*> getPos)
     <*> getPos P.<?> "diff rule"
 

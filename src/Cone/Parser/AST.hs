@@ -490,12 +490,12 @@ instance Pretty ImplFuncDef where
   pretty ImplFuncDef {..} = "impl" <+> pretty _implFunDef
 
 data DiffDef =
-  DiffDef {_diffFunc :: String, _diffWRT :: [Int], _diffAdj :: Maybe Expr, _diffLoc :: Location}
+  DiffDef {_diffFunc :: String, _diffWRT :: [String], _diffAdj :: Maybe Expr, _diffLoc :: Location}
   | BoundDiffDef {_boundDiff :: Bind [EVar] DiffDef, _diffLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty DiffDef where
-  pretty DiffDef {..} = "diff" <+> pretty _diffFunc <+> "wrt" <+> pretty _diffWRT <+> "=" <+> pretty _diffAdj
+  pretty DiffDef {..} = "diff" <+> pretty _diffFunc <+> "wrt" <+> parensList _diffWRT <+> "=" <+> pretty _diffAdj
   pretty (BoundDiffDef (B vs d) _) = anglesList vs <+> pretty d
 
 data TopStmt
