@@ -25,6 +25,9 @@ import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
+genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> m [Expr]
+genDiffForExpr d e = return [e]
+
 genDiff :: (Has EnvEff sig m) => DiffDef -> FuncDef -> m FuncDef
 genDiff d f@FuncDef{..} = do
   resultTypes <- foldM (\ts a -> do
@@ -40,7 +43,12 @@ genDiff d f@FuncDef{..} = do
   id <- fresh
   let fn = _funcName ++ "____diff" ++ show id
   setFuncType fn fType
-  return f{_funcName = fn, _funcArgs = _funcArgs, _funcResultType = resType}
+  e <- mapM (\e -> do
+    es <- genDiffForExpr d e
+    let e':es' = reverse es
+    return $ L.foldl' (\t e -> EApp False (EVar (s2n "core/prelude/pair") _funcLoc) [] [t, e] _funcLoc) e' es')
+    _funcExpr
+  return f{_funcName = fn, _funcArgs = _funcArgs, _funcResultType = resType, _funcExpr = e}
 genDiff d BoundFuncDef{..} = do
   let (_, f) = unsafeUnbind _boundFuncDef
   genDiff d f
