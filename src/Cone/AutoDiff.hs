@@ -25,14 +25,13 @@ import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
-genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> m [Expr]
-genDiffForExpr d e@EVar{..} = do
+genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> Expr -> m [Expr]
+genDiffForExpr d f e@EVar{..} = do
   let wrt = _diffWRT d
-      one = ELit "1.0" (TPrim F32 _eloc) _eloc
       zero = ELit "0.0" (TPrim F32 _eloc) _eloc
-      diffs = map (\e -> if e == name2String _evarName then one else zero) wrt
+      diffs = map (\e -> if e == name2String _evarName then f else zero) wrt
   return diffs
-genDiffForExpr _ e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
+genDiffForExpr _ _ e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
 
 genDiff :: (Has EnvEff sig m) => DiffDef -> FuncDef -> m FuncDef
 genDiff d f@FuncDef{..} = do
@@ -48,9 +47,10 @@ genDiff d f@FuncDef{..} = do
          TFunc (_funcArgs ^.. traverse . _2) (EffList [] _funcLoc) resType _funcLoc
   id <- fresh
   let fn = _funcName ++ "____diff" ++ show id
+      one = ELit "1.0" (TPrim F32 _funcLoc) _funcLoc
   setFuncType fn fType
   e <- mapM (\e -> do
-    es <- genDiffForExpr d e
+    es <- genDiffForExpr d one e
     let e':es' = reverse es
     return $ L.foldl' (\t e -> EApp False (EVar (s2n "core/prelude/pair") _funcLoc) [] [t, e] _funcLoc) e' es')
     _funcExpr
