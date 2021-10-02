@@ -7,6 +7,7 @@
 module Cone.AutoDiff where
 
 import Cone.Env
+import Cone.TypeChecker.Type
 import Cone.Parser.AST
 import Control.Effect.Error
 import Control.Effect.Fresh
@@ -34,9 +35,11 @@ genDiff d f@FuncDef{..} = do
     ) [] (_diffWRT d)
   let t:ts = reverse resultTypes
       resType = L.foldl' (\t e -> TApp (TVar (s2n "core/prelude/pair") _funcLoc) [e, t] _funcLoc) t ts
-      fType = TFunc (_funcArgs ^.. traverse . _2) (EffList [] _funcLoc) resType _funcLoc
+      fType = bindTypeEffVar _funcBoundEffVars $ bindTypeVar _funcBoundVars $
+         TFunc (_funcArgs ^.. traverse . _2) (EffList [] _funcLoc) resType _funcLoc
   id <- fresh
   let fn = _funcName ++ "____diff" ++ show id
+  setFuncType fn fType
   return f{_funcName = fn, _funcArgs = _funcArgs, _funcResultType = resType}
 genDiff d BoundFuncDef{..} = do
   let (_, f) = unsafeUnbind _boundFuncDef
