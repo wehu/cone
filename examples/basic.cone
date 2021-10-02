@@ -50,7 +50,7 @@ fun test_inline(o : str) : io unit {
 
 diff fun test2 wrt (a) = test2
 
-fun test3(a : i32) : i32 {
+fun test3(a : f32) : f32 {
   a
 }
 

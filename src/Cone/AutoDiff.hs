@@ -26,7 +26,13 @@ import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
 genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> m [Expr]
-genDiffForExpr d e = return [e]
+genDiffForExpr d e@EVar{..} = do
+  let wrt = _diffWRT d
+      one = ELit "1.0" (TPrim F32 _eloc) _eloc
+      zero = ELit "0.0" (TPrim F32 _eloc) _eloc
+      diffs = map (\e -> if e == name2String _evarName then one else zero) wrt
+  return diffs
+genDiffForExpr _ e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
 
 genDiff :: (Has EnvEff sig m) => DiffDef -> FuncDef -> m FuncDef
 genDiff d f@FuncDef{..} = do
