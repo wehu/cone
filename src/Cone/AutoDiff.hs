@@ -48,8 +48,22 @@ genDiffs m = do
     fs
   return m{_topStmts=m^.topStmts ++ diffs}
 
+replaceDiffFuncCalls :: (Has EnvEff sig m) => Module -> m Module
+replaceDiffFuncCalls = mapMOf (topStmts . traverse . _FDef . funcExpr . _Just) replaceDiffFuncCall
+  where replaceDiffFuncCall expr = transformM replace expr
+        replace e@EApp{..} = do
+          if _eappDiff then do
+            let n = name2String $ _evarName _eappFunc
+            d <- getEnv $ diffAdjs . at n
+            case d of
+              Just d -> return e{_eappFunc = fromJust $ _diffAdj d}
+              Nothing -> throwError $ "cannot find diff rule for " ++ n ++ ppr _eloc
+          else return e
+        replace e = return e
+
 autoDiffs :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 autoDiffs m env id =
   run . runError . runState env . runFresh id $
     do
       genDiffs m
+      >>= replaceDiffFuncCalls
