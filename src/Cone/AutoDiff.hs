@@ -49,7 +49,9 @@ genDiffs m = do
   return m{_topStmts=m^.topStmts ++ diffs}
 
 replaceDiffFuncCalls :: (Has EnvEff sig m) => Module -> m Module
-replaceDiffFuncCalls = mapMOf (topStmts . traverse . _FDef . funcExpr . _Just) replaceDiffFuncCall
+replaceDiffFuncCalls m = 
+  mapMOf (topStmts . traverse . _FDef . funcExpr . _Just) replaceDiffFuncCall m
+  >>= mapMOf (topStmts. traverse. _ImplFDef . implFunDef . funcExpr . _Just) replaceDiffFuncCall
   where replaceDiffFuncCall expr = transformM replace expr
         replace e@EApp{..} = do
           if _eappDiff then do
