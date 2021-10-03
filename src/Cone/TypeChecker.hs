@@ -756,13 +756,13 @@ initModule m env id =
       >>= addPrefixForExprs
 
 -- | Type checking a module
-checkType :: Module -> Env -> Int -> Either String (Env, (Int, Module))
-checkType m env id =
+checkType :: Module -> Env -> Int -> Bool -> Either String (Env, (Int, Module))
+checkType m env id rmAnns =
   run . runError . runState env . runFresh id $
     do
-      return m
+      return (removeAnns m)
       >>= checkTypeConDefs
       >>= checkEffIntfDefs
       >>= checkFuncDefs
       >>= checkImplFuncDefs
-      >>= (return . removeAnns)
+      >>= (\m -> return $ if rmAnns then removeAnns m else m)

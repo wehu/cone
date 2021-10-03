@@ -92,14 +92,14 @@ loadModule' cache paths f' loaded = do
               (env, (id, m)) <- case setupAutoDiffs m env id of
                 Left e -> throwError e
                 Right v -> return v
-              (env, (id, m)) <- case checkType m env id of
+              (env, (id, m)) <- case checkType m env id False of
                 Left err -> throwError err
                 Right v -> return v
               (env, (id, m)) <- case autoDiffs m env id of
                 Left e -> throwError e
                 Right v -> return v
               -- check again
-              (env, (id, m)) <- case checkType m env id of
+              (env, (id, m)) <- case checkType m env id True of
                 Left err -> throwError err
                 Right v -> return v
               let res = (env, id, m, imports)

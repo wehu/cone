@@ -94,7 +94,7 @@ setupDiffs m = do
         Nothing -> return d
 
 genConstantByType :: String -> Type -> Expr
-genConstantByType c t = ELit "0.0" (TPrim F32 (_tloc t)) (_tloc t)
+genConstantByType c t = ELit c (TPrim F32 (_tloc t)) (_tloc t)
 
 genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> Expr -> m [Expr]
 genDiffForExpr d f e@EVar{..} = do
@@ -141,9 +141,10 @@ replaceDiffFuncCalls m =
   where replaceDiffFuncCall expr = transformM replace expr
         replace e@EApp{..} = do
           if _eappDiff then do
-            when (isn't _EVar _eappFunc) $ 
+            let f = _eannMetaExpr _eappFunc
+            when (isn't _EVar f) $ 
                throwError $ "expected a function name, but got " ++ ppr _eappFunc ++ ppr _eloc
-            let n = name2String $ _evarName _eappFunc
+            let n = name2String $ _evarName f
             d <- getEnv $ diffAdjs . at n
             case d of
               Just d -> return e{_eappFunc = fromJust $ _diffAdj d}
