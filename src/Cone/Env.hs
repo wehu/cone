@@ -48,6 +48,8 @@ type EffKindBinds = M.Map String EffKind
 
 type DiffAdjs = M.Map String DiffDef
 
+type DiffMapping = M.Map String FuncDef
+
 -- | The environment
 data Env = Env
   { _types :: TypeKinds,
@@ -61,7 +63,8 @@ data Env = Env
     _kindBinds :: KindBinds,
     _effTypeBinds :: EffTypeBinds,
     _effKindBinds :: EffKindBinds,
-    _diffAdjs :: DiffAdjs
+    _diffAdjs :: DiffAdjs,
+    _diffMapping :: DiffMapping
   }
   deriving (Show)
 
@@ -80,7 +83,8 @@ initialEnv =
       _kindBinds = M.empty,
       _effTypeBinds = M.empty,
       _effKindBinds = M.empty,
-      _diffAdjs = M.empty
+      _diffAdjs = M.empty,
+      _diffMapping = M.empty
     }
 
 type EnvEff = Eff Env String
