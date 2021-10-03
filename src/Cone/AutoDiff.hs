@@ -120,10 +120,16 @@ replaceDiffFuncCalls m =
           else return e
         replace e = return e
 
-autoDiffs :: Module -> Env -> Int -> Either String (Env, (Int, Module))
-autoDiffs m env id =
+setupAutoDiffs :: Module -> Env -> Int -> Either String (Env, (Int, Module))
+setupAutoDiffs m env id =
   run . runError . runState env . runFresh id $
     do
       initDiffDefs m
       >>= genDiffs
-      >>= replaceDiffFuncCalls
+
+autoDiffs :: Module -> Env -> Int -> Either String (Env, (Int, Module))
+autoDiffs m env id =
+  run . runError . runState env . runFresh id $
+    do
+      return m
+      -- replaceDiffFuncCalls m
