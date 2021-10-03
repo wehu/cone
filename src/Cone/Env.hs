@@ -48,7 +48,7 @@ type EffKindBinds = M.Map String EffKind
 
 type DiffAdjs = M.Map String DiffDef
 
-type DiffMapping = M.Map String FuncDef
+type DiffMapping = M.Map String String
 
 -- | The environment
 data Env = Env

@@ -8,6 +8,7 @@ module Cone.AutoDiff where
 
 import Cone.Env
 import Cone.TypeChecker.Type
+import Cone.TypeChecker.Expr
 import Cone.Parser.AST
 import Control.Effect.Error
 import Control.Effect.Fresh
@@ -56,7 +57,7 @@ setupDiff d f@FuncDef{..} = do
   id <- fresh
   let fn = _funcName ++ "____diff" ++ show id
   setFuncType fn fType
-  setEnv (Just f) $ diffMapping . at fn
+  setEnv (Just _funcName) $ diffMapping . at fn
   return f{_funcName = fn, _funcArgs = _funcArgs, _funcResultType = resType, _funcExpr = Nothing}
 setupDiff d BoundFuncDef{..} = do
   let (_, f) = unsafeUnbind _boundFuncDef
@@ -94,23 +95,25 @@ setupDiffs m = do
         Nothing -> return d
 
 genConstantByType :: String -> Type -> Expr
-genConstantByType c t = ELit c (TPrim F32 (_tloc t)) (_tloc t)
+genConstantByType c t = ELit c t (_tloc t)
 
 genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> Expr -> m [Expr]
-genDiffForExpr d f e@EVar{..} = do
+genDiffForExpr d f (EAnnMeta e@EVar{..} t _) = do
   let wrt = _diffWRT d
-      zero = ELit "0" (TPrim F32 _eloc) _eloc
+      zero =  genConstantByType "0" t
       diffs = map (\e -> if e == name2String _evarName then f else zero) wrt
   return diffs
 genDiffForExpr _ _ e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
 
-genDiff :: (Has EnvEff sig m) => FuncDef -> m FuncDef
-genDiff f@FuncDef{} = do
+genDiff :: (Has EnvEff sig m) => M.Map String FuncDef -> FuncDef -> m FuncDef
+genDiff fn2f f@FuncDef{} = do
   let loc = _funcLoc f
-  orgF <- getEnv $ diffMapping . at (_funcName f)
-  case orgF of
-    Just orgF -> do
-      let orgFn = orgF ^. funcName
+  orgFn <- getEnv $ diffMapping . at (_funcName f)
+  case orgFn of
+    Just orgFn -> do
+      let orgF = fn2f ^. at orgFn
+      forMOf _Nothing orgF $ \_ ->
+        throwError $ "cannot find function by name " ++ ppr orgFn ++ ppr loc
       diff <- getEnv $ diffAdjs . at orgFn
       forMOf _Nothing diff $ \_ ->
         throwError $ "cannot find diff rule for " ++ ppr orgFn ++ ppr loc
@@ -119,20 +122,22 @@ genDiff f@FuncDef{} = do
         es <- genDiffForExpr d (genConstantByType "1" (_funcResultType f)) e
         let e':es' = reverse es
         return $ L.foldl' (\t e -> EApp False (EVar (s2n "core/prelude/pair") loc) [] [t, e] loc) e' es')
-        (_funcExpr orgF)
+        (_funcExpr $ fromJust orgF)
       return f{_funcExpr = e}
     Nothing -> return f
-genDiff BoundFuncDef{..} = do
+genDiff fn2f BoundFuncDef{..} = do
   let (vs, f) = unsafeUnbind _boundFuncDef
-  f' <- genDiff f
+  f' <- genDiff fn2f f
   return $ BoundFuncDef (bind vs f') _funcLoc
-genDiff BoundEffFuncDef {..} = do
+genDiff fn2f BoundEffFuncDef {..} = do
   let (vs, f) = unsafeUnbind _boundEffFuncDef
-  f' <- genDiff f
+  f' <- genDiff fn2f f
   return $ BoundEffFuncDef (bind vs f') _funcLoc
 
 genDiffs :: (Has EnvEff sig m) => Module -> m Module
-genDiffs = mapMOf (topStmts . traverse . _FDef) genDiff
+genDiffs m = do
+  let fn2f = [(_funcName f, f)| f <- m ^..topStmts . traverse . _FDef]
+  mapMOf (topStmts . traverse . _FDef) (genDiff $ M.fromList fn2f) m
 
 replaceDiffFuncCalls :: (Has EnvEff sig m) => Module -> m Module
 replaceDiffFuncCalls m = 
