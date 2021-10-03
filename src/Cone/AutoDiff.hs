@@ -94,13 +94,21 @@ setupDiffs m = do
           return newDiff
         Nothing -> return d
 
-genConstantByType :: String -> Type -> Expr
-genConstantByType c t = ELit c t (_tloc t)
+genConstantByType :: (Has EnvEff sig m) => String -> Type -> m Expr
+genConstantByType c t@(TPrim pt _) = do
+  let c' = case pt of
+             F16 -> c ++ ".0"
+             F32 -> c ++ ".0"
+             F64 -> c ++ ".0"
+             Pred -> if c == "0" then "false" else "true"
+             _ -> c
+  return $ ELit c' t (_tloc t)
+genConstantByType _ t = throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)
 
 genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> Expr -> m [Expr]
 genDiffForExpr d f (EAnnMeta e@EVar{..} t _) = do
+  zero <- genConstantByType "0" t
   let wrt = _diffWRT d
-      zero =  genConstantByType "0" t
       diffs = map (\e -> if e == name2String _evarName then f else zero) wrt
   return diffs
 genDiffForExpr _ _ e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
@@ -119,7 +127,8 @@ genDiff fn2f f@FuncDef{} = do
         throwError $ "cannot find diff rule for " ++ ppr orgFn ++ ppr loc
       let d = fromJust diff
       e <- mapM (\e -> do
-        es <- genDiffForExpr d (genConstantByType "1" (_funcResultType f)) e
+        c <- genConstantByType "1" (_funcResultType f)
+        es <- genDiffForExpr d c e
         let e':es' = reverse es
         return $ L.foldl' (\t e -> EApp False (EVar (s2n "core/prelude/pair") loc) [] [t, e] loc) e' es')
         (_funcExpr $ fromJust orgF)
