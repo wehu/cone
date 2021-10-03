@@ -16,6 +16,7 @@ import Data.Map.Merge.Strict
 import System.Directory
 import System.FilePath
 import System.IO
+import Debug.Trace
 import Unbound.Generics.LocallyNameless
 
 type Loaded = M.Map FilePath Bool

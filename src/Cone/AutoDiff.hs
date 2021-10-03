@@ -33,8 +33,9 @@ initDiffDef prefix d = do
   o <- getEnv $ diffAdjs . at fn
   forMOf _Just o $ \o ->
     throwError $ "diff function redefine: " ++ fn ++ ppr pos
-  setEnv (Just d) $ diffAdjs . at fn
-  return d{_diffFunc = fn}
+  let newDiff = d{_diffFunc = fn}
+  setEnv (Just newDiff) $ diffAdjs . at fn
+  return newDiff
 
 -- | Initialize all diff function rules
 initDiffDefs :: (Has EnvEff sig m) => Module -> m Module
@@ -55,7 +56,7 @@ setupDiff d f@FuncDef{..} = do
   id <- fresh
   let fn = _funcName ++ "____diff" ++ show id
   setFuncType fn fType
-  setEnv (Just f) $ diffMapping . at _funcName
+  setEnv (Just f) $ diffMapping . at fn
   return f{_funcName = fn, _funcArgs = _funcArgs, _funcResultType = resType, _funcExpr = Nothing}
 setupDiff d BoundFuncDef{..} = do
   let (_, f) = unsafeUnbind _boundFuncDef
@@ -87,7 +88,9 @@ setupDiffs m = do
         Just f -> do
           when (isn't _Nothing $ _diffAdj d) $
             throwError $ "diff adj conflict " ++ ppr (_diffAdj d) ++ " vs " ++ ppr f ++ ppr (_diffLoc d)
-          return d{_diffAdj=Just $ EVar (s2n $ _funcName f) (_funcLoc f)}
+          let newDiff = d{_diffAdj=Just $ EVar (s2n $ _funcName f) (_funcLoc f)}
+          setEnv (Just newDiff) $ diffAdjs . at n
+          return newDiff
         Nothing -> return d
 
 genConstantByType :: String -> Type -> Expr
@@ -160,4 +163,4 @@ autoDiffs m env id =
   run . runError . runState env . runFresh id $
     do
       genDiffs m
-      -- replaceDiffFuncCalls m
+      >>= replaceDiffFuncCalls
