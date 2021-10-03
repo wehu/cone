@@ -57,7 +57,6 @@ setupDiff d f@FuncDef{..} = do
   setFuncType fn fType
   -- setEnv (Just _funcName) $ diffMapping . at fn
   return f{_funcName = fn, _funcArgs = _funcArgs ++ argTypes}
-  >>= genDiff d
 setupDiff d BoundFuncDef{..} = do
   let (_, f) = unsafeUnbind _boundFuncDef
   setupDiff d f
@@ -74,7 +73,7 @@ genDiffs m = do
       Just d ->
         if isn't _Just $ _diffAdj d
         then do
-          (\f -> (d ^. diffFunc, f):ds) <$> setupDiff d f
+          (\f -> (d ^. diffFunc, f):ds) <$> (setupDiff d f >>= genDiff d)
         else return ds
       Nothing -> return ds)
     []
