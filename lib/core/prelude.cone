@@ -7,7 +7,7 @@ fun ____negative<a>(a: a) : a
 diff fun ____negative wrt (a) = ____negative_diff
 
 fun ____negative_diff<a>(a: a, da: a) : a {
-  da
+  - da
 } 
 
 fun ____add<a>(a: a, b:a) : a 

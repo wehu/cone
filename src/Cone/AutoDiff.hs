@@ -100,9 +100,14 @@ genConstantByType c t@(TPrim pt _) = do
              F16 -> c ++ ".0"
              F32 -> c ++ ".0"
              F64 -> c ++ ".0"
+             BF16 -> c ++ ".0"
              Pred -> if c == "0" then "false" else "true"
              _ -> c
   return $ ELit c' t (_tloc t)
+genConstantByType c (TApp (TVar n _) [et, shape] loc) 
+ | name2String n == "data/tensor/tensor" = do
+  e <- genConstantByType c et
+  return $ EApp False (EVar (s2n "data/tensor/full") loc) [shape, et] [e] loc
 genConstantByType _ t = throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)
 
 genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> Expr -> m [Expr]
