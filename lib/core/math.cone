@@ -16,6 +16,10 @@ ____result = sin(a)
 """)
 }
 
+impl fun sin____diff(a: f32, da: f32) : f32 {
+  cos(a) * da
+}
+
 // cos
 fun cos<a>(a : a) : a
 
@@ -30,4 +34,8 @@ impl fun cos(a : f32) : f32 {
 from math import cos
 ____result = cos(a)
 """)
+}
+
+impl fun cos____diff(a: f32, da: f32) : f32 {
+  sin(a) * da
 }
