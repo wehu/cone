@@ -36,6 +36,12 @@ fun ____mul_diff<a>(a: a, b: a, da: a, db: a) : a {
 
 fun ____div<a>(a: a, b:a) : a
 
+diff fun ____div wrt (a, b) = ____div_diff
+
+fun ____div_diff<a>(a: a, b: a, da: a, db: a) : a {
+  (da * b - a * db) / (b * b)
+}
+
 fun ____mod<a>(a: a, b:a) : a
 
 fun ____lt<a>(a: a, b:a) : bool
