@@ -25,6 +25,21 @@ import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
+-- | Initializa diff rule
+initDiffDef :: (Has EnvEff sig m) => String -> DiffDef -> m DiffDef
+initDiffDef prefix d = do
+  let pos = d ^. diffLoc
+      fn = prefix ++ "/" ++ d ^. diffFunc
+  o <- getEnv $ diffAdjs . at fn
+  forMOf _Just o $ \o ->
+    throwError $ "diff function redefine: " ++ fn ++ ppr pos
+  setEnv (Just d) $ diffAdjs . at fn
+  return d{_diffFunc = fn}
+
+-- | Initialize all diff function rules
+initDiffDefs :: (Has EnvEff sig m) => Module -> m Module
+initDiffDefs m = mapMOf (topStmts . traverse . _DDef) (initDiffDef $ m ^. moduleName) m
+
 genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> Expr -> m [Expr]
 genDiffForExpr d f e@EVar{..} = do
   let wrt = _diffWRT d
@@ -109,5 +124,6 @@ autoDiffs :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 autoDiffs m env id =
   run . runError . runState env . runFresh id $
     do
-      genDiffs m
+      initDiffDefs m
+      >>= genDiffs
       >>= replaceDiffFuncCalls
