@@ -108,13 +108,16 @@ genConstantByType c (TApp (TVar n _) [et, shape] loc)
   return $ EApp False (EVar (s2n "data/tensor/full") loc) [shape, et] [e] loc
 genConstantByType _ t = throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)
 
-genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> Expr -> m [Expr]
-genDiffForExpr d f (EAnnMeta e@EVar{..} t _) = do
-  zero <- genConstantByType "0" t
-  let wrt = _diffWRT d
-      diffs = map (\e -> if e == name2String _evarName then f else zero) wrt
-  return diffs
-genDiffForExpr _ _ e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
+genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> m Expr
+genDiffForExpr d (EAnnMeta e@EVar{..} t _) = return e{_evarName=s2n (name2String _evarName ++ "____diff")}
+genDiffForExpr d (EAnnMeta a@(EApp _ (EAnnMeta (EVar n _) _ _) targs args _) t loc) = do
+  let fn = name2String n
+  f <- getEnv $ diffAdjs . at fn
+  forMOf _Nothing f $ \_ ->
+    throwError $ "cannot find diff adj for function " ++ ppr fn ++ ppr loc
+  diffs <- mapM (genDiffForExpr d) args
+  return $ EApp False (fromJust $ _diffAdj $ fromJust f) targs (args ++ diffs) loc
+genDiffForExpr _ e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
 
 genDiff :: (Has EnvEff sig m) => M.Map String FuncDef -> FuncDef -> m FuncDef
 genDiff fn2f f@FuncDef{} = do
@@ -129,12 +132,7 @@ genDiff fn2f f@FuncDef{} = do
       forMOf _Nothing diff $ \_ ->
         throwError $ "cannot find diff rule for " ++ ppr orgFn ++ ppr loc
       let d = fromJust diff
-      e <- mapM (\e -> do
-        c <- genConstantByType "1" (_funcResultType f)
-        es <- genDiffForExpr d c e
-        let e':es' = reverse es
-        return $ L.foldl' (\t e -> EApp False (EVar (s2n "core/prelude/pair") loc) [] [t, e] loc) e' es')
-        (_funcExpr $ fromJust orgF)
+      e <- mapM (genDiffForExpr d) (_funcExpr $ fromJust orgF)
       return f{_funcExpr = e}
     Nothing -> return f
 genDiff fn2f BoundFuncDef{..} = do
