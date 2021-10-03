@@ -147,7 +147,7 @@ fun main() : io unit {
      B(3) -> {print("bbbb")}
   }
 
-  print(diff test3(2.0))
+  print(diff test3(2.0, 1.0))
   val f = fn (bbb:i32) : i32 { bbb + 1 }
   print(f(a))
   print(a)

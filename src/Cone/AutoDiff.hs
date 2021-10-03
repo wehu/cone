@@ -44,21 +44,19 @@ initDiffDefs m = mapMOf (topStmts . traverse . _DDef) (initDiffDef $ m ^. module
 
 setupDiff :: (Has EnvEff sig m) => DiffDef -> FuncDef -> m FuncDef
 setupDiff d f@FuncDef{..} = do
-  resultTypes <- foldM (\ts a -> do
+  argTypes <- mapM (\a -> do
     let i = L.findIndex (\(e, _) -> a == e) _funcArgs
     case i of
-      Just i -> return $ ts ++ [_funcArgs !! i ^. _2]
+      Just i -> return (_funcArgs !! i ^. _1 ++ "____diff", _funcArgs !! i ^. _2)
       Nothing -> throwError $ "cannot find wrt " ++ a ++ " in " ++ ppr f ++ ppr _funcLoc
-    ) [] (_diffWRT d)
-  let t:ts = reverse resultTypes
-      resType = L.foldl' (\t e -> TApp (TVar (s2n "core/prelude/pair") _funcLoc) [e, t] _funcLoc) t ts
-      fType = bindTypeEffVar _funcBoundEffVars $ bindTypeVar _funcBoundVars $
-         TFunc (_funcArgs ^.. traverse . _2) (EffList [] _funcLoc) resType _funcLoc
+    ) (_diffWRT d)
+  let fType = bindTypeEffVar _funcBoundEffVars $ bindTypeVar _funcBoundVars $
+         TFunc (_funcArgs ^.. traverse . _2 ++ argTypes ^.. traverse . _2) (EffList [] _funcLoc) _funcResultType _funcLoc
   id <- fresh
   let fn = _funcName ++ "____diff" ++ show id
   setFuncType fn fType
   setEnv (Just _funcName) $ diffMapping . at fn
-  return f{_funcName = fn, _funcArgs = _funcArgs, _funcResultType = resType, _funcExpr = Nothing}
+  return f{_funcName = fn, _funcArgs = _funcArgs ++ argTypes, _funcExpr = Nothing}
 setupDiff d BoundFuncDef{..} = do
   let (_, f) = unsafeUnbind _boundFuncDef
   setupDiff d f
@@ -160,7 +158,7 @@ replaceDiffFuncCalls m =
   where replaceDiffFuncCall expr = transformM replace expr
         replace e@EApp{..} = do
           if _eappDiff then do
-            let f = _eannMetaExpr _eappFunc
+            let f = _eappFunc
             when (isn't _EVar f) $ 
                throwError $ "expected a function name, but got " ++ ppr _eappFunc ++ ppr _eloc
             let n = name2String $ _evarName f
@@ -177,10 +175,10 @@ setupAutoDiffs m env id =
     do
       initDiffDefs m
       >>= setupDiffs
+      >>= replaceDiffFuncCalls
 
 autoDiffs :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 autoDiffs m env id =
   run . runError . runState env . runFresh id $
     do
       genDiffs m
-      >>= replaceDiffFuncCalls
