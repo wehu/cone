@@ -109,8 +109,8 @@ genConstantByType c (TApp (TVar n _) [et, shape] loc)
 genConstantByType _ t = throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)
 
 genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> m Expr
-genDiffForExpr d (EAnnMeta e@EVar{..} t _) = return e{_evarName=s2n (name2String _evarName ++ "____diff")}
-genDiffForExpr d (EAnnMeta a@(EApp _ (EAnnMeta (EVar n _) _ _) targs args _) t loc) = do
+genDiffForExpr d e@EVar{..} = return e{_evarName=s2n (name2String _evarName ++ "____diff")}
+genDiffForExpr d a@(EApp _ (EVar n _) targs args loc) = do
   let fn = name2String n
   f <- getEnv $ diffAdjs . at fn
   forMOf _Nothing f $ \_ ->
@@ -167,16 +167,19 @@ replaceDiffFuncCalls m =
           else return e
         replace e = return e
 
-setupAutoDiffs :: Module -> Env -> Int -> Either String (Env, (Int, Module))
-setupAutoDiffs m env id =
-  run . runError . runState env . runFresh id $
-    do
-      initDiffDefs m
-      >>= setupDiffs
-      >>= replaceDiffFuncCalls
+-- setupAutoDiffs :: Module -> Env -> Int -> Either String (Env, (Int, Module))
+-- setupAutoDiffs m env id =
+--   run . runError . runState env . runFresh id $
+--     do
+--       initDiffDefs m
+--       >>= setupDiffs
+--       >>= replaceDiffFuncCalls
 
 autoDiffs :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 autoDiffs m env id =
   run . runError . runState env . runFresh id $
     do
-      genDiffs m
+      initDiffDefs m
+      >>= setupDiffs
+      >>= replaceDiffFuncCalls
+      >>= genDiffs
