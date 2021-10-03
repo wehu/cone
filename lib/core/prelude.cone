@@ -4,9 +4,15 @@ module core.prelude
 
 fun ____negative<a>(a: a) : a
 
+diff fun ____negative wrt (a) = ____negative
+
 fun ____add<a>(a: a, b:a) : a 
 
-fun ____sub<a>(a: a, b:a) : a 
+diff fun ____add wrt (a, b) = ____add
+
+fun ____sub<a>(a: a, b:a) : a
+
+diff fun ____sub wrt (a) = ____sub
 
 fun ____mul<a>(a: a, b:a) : a
 
