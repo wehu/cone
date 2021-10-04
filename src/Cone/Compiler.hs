@@ -47,6 +47,7 @@ checkAndCompile paths i target = do
   userDataDir <- liftIO coneUserDataDir
   deps <- getImports paths (addExtension i coneEx)
   let pyFn = userDataDir </> target </> addExtension (joinPath $ splitOn "/" i) "py"
+      srcFn = addExtension (dropExtension pyFn) coneEx
       pyTyFn = addExtension (dropExtension pyFn ++ "____t") "py"
       cppHeaderFn = addExtension (dropExtension pyFn) "h"
       cppDeps = map (\i -> userDataDir </> target </> addExtension (joinPath $ splitOn "/" i) "h") deps
@@ -81,6 +82,8 @@ checkAndCompile paths i target = do
       )
       [target]
       ds
+  checkTimeStampAndDo srcFn [coneFn] $ do
+    liftIO $ copyFile coneFn srcFn
 
 -- | Compile a file
 compilePythonWrapper :: [FilePath] -> FilePath -> String -> CompileEnv String
