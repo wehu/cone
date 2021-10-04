@@ -1,12 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-module Cone.Packager where
+module Cone.Packager (installPackage) where
 
 import Cone.Compiler
-import Data.Text
+import Control.Monad
+import Data.List
+import Data.List.Split
+import Data.Text (unpack, pack)
 import NeatInterpolation (trimming)
 import System.Directory
+import System.FilePath
+import System.Process
 
 setupPy :: String -> String
 setupPy pn =
@@ -27,7 +32,7 @@ setup(
     packages=find_packages(include=["$package"]),
     install_requires=['numpy', 'immutables'],
     keywords=['python'],
-    package_data={'${package}':['*.so', '*.cone']}
+    package_data={'${package}':['*.so', '*.cone']},
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",
@@ -39,3 +44,17 @@ setup(
 )
     |]
 
+createSetupPy :: String -> String -> IO String
+createSetupPy target package = do
+  let contents = setupPy package
+  fn <- (\d -> d </> target </> "setup.py") <$> coneUserDataDir
+  writeFile fn contents
+  return fn
+
+installPackage :: String -> String -> IO ()
+installPackage target fn = do
+  let package = dropExtension fn
+  when (target == "python") $ do
+    fn <- createSetupPy target package
+    readProcess target [fn, "install", "--user"] ""
+    return ()

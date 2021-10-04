@@ -9,6 +9,7 @@ where
 import Cone.Compiler
 import Cone.Executor
 import Cone.ModuleLoader
+import Cone.Packager
 import Control.Monad
 import Control.Monad.Except
 import Data.Semigroup ((<>))
@@ -19,6 +20,7 @@ import System.Directory
 import System.Environment
 import System.FilePath
 import System.Info
+import Options.Applicative (command)
 
 data BuildOpts = BuildOpts {inputFiles :: [String], target :: String}
 
@@ -50,6 +52,14 @@ coneOpts =
           ( info
               (buildAndRun <$> buildOpts)
               ( fullDesc <> progDesc "Compile and run cone modules"
+                  <> header "Cone - "
+              )
+          )
+        <> command
+          "install"
+          ( info
+              (buildAndInstall <$> buildOpts)
+              ( fullDesc <> progDesc "Compile and install cone modules"
                   <> header "Cone - "
               )
           )
@@ -115,3 +125,12 @@ dump BuildOpts {..} = do
     case res of
       Left err -> putStrLn err
       Right code -> putStrLn code
+
+buildAndInstall :: BuildOpts -> IO ()
+buildAndInstall BuildOpts {..} = do
+  forM_ inputFiles $ \f -> do
+    paths <- coneSearchPaths f
+    res <- runExceptT $ compile paths f target
+    case res of
+      Left err -> putStrLn err
+      Right code -> installPackage target f
