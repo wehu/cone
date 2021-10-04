@@ -111,10 +111,6 @@ genConstantByType _ t = throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc 
 
 genDiffForExpr :: (Has EnvEff sig m) => Expr -> m Expr
 genDiffForExpr e@EVar{..} = return e{_evarName=s2n (name2String _evarName ++ "____diff")}
-genDiffForExpr a@(EApp False (EVar n _) _ [ELit _ t _, dynShape] _)
-  | name2String n == "data/tensor/full" = do
-  c <- genConstantByType "0" t
-  return a{_eappArgs=[c, dynShape]}
 genDiffForExpr a@(EApp False (EVar n _) targs args loc) = do
   let fn = name2String n
   f <- getEnv $ diffAdjs . at fn
