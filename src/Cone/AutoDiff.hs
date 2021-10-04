@@ -137,7 +137,7 @@ genDiffForExpr c@(ECase _
   dte <- genDiffForExpr te
   dfe <- genDiffForExpr fe
   return c{_ecaseBody=[t{_caseExpr=dte}, f{_caseExpr=dfe}]}
-genDiffForExpr l@ELit{} = return l
+genDiffForExpr l@ELit{..} = genConstantByType "0" _litType
 genDiffForExpr a@EAnn{..} = do
   d <- genDiffForExpr _eannExpr
   return a{_eannExpr=d}
