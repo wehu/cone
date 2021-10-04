@@ -73,7 +73,7 @@ genDiffs m = do
       Just d ->
         if isn't _Just $ _diffAdj d
         then do
-          (\f -> (d ^. diffFunc, f):ds) <$> (setupDiff d f >>= genDiff d)
+          (\f -> (d ^. diffFunc, f):ds) <$> (setupDiff d f >>= genDiff)
         else return ds
       Nothing -> return ds)
     []
@@ -109,29 +109,43 @@ genConstantByType c (TApp (TVar n _) [et, shape] loc)
   return $ EApp False (EVar (s2n "data/tensor/full") loc) [shape, et] [e] loc
 genConstantByType _ t = throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)
 
-genDiffForExpr :: (Has EnvEff sig m) => DiffDef -> Expr -> m Expr
-genDiffForExpr d e@EVar{..} = return e{_evarName=s2n (name2String _evarName ++ "____diff")}
-genDiffForExpr d a@(EApp _ (EVar n _) targs args loc) = do
+genDiffForExpr :: (Has EnvEff sig m) => Expr -> m Expr
+genDiffForExpr e@EVar{..} = return e{_evarName=s2n (name2String _evarName ++ "____diff")}
+genDiffForExpr a@(EApp _ (EVar n _) targs args loc) = do
   let fn = name2String n
   f <- getEnv $ diffAdjs . at fn
   forMOf _Nothing f $ \_ ->
     throwError $ "cannot find diff adj for function " ++ ppr fn ++ ppr loc
-  diffs <- mapM (genDiffForExpr d) args
+  diffs <- mapM genDiffForExpr args
   return $ EApp False (fromJust $ _diffAdj $ fromJust f) targs (args ++ diffs) loc
-genDiffForExpr _ e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
+genDiffForExpr s@ESeq{..} = do
+  es <- mapM genDiffForExpr _eseq
+  return s{_eseq=es}
+genDiffForExpr l@(ELet (PVar v _) e body s loc) = do
+  let vn = name2String v
+      dvn = vn ++ "____diff"
+  de <- genDiffForExpr e
+  db <- genDiffForExpr body
+  let newBody = ELet (PVar (s2n dvn) loc) de db s loc
+  return l{_eletBody=newBody}
+genDiffForExpr w@EWhile{..} = do
+  db <- genDiffForExpr _ewhileBody
+  return w{_ewhileBody=db}
+genDiffForExpr l@ELit{} = return l
+genDiffForExpr e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
 
-genDiff :: (Has EnvEff sig m) => DiffDef -> FuncDef -> m FuncDef
-genDiff d f@FuncDef{} = do
+genDiff :: (Has EnvEff sig m) => FuncDef -> m FuncDef
+genDiff f@FuncDef{} = do
   let loc = _funcLoc f
-  e <- mapM (genDiffForExpr d) (_funcExpr f)
+  e <- mapM genDiffForExpr (_funcExpr f)
   return f{_funcExpr = e}
-genDiff d BoundFuncDef{..} = do
+genDiff BoundFuncDef{..} = do
   let (vs, f) = unsafeUnbind _boundFuncDef
-  f' <- genDiff d f
+  f' <- genDiff f
   return $ BoundFuncDef (bind vs f') _funcLoc
-genDiff d BoundEffFuncDef {..} = do
+genDiff BoundEffFuncDef {..} = do
   let (vs, f) = unsafeUnbind _boundEffFuncDef
-  f' <- genDiff d f
+  f' <- genDiff f
   return $ BoundEffFuncDef (bind vs f') _funcLoc
 
 replaceDiffFuncCalls :: (Has EnvEff sig m) => Module -> m Module
