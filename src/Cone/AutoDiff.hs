@@ -131,7 +131,7 @@ genDiffForExpr l@(ELet (PVar v _) e body s loc) = do
 genDiffForExpr w@EWhile{..} = do
   db <- genDiffForExpr _ewhileBody
   return w{_ewhileBody=db}
-genDiffForExpr c@(ECase cond
+genDiffForExpr c@(ECase _
     [t@(Case (PExpr (ELit "true"  (TPrim Pred _) _) _) _ te _)
     ,f@(Case (PExpr (ELit "false" (TPrim Pred _) _) _) _ fe _)] loc) = do
   dte <- genDiffForExpr te
