@@ -51,7 +51,8 @@ fun test_inline(o : str) : io unit {
 diff fun test2 wrt (a) = test2
 
 fun test3(a : f32) : f32 {
-  sin(a + a * a)
+  val b = a + a * a
+  sin(b)
 }
 
 diff fun test3 wrt (a) 
