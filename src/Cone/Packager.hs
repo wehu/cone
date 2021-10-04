@@ -14,7 +14,7 @@ import System.FilePath
 import System.IO.Temp
 import System.Process
 import System.Exit
-import GHC.IO.Exception (ExitCode(ExitSuccess))
+import GHC.IO.Exception
 
 setupPy :: String -> String
 setupPy pn =
@@ -59,7 +59,7 @@ copyPackageFiles target d package = do
   let dstDir = d </> takeDirectory package
   userDir <- (</> target) <$> coneUserDataDir
   createDirectoryIfMissing True dstDir
-  forM_ [".py", "____t.py", "____c.so"] $ \f ->
+  forM_ [".py", "____t.py", "____c.so", ".cone"] $ \f ->
     copyFile (userDir </> package ++ f) (d </> package ++ f)
   copyFile (userDir </> takeDirectory package </> "__init__.py") (d </> takeDirectory package </> "__init__.py")
 
@@ -73,7 +73,5 @@ installPackage target fn = do
       copyPackageFiles target d package
       ec <- runProcess target [fn, "bdist"] (Just d) Nothing Nothing Nothing Nothing >>= waitForProcess
       when (ec /= ExitSuccess) $ exitWith ec
-      o <- readProcess "tree" [d] ""
-      putStrLn o
       ec <- runProcess target [fn, "install", "--user"] (Just d) Nothing Nothing Nothing Nothing >>= waitForProcess
       when (ec /= ExitSuccess) $ exitWith ec 
