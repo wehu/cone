@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeApplications #-}
 
-module Cone.Compiler (compile, coneUserDataDir) where
+module Cone.Compiler (compile, coneUserDataDir, checkTimeStampAndDo) where
 
 import Cone.CodeGen.Backend
 import Cone.CodeGen.Backend.Cone

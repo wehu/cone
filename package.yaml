@@ -40,6 +40,8 @@ dependencies:
 - process
 - pureMD5
 - utf8-string
+- text
+- neat-interpolation
 
 library:
   source-dirs: src
@@ -66,5 +68,3 @@ tests:
     dependencies:
     - cone
     - hspec
-    - text
-    - neat-interpolation

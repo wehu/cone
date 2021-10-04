@@ -95,12 +95,14 @@ library
     , fused-effects
     , lens
     , mtl
+    , neat-interpolation
     , optparse-applicative
     , parsec
     , prettyprinter
     , process
     , pureMD5
     , split
+    , text
     , unbound-generics
     , utf8-string
   default-language: Haskell2010
@@ -122,12 +124,14 @@ executable cone-exe
     , fused-effects
     , lens
     , mtl
+    , neat-interpolation
     , optparse-applicative
     , parsec
     , prettyprinter
     , process
     , pureMD5
     , split
+    , text
     , unbound-generics
     , utf8-string
   default-language: Haskell2010
