@@ -85,7 +85,8 @@ coneSearchPaths f = do
 
   let coneVersion = showVersion version
   let libPath = takeDirectory (takeDirectory execPath) </> "share" </> arch ++ "-" ++ os ++ "-ghc-" ++ ghcVersion </> "cone-" ++ coneVersion </> "lib"
-  let paths = [takeDirectory f, currentPath, libPath]
+  userDir <- coneUserDataDir
+  let paths = [takeDirectory f, currentPath, libPath, userDir </> "python"]
   return paths
 
 build :: BuildOpts -> IO ()
