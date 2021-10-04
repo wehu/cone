@@ -71,8 +71,6 @@ checkAndCompile paths i target = do
   checkTimeStampAndDo pyFn [coneFn] $ do
     o <- compilePythonWrapper paths coneFn target
     liftIO $ writeFile pyFn o
-
-  checkTimeStampAndDo pyFn [coneFn] $ do
     let ds = splitOn "/" i
     foldM_
       ( \s d -> do
@@ -82,6 +80,7 @@ checkAndCompile paths i target = do
       )
       [target]
       ds
+  
   checkTimeStampAndDo srcFn [coneFn] $ do
     liftIO $ copyFile coneFn srcFn
 
