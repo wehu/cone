@@ -42,6 +42,7 @@ dependencies:
 - utf8-string
 - text
 - neat-interpolation
+- temporary
 
 library:
   source-dirs: src

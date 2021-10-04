@@ -11,7 +11,10 @@ import Data.Text (unpack, pack)
 import NeatInterpolation (trimming)
 import System.Directory
 import System.FilePath
+import System.IO.Temp
 import System.Process
+import System.Exit
+import GHC.IO.Exception (ExitCode(ExitSuccess))
 
 setupPy :: String -> String
 setupPy pn =
@@ -29,10 +32,10 @@ setup(
     author="Cone",
     author_email="<mail@cone.com>",
     description=DESCRIPTION,
-    packages=find_packages(include=["$package"]),
+    packages=find_packages(),
     install_requires=['numpy', 'immutables'],
     keywords=['python'],
-    package_data={'${package}':['*.so', '*.cone']},
+    package_data={'${takeDirectory package}':['*.so', '*.cone']},
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",
@@ -44,17 +47,33 @@ setup(
 )
     |]
 
-createSetupPy :: String -> FilePath -> IO FilePath
-createSetupPy target package = do
+createSetupPy :: FilePath -> FilePath -> IO FilePath
+createSetupPy d package = do
   let contents = setupPy package
-  fn <- (\d -> d </> target </> "setup.py") <$> coneUserDataDir
+      fn = d </> "setup.py"
   writeFile fn contents
   return fn
+
+copyPackageFiles :: String -> FilePath -> FilePath -> IO ()
+copyPackageFiles target d package = do
+  let dstDir = d </> takeDirectory package
+  userDir <- (</> target) <$> coneUserDataDir
+  createDirectoryIfMissing True dstDir
+  forM_ [".py", "____t.py", "____c.so"] $ \f ->
+    copyFile (userDir </> package ++ f) (d </> package ++ f)
+  copyFile (userDir </> takeDirectory package </> "__init__.py") (d </> takeDirectory package </> "__init__.py")
 
 installPackage :: String -> FilePath -> IO ()
 installPackage target fn = do
   let package = dropExtension fn
-  when (target == "python") $ do
-    fn <- createSetupPy target package
-    readProcess target [fn, "install", "--user"] ""
-    return ()
+  withSystemTempDirectory "cone" $ \d -> do
+    putStrLn d
+    when (target == "python") $ do
+      fn <- createSetupPy d package
+      copyPackageFiles target d package
+      ec <- runProcess target [fn, "bdist"] (Just d) Nothing Nothing Nothing Nothing >>= waitForProcess
+      when (ec /= ExitSuccess) $ exitWith ec
+      o <- readProcess "tree" [d] ""
+      putStrLn o
+      ec <- runProcess target [fn, "install", "--user"] (Just d) Nothing Nothing Nothing Nothing >>= waitForProcess
+      when (ec /= ExitSuccess) $ exitWith ec 
