@@ -44,14 +44,14 @@ setup(
 )
     |]
 
-createSetupPy :: String -> String -> IO String
+createSetupPy :: String -> FilePath -> IO FilePath
 createSetupPy target package = do
   let contents = setupPy package
   fn <- (\d -> d </> target </> "setup.py") <$> coneUserDataDir
   writeFile fn contents
   return fn
 
-installPackage :: String -> String -> IO ()
+installPackage :: String -> FilePath -> IO ()
 installPackage target fn = do
   let package = dropExtension fn
   when (target == "python") $ do
