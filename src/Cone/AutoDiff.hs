@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
-module Cone.AutoDiff where
+module Cone.AutoDiff (autoDiffs) where
 
 import Cone.Env
 import Cone.TypeChecker.Type

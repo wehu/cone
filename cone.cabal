@@ -75,6 +75,7 @@ library
       Cone.Env
       Cone.Executor
       Cone.ModuleLoader
+      Cone.Packager
       Cone.Parser.AST
       Cone.Parser.Lexer
       Cone.Parser.Parser
