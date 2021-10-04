@@ -132,6 +132,24 @@ genDiffForExpr w@EWhile{..} = do
   db <- genDiffForExpr _ewhileBody
   return w{_ewhileBody=db}
 genDiffForExpr l@ELit{} = return l
+genDiffForExpr a@EAnn{..} = do
+  d <- genDiffForExpr _eannExpr
+  return a{_eannExpr=d}
+genDiffForExpr a@EAnnMeta{..} = do
+  d <- genDiffForExpr _eannMetaExpr
+  return a{_eannMetaExpr=d}
+genDiffForExpr b@EBoundTypeVars{..} = do
+  let (vs, e) = unsafeUnbind _eboundTypeVars
+  d <- genDiffForExpr e
+  return b{_eboundTypeVars=bind vs d}
+genDiffForExpr b@EBoundEffTypeVars{..} = do
+  let (vs, e) = unsafeUnbind _eboundEffTypeVars
+  d <- genDiffForExpr e
+  return b{_eboundEffTypeVars=bind vs d}
+genDiffForExpr b@EBoundVars{..} = do
+  let (vs, e) = unsafeUnbind _eboundVars
+  d <- genDiffForExpr e
+  return b{_eboundVars=bind vs d}
 genDiffForExpr e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
 
 genDiff :: (Has EnvEff sig m) => FuncDef -> m FuncDef
