@@ -37,5 +37,5 @@ ____result = cos(a)
 }
 
 impl fun cos____diff(a: f32, da: f32) : f32 {
-  sin(a) * da
+  - sin(a) * da
 }
