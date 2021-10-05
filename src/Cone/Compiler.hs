@@ -65,8 +65,8 @@ checkAndCompile paths i target = do
     liftIO $ writeFile cppHeaderFn o
 
   checkTimeStampAndDo cppLibFn (coneFn : cppDeps) $ do
-    compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
-    return ()
+    o <- compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
+    liftIO $ putStrLn o
 
   checkTimeStampAndDo pyFn [coneFn] $ do
     o <- compilePythonWrapper paths coneFn target
