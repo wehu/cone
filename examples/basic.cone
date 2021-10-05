@@ -8,150 +8,148 @@ import control.state
 import control.nodet
 import core.math
 
-/*  fdfjld
-dfdljfjdl
-
+/*  
+comments here
 */
 
 type A {
-   A(i32)
-   B(i32)
+    A(i32)
+    B(i32)
 }
 
 fun test() : state<i32> unit {
-   val a = get<i32>()
-   set(a+1)
+    val a = get<i32>()
+    set(a+1)
 }
 
-/* dfdljfjdl
-fdf */
+/* comments here */
 
 fun test2<a>(a: a) : a {
-   a
+    a
 }
 
 impl fun test2(a:i32) : i32 {
-   a + 33
+    a + 33
 }
 
 fun test_branch(a:i32) : [nodet<i32>] i32 {
-   var b = 10
-   if (branch(a)) {
-      b = b + a + 1
-   } else {
-      b = b + a + 2
-   }
-   b
+    var b = 10
+    if (branch(a)) {
+        b = b + a + 1
+    } else {
+        b = b + a + 2
+    }
+    b
 }
 
 fun test_inline(o : str) : io unit {
-   inline_python<unit>("print(o)")
+    inline_python<unit>("print(o)")
 }
 
 diff fun test2 wrt (a) = test2
 
 fun test3(a : f32) : f32 {
-  val b = a + a * a * 2.0
-  sin(b)
+   val b = a + a * a * 2.0
+   sin(b)
 }
 
 diff fun test3 wrt (a) = auto 
 
 fun main() : io unit {
-  var a = 0
-  val A(b) = A(2)
+   var a = 0
+   val A(b) = A(2)
 
-  val l = [1, 2, 3]
+   val l = [1, 2, 3]
 
-  print(l.length(l))
+   print(l.length(l))
 
-  val t = (2, "string", 0.2+0.1, [1]) : (i32, str, f32, [i32])
+   val t = (2, "string", 0.2+0.1, [1]) : (i32, str, f32, [i32])
 
-  val (t0, t1, 0.1+0.2, t3|r) = t
+   val (t0, t1, 0.1+0.2, t3|r) = t
 
-  print(t3)
+   print(t3)
 
-  print(sin(0.2))
+   print(sin(0.2))
 
-  if (l != []) {
-     print("aaa")
-  } else {
-     print("bbb")
-  }
+   if (l != []) {
+       print("aaa")
+   } else {
+       print("bbb")
+   }
 
-  val ll = l.map(l, fn(a:i32) : io i32{
-     print(a)
-     a + 1
-  })
+   val ll = l.map(l, fn(a:i32) : io i32{
+       print(a)
+       a + 1
+   })
 
-  val m = m.empty<i32, i32>()
+   val m = m.empty<i32, i32>()
 
-  print(m.has(m.set(m,3,3), 3))
-  print(m.get(m,3))
+   print(m.has(m.set(m,3,3), 3))
+   print(m.get(m,3))
 
-  print(m.mapv(m.set(m,3,3), fn (a:i32) : io i32 { 
-    print(a)
-    a+2 
-  }))
+   print(m.mapv(m.set(m,3,3), fn (a:i32) : io i32 { 
+       print(a)
+       a+2 
+   }))
 
-  val s0 = s.empty() : s.intset
-  print(s.insert(s0, 4))
+   val s0 = s.empty() : s.intset
+   print(s.insert(s0, 4))
 
-  val t0 = t.full<@[4, 4+2], f32>(0.1, [])
-  val t1 = t.full<@[6, 2]>(1.0, [])
+   val t0 = t.full<@[4, 4+2], f32>(0.1, [])
+   val t1 = t.full<@[6, 2]>(1.0, [])
 
-  val t3 = t.full<@[4, ?, ?]>(2.0, [4, 4])
-  print(t3)
+   val t3 = t.full<@[4, ?, ?]>(2.0, [4, 4])
+   print(t3)
 
-  print(t.matmul(t0, t1) + t.full<@[4, 2]>(0.9, []))
+   print(t.matmul(t0, t1) + t.full<@[4, 2]>(0.9, []))
 
-  print(sin(t1))
+   print(sin(t1))
 
-  print(handle nodet<i32> {
-     handle state<i32> {
-        test()
-        while (a < 10) {
-          test()
-          a = a + 1
-        }
-        test()
-        test_branch(50)
-     } with {
-        fun get() {
-           resume(a)
-        }
-        fun set(v:i32) {
-           a = v
-           print(a)
-           resume(unit)
-        }
-     }
-  } with {
-     fun branch(a:i32) {
-        resume(false) + resume(true)
-     }
-  })
-  print(if a > 10 {
-     print(10000)
-     100
-  } else {
-     print(1000000)
-     1000
-  })
-  while a < 100 {
-    print(a)
-    a = a + 1
-  }
+   print(handle nodet<i32> {
+       handle state<i32> {
+           test()
+           while (a < 10) {
+               test()
+               a = a + 1
+           }
+           test()
+           test_branch(50)
+       } with {
+           fun get() {
+               resume(a)
+           }
+           fun set(v:i32) {
+               a = v
+               print(a)
+               resume(unit)
+           }
+       }
+   } with {
+       fun branch(a:i32) {
+           resume(false) + resume(true)
+       }
+   })
+   print(if a > 10 {
+       print(10000)
+       100
+   } else {
+       print(1000000)
+       1000
+   })
+   while a < 100 {
+       print(a)
+       a = a + 1
+   }
 
-  case A(200) {
-     A(a) -> {print(a)}
-     B(3) -> {print("bbbb")}
-  }
+   case A(200) {
+       A(a) -> {print(a)}
+       B(3) -> {print("bbbb")}
+   }
 
-  print(diff test3(2.0, 1.0))
-  val f = fn (bbb:i32) : i32 { bbb + 1 }
-  print(f(a))
-  print(a)
-  test_inline("test")
+   print(diff test3(2.0, 1.0))
+   val f = fn (bbb:i32) : i32 { bbb + 1 }
+   print(f(a))
+   print(a)
+   test_inline("test")
 }
 
