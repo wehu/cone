@@ -14,12 +14,12 @@ import System.FilePath
 import System.IO.Temp
 import System.Process
 import System.Exit
-import GHC.IO.Exception
 
 setupPy :: String -> String
 setupPy pn =
-  let package = pack $ join (intersperse "_" (splitOn "/" pn))
-      dir = pack $ takeDirectory pn
+  let ps = splitOn "/" pn
+      package = pack $ join (intersperse "." (if length ps <= 1 then ps else init ps))
+      dir = pack $ if length ps <= 1 then pn else takeDirectory pn
    in unpack [trimming|
 from setuptools import setup, find_packages
 
@@ -74,8 +74,8 @@ installPackage target fn = do
     when (target == "python") $ do
       fn <- createSetupPy d package
       copyPackageFiles target d package
-      ec <- runC d [fn, "bdist"]
-      when (ec /= ExitSuccess) $ exitWith ec
-      ec <- runC d [fn, "install", "--user"]
-      when (ec /= ExitSuccess) $ exitWith ec
-  where runC d args = runProcess target args (Just d) Nothing Nothing Nothing Nothing >>= waitForProcess
+      runC d [fn, "bdist"]
+      runC d [fn, "install", "--user"]
+  where runC d args = do
+          ec <- runProcess target args (Just d) Nothing Nothing Nothing Nothing >>= waitForProcess
+          when (ec /= ExitSuccess) $ exitWith ec
