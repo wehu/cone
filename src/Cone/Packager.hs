@@ -18,7 +18,8 @@ import GHC.IO.Exception
 
 setupPy :: String -> String
 setupPy pn =
-  let package = pack pn
+  let package = pack $ join (intersperse "_" (splitOn "/" pn))
+      dir = pack $ takeDirectory pn
    in unpack [trimming|
 from setuptools import setup, find_packages
 
@@ -32,10 +33,11 @@ setup(
     author="Cone",
     author_email="<mail@cone.com>",
     description=DESCRIPTION,
-    packages=find_packages(),
+    packages=['${package}'],
     install_requires=['numpy', 'immutables'],
     keywords=['python'],
-    package_data={'${takeDirectory package}':['*.so', '*.cone']},
+    package_dir={'${package}':'${dir}'},
+    package_data={'${package}':['*.so', '*.cone']},
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",
@@ -51,6 +53,7 @@ createSetupPy :: FilePath -> FilePath -> IO FilePath
 createSetupPy d package = do
   let contents = setupPy package
       fn = d </> "setup.py"
+  -- putStrLn contents
   writeFile fn contents
   return fn
 
