@@ -121,6 +121,7 @@ tokens :-
   <0> "alias"                               { mkL Alias }
   <0> "diff"                                { mkL Diff }
   <0> "wrt"                                 { mkL WRT }
+  <0> "auto"                                { mkL Auto }
   <0> @decimal 
         | 0[oO] @octal
         | 0[xX] @hexadecimal		            { mkL LInt }
@@ -214,6 +215,7 @@ data Tok =
     Alias           |
     Diff            |
     WRT             |
+    Auto            |
     Num             |
     Question        |
     EOF             |

@@ -187,6 +187,8 @@ kAlias = keyword L.Alias
 
 kDiff = keyword L.Diff
 
+kAuto = keyword L.Auto
+
 kWrt = keyword L.WRT
 
 tokenP :: Monoid a => Prism' L.Tok a -> Parser String
@@ -601,7 +603,8 @@ diffDef :: Parser A.DiffDef
 diffDef =
   A.DiffDef <$ kDiff <* kFunc <*> namePath <* kWrt
     <*> parens (P.sepBy1 ident comma)
-    <*> P.optionMaybe (assign_ *> (A.EVar <$> (s2n <$> namePath)) <*> getPos)
+    <* assign_ <*> (kAuto $> Nothing
+                    P.<|> Just <$> (A.EVar <$> (s2n <$> namePath) <*> getPos))
     <*> getPos P.<?> "diff rule"
 
 topStmt :: Parser A.TopStmt

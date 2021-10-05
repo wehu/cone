@@ -55,7 +55,7 @@ fun test3(a : f32) : f32 {
   sin(b)
 }
 
-diff fun test3 wrt (a) 
+diff fun test3 wrt (a) = auto 
 
 fun main() : io unit {
   var a = 0
