@@ -2,6 +2,6 @@ module control.state
 
 // state effect
 effect state<a> {
-   fun get() : a
-   fun set(a) : unit
+    fun get() : a
+    fun set(a) : unit
 }

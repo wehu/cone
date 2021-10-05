@@ -6,18 +6,18 @@ fun sin<a>(a : a) : a
 diff fun sin wrt (a) = sin____diff
 
 fun sin____diff<a>(a: a, da: a) : a {
-  cos(a) * da
+    cos(a) * da
 }
 
 impl fun sin(a : f32) : f32 {
-  inline_python<f32>("""
+    inline_python<f32>("""
 from math import sin
 ____result = sin(a)
 """)
 }
 
 impl fun sin____diff(a: f32, da: f32) : f32 {
-  cos(a) * da
+    cos(a) * da
 }
 
 // cos
@@ -26,16 +26,16 @@ fun cos<a>(a : a) : a
 diff fun cos wrt(a) = cos____diff
 
 fun cos____diff<a>(a: a, da: a) : a {
-  sin(a) * da
+    sin(a) * da
 }
 
 impl fun cos(a : f32) : f32 {
-  inline_python<f32>("""
+    inline_python<f32>("""
 from math import cos
 ____result = cos(a)
 """)
 }
 
 impl fun cos____diff(a: f32, da: f32) : f32 {
-  - sin(a) * da
+    - sin(a) * da
 }

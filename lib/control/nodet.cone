@@ -2,5 +2,5 @@ module control.nodet
 
 // nodet effect
 effect nodet<a> {
-  fun branch(a) : bool
+    fun branch(a) : bool
 }

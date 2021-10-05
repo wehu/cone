@@ -7,7 +7,7 @@ fun ____negative<a>(a: a) : a
 diff fun ____negative wrt (a) = ____negative_diff
 
 fun ____negative_diff<a>(a: a, da: a) : a {
-  - da
+    - da
 } 
 
 fun ____add<a>(a: a, b:a) : a 
@@ -15,7 +15,7 @@ fun ____add<a>(a: a, b:a) : a
 diff fun ____add wrt (a, b) = ____add_diff
 
 fun ____add_diff<a>(a: a, b:a, da: a, db: a) : a {
-  da + db
+    da + db
 }
 
 fun ____sub<a>(a: a, b:a) : a
@@ -23,7 +23,7 @@ fun ____sub<a>(a: a, b:a) : a
 diff fun ____sub wrt (a) = ____sub_diff
 
 fun ____sub_diff<a>(a: a, b: a, da: a, db: a) : a {
-  da - db
+    da - db
 }
 
 fun ____mul<a>(a: a, b:a) : a
@@ -31,7 +31,7 @@ fun ____mul<a>(a: a, b:a) : a
 diff fun ____mul wrt (a, b) = ____mul_diff
 
 fun ____mul_diff<a>(a: a, b: a, da: a, db: a) : a {
-  a * db + da * b
+    a * db + da * b
 }
 
 fun ____div<a>(a: a, b:a) : a
@@ -39,7 +39,7 @@ fun ____div<a>(a: a, b:a) : a
 diff fun ____div wrt (a, b) = ____div_diff
 
 fun ____div_diff<a>(a: a, b: a, da: a, db: a) : a {
-  (da * b - a * db) / (b * b)
+    (da * b - a * db) / (b * b)
 }
 
 fun ____mod<a>(a: a, b:a) : a
@@ -83,12 +83,12 @@ type max<a:num, a:num>
 type min<a:num, a:num>
 
 type list<a> {
-  nil
-  cons(a, list<a>)
+    nil
+    cons(a, list<a>)
 }
 
 type pair<a, b> {
-  pair(a, b)
+    pair(a, b)
 }
 
 // inline python
@@ -98,10 +98,10 @@ fun inline_python<a>(code:str) : a
 // python effect
 
 effect python {
-  fun run_python<a>(str) : a
+    fun run_python<a>(str) : a
 }
 
 // io effect
 effect io {
-  fun print<a>(a) : unit
+    fun print<a>(a) : unit
 }
