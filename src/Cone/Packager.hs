@@ -71,7 +71,8 @@ installPackage target fn = do
     when (target == "python") $ do
       fn <- createSetupPy d package
       copyPackageFiles target d package
-      ec <- runProcess target [fn, "bdist"] (Just d) Nothing Nothing Nothing Nothing >>= waitForProcess
+      ec <- runC d [fn, "bdist"]
       when (ec /= ExitSuccess) $ exitWith ec
-      ec <- runProcess target [fn, "install", "--user"] (Just d) Nothing Nothing Nothing Nothing >>= waitForProcess
-      when (ec /= ExitSuccess) $ exitWith ec 
+      ec <- runC d [fn, "install", "--user"]
+      when (ec /= ExitSuccess) $ exitWith ec
+  where runC d args = runProcess target args (Just d) Nothing Nothing Nothing Nothing >>= waitForProcess
