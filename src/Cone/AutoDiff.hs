@@ -52,8 +52,8 @@ setupDiff d f@FuncDef{..} = do
     ) (_diffWRT d)
   let fType = bindTypeEffVar _funcBoundEffVars $ bindTypeVar _funcBoundVars $
          TFunc (_funcArgs ^.. traverse . _2 ++ argTypes ^.. traverse . _2) (EffList [] _funcLoc) _funcResultType _funcLoc
-  id <- fresh
-  let fn = _funcName ++ "____diff" ++ show id
+  -- id <- fresh
+  let fn = _funcName ++ "____diff" -- ++ show id
   setFuncType fn fType
   -- setEnv (Just _funcName) $ diffMapping . at fn
   return f{_funcName = fn, _funcArgs = _funcArgs ++ argTypes}
