@@ -27,7 +27,7 @@ ____result = m.get(k)
 """)
 }
 
-fun set<k, v>(m : map<k, v>, k : k, v : k) : map<k, v>  {
+fun set<k, v>(m : map<k, v>, k : k, v : v) : map<k, v>  {
     inline_python<map<k, v>>("""
 ____result = m.set(k, v)
 """)
