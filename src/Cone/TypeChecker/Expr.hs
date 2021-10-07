@@ -121,14 +121,14 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
   let fn = name2String fn'
   impls <- getFuncImpls fn
   impls <- findSuperImpls impls >>= findBestImpls
-  if L.length impls == 1
-    then return $ EAnnMeta (head impls ^. _1) t loc
+  newFn <- if L.length impls == 1
+    then return $ name2String $ _evarName $ head impls ^. _1 -- return $ EAnnMeta (head impls ^. _1) t loc
     else
       if L.length impls > 1
         then throwError $ "ambiguous implementations for " ++ fn ++ ppr impls ++ ppr loc
-        else do
-          fn' <- getSpecializedFunc fn t
-          return $ EAnnMeta (EVar (s2n fn') loc) t loc
+        else return fn
+  newFn <- getSpecializedFunc newFn t
+  return $ EAnnMeta (EVar (s2n newFn) loc) t loc
   where
     findSuperImpls impls =
       foldM
