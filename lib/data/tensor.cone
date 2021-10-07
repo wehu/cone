@@ -50,17 +50,9 @@ ____result = sin(a)
 """)
 }
 
-impl fun sin____diff<shape:@[num]>(a: tensor<f32, shape>, da: tensor<f32, shape>) : tensor<f32, shape> {
-    cos(a) * da
-}
-
 impl fun cos<shape:@[num]>(a : tensor<f32, shape>) : tensor<f32, shape> {
     inline_python<tensor<f32, shape>>("""
 from numpy import cos
 ____result = cos(a)
 """)
-}
-
-impl fun cos____diff<shape:@[num]>(a: tensor<f32, shape>, da: tensor<f32, shape>) : tensor<f32, shape> {
-    - sin(a) * da
 }

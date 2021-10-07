@@ -33,6 +33,88 @@ typeOfExpr :: (Has EnvEff sig m) => Expr -> m Type
 typeOfExpr (EAnnMeta _ t _) = return t
 typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr e
 
+-- | Check a function type
+checkFuncType :: (Has EnvEff sig m) => FuncDef -> m FuncDef
+checkFuncType f = underScope $ do
+  let pos = f ^. funcLoc
+      star = KStar pos
+      btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
+      bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
+  -- add all bound type variables into env
+  forM_ btvars $ \(n, k) -> setEnv (Just k) $ types . at n
+  -- add all bound eff type variables into env
+  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
+  -- add function type into env
+  mapM_
+    (uncurry setFuncType)
+    (f ^. funcArgs)
+  case _funcExpr f of
+    Just e -> do
+      -- infer function expression type
+      eWithType <- inferExprType e
+      eType <- typeOfExpr eWithType
+      resultType <- inferType $ _funcResultType f
+      checkTypeMatch eType resultType
+      effType <- inferExprEffType eWithType
+      let fEff = _funcEffectType f
+      restEffs <- removeEff effType fEff
+      -- check if all effects are handled or not
+      if aeq restEffs (EffList [] pos)
+        then return f {_funcExpr = Just eWithType}
+        else throwError $ "func result effs mismatch: " ++ ppr effType ++ " vs " ++ ppr fEff ++ ppr pos
+    Nothing -> return f
+
+-- | Check a function definiton
+checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m FuncDef
+checkFuncDef f = underScope $ do
+  setEnv M.empty typeBinds
+  setEnv M.empty kindBinds
+  setEnv M.empty effTypeBinds
+  setEnv M.empty effKindBinds
+  let pos = f ^. funcLoc
+      ft = funcDefType f
+  k <- inferTypeKind ft
+  checkTypeKind k
+  checkFuncType f
+
+getSpecializedFunc :: (Has EnvEff sig m) => String -> Type -> m String
+getSpecializedFunc fn t = 
+  if isConcreteType t then do
+    let fSel = last $ splitOn "/" $ uniqueFuncImplName fn t
+    f <- getEnv $ specializedFuncs . at fSel
+    case f of
+      Nothing -> do
+        fdef <- getEnv $ funcDefs . at fn
+        case fdef of
+          Just fdef -> 
+            if isn't _Nothing (_funcExpr fdef)
+            then do
+              bs <- foldM (\s (v, _) -> do
+                  vn <- freeVarName <$> fresh
+                  return $ s ++ [(v, TVar vn (_tloc t))]) [] (_funcBoundVars fdef)
+              effBs <- foldM (\s v -> do
+                  vn <- freeEffVarName <$> fresh
+                  return $ s ++ [(v, EffVar vn (_tloc t))]) [] (_funcBoundEffVars fdef)
+              let newFdef = substs effBs $ substs bs fdef
+                  gt' = TFunc (_funcArgs newFdef ^.. traverse . _2) (_funcEffectType newFdef) (_funcResultType newFdef) (_tloc t)
+              gt <- inferType gt'
+              ut <- unbindType t
+              binds <- collectVarBindings False gt ut
+              checkVarBindings binds
+              bindEffs <- collectEffVarBindings False (_tfuncEff gt) (_tfuncEff ut)
+              checkEffVarBindings bindEffs
+              let f' = (substs bindEffs $ substs binds newFdef){_funcName = fSel, _funcBoundEffVars=[], _funcBoundVars=[]}
+              setEnv (Just t) $ funcs . at fSel
+              setEnv (Just t) $ specializedFuncTypes . at fSel
+              setEnv (Just f') $ specializedFuncs . at fSel
+              f'' <- checkFuncDef f'
+              setEnv (Just f'') $ specializedFuncs . at fSel
+              return fSel
+            else return fn
+          Nothing -> return fn
+      Just _ -> return fSel
+    else return fn
+
 -- | Select a function implementation based on type
 selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
 selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
@@ -45,8 +127,8 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
       if L.length impls > 1
         then throwError $ "ambiguous implementations for " ++ fn ++ ppr impls ++ ppr loc
         else do
-          getFuncType loc fn
-          return e
+          fn' <- getSpecializedFunc fn t
+          return $ EAnnMeta (EVar (s2n fn') loc) t loc
   where
     findSuperImpls impls =
       foldM

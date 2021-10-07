@@ -19,7 +19,9 @@ import Control.Lens
 import Control.Lens.Plated
 import Control.Monad
 import qualified Data.Map as M
+import qualified Data.List as L
 import Data.Maybe
+import Data.Map.Merge.Strict
 import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
@@ -48,6 +50,8 @@ type EffKindBinds = M.Map String EffKind
 
 type DiffAdjs = M.Map String DiffDef
 
+type FuncDefs = M.Map String FuncDef
+
 -- | The environment
 data Env = Env
   { _types :: TypeKinds,
@@ -61,7 +65,10 @@ data Env = Env
     _kindBinds :: KindBinds,
     _effTypeBinds :: EffTypeBinds,
     _effKindBinds :: EffKindBinds,
-    _diffAdjs :: DiffAdjs
+    _diffAdjs :: DiffAdjs,
+    _funcDefs :: FuncDefs,
+    _specializedFuncs :: FuncDefs,
+    _specializedFuncTypes :: ExprTypes
   }
   deriving (Show)
 
@@ -80,7 +87,10 @@ initialEnv =
       _kindBinds = M.empty,
       _effTypeBinds = M.empty,
       _effKindBinds = M.empty,
-      _diffAdjs = M.empty
+      _diffAdjs = M.empty,
+      _funcDefs = M.empty,
+      _specializedFuncs = M.empty,
+      _specializedFuncTypes = M.empty
     }
 
 type EnvEff = Eff Env String
@@ -116,7 +126,15 @@ underScope f = do
   kbs <- getEnv kindBinds
   ebs <- getEnv effTypeBinds
   ekbs <- getEnv effKindBinds
-  put env {_typeBinds = tbs, _kindBinds = kbs, _effTypeBinds = ebs, _effKindBinds = ekbs}
+  sfs <- getEnv specializedFuncs
+  sfts <- getEnv specializedFuncTypes
+  let g1 = mapMaybeMissing $ \k v -> Just v
+      g2 = mapMaybeMissing $ \k v -> Just v
+      f = zipWithMaybeMatched $ \k v1 v2 -> Just v1
+  put env {_typeBinds = tbs, _kindBinds = kbs, _effTypeBinds = ebs, _effKindBinds = ekbs, 
+           _specializedFuncs=sfs,
+           _specializedFuncTypes=sfts,
+           _funcs = merge g1 g2 f (_funcs env) sfts}
   return res
 
 -- | Add effect interface into env

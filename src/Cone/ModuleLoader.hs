@@ -123,12 +123,14 @@ importModules cache paths m loaded = do
                 effIntfConflicts = merge g1' g2' f' (oldEnv ^. effIntfs) (env ^. effIntfs)
                 funcConflicts = merge g1' g2' f' (oldEnv ^. funcs) (env ^. funcs)
                 diffAdjConflicts = merge g1' g2' f' (oldEnv ^. diffAdjs) (env ^. diffAdjs)
+                funcDefConflicts = merge g1' g2' f' (oldEnv ^. funcDefs) (env ^. funcDefs)
             unless (all (uncurry aeq) typeConflicts) $ throwError $ "there are type conflicts: " ++ show typeConflicts
             unless (all (uncurry aeq) typeAliasConflicts) $ throwError $ "there are type alias conflicts: " ++ show typeAliasConflicts
             unless (all (uncurry aeq) effConflicts) $ throwError $ "there are eff conflicts: " ++ show effConflicts
             unless (all (uncurry aeq) effIntfConflicts) $ throwError $ "there are eff inteface conflicts: " ++ show effIntfConflicts
             unless (all (uncurry aeq) funcConflicts) $ throwError $ "there are function conflicts: " ++ show funcConflicts
             unless (all (uncurry aeq) diffAdjConflicts) $ throwError $ "there are diff rule conflicts: " ++ show diffAdjConflicts
+            unless (all (uncurry aeq) funcDefConflicts) $ throwError $ "there are func definition conflicts: " ++ show funcDefConflicts
             let g1 = mapMaybeMissing $ \k v -> Just v
                 g2 = mapMaybeMissing $ \k v -> Just v
                 f = zipWithMaybeMatched $ \k v1 v2 -> Just v1
@@ -141,7 +143,8 @@ importModules cache paths m loaded = do
                     _effIntfs = merge g1 g2 f (oldEnv ^. effIntfs) (env ^. effIntfs),
                     _funcs = merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs),
                     _funcImpls = merge g1 g2 mergeImpls (oldEnv ^. funcImpls) (env ^. funcImpls),
-                    _diffAdjs  = merge g1 g2 f (oldEnv ^. diffAdjs) (env ^. diffAdjs)
+                    _diffAdjs  = merge g1 g2 f (oldEnv ^. diffAdjs) (env ^. diffAdjs),
+                    _funcDefs  = merge g1 g2 f (oldEnv ^. funcDefs) (env ^. funcDefs)
                   },
                 id,
                 m,

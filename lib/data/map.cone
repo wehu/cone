@@ -68,9 +68,10 @@ fun mapkv<ka, kb, va, vb>[e](m : map<ka, va>, f : (ka, va) -> e (kb, vb)) : e ma
         empty()
     } else {
         val k = first(m)
-        val v = get(m, k)
+        val v = get(m, k) : va
         val m_new = del(m, k)
         val (k_new, v_new) = f(k, v)
         set(mapkv(m_new, f), k_new, v_new)
     }
 }
+

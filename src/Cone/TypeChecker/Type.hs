@@ -35,6 +35,13 @@ getKindOfTVar n defaultK = do
       setEnv (Just k) $ kindBinds . at n
       return k
 
+isConcreteType :: Type -> Bool
+isConcreteType t =
+  let vs = t ^.. fv :: [TVar]
+      es = t ^.. fv :: [EffVar]
+   in all (\v -> notElem '/' (name2String v)) vs &&
+      all (\v -> notElem '/' (name2String v)) es
+
 -- | Infer type's kind
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind
 inferTypeKind a@TApp {..} = do
@@ -994,3 +1001,5 @@ setFuncImpl prefix m impl = do
       i = EVar (s2n sel) loc
   addFuncImpl intfn i t
   return impl {_implFunDef = funcD {_funcName = fn}}
+
+

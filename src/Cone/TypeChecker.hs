@@ -301,55 +301,23 @@ initFuncDef prefix f = do
   forMOf _Just oft $ \oft ->
     throwError $ "function redefine: " ++ fn ++ ppr pos
   setEnv (Just ft) $ funcs . at fn
+  setEnv (Just f{_funcName = fn}) $ funcDefs . at fn
   return f {_funcName = fn}
 
 -- | Initialize all function definitons
 initFuncDefs :: (Has EnvEff sig m) => Module -> m Module
 initFuncDefs m = mapMOf (topStmts . traverse . _FDef) (initFuncDef $ m ^. moduleName) m
 
--- | Check a function type
-checkFuncType :: (Has EnvEff sig m) => FuncDef -> m FuncDef
-checkFuncType f = underScope $ do
-  let pos = f ^. funcLoc
-      star = KStar pos
-      btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
-      bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
-  -- add all bound type variables into env
-  forM_ btvars $ \(n, k) -> setEnv (Just k) $ types . at n
-  -- add all bound eff type variables into env
-  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
-  -- add function type into env
-  mapM_
-    (uncurry setFuncType)
-    (f ^. funcArgs)
-  case _funcExpr f of
-    Just e -> do
-      -- infer function expression type
-      eWithType <- inferExprType e
-      eType <- typeOfExpr eWithType
-      resultType <- inferType $ _funcResultType f
-      checkTypeMatch eType resultType
-      effType <- inferExprEffType eWithType
-      let fEff = _funcEffectType f
-      restEffs <- removeEff effType fEff
-      -- check if all effects are handled or not
-      if aeq restEffs (EffList [] pos)
-        then return f {_funcExpr = Just eWithType}
-        else throwError $ "func result effs mismatch: " ++ ppr effType ++ " vs " ++ ppr fEff ++ ppr pos
-    Nothing -> return f
+-- | Initializa function definition
+addFuncDef :: (Has EnvEff sig m) =>  FuncDef -> m FuncDef
+addFuncDef f = do
+  let fn = f ^. funcName
+  setEnv (Just f) $ funcDefs . at fn
+  return f
 
--- | Check a function definiton
-checkFuncDef :: (Has EnvEff sig m) => FuncDef -> m FuncDef
-checkFuncDef f = underScope $ do
-  setEnv M.empty typeBinds
-  setEnv M.empty kindBinds
-  setEnv M.empty effTypeBinds
-  setEnv M.empty effKindBinds
-  let pos = f ^. funcLoc
-      ft = funcDefType f
-  k <- inferTypeKind ft
-  checkTypeKind k
-  checkFuncType f
+-- | Initialize all function definitons
+addFuncDefs :: (Has EnvEff sig m) => Module -> m Module
+addFuncDefs = mapMOf (topStmts . traverse . _FDef) addFuncDef
 
 -- | Check all function definitons
 checkFuncDefs :: (Has EnvEff sig m) => Module -> m Module
@@ -737,6 +705,11 @@ addPrefixForExprs m' = do
       allGlobalVars
   return $ removeVarBindings $ substs binds m
 
+addSpecializedFuncs :: (Has EnvEff sig m) => Module -> m Module
+addSpecializedFuncs m = do
+  fs <- getEnv $ specializedFuncs
+  return m{_topStmts=_topStmts m ++ map FDef (M.elems fs)}
+
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id =
@@ -754,6 +727,7 @@ initModule m env id =
       >>= initFuncDefs
       >>= initImplFuncDefs
       >>= addPrefixForExprs
+      >>= addFuncDefs
 
 -- | Type checking a module
 checkType :: Module -> Env -> Int -> Bool -> Either String (Env, (Int, Module))
@@ -765,4 +739,5 @@ checkType m env id rmAnns =
       >>= checkEffIntfDefs
       >>= checkFuncDefs
       >>= checkImplFuncDefs
+      >>= addSpecializedFuncs
       >>= (\m -> return $ if rmAnns then removeAnns m else m)
