@@ -715,6 +715,7 @@ initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id =
   run . runError . runState env . runFresh id $
     do
+      setEnv (m ^. moduleName) currentModuleName
       return m
       >>= initTypeDefs
       >>= initEffTypeDefs
@@ -734,6 +735,7 @@ checkType :: Module -> Env -> Int -> Bool -> Either String (Env, (Int, Module))
 checkType m env id rmAnns =
   run . runError . runState env . runFresh id $
     do
+      setEnv (m ^. moduleName) currentModuleName
       return (removeAnns m)
       >>= checkTypeConDefs
       >>= checkEffIntfDefs

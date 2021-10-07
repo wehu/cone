@@ -54,7 +54,8 @@ type FuncDefs = M.Map String FuncDef
 
 -- | The environment
 data Env = Env
-  { _types :: TypeKinds,
+  { _currentModuleName :: String,
+    _types :: TypeKinds,
     _typeAliases :: TypeAliases,
     _funcs :: ExprTypes,
     _funcImpls :: FuncImpls,
@@ -76,7 +77,8 @@ makeLenses ''Env
 
 initialEnv =
   Env
-    { _types = M.empty,
+    { _currentModuleName = "",
+      _types = M.empty,
       _typeAliases = M.empty,
       _funcs = M.empty,
       _funcImpls = M.empty,

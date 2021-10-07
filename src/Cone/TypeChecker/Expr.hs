@@ -80,7 +80,8 @@ checkFuncDef f = underScope $ do
 getSpecializedFunc :: (Has EnvEff sig m) => String -> Type -> m String
 getSpecializedFunc fn t = 
   if isConcreteType t then do
-    let fSel = last $ splitOn "/" $ uniqueFuncImplName fn t
+    mn <- getEnv currentModuleName
+    let fSel = mn ++ "/" ++ last (splitOn "/" $ uniqueFuncImplName fn t)
     f <- getEnv $ specializedFuncs . at fSel
     case f of
       Nothing -> do
