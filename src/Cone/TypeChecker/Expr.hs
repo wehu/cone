@@ -89,7 +89,7 @@ getSpecializedFunc fn t =
         case fdef of
           Just fdef -> 
             if isn't _Nothing (_funcExpr fdef)
-            then do
+            then underScope $ do
               bs <- foldM (\s (v, _) -> do
                   vn <- freeVarName <$> fresh
                   return $ s ++ [(v, TVar vn (_tloc t))]) [] (_funcBoundVars fdef)
