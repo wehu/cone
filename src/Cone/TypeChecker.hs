@@ -28,8 +28,9 @@ import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
 -- | Initialize type definition and add the kind for the type into env
-initTypeDef :: (Has EnvEff sig m) => String -> TypeDef -> m TypeDef
-initTypeDef prefix t = do
+initTypeDef :: (Has EnvEff sig m) => TypeDef -> m TypeDef
+initTypeDef t = do
+  prefix <- getEnv currentModuleName
   let tn = prefix ++ "/" ++ t ^. typeName
   ot <- getEnv $ types . at tn
   -- check if it exists or not
@@ -62,11 +63,12 @@ initTypeDef prefix t = do
 
 -- | Initialize all type definitions
 initTypeDefs :: (Has EnvEff sig m) => Module -> m Module
-initTypeDefs m = mapMOf (topStmts . traverse . _TDef) (initTypeDef $ m ^. moduleName) m
+initTypeDefs = mapMOf (topStmts . traverse . _TDef) initTypeDef
 
 -- | Initialize a constructor in type definition
-initTypeConDef :: (Has EnvEff sig m) => String -> TypeDef -> m TypeDef
-initTypeConDef prefix t = do
+initTypeConDef :: (Has EnvEff sig m) => TypeDef -> m TypeDef
+initTypeConDef t = do
+  prefix <- getEnv currentModuleName
   globalTypes <- fmap s2n . M.keys <$> getEnv types
   mapMOf
     (typeCons . traverse)
@@ -113,7 +115,7 @@ initTypeConDef prefix t = do
 
 -- | Initialize all type constructors
 initTypeConDefs :: (Has EnvEff sig m) => Module -> m Module
-initTypeConDefs m = mapMOf (topStmts . traverse . _TDef) (initTypeConDef $ m ^. moduleName) m
+initTypeConDefs = mapMOf (topStmts . traverse . _TDef) initTypeConDef
 
 -- | Check the type constructor's type
 checkTypeConDef :: (Has EnvEff sig m) => TypeDef -> m TypeDef
@@ -133,8 +135,9 @@ checkTypeConDefs :: (Has EnvEff sig m) => Module -> m Module
 checkTypeConDefs = mapMOf (topStmts . traverse . _TDef) checkTypeConDef
 
 -- | Initialize type alias definitions
-preInitTypeAlias :: (Has EnvEff sig m) => String -> TypeAlias -> m TypeAlias
-preInitTypeAlias prefix t = do
+preInitTypeAlias :: (Has EnvEff sig m) => TypeAlias -> m TypeAlias
+preInitTypeAlias t = do
+  prefix <- getEnv currentModuleName
   let args = t ^. typeAliasArgs
       name = prefix ++ "/" ++ t ^. typeAliasName
       pos = _typeAliasLoc t
@@ -153,7 +156,7 @@ preInitTypeAlias prefix t = do
 
 -- | Initialize all type aliases
 preInitTypeAliases :: (Has EnvEff sig m) => Module -> m Module
-preInitTypeAliases m = mapMOf (topStmts . traverse . _TAlias) (preInitTypeAlias $ m ^. moduleName) $ m
+preInitTypeAliases = mapMOf (topStmts . traverse . _TAlias) preInitTypeAlias
 
 -- | Check type alias
 initTypeAlias :: (Has EnvEff sig m) => TypeAlias -> m TypeAlias
@@ -185,8 +188,9 @@ initTypeAliases :: (Has EnvEff sig m) => Module -> m Module
 initTypeAliases = mapMOf (topStmts . traverse . _TAlias) initTypeAlias
 
 -- | Initializa effect type definition
-initEffTypeDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
-initEffTypeDef prefix e = do
+initEffTypeDef :: (Has EnvEff sig m) => EffectDef -> m EffectDef
+initEffTypeDef e = do
+  prefix <- getEnv currentModuleName
   let en = prefix ++ "/" ++ e ^. effectName
   oe <- getEnv $ effs . at en
   forMOf _Just oe $ \oe ->
@@ -206,7 +210,7 @@ initEffTypeDef prefix e = do
 
 -- | Initialize all effect type difinitions
 initEffTypeDefs :: (Has EnvEff sig m) => Module -> m Module
-initEffTypeDefs m = mapMOf (topStmts . traverse . _EDef) (initEffTypeDef $ m ^. moduleName) m
+initEffTypeDefs = mapMOf (topStmts . traverse . _EDef) initEffTypeDef
 
 -- | Initialize effect inteface definitions
 initEffIntfDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
@@ -290,8 +294,9 @@ checkEffIntfDefs :: (Has EnvEff sig m) => Module -> m Module
 checkEffIntfDefs = mapMOf (topStmts . traverse . _EDef) checkEffIntfDef
 
 -- | Initializa function definition
-initFuncDef :: (Has EnvEff sig m) => String -> FuncDef -> m FuncDef
-initFuncDef prefix f = do
+initFuncDef :: (Has EnvEff sig m) => FuncDef -> m FuncDef
+initFuncDef f = do
+  prefix <- getEnv currentModuleName
   let pos = f ^. funcLoc
       fn = prefix ++ "/" ++ f ^. funcName
       ft = funcDefType f
@@ -306,7 +311,7 @@ initFuncDef prefix f = do
 
 -- | Initialize all function definitons
 initFuncDefs :: (Has EnvEff sig m) => Module -> m Module
-initFuncDefs m = mapMOf (topStmts . traverse . _FDef) (initFuncDef $ m ^. moduleName) m
+initFuncDefs = mapMOf (topStmts . traverse . _FDef) initFuncDef
 
 -- | Initializa function definition
 addFuncDef :: (Has EnvEff sig m) =>  FuncDef -> m FuncDef
