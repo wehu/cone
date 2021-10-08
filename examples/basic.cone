@@ -8,6 +8,7 @@ import control.state
 import control.nodet
 import core.math
 import ml.vision.datasets as ds
+import ml.nn.conv2d
 
 /*  
 comments here
@@ -154,7 +155,7 @@ fun main() : io unit {
    test_inline("test")
 
    val ds = ds.mnist("./data", true)
-   ds.foreach(ds, fn(d : t.tensor<u8, @[1, 28, 28]>, i : i32) : io unit {
+   ds.foreach(ds, fn(d : t.tensor<f32, @[1, 28, 28]>, i : i32) : io unit {
        if (i < 10) {
            print(d)
        } else {

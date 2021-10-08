@@ -1,2 +1,16 @@
 module ml.nn.conv2d
 
+import data.tensor
+
+fun conv2d<t, n:num, ci:num, h:num, w:num, co:num, r:num, s:num>( \
+    feature:tensor<t, @[n, ci, h, w]>, weight:tensor<t, @[co, ci, r, s]>) : tensor<t, @[n, co, h-r+1, w-s+1]> {
+    inline_python<tensor<t, @[n, co, h-r+1, w-s+1]>, @[ci, co, r, s]>("""
+import torch
+from torch.nn import Conv2d
+
+args = ____typeargs
+m = Conv2d(args[0], args[1], (args[2], args[3]), stride=1)
+m.weight = weight
+____result = m(feature)
+    """)    
+}

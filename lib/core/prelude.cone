@@ -93,13 +93,7 @@ type pair<a, b> {
 
 // inline python
 
-fun inline_python<a>(code:str) : a
-
-// python effect
-
-effect python {
-    fun run_python<a>(str) : a
-}
+fun inline_python<a, args:@[num]>(code:str) : a
 
 // io effect
 effect io {

@@ -208,12 +208,14 @@ namespace cone {
     const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &)> cone__inline_python =
     [=](const cont_t &k, stack_t s, effects_t effs, const object_t &str) -> object_t {
       auto scope = py::dict();
+      auto typeargs = ____to_py_object(s->back()[____typeargs]);
       for (auto it=s->begin(); it!=s->end(); ++it) {
         for (auto &p : *it) {
           if (p.second.type() == typeid(py::object))
             scope[py::str(p.first.size() > 6 && p.first.substr(0, 6) == "cone__" ? p.first.substr(6) : p.first)] = ____to_py_object(p.second);
         }
       }
+      scope["____typeargs"] = typeargs;
       scope["____result"] = py::none();
       py::exec(____to_py_object(str), scope);
       return k(py::object(scope["____result"]));
