@@ -39,8 +39,8 @@ isConcreteType :: Type -> Bool
 isConcreteType t =
   let vs = t ^.. fv :: [TVar]
       es = t ^.. fv :: [EffVar]
-   in all (\v -> notElem '/' (name2String v)) vs &&
-      all (\v -> notElem '/' (name2String v)) es
+   in all (elem '/' . name2String) vs &&
+      all (elem '/' . name2String) es
 
 -- | Infer type's kind
 inferTypeKind :: (Has EnvEff sig m) => Type -> m Kind

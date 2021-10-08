@@ -95,7 +95,7 @@ checkFuncDef f = underScope $ do
   checkFuncType f
 
 getSpecializedFunc :: (Has EnvEff sig m) => String -> Type -> m String
-getSpecializedFunc fn t = 
+getSpecializedFunc fn t = do
   if isConcreteType t then do
     mn <- getEnv currentModuleName
     let fSel = mn ++ "/" ++ last (splitOn "/" $ uniqueFuncImplName fn t)
@@ -104,7 +104,7 @@ getSpecializedFunc fn t =
       Nothing -> do
         fdef <- getEnv $ funcDefs . at fn
         case fdef of
-          Just fdef -> 
+          Just fdef -> do
             if isn't _Nothing (_funcExpr fdef) && not (null (_funcBoundVars fdef) && null (_funcBoundEffVars fdef))
             then underScope $ do
               bs <- foldM (\s (v, _) -> do
@@ -121,9 +121,10 @@ getSpecializedFunc fn t =
               checkVarBindings binds
               bindEffs <- collectEffVarBindings False (_tfuncEff gt) (_tfuncEff ut)
               checkEffVarBindings bindEffs
-              let newF = (substs bindEffs $ substs binds newFdef){_funcName = fSel, _funcBoundEffVars=[], _funcBoundVars=[]}
-              setEnv (Just t) $ funcs . at fSel
-              setEnv (Just t) $ specializedFuncTypes . at fSel
+              let newF = (substs bindEffs $ substs binds newFdef){_funcName = fSel}
+                  newT = bindTypeEffVar (_funcBoundEffVars newF) $ bindTypeVar (_funcBoundVars newF) ut
+              setEnv (Just newT) $ funcs . at fSel
+              setEnv (Just newT) $ specializedFuncTypes . at fSel
               setEnv (Just newF) $ specializedFuncs . at fSel
               newF <- checkFuncDef newF
               setEnv (Just newF) $ specializedFuncs . at fSel
