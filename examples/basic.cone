@@ -7,6 +7,7 @@ import data.set as s
 import control.state
 import control.nodet
 import core.math
+import ml.vision.datasets as ds
 
 /*  
 comments here
@@ -151,5 +152,10 @@ fun main() : io unit {
    print(f(a))
    print(a)
    test_inline("test")
+
+   val ds = ds.mnist_train_set("./data")
+   ds.foreach_batch(ds, fn(d : t.tensor<u8, @[1, 28, 28]>) : io unit {
+       print(d)
+   })
 }
 

@@ -36,10 +36,27 @@ typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr 
 -- | Check a function type
 checkFuncType :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 checkFuncType f = underScope $ do
+  globalTypes <- fmap s2n . M.keys <$> getEnv types
+  globalEffTypes <- fmap s2n . M.keys <$> getEnv effs
   let pos = f ^. funcLoc
       star = KStar pos
       btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
+      bt = bind ((fmap s2n (btvars ^.. traverse . _1) :: [TVar]) ++ globalTypes) f 
+      be = bind ((fmap s2n (bevars ^.. traverse . _1) :: [EffVar]) ++ globalEffTypes) f 
+      ftvars = (bt ^.. fv) :: [TVar]
+      fevars = (be ^.. fv) :: [EffVar]
+  -- check if has free type variables
+  when (ftvars /= []) $
+    throwError $
+      "function type variables should "
+        ++ "only exists in function type arguments: "
+        ++ ppr ftvars ++ ppr (_funcLoc f)
+  when (fevars /= []) $
+    throwError $
+      "function eff type variables should "
+        ++ "only exists in function eff type arguments: "
+        ++ ppr fevars ++ ppr (_funcLoc f)
   -- add all bound type variables into env
   forM_ btvars $ \(n, k) -> setEnv (Just k) $ types . at n
   -- add all bound eff type variables into env
