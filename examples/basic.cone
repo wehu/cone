@@ -153,9 +153,10 @@ fun main() : io unit {
    print(a)
    test_inline("test")
 
-   val ds = ds.mnist_train_set("./data")
-   ds.foreach_batch(ds, fn(d : t.tensor<u8, @[1, 28, 28]>) : io unit {
-       print(d)
+   val ds = ds.mnist("./data", true)
+   ds.foreach_batch(ds, fn(d : (t.tensor<u8, @[1, 28, 28]>, i32)) : io unit {
+       val (data, label) = d
+       print(data)
    })
 }
 
