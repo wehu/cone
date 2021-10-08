@@ -88,7 +88,7 @@ getSpecializedFunc fn t =
         fdef <- getEnv $ funcDefs . at fn
         case fdef of
           Just fdef -> 
-            if isn't _Nothing (_funcExpr fdef)
+            if isn't _Nothing (_funcExpr fdef) && not (null (_funcBoundVars fdef) && null (_funcBoundEffVars fdef))
             then underScope $ do
               bs <- foldM (\s (v, _) -> do
                   vn <- freeVarName <$> fresh
@@ -104,12 +104,12 @@ getSpecializedFunc fn t =
               checkVarBindings binds
               bindEffs <- collectEffVarBindings False (_tfuncEff gt) (_tfuncEff ut)
               checkEffVarBindings bindEffs
-              let f' = (substs bindEffs $ substs binds newFdef){_funcName = fSel, _funcBoundEffVars=[], _funcBoundVars=[]}
+              let newF = (substs bindEffs $ substs binds newFdef){_funcName = fSel, _funcBoundEffVars=[], _funcBoundVars=[]}
               setEnv (Just t) $ funcs . at fSel
               setEnv (Just t) $ specializedFuncTypes . at fSel
-              setEnv (Just f') $ specializedFuncs . at fSel
-              f'' <- checkFuncDef f'
-              setEnv (Just f'') $ specializedFuncs . at fSel
+              setEnv (Just newF) $ specializedFuncs . at fSel
+              newF <- checkFuncDef newF
+              setEnv (Just newF) $ specializedFuncs . at fSel
               return fSel
             else return fn
           Nothing -> return fn
