@@ -6,12 +6,12 @@ fun conv2d<t, n:num, ci:num, h:num, w:num, co:num, r:num, s:num>(\
     feature:tensor<t, @[n, ci, h, w]>, weight:tensor<t, @[co, ci, r, s]>) : tensor<t, @[n, co, h-r+1, w-s+1]> {
     inline_python<tensor<t, @[n, co, h-r+1, w-s+1]>, @[ci, co, r, s]>("""
 import torch
-from torch.nn import Conv2d
+from torch.nn import Conv2d, Parameter
 
 args = ____typeargs[1]
 print(args)
 m = Conv2d(args[0], args[1], (args[2], args[3]), stride=1)
-#m.weight = torch.from_numpy(weight)
-____result = m(torch.from_numpy(feature)).numpy()
+m.weight = Parameter(torch.from_numpy(weight), requires_grad=False)
+____result = m(torch.from_numpy(feature)).detach().numpy()
     """)    
 }
