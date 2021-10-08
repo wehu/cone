@@ -731,17 +731,15 @@ getSpecialTypes (t : ts) =
     ts
 getSpecialTypes [] = return []
 
-groupTypes :: (Has EnvEff sig m) => [(Type, Type)] -> m [[Type]]
+groupTypes :: (Has EnvEff sig m) => [[Type]] -> m [[Type]]
 groupTypes rels = do
-  ts <- L.nubBy aeq <$> mapM inferType (join $ map (\(a, b) -> [a, b]) rels)
-  return $ L.groupBy (\a b -> (a, b) `elem` rels) ts
-  where
-    elem a (e : es) = aeq a e || elem a es
-    elem a [] = False
+  let newRels = L.nubBy aeq [L.unionBy aeq a b| a <- rels, b <- rels, not $ null (L.intersectBy aeq a b)]
+  if aeq newRels rels then return newRels
+  else groupTypes newRels
 
 checkVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m [(TVar, Type)]
 checkVarBindings bindings = do
-  groups <- groupTypes $ map (\(v, t) -> (TVar v $ _tloc t, t)) bindings
+  groups <- groupTypes $ map (\(v, t) -> [TVar v $ _tloc t, t]) bindings
   bs <- forM groups $ \g -> do
     (vars, nonVars) <-
       foldM
@@ -787,17 +785,15 @@ getSpecialEffTypes (t : ts) =
     ts
 getSpecialEffTypes [] = return []
 
-groupEffTypes :: (Has EnvEff sig m) => [(EffectType, EffectType)] -> m [[EffectType]]
+groupEffTypes :: (Has EnvEff sig m) => [[EffectType]] -> m [[EffectType]]
 groupEffTypes rels = do
-  ts <- L.nubBy aeq <$> mapM inferEffType (join $ map (\(a, b) -> [a, b]) rels)
-  return $ L.groupBy (\a b -> (a, b) `elem` rels) ts
-  where
-    elem a (e : es) = aeq a e || elem a es
-    elem a [] = False
+  let newRels = L.nubBy aeq [L.unionBy aeq a b| a <- rels, b <- rels, not $ null (L.intersectBy aeq a b)]
+  if aeq newRels rels then return newRels
+  else groupEffTypes newRels
 
 checkEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m [(EffVar, EffectType)]
 checkEffVarBindings bindings = do
-  groups <- groupEffTypes $ map (\(v, t) -> (EffVar v $ _effLoc t, t)) bindings
+  groups <- groupEffTypes $ map (\(v, t) -> [EffVar v $ _effLoc t, t]) bindings
   bs <- forM groups $ \g -> do
     (vars, nonVars) <-
       foldM

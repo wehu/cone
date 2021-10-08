@@ -165,7 +165,7 @@ fun main() : io unit {
 
    val feature = t.full<@[4, 3, 16, 16]>(0.1, [])
    val weight  = t.full<@[2, 3, 4, 4]>(0.1, [])
-   print(conv2d<f32, 4, 3, 16, 16, 2, 4, 4>(feature, weight))
+   print(conv2d(feature, weight))
 
 }
 
