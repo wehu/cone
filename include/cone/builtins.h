@@ -210,7 +210,8 @@ namespace cone {
       auto scope = py::dict();
       for (auto it=s->begin(); it!=s->end(); ++it) {
         for (auto &p : *it) {
-          scope[py::str(p.first.size() > 6 && p.first.substr(0, 6) == "cone__" ? p.first.substr(6) : p.first)] = ____to_py_object(p.second);
+          if (p.second.type() == typeid(py::object))
+            scope[py::str(p.first.size() > 6 && p.first.substr(0, 6) == "cone__" ? p.first.substr(6) : p.first)] = ____to_py_object(p.second);
         }
       }
       scope["____result"] = py::none();

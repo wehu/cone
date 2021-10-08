@@ -255,8 +255,8 @@ inferEffKind a@EffApp {..} = do
             [(a, b) | a <- _effAppArgs | b <- _ekfuncArgs]
             $ \(a, b) -> do
               e <- inferTypeKind a
-              checkTypeKind e
-              checkTypeKind b
+              --checkTypeKind e
+              --checkTypeKind b
               checkKindMatch e b
           checkEffKind _ekfuncResult
           return _ekfuncResult

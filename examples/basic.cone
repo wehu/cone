@@ -154,9 +154,8 @@ fun main() : io unit {
    test_inline("test")
 
    val ds = ds.mnist("./data", true)
-   ds.foreach_batch(ds, fn(d : (t.tensor<u8, @[1, 28, 28]>, i32)) : io unit {
-       val (data, label) = d
-       print(data)
+   ds.foreach(ds, fn(d : t.tensor<u8, @[1, 28, 28]>) : io unit {
+       print(d)
    })
 }
 

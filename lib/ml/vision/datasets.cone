@@ -4,35 +4,46 @@ import data.tensor
 
 type dataset<t, shape: @[num]>
 
+effect iterator<t, shape: @[num]> {
+    fun reset(dataset<t, shape>) : unit
+    fun next(dataset<t, shape>) : tensor<t, shape>
+}
+
 fun len<t, shape: @[num]>(ds : dataset<t, shape>) : i32 {
     inline_python<i32>("""
-____result = len(ds)
+____result = len(ds[0])
     """)
 }
 
-fun get<t, shape: @[num]>(ds : dataset<t, shape>, i : i32) : (tensor<t, shape>, i32) {
-    val d = inline_python<tensor<t, shape>>("""
-____result = ds[i][0].numpy()
-    """)
-    val l = inline_python<i32>("""
-____result = ds[i][1]
-    """)
-    (d, l)
-}
-
-fun foreach_batch<t, shape: @[num]>[e](ds : dataset<t, shape>, f : ((tensor<t, shape>, i32)) -> e unit) : e unit {
+fun foreach<t, shape: @[num]>[e](ds : dataset<t, shape>, f : (tensor<t, shape>) -> e unit) : e unit {
     var i = 0
     val size = len(ds)
-    while i < size {
-        f(get(ds, i))
-	i = i + 1
+    handle iterator<t, shape> {
+        reset(ds)
+        while i < size {
+            f(next(ds))
+            i = i + 1
+        }
+    } with {
+        fun reset(ds : dataset<t, shape>) {
+            inline_python<unit>("""
+ds[1] = iter(ds[0])
+            """)
+            resume(unit)
+        }
+        fun next(ds : dataset<t, shape>) {
+            val d = inline_python<tensor<t, shape>>("""
+____result = next(ds[1])
+            """)
+            resume(d)
+        }
     }
 }
-
 
 fun mnist(dir : str, train : bool) : dataset<u8, @[1, 28, 28]> {
     inline_python<dataset<u8, @[1, 28, 28]>>("""
 from torchvision import datasets, transforms
-____result = datasets.MNIST(dir, train=train, transform=transforms.ToTensor(), download=True)
+ds = datasets.MNIST(dir, train=train, transform=transforms.ToTensor(), download=True)
+____result = [ds, iter(ds)]
     """)
 }

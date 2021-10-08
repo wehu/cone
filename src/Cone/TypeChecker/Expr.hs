@@ -381,10 +381,10 @@ inferExprType h@EHandle {..} = underScope $ do
       return (handleT', intf {_funcExpr = Just intfE, _funcName = fn})
 
     -- check scope expr again
-    setEnv (Just handleT') $ funcs . at fn
-    t <- inferExprType _ehandleScope >>= typeOfExpr
-    k <- inferTypeKind t
-    checkTypeKind k
+    --setEnv (Just handleT') $ funcs . at fn
+    --t <- inferExprType _ehandleScope >>= typeOfExpr
+    --k <- inferTypeKind t
+    --checkTypeKind k
     return intfWithT
 
   t <- inferType resT
