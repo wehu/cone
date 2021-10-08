@@ -191,7 +191,7 @@ inferExprType e@EVar {..} = do
   return $ annotateExpr e t
 inferExprType a@EApp {..} = do
   -- check assign variable
-  when (name2String (_eappFunc ^. evarName) == "____assign") $ do
+  when (name2String (_eappFunc ^. evarName) == "core/prelude/____assign") $ do
     if L.length _eappArgs /= 2
       then throwError $ "expected 2 arguments: " ++ ppr a ++ ppr _eloc
       else

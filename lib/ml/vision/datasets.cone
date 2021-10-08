@@ -15,13 +15,13 @@ ____result = len(ds[0])
     """)
 }
 
-fun foreach<t, shape: @[num]>[e](ds : dataset<t, shape>, f : (tensor<t, shape>) -> e unit) : e unit {
+fun foreach<t, shape: @[num]>[e](ds : dataset<t, shape>, f : (tensor<t, shape>, i32) -> e unit) : e unit {
     var i = 0
     val size = len(ds)
     handle iterator<t, shape> {
         reset(ds)
         while i < size {
-            f(next(ds))
+            f(next(ds), i)
             i = i + 1
         }
     } with {
@@ -33,7 +33,7 @@ ds[1] = iter(ds[0])
         }
         fun next(ds : dataset<t, shape>) {
             val d = inline_python<tensor<t, shape>>("""
-____result = next(ds[1])
+____result = next(ds[1])[0].numpy()
             """)
             resume(d)
         }
