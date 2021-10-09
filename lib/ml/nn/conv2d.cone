@@ -9,7 +9,6 @@ import torch
 from torch.nn import Conv2d, Parameter
 
 args = ____typeargs[1]
-print(args)
 m = Conv2d(args[0], args[1], (args[2], args[3]), stride=1)
 m.weight = Parameter(torch.from_numpy(weight), requires_grad=False)
 ____result = m(torch.from_numpy(feature)).detach().numpy()
