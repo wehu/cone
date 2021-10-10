@@ -1033,13 +1033,6 @@ bindExpr :: Expr -> Expr
 bindExpr l@ELam {..} =
   let boundVars = L.nub _elamBoundVars
       boundEffVars = L.nub _elamBoundEffVars
-   in l
-        { _elamExpr =
-            fmap
-              ( \e ->
-                  EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind (boundVars ^.. traverse . _1) e) _eloc) _eloc
-              )
-              _elamExpr
-        }
+   in  EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind (boundVars ^.. traverse . _1) l) _eloc) _eloc
 bindExpr expr = expr
 

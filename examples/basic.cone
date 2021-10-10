@@ -149,7 +149,7 @@ fun main() : io unit {
    }
 
    print(diff test3(2.0, 1.0))
-   val f = fn (bbb:i32) : i32 { bbb + 1 }
+   val f = fn <a>(bbb:a) : a { bbb }
    print(f(a))
    print(a)
    test_inline("test")
