@@ -42,8 +42,8 @@ checkFuncType f = underScope $ do
       star = KStar pos
       btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
-      bt = bind ((fmap s2n (btvars ^.. traverse . _1) :: [TVar]) ++ globalTypes) f 
-      be = bind ((fmap s2n (bevars ^.. traverse . _1) :: [EffVar]) ++ globalEffTypes) f 
+      bt = bind (globalTypes::[TVar]) (bindFDef f) 
+      be = bind (globalEffTypes::[EffVar]) (bindFDef f) 
       ftvars = (bt ^.. fv) :: [TVar]
       fevars = (be ^.. fv) :: [EffVar]
   -- check if has free type variables

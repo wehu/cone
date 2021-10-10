@@ -998,4 +998,48 @@ setFuncImpl prefix m impl = do
   addFuncImpl intfn i t
   return impl {_implFunDef = funcD {_funcName = fn}}
 
+bindEDef :: EffectDef -> EffectDef
+bindEDef edef =
+  let boundVars = L.nub $ edef ^.. effectArgs . traverse
+      edef' = over (effectIntfs . traverse) (bindEffIntf boundVars) edef
+   in BoundEffectDef (bind (boundVars ^.. traverse . _1) edef') (_effectLoc edef)
+
+bindEffIntf :: [(TVar, Maybe Kind)] -> FuncIntf -> FuncIntf
+bindEffIntf bvs intf =
+  let boundVars = L.nub $ bvs ++ intf ^. intfBoundVars
+      boundEffVars = L.nub $ intf ^. intfBoundEffVars
+      loc = intf ^. intfLoc
+   in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind (boundVars ^.. traverse . _1) intf) loc) loc
+
+bindTDef :: TypeDef -> TypeDef
+bindTDef tdef =
+  let boundVars = L.nub $ tdef ^.. typeArgs . traverse . _1
+   in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef)
+
+bindTAlias :: TypeAlias -> TypeAlias
+bindTAlias talias =
+  let boundVars = L.nub $ talias ^.. typeAliasArgs . traverse . _1
+   in BoundTypeAlias (bind boundVars talias) (_typeAliasLoc talias)
+
+bindFDef :: FuncDef -> FuncDef
+bindFDef fdef =
+  let boundVars = L.nub $ fdef ^. funcBoundVars
+      boundEffVars = L.nub $ fdef ^. funcBoundEffVars
+      loc = fdef ^. funcLoc
+      expr = transform bindExpr <$> _funcExpr fdef
+   in BoundEffFuncDef (bind boundEffVars $ BoundFuncDef (bind (boundVars ^.. traverse . _1) fdef {_funcExpr = expr}) loc) loc
+
+bindExpr :: Expr -> Expr
+bindExpr l@ELam {..} =
+  let boundVars = L.nub _elamBoundVars
+      boundEffVars = L.nub _elamBoundEffVars
+   in l
+        { _elamExpr =
+            fmap
+              ( \e ->
+                  EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind (boundVars ^.. traverse . _1) e) _eloc) _eloc
+              )
+              _elamExpr
+        }
+bindExpr expr = expr
 

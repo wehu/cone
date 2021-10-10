@@ -70,21 +70,20 @@ initTypeConDef :: (Has EnvEff sig m) => TypeDef -> m TypeDef
 initTypeConDef t = do
   prefix <- getEnv currentModuleName
   globalTypes <- fmap s2n . M.keys <$> getEnv types
+  -- find all free type variables
+  let b = bind (globalTypes::[TVar]) (bindTDef t)
+      fvars = (b ^.. fv) :: [TVar]
+  when (fvars /= []) $
+          throwError $
+            "type constructor's type variables should "
+              ++ "only exists in type arguments: "
+              ++ ppr fvars
   mapMOf
     (typeCons . traverse)
     ( \c -> do
         let cn = prefix ++ "/" ++ c ^. typeConName
             cargs = c ^. typeConArgs
             pos = c ^. typeConLoc
-            -- find all free type variables
-            targs = (t ^.. typeArgs . traverse . _1) ++ globalTypes
-            b = bind targs cargs
-            fvars = (b ^.. fv) :: [TVar]
-        when (fvars /= []) $
-          throwError $
-            "type constructor's type variables should "
-              ++ "only exists in type arguments: "
-              ++ ppr fvars
         -- check if the type constructor exists or not
         ot <- getEnv $ funcs . at cn
         forMOf _Just ot $ \t ->
@@ -165,7 +164,7 @@ initTypeAlias t = do
   let args = t ^.. typeAliasArgs . traverse . _1
       aliasType = _typeAliasType t
       name = t ^. typeAliasName
-      b = bind (args ++ globalTypes) aliasType
+      b = bind (globalTypes::[TVar]) (bindTAlias t)
       fvars = (b ^.. fv) :: [TVar]
       pos = _typeAliasLoc t
   -- check if has free type variables
@@ -216,6 +215,15 @@ initEffTypeDefs = mapMOf (topStmts . traverse . _EDef) initEffTypeDef
 initEffIntfDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
 initEffIntfDef prefix e = do
   globalTypes <- fmap s2n . M.keys <$> getEnv types
+  let b = bind (globalTypes :: [TVar]) (bindEDef e)
+      fvars = (b ^.. fv) :: [TVar]
+  -- check if has free type variables
+  when (fvars /= []) $
+          throwError $
+            "eff interfaces's type variables should "
+              ++ "only exists in eff type arguments: "
+              ++ ppr fvars
+              ++ ppr (_effectLoc e)
   let is = e ^. effectIntfs
       en = e ^. effectName
       f = \i -> do
@@ -223,18 +231,7 @@ initEffIntfDef prefix e = do
             iargs = i ^. intfArgs
             iresult = _intfResultType i
             pos = i ^. intfLoc
-            bvars = i ^.. intfBoundVars . traverse . _1
-            targs = (e ^.. effectArgs . traverse . _1) ++ globalTypes
-            b = bind (targs ++ bvars) $ iresult : iargs
-            fvars = (b ^.. fv) :: [TVar]
         addEffIntfs en intfn
-        -- check if has free type variables
-        when (fvars /= []) $
-          throwError $
-            "eff interfaces's type variables should "
-              ++ "only exists in eff type arguments: "
-              ++ ppr fvars
-              ++ ppr pos
         -- check if inteface exists or not
         ot <- getEnv $ funcs . at intfn
         forMOf _Just ot $ \t ->
@@ -390,40 +387,6 @@ addTypeBindings m =
       over (topStmts . traverse . _FDef) bindFDef $
         over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef $
           over (topStmts . traverse . _TAlias) bindTAlias m
-  where
-    bindEDef edef =
-      let boundVars = L.nub $ edef ^.. effectArgs . traverse
-          edef' = over (effectIntfs . traverse) (bindEffIntf boundVars) edef
-       in BoundEffectDef (bind (boundVars ^.. traverse . _1) edef') (_effectLoc edef)
-    bindEffIntf bvs intf =
-      let boundVars = L.nub $ bvs ++ intf ^. intfBoundVars
-          boundEffVars = L.nub $ intf ^. intfBoundEffVars
-          loc = intf ^. intfLoc
-       in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind (boundVars ^.. traverse . _1) intf) loc) loc
-    bindTDef tdef =
-      let boundVars = L.nub $ tdef ^.. typeArgs . traverse . _1
-       in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef)
-    bindTAlias talias =
-      let boundVars = L.nub $ talias ^.. typeAliasArgs . traverse . _1
-       in BoundTypeAlias (bind boundVars talias) (_typeAliasLoc talias)
-    bindFDef fdef =
-      let boundVars = L.nub $ fdef ^. funcBoundVars
-          boundEffVars = L.nub $ fdef ^. funcBoundEffVars
-          loc = fdef ^. funcLoc
-          expr = transform bindExpr <$> _funcExpr fdef
-       in BoundEffFuncDef (bind boundEffVars $ BoundFuncDef (bind (boundVars ^.. traverse . _1) fdef {_funcExpr = expr}) loc) loc
-    bindExpr l@ELam {..} =
-      let boundVars = L.nub $ _elamBoundVars
-          boundEffVars = L.nub $ _elamBoundEffVars
-       in l
-            { _elamExpr =
-                fmap
-                  ( \e ->
-                      EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind (boundVars ^.. traverse . _1) e) _eloc) _eloc
-                  )
-                  _elamExpr
-            }
-    bindExpr expr = expr
 
 -- | Remove type bindings
 removeTypeBindings :: Module -> Module
