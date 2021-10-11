@@ -50,8 +50,10 @@ setupDiff d f@FuncDef{..} = do
       Just i -> return (_funcArgs !! i ^. _1 ++ "____diff", _funcArgs !! i ^. _2)
       Nothing -> throwError $ "cannot find wrt " ++ a ++ " in " ++ ppr f ++ ppr _funcLoc
     ) (_diffWRT d)
-  let fType = bindTypeEffVar _funcBoundEffVars $ bindTypeVar _funcBoundVars $
-         TFunc (_funcArgs ^.. traverse . _2 ++ argTypes ^.. traverse . _2) (EffList [] _funcLoc) _funcResultType _funcLoc
+  let argT:resT = reverse $ argTypes ^.. traverse  . _2
+      resTypes = L.foldl' (\t e -> TApp (TVar (s2n "core/prelude/pair") (_tloc e)) [t, e] (_tloc e)) argT resT
+      fType = bindTypeEffVar _funcBoundEffVars $ bindTypeVar _funcBoundVars $
+         TFunc (_funcArgs ^.. traverse . _2 ++ [_funcResultType]) (EffList [] _funcLoc) resTypes _funcLoc
   -- id <- fresh
   let fn = _funcName ++ "____diff" -- ++ show id
   setFuncType fn fType
