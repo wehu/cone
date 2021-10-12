@@ -190,15 +190,21 @@ genDiffForExpr outputD l@(ELet p@(PVar v _) e body s loc) = do
   (db, bvs) <- genDiffForExpr outputD body
   (de, evs) <- genDiffForExpr (name2String v) e
   return (l {_eletBody = ESeq [db, de] loc}, bvs ++ evs)
-genDiffForExpr outputD w@EWhile{..} = do
+genDiffForExpr outputD w@EWhile {..} = do
   db <- genDiffForExpr outputD _ewhileBody
-  return (w{_ewhileBody=db ^. _1}, db ^. _2)
-genDiffForExpr outputD c@(ECase _
-    [t@(Case (PExpr (ELit "true"  (TPrim Pred _) _) _) _ te _)
-    ,f@(Case (PExpr (ELit "false" (TPrim Pred _) _) _) _ fe _)] loc) = do
-  dte <- genDiffForExpr outputD te
-  dfe <- genDiffForExpr outputD fe
-  return (c{_ecaseBody=[t{_caseExpr=dte ^._1}, f{_caseExpr=dfe ^._1}]}, dte ^._2 ++ dfe ^._2)
+  return (w {_ewhileBody = db ^. _1}, db ^. _2)
+genDiffForExpr
+  outputD
+  c@( ECase
+        _
+        [ t@(Case (PExpr (ELit "true" (TPrim Pred _) _) _) _ te _),
+          f@(Case (PExpr (ELit "false" (TPrim Pred _) _) _) _ fe _)
+          ]
+        loc
+      ) = do
+    dte <- genDiffForExpr outputD te
+    dfe <- genDiffForExpr outputD fe
+    return (c {_ecaseBody = [t {_caseExpr = dte ^. _1}, f {_caseExpr = dfe ^. _1}]}, dte ^. _2 ++ dfe ^. _2)
 genDiffForExpr outputD l@ELit {..} = (,[]) <$> genConstantByType "0" _litType
 genDiffForExpr outputD a@EAnn {..} = do
   d <- genDiffForExpr outputD _eannExpr
