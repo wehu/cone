@@ -228,8 +228,10 @@ namespace cone {
         return k(py::module_::import("numpy").attr("zeros")(oo.attr("shape"), oo.attr("dtype")));
       } else if (py::isinstance<py::float_>(oo)) {
         return k(py::object(py::float_(0.0)));
-      } else {
+      } else if (py::isinstance<py::int_>(oo)) {
         return k(py::object(py::int_(0)));
+      } else {
+        throw ____cone_exception("unsupported type for zeros");
       }
     };
   }}
