@@ -52,7 +52,7 @@ diff fun test2 wrt (a) = test2
 
 fun test3(a : f32, b : f32) : f32 {
     val c = a + b
-    c * 2.0
+    c * 2.0 * c
 }
 
 diff fun test3 wrt (a, b) = auto 
