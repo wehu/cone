@@ -223,7 +223,11 @@ namespace cone {
 
     const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &)> cone______zeros =
     [=](const cont_t &k, stack_t s, effects_t effs, const object_t &o) -> object_t {
-      return k(py::object(py::float_(0.0)));
+      if (py::isinstance(____to_py_object(o), py::float_().get_type())) {
+        return k(py::object(py::float_(0.0)));
+      } else {
+        return k(py::object(py::int_(0)));
+      }
     };
   }}
 
