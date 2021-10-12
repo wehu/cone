@@ -55,7 +55,13 @@ fun test3(a : f32, b : f32) : f32 {
     c * 2.0 * c
 }
 
-diff fun test3 wrt (a, b) = auto 
+diff fun test3 wrt (a, b) = auto
+
+fun test4(a : t.tensor<f32, @[4, 4]>) : t.tensor<f32, @[4,4]> {
+    sin(a)
+}
+
+diff fun test4 wrt (a) = auto
 
 fun main() : io unit {
    var a = 0
@@ -155,6 +161,8 @@ fun main() : io unit {
    print(f(a))
    print(a)
    test_inline("test")
+
+   print(diff test4(t.full<@[4,4]>(0.2, []), t.full<@[4,4]>(1.0, [])))
 
    // val ds = ds.mnist("./data", true)
    // ds.foreach(ds, fn(d : t.tensor<f32, @[1, 28, 28]>, i : i32) : io unit {

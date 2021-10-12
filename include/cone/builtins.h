@@ -225,7 +225,7 @@ namespace cone {
     [=](const cont_t &k, stack_t s, effects_t effs, const object_t &o) -> object_t {
       auto &&oo = ____to_py_object(o);
       if (py::isinstance(oo, py::module_::import("numpy").attr("ndarray"))) {
-        return py::module_::import("numpy").attr("zeros")(oo.attr("shape"), oo.attr("dtype"));
+        return k(py::module_::import("numpy").attr("zeros")(oo.attr("shape"), oo.attr("dtype")));
       } else if (py::isinstance<py::float_>(oo)) {
         return k(py::object(py::float_(0.0)));
       } else {
