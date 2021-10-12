@@ -64,6 +64,8 @@ fun ____or<a>(a: bool, b:bool) : bool
 
 fun ____assign<a>(a: a, b:a) : unit 
 
+fun ____zeros<a>(a: a) : a
+
 // builtin types
 
 type neg<a:num>

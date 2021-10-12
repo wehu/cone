@@ -220,6 +220,11 @@ namespace cone {
       py::exec(____to_py_object(str), scope);
       return k(py::object(scope["____result"]));
     };
+
+    const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &)> cone______zeros =
+    [=](const cont_t &k, stack_t s, effects_t effs, const object_t &o) -> object_t {
+      return k(py::object(py::float_(0.0)));
+    };
   }}
 
 }

@@ -167,6 +167,7 @@ genTypeArgs ts =
 
 builtinFuncs =
   [ "core/prelude/inline_python",
+    "core/prelude/____zeros",
     "data/tensor/full"
   ]
 

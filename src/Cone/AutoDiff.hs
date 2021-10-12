@@ -103,19 +103,10 @@ genDiffs m = do
           return newDiff
         Nothing -> return d
 
-genConstantByType :: (Has EnvEff sig m) => String -> Type -> m Expr
-genConstantByType c t@(TPrim pt _) = do
-  let c' = case pt of
-        F16 -> c ++ ".0"
-        F32 -> c ++ ".0"
-        F64 -> c ++ ".0"
-        BF16 -> c ++ ".0"
-        Pred -> if c == "0" then "false" else "true"
-        _ -> c
-  return $ ELit c' t (_tloc t)
-genConstantByType c t@(TVar _ loc) = do
-  return $ ELit (c++".0") (TPrim F32 loc) loc 
-genConstantByType _ t = throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)
+genZerosByValue :: (Has EnvEff sig m) => Expr -> m Expr
+genZerosByValue e = do
+  let loc = _eloc e
+  return $ EApp False (EVar (s2n "core/prelude/____zeros") loc) [] [e] loc
 
 addTempVariables :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 addTempVariables = transformMOn (funcExpr . _Just) addTempVar
@@ -191,7 +182,8 @@ genDiffForExpr outputD s@ESeq {..} = do
 genDiffForExpr outputD l@(ELet p@(PVar v _) e body s loc) = do
   (db, bvs) <- genDiffForExpr outputD body
   (de, evs) <- genDiffForExpr (name2String v) e
-  return (l {_eletBody = ESeq [db, de] loc}, bvs ++ evs)
+  c <- genZerosByValue e
+  return (l {_eletBody = ELet (PVar (s2n (name2String v ++ "____diff")) loc) c (ESeq [db, de] loc) True loc}, bvs ++ evs)
 genDiffForExpr outputD w@EWhile {..} = do
   db <- genDiffForExpr outputD _ewhileBody
   return (w {_ewhileBody = db ^. _1}, db ^. _2)
@@ -207,7 +199,7 @@ genDiffForExpr
     dte <- genDiffForExpr outputD te
     dfe <- genDiffForExpr outputD fe
     return (c {_ecaseBody = [t {_caseExpr = dte ^. _1}, f {_caseExpr = dfe ^. _1}]}, dte ^. _2 ++ dfe ^. _2)
-genDiffForExpr outputD l@ELit {..} = (,[]) <$> genConstantByType "0" _litType
+genDiffForExpr outputD l@ELit {..} = (,[]) <$> genZerosByValue l
 genDiffForExpr outputD a@EAnn {..} = do
   d <- genDiffForExpr outputD _eannExpr
   return (a {_eannExpr = d ^. _1}, d ^. _2)
@@ -234,16 +226,16 @@ genDiff diff f@FuncDef {} = do
   case _funcExpr f of
     Just e -> do
       (e, vs) <- genDiffForExpr "____output" e
-      let d : ds = _diffWRT diff
+      let d : ds = map (++ "____diff") (_diffWRT diff)
           diffs = L.foldl' (\s e -> EApp False (EVar (s2n "core/prelude/pair") loc) [] [EVar (s2n e) loc, s] loc) (EVar (s2n d) loc) ds
       e <-
         foldM
-          ( \s (e, t) -> do
-              c0 <- genConstantByType "0" t
-              return $ ELet (PVar (s2n e) loc) c0 s True loc
+          ( \s e -> do
+              c0 <- genZerosByValue (EVar (s2n e) loc) 
+              return $ ELet (PVar (s2n (e ++ "____diff")) loc) c0 s True loc
           )
           (ESeq [e, diffs] loc)
-          (L.nubBy (\a b -> fst a == fst b) vs)
+          (_diffWRT diff)
       return f {_funcExpr = Just e}
     Nothing -> return f
 genDiff d BoundFuncDef {..} = do
