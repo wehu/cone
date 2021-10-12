@@ -117,13 +117,13 @@ addTempVariables = transformMOn (funcExpr . _Just) addTempVar
           return e
         addTempVar e = return e
 
-genDiffForExpr :: (Has EnvEff sig m) => String -> Expr -> m (Expr, [(String, Type)], [(Pattern, Expr, Bool)])
+genDiffForExpr :: (Has EnvEff sig m) => String -> Expr -> m (Expr, [(String, Type)])
 genDiffForExpr outputD e@EVar{..} = do
   let diffN = name2String _evarName ++ "____diff"
       diff = EVar (s2n diffN) _eloc
   return (EApp False (EVar (s2n "core/prelude/____assign") _eloc) []
           [diff, EApp False (EVar (s2n "core/prelude/____add") _eloc) [] 
-          [diff, EVar (s2n (outputD ++ "____diff")) _eloc] _eloc] _eloc, [(diffN, TPrim F32 _eloc)], [])
+          [diff, EVar (s2n (outputD ++ "____diff")) _eloc] _eloc] _eloc, [(diffN, TPrim F32 _eloc)])
 genDiffForExpr outputD a@(EApp False (EVar n _) targs args loc)= do
   let fn = name2String n
       od = EVar (s2n (outputD ++ "____diff")) loc
@@ -141,14 +141,14 @@ genDiffForExpr outputD a@(EApp False (EVar n _) targs args loc)= do
       p = L.foldl' (\s e -> PApp (EVar (s2n "core/prelude/pair") loc) [] [PVar (s2n e) loc, s] loc) (PVar (s2n d) loc) ds
       setDiffs = [EApp False (EVar (s2n "core/prelude/____assign") loc) []
                      [EVar (s2n n) loc, EApp False (EVar (s2n "core/prelude/____add") loc) [] [EVar (s2n n) loc, EVar (s2n t) loc] loc] loc | n <- inputDs ^.. traverse._1 | t <- diffs]
-  return (ELet p (EApp False (fromJust $ _diffAdj $ fromJust f) targs (args ++ [od]) loc) (ESeq setDiffs loc) False loc, inputDs, [])
+  return (ELet p (EApp False (fromJust $ _diffAdj $ fromJust f) targs (args ++ [od]) loc) (ESeq setDiffs loc) False loc, inputDs)
 genDiffForExpr outputD s@ESeq{..} = do
   es <- mapM (genDiffForExpr outputD) (reverse _eseq)
-  return (s{_eseq=es ^.. traverse ._1}, join $ es ^.. traverse ._2, join $ es ^.. traverse . _3)
-genDiffForExpr outputD l@(ELet p@(PVar v _) e body False loc) = do
-  (db, bvs, bps) <- genDiffForExpr outputD body
-  (de, evs, eps) <- genDiffForExpr (name2String v) e
-  return (ESeq [db, de] loc, bvs ++ evs, (p, e, False):bps ++ eps)
+  return (s{_eseq=es ^.. traverse ._1}, join $ es ^.. traverse ._2)
+genDiffForExpr outputD l@(ELet p@(PVar v _) e body s loc) = do
+  (db, bvs) <- genDiffForExpr outputD body
+  (de, evs) <- genDiffForExpr (name2String v) e
+  return (l{_eletBody=ESeq [db, de] loc}, bvs ++ evs)
 -- genDiffForExpr outputD w@EWhile{..} = do
 --   db <- genDiffForExpr outputD _ewhileBody
 --   return (w{_ewhileBody=db ^. _1}, db ^. _2, db ^. _3)
@@ -158,25 +158,25 @@ genDiffForExpr outputD l@(ELet p@(PVar v _) e body False loc) = do
 --   dte <- genDiffForExpr outputD te
 --   dfe <- genDiffForExpr outputD fe
 --   return (c{_ecaseBody=[t{_caseExpr=dte ^._1}, f{_caseExpr=dfe ^._1}]}, dte ^._2 ++ dfe ^._2, dte ^. _3 ++ dfe ^. _3)
-genDiffForExpr outputD l@ELit{..} = (, [], []) <$> genConstantByType "0" _litType
+genDiffForExpr outputD l@ELit{..} = (, []) <$> genConstantByType "0" _litType
 genDiffForExpr outputD a@EAnn{..} = do
   d <- genDiffForExpr outputD _eannExpr
-  return (a{_eannExpr=d ^. _1}, d ^. _2, d ^. _3)
+  return (a{_eannExpr=d ^. _1}, d ^. _2)
 genDiffForExpr outputD a@EAnnMeta{..} = do
   d <- genDiffForExpr outputD _eannMetaExpr
-  return (a{_eannMetaExpr=d ^. _1}, d ^. _2, d ^. _3)
+  return (a{_eannMetaExpr=d ^. _1}, d ^. _2)
 genDiffForExpr outputD b@EBoundTypeVars{..} = do
   let (vs, e) = unsafeUnbind _eboundTypeVars
   d <- genDiffForExpr outputD e
-  return (b{_eboundTypeVars=bind vs $ d ^. _1}, d ^._2, d ^. _3)
+  return (b{_eboundTypeVars=bind vs $ d ^. _1}, d ^._2)
 genDiffForExpr outputD b@EBoundEffTypeVars{..} = do
   let (vs, e) = unsafeUnbind _eboundEffTypeVars
   d <- genDiffForExpr outputD e
-  return (b{_eboundEffTypeVars=bind vs $ d ^._1}, d ^. _2, d ^. _3)
+  return (b{_eboundEffTypeVars=bind vs $ d ^._1}, d ^. _2)
 genDiffForExpr outputD b@EBoundVars{..} = do
   let (vs, e) = unsafeUnbind _eboundVars
   d <- genDiffForExpr outputD e
-  return (b{_eboundVars=bind vs $ d ^. _1}, d ^._2, d ^. _3)
+  return (b{_eboundVars=bind vs $ d ^. _1}, d ^._2)
 genDiffForExpr outputD e = throwError $ "unsupported expr for diff " ++ ppr e ++ ppr (_eloc e)
 
 genDiff :: (Has EnvEff sig m) => DiffDef -> FuncDef -> m FuncDef
@@ -184,14 +184,12 @@ genDiff diff f@FuncDef{} = do
   let loc = _funcLoc f
   case _funcExpr f of 
     Just e -> do
-                (e, vs, ps) <- genDiffForExpr "____output" e
+                (e, vs) <- genDiffForExpr "____output" e
                 let d:ds = _diffWRT diff
                     diffs = L.foldl' (\s e -> EApp False (EVar (s2n "core/prelude/pair") loc) [] [EVar (s2n e) loc, s] loc) (EVar (s2n d) loc) ds
                 e <- foldM (\s (e,t) -> do
                   c0 <- genConstantByType "0" (TPrim F32 loc)
                   return $ ELet (PVar (s2n e) loc) c0 s True loc) (ESeq [e, diffs] loc) (L.nubBy (\a b -> fst a == fst b) vs)
-                e <- foldM (\s (p, e, iss) -> do
-                  return $ ELet p e s iss loc) e (reverse ps)
                 return f{_funcExpr = Just e}
     Nothing -> return f
 genDiff d BoundFuncDef{..} = do
