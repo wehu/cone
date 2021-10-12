@@ -50,12 +50,12 @@ fun test_inline(o : str) : io unit {
 
 diff fun test2 wrt (a) = test2
 
-fun test3(a : f32) : f32 {
-    val b = a + a
-    b + 2.0
+fun test3(a : f32, b : f32) : f32 {
+    val c = a + b
+    c * 2.0
 }
 
-diff fun test3 wrt (a) = auto 
+diff fun test3 wrt (a, b) = auto 
 
 fun main() : io unit {
    var a = 0
@@ -148,7 +148,9 @@ fun main() : io unit {
        B(3) -> {print("bbbb")}
    }
 
-   print(diff test3(2.0, 1.0))
+   val (da, db) = diff test3(2.0, 3.0, 1.0)
+   print(da)
+   print(db)
    val f = fn <a>(bbb:a) : a { bbb }
    print(f(a))
    print(a)

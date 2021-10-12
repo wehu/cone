@@ -223,7 +223,7 @@ genDiff diff f@FuncDef {} = do
   case _funcExpr f of
     Just e -> do
       e <- genDiffForExpr "____output" e
-      let d : ds = map (++ "____diff") (_diffWRT diff)
+      let d : ds = map (++ "____diff") (reverse $ _diffWRT diff)
           diffs = L.foldl' (\s e -> EApp False (EVar (s2n "core/prelude/pair") loc) [] [EVar (s2n e) loc, s] loc) (EVar (s2n d) loc) ds
       e <-
         foldM
