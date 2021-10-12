@@ -61,7 +61,7 @@ setupDiff d f@FuncDef {..} = do
             TFunc (_funcArgs ^.. traverse . _2 ++ [_funcResultType]) (EffList [] _funcLoc) resTypes _funcLoc
   let fn = _funcName ++ "____diff"
   setFuncType fn fType
-  return f {_funcName = fn, _funcArgs = _funcArgs ++ [("____output____diff", _funcResultType)]}
+  return f {_funcName = fn, _funcArgs = _funcArgs ++ [("____output____diff", _funcResultType)], _funcResultType=resTypes}
 setupDiff d BoundFuncDef {..} = do
   let (_, f) = unsafeUnbind _boundFuncDef
   setupDiff d f
@@ -113,6 +113,8 @@ genConstantByType c t@(TPrim pt _) = do
         Pred -> if c == "0" then "false" else "true"
         _ -> c
   return $ ELit c' t (_tloc t)
+genConstantByType c t@(TVar _ loc) = do
+  return $ ELit (c++".0") (TPrim F32 loc) loc 
 genConstantByType _ t = throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)
 
 addTempVariables :: (Has EnvEff sig m) => FuncDef -> m FuncDef
@@ -237,7 +239,7 @@ genDiff diff f@FuncDef {} = do
       e <-
         foldM
           ( \s (e, t) -> do
-              c0 <- genConstantByType "0" (TPrim F32 loc)
+              c0 <- genConstantByType "0" t
               return $ ELet (PVar (s2n e) loc) c0 s True loc
           )
           (ESeq [e, diffs] loc)
