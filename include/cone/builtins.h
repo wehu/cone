@@ -223,7 +223,10 @@ namespace cone {
 
     const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &)> cone______zeros =
     [=](const cont_t &k, stack_t s, effects_t effs, const object_t &o) -> object_t {
-      if (py::isinstance(____to_py_object(o), py::float_().get_type())) {
+      auto &&oo = ____to_py_object(o);
+      if (py::isinstance(oo, py::module_::import("numpy").attr("ndarray"))) {
+        return py::module_::import("numpy").attr("zeros")(oo.attr("shape"), oo.attr("dtype"));
+      } else if (py::isinstance<py::float_>(oo)) {
         return k(py::object(py::float_(0.0)));
       } else {
         return k(py::object(py::int_(0)));
