@@ -51,8 +51,8 @@ fun test_inline(o : str) : io unit {
 diff fun test2 wrt (a) = test2
 
 fun test3(a : f32) : f32 {
-   val b = a + a * a * 2.0
-   sin(b)
+    val b = a + a
+    b + 2.0
 }
 
 diff fun test3 wrt (a) = auto 
@@ -154,19 +154,19 @@ fun main() : io unit {
    print(a)
    test_inline("test")
 
-   val ds = ds.mnist("./data", true)
-   ds.foreach(ds, fn(d : t.tensor<f32, @[1, 28, 28]>, i : i32) : io unit {
-       if (i < 10) {
-           print(d)
-       } else {
-           unit
-       }
-   })
+   // val ds = ds.mnist("./data", true)
+   // ds.foreach(ds, fn(d : t.tensor<f32, @[1, 28, 28]>, i : i32) : io unit {
+   //     if (i < 10) {
+   //         print(d)
+   //     } else {
+   //         unit
+   //     }
+   // })
 
-   val feature = t.full<@[4, 3, 16, 16]>(0.1, [])
-   val weight  = t.full<@[2, 3, 4, 4]>(0.1, [])
-   print(feature)
-   print(conv2d(feature, weight))
+   // val feature = t.full<@[4, 3, 16, 16]>(0.1, [])
+   // val weight  = t.full<@[2, 3, 4, 4]>(0.1, [])
+   // print(feature)
+   // print(conv2d(feature, weight))
 
 }
 

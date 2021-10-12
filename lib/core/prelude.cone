@@ -14,32 +14,32 @@ fun ____add<a>(a: a, b:a) : a
 
 diff fun ____add wrt (a, b) = ____add_diff
 
-fun ____add_diff<a>(a: a, b:a, da: a, db: a) : a {
-    da + db
+fun ____add_diff<a>(a: a, b:a, do: a) : (a, a) {
+    (do, do)
 }
 
 fun ____sub<a>(a: a, b:a) : a
 
 diff fun ____sub wrt (a) = ____sub_diff
 
-fun ____sub_diff<a>(a: a, b: a, da: a, db: a) : a {
-    da - db
+fun ____sub_diff<a>(a: a, b: a, do: a) : (a, a) {
+    (do, - do)
 }
 
 fun ____mul<a>(a: a, b:a) : a
 
 diff fun ____mul wrt (a, b) = ____mul_diff
 
-fun ____mul_diff<a>(a: a, b: a, da: a, db: a) : a {
-    a * db + da * b
+fun ____mul_diff<a>(a: a, b: a, do: a) : (a, a) {
+    (b * do, a * do)
 }
 
 fun ____div<a>(a: a, b:a) : a
 
 diff fun ____div wrt (a, b) = ____div_diff
 
-fun ____div_diff<a>(a: a, b: a, da: a, db: a) : a {
-    (da * b - a * db) / (b * b)
+fun ____div_diff<a>(a: a, b: a, do: a) : (a, a) {
+    (do / b,  - (a * do) / (b * b))
 }
 
 fun ____mod<a>(a: a, b:a) : a
