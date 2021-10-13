@@ -443,7 +443,6 @@ pat =
     <*> P.optionMaybe (pipe_ *> pat P.<?> "pattern list cons")
     <*> getPos
   where
-    papp :: A.Expr -> Maybe [A.Type] -> Maybe [A.Pattern] -> A.Location -> A.Pattern
     papp n targs pargs pos =
       if isn't _Nothing targs || isn't _Nothing pargs
         then A.PApp n (targs ^. non []) (pargs ^. non []) pos
