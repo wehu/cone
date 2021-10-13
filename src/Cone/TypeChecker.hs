@@ -216,15 +216,7 @@ initEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m EffectDef
 initEffIntfDef e = do
   prefix <- getEnv currentModuleName
   globalTypes <- fmap s2n . M.keys <$> getEnv types
-  let b = bind (globalTypes :: [TVar]) (bindEDef e)
-      fvars = (b ^.. fv) :: [TVar]
-  -- check if has free type variables
-  when (fvars /= []) $
-          throwError $
-            "eff interfaces's type variables should "
-              ++ "only exists in eff type arguments: "
-              ++ ppr fvars
-              ++ ppr (_effectLoc e)
+  globalEffTypes <- fmap s2n . M.keys <$> getEnv effs
   let is = e ^. effectIntfs
       en = e ^. effectName
       f = \i -> do
@@ -232,6 +224,25 @@ initEffIntfDef e = do
             iargs = i ^. intfArgs
             iresult = _intfResultType i
             pos = i ^. intfLoc
+            tvars = i ^.. intfBoundVars .traverse._1
+            evars = i ^. intfBoundEffVars
+            tb = bind (globalTypes ++ tvars) (bindEDef e)
+            ftvars = (tb ^.. fv) :: [TVar]
+            eb = bind (globalEffTypes ++ evars) (bindEDef e)
+            fevars = (eb ^.. fv) :: [EffVar]
+        -- check if has free type variables
+        when (ftvars /= []) $
+                throwError $
+                  "eff interfaces's type variables should "
+                    ++ "only exists in eff type arguments: "
+                    ++ ppr ftvars
+                    ++ ppr (_effectLoc e)
+        when (fevars /= []) $
+                throwError $
+                  "eff interfaces's eff type variables should "
+                    ++ "only exists in eff type arguments: "
+                    ++ ppr fevars
+                    ++ ppr (_effectLoc e)
         addEffIntfs en intfn
         -- check if inteface exists or not
         ot <- getEnv $ funcs . at intfn
