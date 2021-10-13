@@ -19,7 +19,7 @@ fun conv2d_diff<t, n:num, ci:num, h:num, w:num, co:num, r:num, s:num>(\
     inline_python<(tensor<t, @[n, ci, h, w]>, tensor<t, @[co, ci, r, s]>)>("""
 import torch
 import torch.nn.functional as F
-____result = (F.grad.conv2d_input(feature.shape(), torch.from_numpy(weight), torch.from_numpy(output_diff)).numpy(),
+____result = (F.grad.conv2d_input(feature.shape, torch.from_numpy(weight), torch.from_numpy(output_diff)).numpy(),
               F.grad.conv2d_weight(torch.from_numpy(feature), weight.shape, torch.from_numpy(output_diff)).numpy())
     """)    
 }
