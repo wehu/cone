@@ -34,175 +34,175 @@ token test getVal = do
     showTok pos (L.AlexPn _ l c, _, s) =
       s ++ "@" ++ P.sourceName pos ++ "[" ++ show l ++ ":" ++ show c ++ "]"
 
-keyword :: L.Tok -> Parser L.Tok
-keyword t = token (== t) (const t)
+keyword :: L.Tok -> String -> Parser L.Tok
+keyword t s = token (== t) (const t) P.<?> s
 
 symbol = keyword
 
-kModule = keyword L.Module
+kModule = keyword L.Module "module"
 
-kImport = keyword L.Import
+kImport = keyword L.Import "import"
 
-kAs = keyword L.As
+kAs = keyword L.As "as"
 
-kFunc = keyword L.Func
+kFunc = keyword L.Func "fun"
 
-kFn = keyword L.Fn
+kFn = keyword L.Fn "fn"
 
-kImpl = keyword L.Impl
+kImpl = keyword L.Impl "impl"
 
-kType = keyword L.Type
+kType = keyword L.Type "type"
 
-kEffect = keyword L.Effect
+kEffect = keyword L.Effect "effect"
 
-kHandle = keyword L.Handle
+kHandle = keyword L.Handle "handle"
 
-kWith = keyword L.With
+kWith = keyword L.With "with"
 
-kVar = keyword L.Var
+kVar = keyword L.Var "var"
 
-kVal = keyword L.Val
+kVal = keyword L.Val "val"
 
-kCase = keyword L.Case
+kCase = keyword L.Case "case"
 
-kOf = keyword L.Of
+kOf = keyword L.Of "of"
 
-kIf = keyword L.If
+kIf = keyword L.If "if"
 
-kElse = keyword L.Else
+kElse = keyword L.Else "else"
 
-kWhile = keyword L.While
+kWhile = keyword L.While "while"
 
-kNum = keyword L.Num
+kNum = keyword L.Num "num"
 
-semi = P.many1 $ symbol L.Semi
+semi = P.many1 (symbol L.Semi ";")
 
-lParen = symbol L.LParen
+lParen = symbol L.LParen "("
 
-rParen = symbol L.RParen
+rParen = symbol L.RParen ")"
 
-lBrace = symbol L.LBrace
+lBrace = symbol L.LBrace "{"
 
-rBrace = symbol L.RBrace
+rBrace = symbol L.RBrace "}"
 
-lBracket = symbol L.LBracket
+lBracket = symbol L.LBracket "["
 
-rBracket = symbol L.RBracket
+rBracket = symbol L.RBracket "]"
 
-colon = symbol L.Colon
+colon = symbol L.Colon ":"
 
-comma = symbol L.Comma
+comma = symbol L.Comma ","
 
-less = symbol L.Less
+less = symbol L.Less "<"
 
-greater = symbol L.Greater
+greater = symbol L.Greater ">"
 
-le = symbol L.Le
+le = symbol L.Le "<="
 
-ge = symbol L.Ge
+ge = symbol L.Ge ">="
 
-eq = symbol L.Eq
+eq = symbol L.Eq "=="
 
-ne = symbol L.Ne
+ne = symbol L.Ne "!="
 
-not_ = symbol L.Not
+not_ = symbol L.Not "!"
 
-and_ = symbol L.And
+and_ = symbol L.And "&&"
 
-or_ = symbol L.Or
+or_ = symbol L.Or "||"
 
-add = symbol L.Add
+add = symbol L.Add "+"
 
-sub = symbol L.Sub
+sub = symbol L.Sub "-"
 
-div_ = symbol L.Div
+div_ = symbol L.Div "/"
 
-mod_ = symbol L.Mod
+mod_ = symbol L.Mod "%"
 
-pipe_ = symbol L.Pipe
+pipe_ = symbol L.Pipe "|"
 
-assign_ = symbol L.Assign
+assign_ = symbol L.Assign "="
 
-addAssign = symbol L.AddAssign
+addAssign = symbol L.AddAssign "+="
 
-subAssign = symbol L.SubAssign
+subAssign = symbol L.SubAssign "-="
 
-mulAssign = symbol L.MulAssign
+mulAssign = symbol L.MulAssign "*="
 
-divAssign = symbol L.DivAssign
+divAssign = symbol L.DivAssign "/="
 
-modAssign = symbol L.ModAssign
+modAssign = symbol L.ModAssign "%="
 
-backSlash = symbol L.Backslash
+backSlash = symbol L.Backslash "\\"
 
-question = symbol L.Question
+question = symbol L.Question "?"
 
-at_ = symbol L.At
+at_ = symbol L.At "@"
 
-arrow = symbol L.Arrow
+arrow = symbol L.Arrow "->"
 
-star = symbol L.Star
+star = symbol L.Star "*"
 
-dot = symbol L.Dot
+dot = symbol L.Dot "."
 
-sharp = symbol L.Sharp
+sharp = symbol L.Sharp "#"
 
-i8 = keyword L.I8
+i8 = keyword L.I8 "i8"
 
-i16 = keyword L.I16
+i16 = keyword L.I16 "i16"
 
-i32 = keyword L.I32
+i32 = keyword L.I32 "i32"
 
-i64 = keyword L.I64
+i64 = keyword L.I64 "i64"
 
-u8 = keyword L.U8
+u8 = keyword L.U8 "u8"
 
-u16 = keyword L.U16
+u16 = keyword L.U16 "u16"
 
-u32 = keyword L.U32
+u32 = keyword L.U32 "u32"
 
-u64 = keyword L.U64
+u64 = keyword L.U64 "u64"
 
-f16 = keyword L.F16
+f16 = keyword L.F16 "f16"
 
-f32 = keyword L.F32
+f32 = keyword L.F32 "f32"
 
-f64 = keyword L.F64
+f64 = keyword L.F64 "f64"
 
-bf16 = keyword L.BF16
+bf16 = keyword L.BF16 "bf16"
 
-bool = keyword L.Pred
+bool = keyword L.Pred "bool"
 
-str = keyword L.Str
+str = keyword L.Str "str"
 
-char = keyword L.Char
+char = keyword L.Char "char"
 
-true = keyword L.True_
+true = keyword L.True_ "true"
 
-false = keyword L.False_
+false = keyword L.False_ "false"
 
-unit = keyword L.Unit
+unit = keyword L.Unit "unit"
 
-kAlias = keyword L.Alias
+kAlias = keyword L.Alias "alias"
 
-kDiff = keyword L.Diff
+kDiff = keyword L.Diff "diff"
 
-kAuto = keyword L.Auto
+kAuto = keyword L.Auto "auto"
 
-kWrt = keyword L.WRT
+kWrt = keyword L.WRT "wrt"
 
-tokenP :: Monoid a => Prism' L.Tok a -> Parser String
-tokenP p = token (not . isn't p) (\(_, _, s) -> s)
+tokenP :: Monoid a => Prism' L.Tok a -> String -> Parser String
+tokenP p s = token (not . isn't p) (\(_, _, s) -> s) P.<?> s
 
-ident = tokenP _Ident
+ident = tokenP _Ident "identity"
 
-literalInt = tokenP _LInt
+literalInt = tokenP _LInt "int"
 
-literalFloat = tokenP _LFloat
+literalFloat = tokenP _LFloat "float"
 
-literalStr = tokenP _LStr
+literalStr = tokenP _LStr "string"
 
-literalChar = tokenP _LChar
+literalChar = tokenP _LChar "char"
 
 getPos :: Parser A.Location
 getPos =
