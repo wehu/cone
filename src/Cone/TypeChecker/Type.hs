@@ -439,9 +439,12 @@ inferAppResultEffType f@TFunc {} targs args = do
   effBindings <-
     ( (++)
         <$> foldM
-          (\s e -> (++) s <$> e)
+          (\s (a, b) -> do
+            a <- inferType a
+            b <- inferType b
+            collectEffVarBindingsInType True a b >>= checkEffVarBindings . (++) s)
           []
-          [collectEffVarBindingsInType True a b | a <- fArgTypes | b <- args]
+          [(a, b) | a <- fArgTypes | b <- args]
         <*> collectEffVarBindings True funcEff resEff
       )
       >>= checkEffVarBindings
@@ -486,9 +489,12 @@ collectVarBindings bi a@TFunc {} b@TFunc {} =
       (++)
         <$> ( (++)
                 <$> foldM
-                  (\s e -> (++) s <$> e)
+                  (\s (a, b) -> do
+                    a <- inferType a
+                    b <- inferType b
+                    collectVarBindings bi a b >>= checkVarBindings . (++) s)
                   []
-                  [collectVarBindings bi aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
+                  [(aarg, barg) | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
                 <*> collectVarBindings bi (_tfuncResult a) (_tfuncResult b)
             )
         <*> collectVarBindingsInEff bi al bl
@@ -496,9 +502,12 @@ collectVarBindings bi a@TList {} b@TList {} =
   if L.length (_tlist a) == L.length (_tlist b)
     then
       foldM
-        (\s e -> (++) s <$> e)
+        (\s (a, b) -> do
+          a <- inferType a
+          b <- inferType b
+          collectVarBindings bi a b >>= checkVarBindings . (++) s)
         []
-        [collectVarBindings bi ae be | ae <- a ^. tlist | be <- b ^. tlist]
+        [(ae, be) | ae <- a ^. tlist | be <- b ^. tlist]
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectVarBindings bi a@TApp {} b@TApp {} =
   if L.length (_tappArgs a) == L.length (_tappArgs b)
@@ -506,9 +515,12 @@ collectVarBindings bi a@TApp {} b@TApp {} =
       f <- collectVarBindings bi (_tappName a) (_tappName b)
       args <-
         foldM
-          (\s e -> (++) s <$> e)
+          (\s (a, b) -> do
+            a <- inferType a
+            b <- inferType b
+            collectVarBindings bi a b >>= checkVarBindings . (++) s)
           []
-          [collectVarBindings bi aarg barg | aarg <- a ^. tappArgs | barg <- b ^. tappArgs]
+          [(aarg, barg) | aarg <- a ^. tappArgs | barg <- b ^. tappArgs]
       return $ f ++ args
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectVarBindings bi a@TAnn {} b@TAnn {} =
@@ -558,9 +570,12 @@ collectVarBindingsInEff bi a@EffApp {} b@EffApp {} =
     then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
     else
       foldM
-        (\s e -> (++) s <$> e)
+        (\s (a, b) -> do
+          a <- inferType a
+          b <- inferType b
+          collectVarBindings bi a b >>= checkVarBindings . (++) s)
         []
-        [collectVarBindings bi aarg barg | aarg <- a ^. effAppArgs | barg <- b ^. effAppArgs]
+        [(aarg, barg) | aarg <- a ^. effAppArgs | barg <- b ^. effAppArgs]
 collectVarBindingsInEff bi a@EffList {} b@EffList {} = do
   let al = a ^. effList
   let bl = b ^. effList
@@ -600,10 +615,12 @@ collectEffVarBindings bi a@EffApp {} b@EffApp {} = do
     then throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
     else do
       foldM
-        (\s e -> (++) s <$> e)
+        (\s (a, b) -> do
+          a <- inferType a
+          b <- inferType b
+          collectVarBindings bi a b >>= checkVarBindings . (++) s)
         []
-        [collectVarBindings bi aarg barg | aarg <- a ^. effAppArgs | barg <- b ^. effAppArgs]
-        >>= checkVarBindings
+        [(aarg, barg) | aarg <- a ^. effAppArgs | barg <- b ^. effAppArgs]
   return []
 collectEffVarBindings bi a@EffList {} b@EffList {} = do
   let al = a ^. effList
@@ -676,29 +693,38 @@ collectEffVarBindingsInType bi a@TFunc {} b@TFunc {} =
       (++)
         <$> ( (++)
                 <$> foldM
-                  (\s e -> (++) s <$> e)
+                  (\s (a, b) -> do
+                    a <- inferType a
+                    b <- inferType b
+                    collectEffVarBindingsInType bi a b >>= checkEffVarBindings . (++) s)
                   []
-                  [collectEffVarBindingsInType bi aarg barg | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
-                <*> collectEffVarBindingsInType bi (_tfuncResult a) (_tfuncResult b)
+                  [(aarg, barg) | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
+                <*> collectEffVarBindingsInType bi (_tfuncResult a) (_tfuncResult b) >>= checkEffVarBindings
             )
-        <*> collectEffVarBindings bi al bl
+        <*> collectEffVarBindings bi al bl >>= checkEffVarBindings
 collectEffVarBindingsInType bi a@TList {} b@TList {} =
   if L.length (_tlist a) == L.length (_tlist b)
     then
       foldM
-        (\s e -> (++) s <$> e)
+        (\s (a, b) -> do
+          a <- inferType a
+          b <- inferType b
+          collectEffVarBindingsInType bi a b >>= checkEffVarBindings . (++) s)
         []
-        [collectEffVarBindingsInType bi ae be | ae <- a ^. tlist | be <- b ^. tlist]
+        [(ae, be) | ae <- a ^. tlist | be <- b ^. tlist]
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType bi a@TApp {} b@TApp {} =
   if L.length (_tappArgs a) == L.length (_tappArgs b)
     then do
-      f <- collectEffVarBindingsInType bi (_tappName a) (_tappName b)
+      f <- collectEffVarBindingsInType bi (_tappName a) (_tappName b) >>= checkEffVarBindings
       args <-
         foldM
-          (\s e -> (++) s <$> e)
+          (\s (a, b) -> do
+            a <- inferType a
+            b <- inferType b
+            collectEffVarBindingsInType bi a b >>= checkEffVarBindings . (++) s)
           []
-          [collectEffVarBindingsInType bi aarg barg | aarg <- a ^. tappArgs | barg <- b ^. tappArgs]
+          [(aarg, barg) | aarg <- a ^. tappArgs | barg <- b ^. tappArgs]
       return $ f ++ args
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType bi a@TAnn {} b@TAnn {} =
