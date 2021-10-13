@@ -68,7 +68,7 @@ checkAndCompile paths i target = do
     o <- compileToCppSource paths coneFn target >>= compileCppToLib paths cppLibFn
     liftIO $ putStrLn o
 
-  checkTimeStampAndDo pyFn [coneFn] $ do
+  checkTimeStampAndDo pyFn [cppLibFn, coneFn] $ do
     o <- compilePythonWrapper paths coneFn target
     liftIO $ writeFile pyFn o
     let ds = splitOn "/" i
