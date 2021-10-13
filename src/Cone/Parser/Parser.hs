@@ -234,13 +234,13 @@ imports =
 
 kind :: Parser A.Kind
 kind =
-  ( A.KStar <$ (star P.<?> "star kind")
+  (( A.KStar <$ (star P.<?> "star kind")
       P.<|> A.KNum <$ (kNum P.<?> "num kind")
       P.<|> A.KList <$ at_ <*> (brackets kind P.<?> "list kind")
       P.<|> P.try (A.KFunc <$> parens (P.sepBy kind comma) <* arrow <*> kind P.<?> "function kind")
   )
     <*> getPos
-    P.<|> parens kind
+    P.<|> parens kind) P.<?> "type kind"
 
 primType :: Parser A.PrimType
 primType =
@@ -331,7 +331,7 @@ typeTerm =
     ttuple _ _ = undefined
 
 type_ :: Parser A.Type
-type_ = PE.buildExpressionParser typeTable typeTerm
+type_ = PE.buildExpressionParser typeTable typeTerm P.<?> "type"
 
 boundTVars :: Parser [(A.TVar, Maybe A.Kind)]
 boundTVars =
@@ -340,7 +340,7 @@ boundTVars =
 
 boundEffVars :: Parser [A.EffVar]
 boundEffVars =
-  (brackets (P.sepBy1 (s2n <$> ident) comma) P.<?> "eff type variable list")
+  (brackets (P.sepBy1 (s2n <$> ident) comma) P.<?> "effect type variable list")
     P.<|> return []
 
 resultType :: Parser (A.EffectType, A.Type)
@@ -348,21 +348,21 @@ resultType = (,) <$> (P.try (effType <* P.lookAhead type_) P.<|> A.EffList [] <$
 
 effKind :: Parser A.EffKind
 effKind =
-  ( A.EKStar <$ (star P.<?> "eff star kind")
-      P.<|> P.try (A.EKFunc <$> parens (P.sepBy kind comma) <* arrow <*> effKind P.<?> "eff function kind")
+  (( A.EKStar <$ (star P.<?> "effect star kind")
+      P.<|> P.try (A.EKFunc <$> parens (P.sepBy kind comma) <* arrow <*> effKind P.<?> "effect function kind")
   )
     <*> getPos
-    P.<|> parens effKind
+    P.<|> parens effKind) P.<?> "effect kind"
 
 effType :: Parser A.EffectType
 effType =
-  parens effType
+  (parens effType
     P.<|> ( ( effapp <$> (A.EffVar . s2n <$> namePath <*> getPos)
                 <*> P.optionMaybe (angles (P.sepBy1 type_ comma))
-                <*> getPos P.<?> "eff application type"
+                <*> getPos P.<?> "effect application type"
             )
-              P.<|> (brackets (A.EffList <$> P.sepBy effType comma) <*> getPos P.<?> "eff type list")
-          )
+              P.<|> (brackets (A.EffList <$> P.sepBy effType comma) <*> getPos P.<?> "effect type list")
+          )) P.<?> "effect type"
   where
     effapp n args pos =
       case args of
@@ -430,7 +430,7 @@ exprBinary op name =
 
 pat :: Parser A.Pattern
 pat =
-  pcons
+  (pcons
     <$> ( (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple or single pattern")
             P.<|> ( papp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
                       <*> P.optionMaybe (angles (P.sepBy type_ comma))
@@ -441,7 +441,7 @@ pat =
             P.<|> (A.PExpr <$> expr <*> getPos P.<?> "pattern expr")
         )
     <*> P.optionMaybe (pipe_ *> pat P.<?> "pattern list cons")
-    <*> getPos
+    <*> getPos) P.<?> "pattern"
   where
     papp n targs pargs pos =
       if isn't _Nothing targs || isn't _Nothing pargs
@@ -565,10 +565,10 @@ handle = do
     <*> return (A.EffList [] pos)
     <*> return (A.TPrim A.Unit pos)
     <*> braces (Just <$> exprSeq)
-    <*> getPos
+    <*> getPos P.<?> "handle function"
 
 expr :: Parser A.Expr
-expr = PE.buildExpressionParser exprTable term
+expr = PE.buildExpressionParser exprTable term P.<?> "expression"
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
 typeArgs =
@@ -581,7 +581,7 @@ typeCon =
     <*> ( parens (P.sepBy type_ comma)
             P.<|> return []
         )
-    <*> getPos P.<?> "tyue constructor"
+    <*> getPos P.<?> "type constructor"
 
 typeDef :: Parser A.TypeDef
 typeDef =
@@ -627,7 +627,7 @@ diffDef =
     <*> ( kAuto $> Nothing
             P.<|> Just <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
         )
-    <*> getPos P.<?> "diff rule"
+    <*> getPos P.<?> "diff rule definition"
 
 topStmt :: Parser A.TopStmt
 topStmt =
