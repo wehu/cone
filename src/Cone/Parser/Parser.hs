@@ -312,7 +312,7 @@ typeTerm =
               P.<|> (tlist <$> brackets type_ <*> getPos P.<?> "type list")
           )
   )
-    <*> P.optionMaybe (colon *> kind)
+    <*> P.optionMaybe (colon *> kind P.<?> "type kind annotation")
     <*> getPos
   where
     tapp n args pos =
@@ -335,7 +335,7 @@ type_ = PE.buildExpressionParser typeTable typeTerm P.<?> "type"
 
 boundTVars :: Parser [(A.TVar, Maybe A.Kind)]
 boundTVars =
-  (angles (P.sepBy1 ((,) <$> (s2n <$> ident) <*> P.optionMaybe (colon *> kind)) comma) P.<?> "type variable list")
+  (angles (P.sepBy1 ((,) <$> (s2n <$> ident) <*> P.optionMaybe (colon *> kind P.<?> "type kind annotation")) comma) P.<?> "type variable list")
     P.<|> return []
 
 boundEffVars :: Parser [A.EffVar]
@@ -370,13 +370,12 @@ effType =
         Nothing -> n
 
 funcArgs :: Parser [(String, A.Type)]
-funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma P.<?> "function argument types"
+funcArgs = P.sepBy ((,) <$> ident <*> (colon *> type_ P.<?> "type annotation")) comma P.<?> "function argument types"
 
 funcProto =
   f <$> getPos <*> boundTVars <*> boundEffVars
     <*> parens funcArgs
-    <* colon
-    <*> resultType P.<?> "function prototype"
+    <*> (colon *> resultType P.<?> "result type") P.<?> "function prototype"
   where
     f pos bts bes args (effT, resT) = (pos, bts, bes, args, (effT, resT))
 
@@ -572,7 +571,7 @@ expr = PE.buildExpressionParser exprTable term P.<?> "expression"
 
 typeArgs :: Parser [(A.TVar, Maybe A.Kind)]
 typeArgs =
-  (angles (P.sepBy ((,) <$> (s2n <$> ident) <*> P.optionMaybe (colon *> kind)) comma) P.<?> "type arguments")
+  (angles (P.sepBy ((,) <$> (s2n <$> ident) <*> P.optionMaybe (colon *> kind P.<?> "type kind annotation")) comma) P.<?> "type arguments")
     P.<|> return []
 
 typeCon :: Parser A.TypeCon
@@ -599,8 +598,7 @@ typeAlias =
 funcIntf :: Parser A.FuncIntf
 funcIntf =
   f <$ kFunc <*> ident <*> boundTVars <*> boundEffVars
-    <*> parens (P.sepBy type_ comma) <* colon
-    <*> resultType
+    <*> parens (P.sepBy type_ comma) <*> (colon *> resultType P.<?> "type")
     <*> getPos P.<?> "effect interface definition"
   where
     f n bs es args (e, r) pos = A.FuncIntf n bs es args e r pos
