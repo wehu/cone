@@ -75,7 +75,7 @@ kWhile = keyword L.While "while"
 
 kNum = keyword L.Num "num"
 
-semi = P.many1 (symbol L.Semi ";")
+semi = P.many1 (symbol L.Semi ";") P.<?> ";"
 
 lParen = symbol L.LParen "("
 
