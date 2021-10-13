@@ -344,7 +344,7 @@ inferExprType h@EHandle {..} = underScope $ do
   let effN = name2String $ if isn't _EffVar _ehandleEff then _ehandleEff ^. effAppName . effVar else _ehandleEff ^. effVar
       prefix = join $ L.intersperse "/" $ init (splitOn "/" effN)
 
-  when (effN == "core/prelude/io" || effN == "core/prelude/python") $
+  when (effN == "core/prelude/io") $
     throwError $ effN ++ " effect cannot be handled"
 
   bs <- forM _ehandleBindings $ \intf -> underScope $ do
