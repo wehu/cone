@@ -212,8 +212,9 @@ initEffTypeDefs :: (Has EnvEff sig m) => Module -> m Module
 initEffTypeDefs = mapMOf (topStmts . traverse . _EDef) initEffTypeDef
 
 -- | Initialize effect inteface definitions
-initEffIntfDef :: (Has EnvEff sig m) => String -> EffectDef -> m EffectDef
-initEffIntfDef prefix e = do
+initEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m EffectDef
+initEffIntfDef e = do
+  prefix <- getEnv currentModuleName
   globalTypes <- fmap s2n . M.keys <$> getEnv types
   let b = bind (globalTypes :: [TVar]) (bindEDef e)
       fvars = (b ^.. fv) :: [TVar]
@@ -268,7 +269,7 @@ initEffIntfDef prefix e = do
 
 -- | Initialize all effect interfaces
 initEffIntfDefs :: (Has EnvEff sig m) => Module -> m Module
-initEffIntfDefs m = mapMOf (topStmts . traverse . _EDef) (initEffIntfDef $ m ^. moduleName) $ m
+initEffIntfDefs = mapMOf (topStmts . traverse . _EDef) initEffIntfDef
 
 -- | Check an effect interface
 checkEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m EffectDef
@@ -326,12 +327,12 @@ checkFuncDefs :: (Has EnvEff sig m) => Module -> m Module
 checkFuncDefs = mapMOf (topStmts . traverse . _FDef) checkFuncDef
 
 -- | Init a function implementation
-initImplFuncDef :: (Has EnvEff sig m) => Module -> String -> ImplFuncDef -> m ImplFuncDef
-initImplFuncDef m prefix = setFuncImpl prefix m
+initImplFuncDef :: (Has EnvEff sig m) => Module -> ImplFuncDef -> m ImplFuncDef
+initImplFuncDef = setFuncImpl
 
 -- | Init function implementations
 initImplFuncDefs :: (Has EnvEff sig m) => Module -> m Module
-initImplFuncDefs m = mapMOf (topStmts . traverse . _ImplFDef) (initImplFuncDef m $ m ^. moduleName) m
+initImplFuncDefs m = mapMOf (topStmts . traverse . _ImplFDef) (initImplFuncDef m) m
 
 -- | Check a function implementation
 checkImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ImplFuncDef

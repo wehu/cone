@@ -66,8 +66,8 @@ inferTypeKind a@TApp {..} = do
                 forM_
                   [(a, b) | a <- _tappArgs | b <- _kfuncArgs]
                   $ \(a, b) -> do
-                    t <- inferTypeKind a
-                    checkKindMatch t b
+                    k <- inferTypeKind a
+                    checkKindMatch k b
                 return _kfuncResult
           _ -> throwError $ "expected a func kind or star kind, but got " ++ ppr ak ++ ppr _tloc
   let tvn = name2String $ _tvar _tappName
@@ -971,8 +971,9 @@ searchFunc m fn loc = do
         else throwError $ "found more than one function for " ++ fn ++ ppr found ++ ppr loc
 
 -- | Set a function implementation
-setFuncImpl :: (Has EnvEff sig m) => String -> Module -> ImplFuncDef -> m ImplFuncDef
-setFuncImpl prefix m impl = do
+setFuncImpl :: (Has EnvEff sig m) => Module -> ImplFuncDef -> m ImplFuncDef
+setFuncImpl m impl = do
+  prefix <- getEnv currentModuleName
   let funcD = impl ^. implFunDef
       fn = prefix ++ "/" ++ funcD ^. funcName
       loc = funcD ^. funcLoc
