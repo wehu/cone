@@ -244,7 +244,7 @@ kind =
 
 primType :: Parser A.PrimType
 primType =
-  A.I8 <$ i8
+  (A.I8 <$ i8
     P.<|> (A.I16 <$ i16)
     P.<|> (A.I32 <$ i32)
     P.<|> (A.I64 <$ i64)
@@ -258,7 +258,7 @@ primType =
     P.<|> (A.BF16 <$ bf16)
     P.<|> (A.Pred <$ bool)
     P.<|> (A.Str <$ str)
-    P.<|> (A.Unit <$ unit)
+    P.<|> (A.Unit <$ unit)) P.<?> "primitive type"
 
 typeTable =
   [ [typePrefix sub "neg"],
@@ -344,7 +344,7 @@ boundEffVars =
     P.<|> return []
 
 resultType :: Parser (A.EffectType, A.Type)
-resultType = (,) <$> (P.try (effType <* P.lookAhead type_) P.<|> A.EffList [] <$> getPos) <*> type_
+resultType = ((,) <$> (P.try (effType <* P.lookAhead type_) P.<|> A.EffList [] <$> getPos) <*> type_) P.<?> "function result type"
 
 effKind :: Parser A.EffKind
 effKind =
