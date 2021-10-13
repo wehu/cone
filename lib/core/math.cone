@@ -3,9 +3,9 @@ module core.math
 // sin
 fun sin<a>(a : a) : a
 
-diff fun sin wrt (a) = sin____diff
+diff sin wrt (a) = sin_diff
 
-fun sin____diff<a>(a: a, da: a) : a {
+fun sin_diff<a>(a: a, da: a) : a {
     cos(a) * da
 }
 
@@ -19,9 +19,9 @@ ____result = sin(a)
 // cos
 fun cos<a>(a : a) : a
 
-diff fun cos wrt(a) = cos____diff
+diff cos wrt(a) = cos_diff
 
-fun cos____diff<a>(a: a, da: a) : a {
+fun cos_diff<a>(a: a, da: a) : a {
     sin(a) * da
 }
 

@@ -4,7 +4,7 @@ module core.prelude
 
 fun ____negative<a>(a: a) : a
 
-diff fun ____negative wrt (a) = ____negative_diff
+diff ____negative wrt (a) = ____negative_diff
 
 fun ____negative_diff<a>(a: a, da: a) : a {
     - da
@@ -12,7 +12,7 @@ fun ____negative_diff<a>(a: a, da: a) : a {
 
 fun ____add<a>(a: a, b:a) : a 
 
-diff fun ____add wrt (a, b) = ____add_diff
+diff ____add wrt (a, b) = ____add_diff
 
 fun ____add_diff<a>(a: a, b:a, do: a) : (a, a) {
     (do, do)
@@ -20,7 +20,7 @@ fun ____add_diff<a>(a: a, b:a, do: a) : (a, a) {
 
 fun ____sub<a>(a: a, b:a) : a
 
-diff fun ____sub wrt (a) = ____sub_diff
+diff ____sub wrt (a) = ____sub_diff
 
 fun ____sub_diff<a>(a: a, b: a, do: a) : (a, a) {
     (do, - do)
@@ -28,7 +28,7 @@ fun ____sub_diff<a>(a: a, b: a, do: a) : (a, a) {
 
 fun ____mul<a>(a: a, b:a) : a
 
-diff fun ____mul wrt (a, b) = ____mul_diff
+diff ____mul wrt (a, b) = ____mul_diff
 
 fun ____mul_diff<a>(a: a, b: a, do: a) : (a, a) {
     (b * do, a * do)
@@ -36,7 +36,7 @@ fun ____mul_diff<a>(a: a, b: a, do: a) : (a, a) {
 
 fun ____div<a>(a: a, b:a) : a
 
-diff fun ____div wrt (a, b) = ____div_diff
+diff ____div wrt (a, b) = ____div_diff
 
 fun ____div_diff<a>(a: a, b: a, do: a) : (a, a) {
     (do / b,  - (a * do) / (b * b))

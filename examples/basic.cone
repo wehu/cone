@@ -48,20 +48,20 @@ fun test_inline(o : str) : io unit {
     inline_python<unit>("print(o)")
 }
 
-diff fun test2 wrt (a) = test2
+diff test2 wrt (a) = test2
 
 fun test3(a : f32, b : f32) : f32 {
     val c = a + b
     c * 2.0 * c
 }
 
-diff fun test3 wrt (a, b) = auto
+diff test3 wrt (a, b) = auto
 
 fun test4(a : t.tensor<f32, @[4, 4]>) : t.tensor<f32, @[4,4]> {
     sin(a)
 }
 
-diff fun test4 wrt (a) = auto
+diff test4 wrt (a) = auto
 
 fun main() : io unit {
    var a = 0
