@@ -86,8 +86,8 @@ instance Backend PythonType where
           [ "def __eq__(self, other):",
             indent 4 $ "return" <+> "isinstance(other, " <> tn <> ") and" <+> cmpFields
           ]
-      fields = encloseSep lparen rparen comma $ ["self.f" <> pretty i | i <- [0 .. length (_typeConArgs) - 1]]
-      cmpFields = encloseSep lparen rparen " and " $ "True" : ["self.f" <> pretty i <+> "==" <+> "other.f" <> pretty i | i <- [0 .. length (_typeConArgs) - 1]]
+      fields = encloseSep lparen rparen comma $ ["self.f" <> pretty i | i <- [0 .. length _typeConArgs - 1]]
+      cmpFields = encloseSep lparen rparen " and " $ "True" : ["self.f" <> pretty i <+> "==" <+> "other.f" <> pretty i | i <- [0 .. length _typeConArgs - 1]]
       genArgs init =
         encloseSep lparen rparen comma $
           foldl' (\s e -> s ++ [pretty $ "t" ++ show (length s)]) init _typeConArgs
