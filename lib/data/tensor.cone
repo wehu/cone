@@ -8,9 +8,9 @@ type tensor<t, shape:@[num]>
 
 fun full<shape: @[num], a>(c : a, s : [i32]) : tensor<a, shape>
 
-diff full wrt (c) = full____diff
+diff full wrt (c) = full_diff
 
-fun full____diff<shape: @[num], a>(c: a, s: [i32], c____diff: a) : tensor<a, shape> {
+fun full_diff<shape: @[num], a>(c: a, s: [i32], c____diff: a) : tensor<a, shape> {
     full<shape, a>(c____diff, s)
 }
 
