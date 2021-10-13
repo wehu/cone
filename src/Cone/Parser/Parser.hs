@@ -357,12 +357,11 @@ effKind =
 effType :: Parser A.EffectType
 effType =
   parens effType
-    P.<|> ( ( ( effapp <$> (A.EffVar . s2n <$> namePath <*> getPos)
-                  <*> P.optionMaybe (angles (P.sepBy1 type_ comma)) P.<?> "eff application type"
-              )
-                P.<|> (brackets (A.EffList <$> P.sepBy effType comma) P.<?> "eff type list")
+    P.<|> ( ( effapp <$> (A.EffVar . s2n <$> namePath <*> getPos)
+                <*> P.optionMaybe (angles (P.sepBy1 type_ comma))
+                <*> getPos P.<?> "eff application type"
             )
-              <*> getPos
+              P.<|> (brackets (A.EffList <$> P.sepBy effType comma) <*> getPos P.<?> "eff type list")
           )
   where
     effapp n args pos =
@@ -433,28 +432,24 @@ pat :: Parser A.Pattern
 pat =
   pcons
     <$> ( (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple or single pattern")
-            P.<|> ( P.try
-                      ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-                          <*> (angles (P.sepBy type_ comma) P.<|> return [])
-                          <*> parens (P.sepBy pat comma)
-                          <*> getPos
-                      )
-                      P.<?> "pattern application"
+            P.<|> ( papp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+                      <*> P.optionMaybe (angles (P.sepBy type_ comma))
+                      <*> P.optionMaybe (parens (P.sepBy pat comma))
+                      <*> getPos
+                      P.<?> "pattern application or variable"
                   )
-            P.<|> ( P.try
-                      ( A.PApp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-                          <*> angles (P.sepBy type_ comma)
-                          <*> return []
-                          <*> getPos
-                      )
-                      P.<?> "pattern application"
-                  )
-            P.<|> (A.PVar <$> (s2n <$> ident) <*> getPos P.<?> "pattern variable")
             P.<|> (A.PExpr <$> expr <*> getPos P.<?> "pattern expr")
         )
     <*> P.optionMaybe (pipe_ *> pat P.<?> "pattern list cons")
     <*> getPos
   where
+    papp :: A.Expr -> Maybe [A.Type] -> Maybe [A.Pattern] -> A.Location -> A.Pattern
+    papp n targs pargs pos =
+      if isn't _Nothing targs || isn't _Nothing pargs
+        then A.PApp n (targs ^. non []) (pargs ^. non []) pos
+        else
+          let (A.EVar v pos) = n
+           in A.PVar (s2n $ name2String v) pos
     ptuple (p0 : p1 : ps) pos = A.PApp (A.EVar (s2n "pair") pos) [] [p0, ptuple (p1 : ps) pos] pos
     ptuple [p] pos = p
     ptuple _ _ = undefined
