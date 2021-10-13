@@ -27,8 +27,9 @@ import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
 
 -- | Initializa diff rule
-initDiffDef :: (Has EnvEff sig m) => String -> DiffDef -> m DiffDef
-initDiffDef prefix d = do
+initDiffDef :: (Has EnvEff sig m) => DiffDef -> m DiffDef
+initDiffDef d = do
+  prefix <- getEnv currentModuleName
   let pos = d ^. diffLoc
       fn = prefix ++ "/" ++ d ^. diffFunc
   o <- getEnv $ diffAdjs . at fn
@@ -40,7 +41,7 @@ initDiffDef prefix d = do
 
 -- | Initialize all diff function rules
 initDiffDefs :: (Has EnvEff sig m) => Module -> m Module
-initDiffDefs m = mapMOf (topStmts . traverse . _DDef) (initDiffDef $ m ^. moduleName) m
+initDiffDefs = mapMOf (topStmts . traverse . _DDef) initDiffDef
 
 setupDiff :: (Has EnvEff sig m) => DiffDef -> FuncDef -> m FuncDef
 setupDiff d f@FuncDef {..} = do

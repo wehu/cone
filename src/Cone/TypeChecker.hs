@@ -674,9 +674,10 @@ addPrefixForExprs m' = do
       allGlobalVars
   return $ removeVarBindings $ substs binds m
 
+-- | Finally add specalized functions into module
 addSpecializedFuncs :: (Has EnvEff sig m) => Module -> m Module
 addSpecializedFuncs m = do
-  fs <- getEnv $ specializedFuncs
+  fs <- getEnv specializedFuncs
   return m{_topStmts=_topStmts m ++ map FDef (M.elems fs)}
 
 -- | Initialize a module
