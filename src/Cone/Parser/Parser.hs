@@ -357,15 +357,18 @@ effKind =
 effType :: Parser A.EffectType
 effType =
   parens effType
-    P.<|> ( ( P.try
-                ( A.EffApp <$> (A.EffVar . s2n <$> namePath <*> getPos)
-                    <*> angles (P.sepBy1 type_ comma) P.<?> "eff application type"
-                )
+    P.<|> ( ( ( effapp <$> (A.EffVar . s2n <$> namePath <*> getPos)
+                  <*> P.optionMaybe (angles (P.sepBy1 type_ comma)) P.<?> "eff application type"
+              )
                 P.<|> (brackets (A.EffList <$> P.sepBy effType comma) P.<?> "eff type list")
-                P.<|> (A.EffVar <$> (s2n <$> namePath) P.<?> "eff var")
             )
               <*> getPos
           )
+  where
+    effapp n args pos =
+      case args of
+        Just args -> A.EffApp n args pos
+        Nothing -> n
 
 funcArgs :: Parser [(String, A.Type)]
 funcArgs = P.sepBy ((,) <$> ident <* colon <*> type_) comma P.<?> "function argument types"
