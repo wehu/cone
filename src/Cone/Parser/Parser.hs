@@ -220,7 +220,7 @@ brackets e = lBracket *> e <* rBracket
 angles e = less *> e <* greater
 
 namePath :: Parser A.NamePath
-namePath = intercalate "/" <$> P.sepBy1 ident dot
+namePath = intercalate "/" <$> P.sepBy1 ident dot P.<?> "name path"
 
 imports :: Parser [A.ImportStmt]
 imports =
