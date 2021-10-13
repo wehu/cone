@@ -204,6 +204,32 @@ namespace cone {
     return py::object(py::none());
   }
 
+  inline std::vector<py::object> ____list_to_vector(const object_t &obj) {
+    auto nil = py::module_::import("core.prelude").attr("Cone__nil");
+    std::vector<py::object> vec;
+    py::object o = ____to_py_object(obj);
+    while (!py::isinstance(o, nil)) {
+      vec.push_back(o.attr("f0"));
+      o = o.attr("f1");
+    }
+    return vec;
+  }
+
+  inline object_t ____py_object_to_cone_object(const py::object &obj) {
+    if (py::isinstance<py::tuple>(obj)) {
+      auto t = py::cast<py::tuple>(obj);
+      auto s = t.size();
+      auto p = py::module_::import("core.prelude").attr("cone__pair");
+      auto res = t[s-1];
+      for (int i=s-2; i>=0; --i) {
+        res = p(t[i], res);
+      }
+      return py::object(res);
+    } else {
+      return py::object(obj);
+    }
+  }
+
   namespace core { namespace prelude {
     const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &)> cone__inline_python =
     [=](const cont_t &k, stack_t s, effects_t effs, const object_t &str) -> object_t {
@@ -218,14 +244,14 @@ namespace cone {
       scope["____typeargs"] = typeargs;
       scope["____result"] = py::none();
       py::exec(____to_py_object(str), scope);
-      return k(py::object(scope["____result"]));
+      return k(____py_object_to_cone_object(scope["____result"]));
     };
 
     const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &)> cone______zeros =
     [=](const cont_t &k, stack_t s, effects_t effs, const object_t &o) -> object_t {
       auto &&oo = ____to_py_object(o);
       if (py::isinstance(oo, py::module_::import("numpy").attr("ndarray"))) {
-        return k(py::module_::import("numpy").attr("zeros")(oo.attr("shape"), oo.attr("dtype")));
+        return k(py::object(py::module_::import("numpy").attr("zeros")(oo.attr("shape"), oo.attr("dtype"))));
       } else if (py::isinstance<py::float_>(oo)) {
         return k(py::object(py::float_(0.0)));
       } else if (py::isinstance<py::int_>(oo)) {

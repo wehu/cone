@@ -13,9 +13,9 @@ ____result = F.conv2d(torch.from_numpy(feature), torch.from_numpy(weight)).numpy
 
 diff conv2d wrt (feature, weight) = conv2d_diff
 
-fun conv2d_diff<t, n:num, ci:num, h:num, w:num, co:num, r:num, s:num>(\
+fun conv2d_diff<t, n:num, ci:num, h:num, w:num, co:num, r:num, s:num, hh:num, ww:num>(\
     feature:tensor<t, @[n, ci, h, w]>, weight:tensor<t, @[co, ci, r, s]>, \
-    output_diff:tensor<t, @[n, co, h-r+1, w-s+1]>) : (tensor<t, @[n, ci, h, w]>, tensor<t, @[co, ci, r, s]>) {
+    output_diff:tensor<t, @[n, co, hh, ww]>) : (tensor<t, @[n, ci, h, w]>, tensor<t, @[co, ci, r, s]>) {
     inline_python<(tensor<t, @[n, ci, h, w]>, tensor<t, @[co, ci, r, s]>)>("""
 import torch
 import torch.nn.functional as F

@@ -63,12 +63,14 @@ setupDiff d f@FuncDef {..} = do
   let fn = _funcName ++ "____diff"
   setFuncType fn fType
   return f {_funcName = fn, _funcArgs = _funcArgs ++ [("____output____diff", _funcResultType)], _funcResultType=resTypes}
-setupDiff d BoundFuncDef {..} = do
-  let (_, f) = unsafeUnbind _boundFuncDef
-  setupDiff d f
-setupDiff d BoundEffFuncDef {..} = do
-  let (_, f) = unsafeUnbind _boundEffFuncDef
-  setupDiff d f
+setupDiff d b@BoundFuncDef {..} = do
+  let (vs, f) = unsafeUnbind _boundFuncDef
+  f <- setupDiff d f
+  return $ b{_boundFuncDef = bind vs f}
+setupDiff d b@BoundEffFuncDef {..} = do
+  let (vs, f) = unsafeUnbind _boundEffFuncDef
+  f <- setupDiff d f
+  return $ b{_boundEffFuncDef = bind vs f}
 
 genDiffs :: (Has EnvEff sig m) => Module -> m Module
 genDiffs m = do

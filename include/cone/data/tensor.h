@@ -5,18 +5,7 @@
 namespace cone {
   namespace data {
     namespace tensor {
-
-      std::vector<py::object> ____list_to_vector(const object_t &obj) {
-        auto nil = py::module_::import("core.prelude").attr("Cone__nil");
-        std::vector<py::object> vec;
-        py::object o = ____to_py_object(obj);
-        while (!py::isinstance(o, nil)) {
-          vec.push_back(o.attr("f0"));
-          o = o.attr("f1");
-        }
-        return vec;
-      }
-
+      
       const std::function<object_t(const cont_t &, stack_t, effects_t, const object_t &, const object_t &)> cone__full = 
       [=](const cont_t &k, stack_t stack, effects_t effs, const object_t &elem, const object_t &dyn_dims) {
         auto typeargs = py::cast<py::list>(____to_py_object(stack->back()[____typeargs]));

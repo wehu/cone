@@ -178,5 +178,9 @@ fun main() : io unit {
    print(feature)
    print(conv2d(feature, weight))
 
+   val ones = t.full<@[4, 2, 13, 13]>(1.0, [])
+   val (f_grad, w_grad) = diff conv2d(feature, weight, ones)
+   print(f_grad)
+   print(w_grad)
 }
 

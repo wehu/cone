@@ -402,7 +402,7 @@ instance Backend CppHeader where
               callWithCps
                 e
                 ( "[=](const object_t &____e) -> object_t {auto ____matched = " <> p <> parens "____e"
-                    <> "; if(!py::cast<bool>(____to_py_object(____matched))) throw ____cone_exception(\"let decont_truction failed\"); return ____k(____matched);}"
+                    <> "; if(!py::cast<bool>(____to_py_object(____matched))) throw ____cone_exception(\"let decontruction failed\"); return ____k(____matched);}"
                 )
           )
           ("[=](const object_t &____unused) -> object_t " <> braces ("return" <+> callWithCps b "____k" <> semi))
