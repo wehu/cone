@@ -410,19 +410,19 @@ instance Backend CppHeader where
   genExpr proxy EApp {..} =
     let fn = name2String $ removeAnn _eappFunc ^. evarName
      in case fn of
-          "core/prelude/____add" -> binary "____to_py_object(____lhs) + ____to_py_object(____rhs)"
-          "core/prelude/____sub" -> binary "____to_py_object(____lhs) - ____to_py_object(____rhs)"
-          "core/prelude/____mul" -> binary "____to_py_object(____lhs) * ____to_py_object(____rhs)"
-          "core/prelude/____div" -> binary "____to_py_object(____lhs) / ____to_py_object(____rhs)"
-          "core/prelude/____mod" -> binary "____to_py_object(____lhs) % ____to_py_object(____rhs)"
-          "core/prelude/____eq" -> binary "py::bool_(____to_py_object(____lhs).attr(\"__eq__\")(____to_py_object(____rhs)))"
-          "core/prelude/____ne" -> binary "py::bool_(____to_py_object(____lhs).attr(\"__ne__\")(____to_py_object(____rhs)))"
-          "core/prelude/____gt" -> binary "py::bool_(____to_py_object(____lhs) > ____to_py_object(____rhs))"
-          "core/prelude/____lt" -> binary "py::bool_(____to_py_object(____lhs) < ____to_py_object(____rhs))"
-          "core/prelude/____ge" -> binary "py::bool_(____to_py_object(____lhs) >= ____to_py_object(____rhs))"
-          "core/prelude/____le" -> binary "py::bool_(____to_py_object(____lhs) <= ____to_py_object(____rhs))"
-          "core/prelude/____and" -> binary "py::bool_(____to_py_object(____lhs) && ____to_py_object(____rhs))"
-          "core/prelude/____or" -> binary "py::bool_(____to_py_object(____lhs) || ____to_py_object(____rhs))"
+          -- "core/prelude/____add" -> binary "____to_py_object(____lhs) + ____to_py_object(____rhs)"
+          -- "core/prelude/____sub" -> binary "____to_py_object(____lhs) - ____to_py_object(____rhs)"
+          -- "core/prelude/____mul" -> binary "____to_py_object(____lhs) * ____to_py_object(____rhs)"
+          -- "core/prelude/____div" -> binary "____to_py_object(____lhs) / ____to_py_object(____rhs)"
+          -- "core/prelude/____mod" -> binary "____to_py_object(____lhs) % ____to_py_object(____rhs)"
+          -- "core/prelude/____eq" -> binary "py::bool_(____to_py_object(____lhs).attr(\"__eq__\")(____to_py_object(____rhs)))"
+          -- "core/prelude/____ne" -> binary "py::bool_(____to_py_object(____lhs).attr(\"__ne__\")(____to_py_object(____rhs)))"
+          -- "core/prelude/____gt" -> binary "py::bool_(____to_py_object(____lhs) > ____to_py_object(____rhs))"
+          -- "core/prelude/____lt" -> binary "py::bool_(____to_py_object(____lhs) < ____to_py_object(____rhs))"
+          -- "core/prelude/____ge" -> binary "py::bool_(____to_py_object(____lhs) >= ____to_py_object(____rhs))"
+          -- "core/prelude/____le" -> binary "py::bool_(____to_py_object(____lhs) <= ____to_py_object(____rhs))"
+          -- "core/prelude/____and" -> binary "py::bool_(____to_py_object(____lhs) && ____to_py_object(____rhs))"
+          -- "core/prelude/____or" -> binary "py::bool_(____to_py_object(____lhs) || ____to_py_object(____rhs))"
           "core/prelude/____assign" -> do
             prefix <- getEnv currentModuleName
             e <- genExpr proxy (_eappArgs !! 1)

@@ -146,6 +146,14 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
       if L.length impls > 1
         then throwError $ "ambiguous implementations for " ++ fn ++ ppr impls ++ ppr loc
         else return fn
+  f <- getEnv $ funcDefs . at newFn
+  when (fn /= "resume" &&
+        fn /= "data/tensor/full" &&
+        fn /= "core/prelude/inline_python" &&
+        fn /= "core/prelude/____assign" &&
+        fn /= "core/prelude/____zeros" &&
+        isConcreteType t && isn't _Nothing f && isn't _Just (_funcExpr $ fromJust f)) $
+    throwError $ "cannot find function implemenation for " ++ fn ++ " of type " ++ ppr t ++ ppr loc
   newFn <- getSpecializedFunc newFn t
   return $ EAnnMeta (EVar (s2n newFn) loc) t loc
   where
@@ -291,10 +299,11 @@ inferExprType s@ESeq {..} = do
   t <- inferType $ last ts
   return $ annotateExpr s {_eseq = es} t
 inferExprType l@ELet {..} = do
-  et <- bindPatternVarTypes _eletState _eletPattern _eletExpr
+  p <- inferPattern _eletPattern
+  et <- bindPatternVarTypes _eletState p _eletExpr
   bt <- inferExprType _eletBody
   t <- typeOfExpr bt >>= inferType
-  return $ annotateExpr l {_eletExpr = et, _eletBody = bt} t
+  return $ annotateExpr l {_eletPattern = p, _eletExpr = et, _eletBody = bt} t
 inferExprType c@ECase {..} = do
   -- infer case condition expression's type
   ce <- inferExprType _ecaseExpr
@@ -302,10 +311,11 @@ inferExprType c@ECase {..} = do
   -- infer all case patterns' types
   ts <- forM _ecaseBody $ \c -> underScope $ do
     bindPatternVarTypes False (_casePattern c) _ecaseExpr
-    pt <- inferPatternType $ _casePattern c
+    p <- inferPattern $ _casePattern c
+    pt <- inferPatternType p
     e <- inferExprType $ _caseExpr c
     et <- typeOfExpr e
-    return (pt, et, c {_caseExpr = e})
+    return (pt, et, c {_casePattern = p, _caseExpr = e})
   -- check if condition's type match with case exprs' type or not
   sts <- getSpecialTypes (ts ^.. traverse . _2)
   when (L.length sts /= 1) $ throwError $ "case exprs type conflict: " ++ ppr [(t, _tloc t) | t <- sts]
@@ -392,6 +402,15 @@ inferExprType h@EHandle {..} = underScope $ do
   return $ annotateExpr h {_ehandleScope = scopeE, _ehandleBindings = bs} t
 inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
+
+inferPattern :: (Has EnvEff sig m) => Pattern -> m Pattern
+inferPattern p@PVar {..} = return p
+inferPattern p@PApp {..} = do
+  args <- mapM inferPattern _pappArgs
+  return p{_pappArgs = args}
+inferPattern p@PExpr {..} = do
+  e <- inferExprType _pExpr
+  return p{_pExpr = e}
 
 -- | Infer a pattern's type
 inferPatternType :: (Has EnvEff sig m) => Pattern -> m Type

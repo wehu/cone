@@ -4,13 +4,29 @@ module core.prelude
 
 fun ____negative<a>(a: a) : a
 
+impl fun ____negative(a: i32) : i32 {
+    inline_python<i32>("____result = -a")
+}
+
+impl fun ____negative(a: f32) : f32 {
+    inline_python<f32>("____result = -a")
+}
+
 diff ____negative wrt (a) = ____negative_diff
 
 fun ____negative_diff<a>(a: a, da: a) : a {
     - da
 } 
 
-fun ____add<a>(a: a, b:a) : a 
+fun ____add<a>(a: a, b:a) : a
+
+impl fun ____add(a : i32, b :i32) : i32 {
+    inline_python<i32>("____result = a + b")
+}
+
+impl fun ____add(a : f32, b :f32) : f32 {
+    inline_python<f32>("____result = a + b")
+}
 
 diff ____add wrt (a, b) = ____add_diff
 
@@ -20,6 +36,14 @@ fun ____add_diff<a>(a: a, b:a, do: a) : (a, a) {
 
 fun ____sub<a>(a: a, b:a) : a
 
+impl fun ____sub(a : i32, b :i32) : i32 {
+    inline_python<i32>("____result = a - b")
+}
+
+impl fun ____sub(a : f32, b :f32) : f32 {
+    inline_python<f32>("____result = a - b")
+}
+
 diff ____sub wrt (a) = ____sub_diff
 
 fun ____sub_diff<a>(a: a, b: a, do: a) : (a, a) {
@@ -27,6 +51,14 @@ fun ____sub_diff<a>(a: a, b: a, do: a) : (a, a) {
 }
 
 fun ____mul<a>(a: a, b:a) : a
+
+impl fun ____mul(a : i32, b :i32) : i32 {
+    inline_python<i32>("____result = a * b")
+}
+
+impl fun ____mul(a : f32, b :f32) : f32 {
+    inline_python<f32>("____result = a * b")
+}
 
 diff ____mul wrt (a, b) = ____mul_diff
 
@@ -36,6 +68,14 @@ fun ____mul_diff<a>(a: a, b: a, do: a) : (a, a) {
 
 fun ____div<a>(a: a, b:a) : a
 
+impl fun ____div(a : i32, b :i32) : i32 {
+    inline_python<i32>("____result = a / b")
+}
+
+impl fun ____div(a : f32, b :f32) : f32 {
+    inline_python<f32>("____result = a / b")
+}
+
 diff ____div wrt (a, b) = ____div_diff
 
 fun ____div_diff<a>(a: a, b: a, do: a) : (a, a) {
@@ -44,25 +84,87 @@ fun ____div_diff<a>(a: a, b: a, do: a) : (a, a) {
 
 fun ____mod<a>(a: a, b:a) : a
 
+impl fun ____mod(a : i32, b :i32) : i32 {
+    inline_python<i32>("____result = a % b")
+}
+
+impl fun ____mod(a : f32, b :f32) : f32 {
+    inline_python<f32>("____result = a % b")
+}
+
 fun ____lt<a>(a: a, b:a) : bool
 
-fun ____gt<a>(a: a, b:a) : bool 
+impl fun ____lt(a : i32, b :i32) : bool {
+    inline_python<bool>("____result = a < b")
+}
+
+impl fun ____lt(a : f32, b :f32) : bool {
+    inline_python<bool>("____result = a < b")
+}
+
+fun ____gt<a>(a: a, b:a) : bool
+
+impl fun ____gt(a : i32, b :i32) : bool {
+    inline_python<bool>("____result = a > b")
+}
+
+impl fun ____gt(a : f32, b :f32) : bool {
+    inline_python<bool>("____result = a > b")
+}
 
 fun ____le<a>(a: a, b:a) : bool 
 
-fun ____ge<a>(a: a, b:a) : bool 
+impl fun ____le(a : i32, b :i32) : bool {
+    inline_python<bool>("____result = a <= b")
+}
+
+impl fun ____le(a : f32, b :f32) : bool {
+    inline_python<bool>("____result = a <= b")
+}
+
+fun ____ge<a>(a: a, b:a) : bool
+
+impl fun ____ge(a : i32, b :i32) : bool {
+    inline_python<bool>("____result = a >= b")
+}
+
+impl fun ____ge(a : f32, b :f32) : bool {
+    inline_python<bool>("____result = a >= b")
+}
 
 fun ____eq<a>(a: a, b:a) : bool
 
-fun ____ne<a>(a: a, b:a) : bool 
+impl fun ____eq(a : i32, b :i32) : bool {
+    inline_python<bool>("____result = a == b")
+}
 
-fun ____not<a>(a: bool) : bool 
+impl fun ____eq(a : f32, b :f32) : bool {
+    inline_python<bool>("____result = a == b")
+}
 
-fun ____and<a>(a: bool, b:bool) : bool
+fun ____ne<a>(a: a, b:a) : bool
 
-fun ____or<a>(a: bool, b:bool) : bool 
+impl fun ____ne(a : i32, b :i32) : bool {
+    inline_python<bool>("____result = a != b")
+}
 
-fun ____assign<a>(a: a, b:a) : unit 
+impl fun ____ne(a : f32, b :f32) : bool {
+    inline_python<bool>("____result = a != b")
+}
+
+fun ____not<a>(a: bool) : bool {
+    inline_python<bool>("____result = not a")
+}
+
+fun ____and<a>(a: bool, b:bool) : bool {
+    inline_python<bool>("____result = a and b")
+}
+
+fun ____or<a>(a: bool, b:bool) : bool {
+    inline_python<bool>("____result = a or b")
+}
+
+fun ____assign<a>(a: a, b:a) : unit
 
 fun ____zeros<a>(a: a) : a
 
@@ -89,8 +191,24 @@ type list<a> {
     cons(a, list<a>)
 }
 
+impl fun ____eq<a>(a : list<a>, b : list<a>) : bool {
+    inline_python<bool>("____result = a == b")
+}
+
+impl fun ____ne<a>(a : list<a>, b : list<a>) : bool {
+    inline_python<bool>("____result = a != b")
+}
+
 type pair<a, b> {
     pair(a, b)
+}
+
+impl fun ____eq<a, b>(a : pair<a, b>, b : pair<a, b>) : bool {
+    inline_python<bool>("____result = a == b")
+}
+
+impl fun ____ne<a, b>(a : pair<a, b>, b : pair<a, b>) : bool {
+    inline_python<bool>("____result = a != b")
 }
 
 // inline python

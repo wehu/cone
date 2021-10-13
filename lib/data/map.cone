@@ -2,6 +2,14 @@ module data.map
 
 type map<k, v>
 
+impl fun ____eq<k, v>(a : map<k, v>, b : map<k, v>) : bool {
+    inline_python<bool>("____result = a == b")
+}
+
+impl fun ____ne<k, v>(a : map<k, v>, b : map<k, v>) : bool {
+    inline_python<bool>("____result = a != b")
+}
+
 fun empty<k, v>() : map<k, v> {
     inline_python<map<k, v>>("""
 from immutables import Map

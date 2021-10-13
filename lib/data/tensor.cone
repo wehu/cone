@@ -6,6 +6,14 @@ import core.math
 
 type tensor<t, shape:@[num]>
 
+impl fun ____add<t, shape:@[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
+    inline_python<tensor<t, shape>>("____result = a + b")
+}
+
+impl fun ____mul<t, shape:@[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
+    inline_python<tensor<t, shape>>("____result = a * b")
+}
+
 fun full<shape: @[num], a>(c : a, s : [i32]) : tensor<a, shape>
 
 diff full wrt (c) = full_diff
