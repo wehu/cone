@@ -10,8 +10,6 @@ Cone的主要特点如下：
 * 支持张量操作
 * 支持可微分编程
 * 支持algebraic effect handlers
-* 支持内联底层高性能代码
-* 支持并行编程
 * 支持和python无缝交互
 * 使用python package作为包管理
 
@@ -49,17 +47,13 @@ fun foo(x: i32)   :       e        i32
 
 ### 内联底层代码
 
-builtin的函数本身就是内联的底层代码。支持c或者其他语言。同时任何函数也可以用高性能的底层代码来实现。
+builtin的函数本身就是内联的底层代码。支持python或者其他语言。同时任何函数也可以用高性能的底层代码来实现。
 
 ```haskell
 fun sin(x: a) : a {
   inline_python<a>("(sin(x))")
 }   
 ```
-
-### 支持并行编程
-
-需要支持并行语义。
 
 ### 与python的无缝交互
 
