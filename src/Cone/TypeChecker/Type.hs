@@ -409,10 +409,12 @@ inferAppResultType f@TFunc {} bargs args = do
   when (L.length fArgTypes /= L.length args) $ throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^.. traverse . tloc) ++ " vs " ++ ppr args ++ ppr (args ^.. traverse . tloc)
   bindings <-
     foldM
-      (\s e -> (++) s <$> e)
+      (\s (a, b) -> do
+        a <- inferType a
+        b <- inferType b
+        collectVarBindings True a b >>= checkVarBindings . (++) s)
       []
-      [collectVarBindings True a b | a <- fArgTypes | b <- args]
-      >>= checkVarBindings
+      [(a, b) | a <- fArgTypes | b <- args]
   let ft = substs bindings f
   return (_tfuncResult ft, ft)
 inferAppResultType t _ [] = return (t, t)
@@ -425,10 +427,12 @@ inferAppResultEffType f@TFunc {} targs args = do
   when (L.length fArgTypes /= L.length args) $ throwError $ "function type argument number mismatch: " ++ ppr fArgTypes ++ ppr (fArgTypes ^.. traverse . tloc) ++ " vs " ++ ppr args ++ ppr (args ^.. traverse . tloc)
   bindings <-
     foldM
-      (\s e -> (++) s <$> e)
+      (\s (a, b) -> do
+        a <- inferType a
+        b <- inferType b
+        collectVarBindings True a b >>= checkVarBindings . (++) s)
       []
-      [collectVarBindings True a b | a <- fArgTypes | b <- args]
-      >>= checkVarBindings
+      [(a, b) | a <- fArgTypes | b <- args]
   resEff <- toEffList $ _tfuncEff f
   funcEff <- toEffList $ _tfuncEff f
   let eff = substs bindings resEff
@@ -450,19 +454,25 @@ collectVarBindings :: (Has EnvEff sig m) => Bool -> Type -> Type -> m [(TVar, Ty
 collectVarBindings bi a@TPrim {} b@TPrim {} = do
   checkTypeMatch a b
   return []
-collectVarBindings bi a@TVar {..} t = do
-  tk <- getEnv $ types . at (name2String _tvar)
+collectVarBindings bi a@TVar {} t = do
+  tk <- getEnv $ types . at (name2String $ _tvar a)
   case tk of
     Just _ -> do
       ut <- unbindType t
       if aeq a ut
         then return []
-        else throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr _tloc
+        else if bi && not (isn't _TVar t) then do
+          let tn = _tvar t
+          ttk <- getEnv $ types . at (name2String tn)
+          case ttk of
+            Nothing -> return [(tn, a)]
+            Just _ -> throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr (_tloc a)
+          else throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr (_tloc a)
     Nothing ->
-      let fvars = t ^.. fv
-       in if not (aeq a t) && L.foldl' (\r e -> aeq e _tvar || r) False fvars
-            then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr _tloc
-            else return [(_tvar, t)]
+      let fvars = t ^.. fv :: [TVar]
+       in if not (aeq a t) && L.foldl' (\r e -> aeq e (_tvar a) || r) False fvars
+            then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr (_tloc a)
+            else return [(_tvar a, t)]
 collectVarBindings bi t a@TVar {..} = do
   if bi
     then collectVarBindings bi a t
@@ -634,18 +644,24 @@ collectEffVarBindingsInType :: (Has EnvEff sig m) => Bool -> Type -> Type -> m [
 collectEffVarBindingsInType bi a@TPrim {} b@TPrim {} = do
   checkTypeMatch a b
   return []
-collectEffVarBindingsInType bi a@TVar {..} t = do
-  tk <- getEnv $ types . at (name2String _tvar)
+collectEffVarBindingsInType bi a@TVar {} t = do
+  tk <- getEnv $ types . at (name2String $ _tvar a)
   case tk of
     Just _ -> do
       ut <- unbindType t
       if aeq a ut
         then return []
-        else throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr _tloc
+        else if bi && not (isn't _TVar t) then do
+          let tn = _tvar t
+          ttk <- getEnv $ types . at (name2String tn)
+          case ttk of
+            Nothing -> return []
+            Just _ -> throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr (_tloc a)
+          else throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr (_tloc a)
     Nothing ->
       let fvars = t ^.. fv
-       in if not (aeq a t) && L.foldl' (\r e -> aeq e _tvar || r) False fvars
-            then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr _tloc
+       in if not (aeq a t) && L.foldl' (\r e -> aeq e (_tvar a) || r) False fvars
+            then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr (_tloc a)
             else return []
 collectEffVarBindingsInType bi a b@TVar {} = do
   if bi
