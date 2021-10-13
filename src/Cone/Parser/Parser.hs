@@ -290,34 +290,35 @@ typeBinary op name =
 typeTerm :: Parser A.Type
 typeTerm =
   ( tann
-      <$> ( ( P.try
-                ( ( A.TApp <$> (A.TVar . s2n <$> namePath <*> getPos)
-                      <*> angles (P.sepBy type_ comma)
-                  )
-                    P.<?> "application type"
-                )
-                P.<|> P.try
-                  ( tfunc
-                      <$> boundTVars
-                      <*> boundEffVars
-                      <*> parens (P.sepBy type_ comma) <* arrow
-                      <*> resultType P.<?> "function type"
-                  )
-                P.<|> (A.TVar <$> (s2n <$> namePath) P.<?> "type variable")
-                P.<|> (A.TPrim <$> primType P.<?> "primitive type")
-                P.<|> (A.TNum <$> (Just . read <$> literalInt) P.<?> "number type")
-                P.<|> (A.TNum Nothing <$ question P.<?> "unknown number type")
-                P.<|> (A.TList <$ at_ <*> brackets (P.sepBy1 type_ comma) P.<?> "type list kind")
-                P.<|> (tlist <$> brackets type_ P.<?> "type list")
-                P.<|> P.try (ttuple <$> parens (P.sepBy1 type_ comma) P.<?> "type tuple")
-            )
-              <*> getPos
+      <$> ( P.try
+              ( tfunc
+                  <$> boundTVars
+                  <*> boundEffVars
+                  <*> parens (P.sepBy type_ comma) <* arrow
+                  <*> resultType
+                  <*> getPos P.<?> "function type"
+              )
+              P.<|> (ttuple <$> parens (P.sepBy1 type_ comma) <*> getPos P.<?> "type tuple")
+              P.<|> ( ( tapp <$> (A.TVar . s2n <$> namePath <*> getPos)
+                          <*> P.optionMaybe (angles (P.sepBy type_ comma))
+                          <*> getPos
+                      )
+                        P.<?> "application type or type variable"
+                    )
+              P.<|> (A.TPrim <$> primType <*> getPos P.<?> "primitive type")
+              P.<|> (A.TNum <$> (Just . read <$> literalInt) <*> getPos P.<?> "number type")
+              P.<|> (A.TNum Nothing <$ question <*> getPos P.<?> "unknown number type")
+              P.<|> (A.TList <$ at_ <*> brackets (P.sepBy1 type_ comma) <*> getPos P.<?> "type list kind")
+              P.<|> (tlist <$> brackets type_ <*> getPos P.<?> "type list")
           )
   )
     <*> P.optionMaybe (colon *> kind)
     <*> getPos
-    P.<|> parens type_
   where
+    tapp n args pos =
+      case args of
+        Just args -> A.TApp n args pos
+        Nothing -> n
     tfunc bvs evs args (effT, resultT) pos =
       let ft = A.TFunc args effT resultT pos
        in A.BoundEffVarType (bind evs $ A.BoundType (bind bvs ft) pos) pos
