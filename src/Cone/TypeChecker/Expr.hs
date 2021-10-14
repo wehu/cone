@@ -123,9 +123,9 @@ getSpecializedFunc fn t = do
               gt <- inferType gt'
               ut <- unbindType t
               binds <- collectVarBindings False gt ut
-              checkVarBindings binds
+              checkAndAddTypeVarBindings binds
               bindEffs <- collectEffVarBindings False (_tfuncEff gt) (_tfuncEff ut)
-              checkEffVarBindings bindEffs
+              checkAndAddEffVarBindings bindEffs
               let newF = (substs bindEffs $ substs binds newFdef){_funcName = fSel}
                   newT = bindTypeEffVar (_funcBoundEffVars newF) $ bindTypeVar (_funcBoundVars newF) ut
               setEnv (Just newT) $ funcTypes . at fSel
@@ -297,7 +297,7 @@ inferExprType a@EAnn {..} = do
   k <- inferTypeKind _eannType
   checkTypeKind k
   at <- inferType _eannType
-  bindings <- collectVarBindings False t at >>= checkVarBindings
+  bindings <- collectVarBindings False t at >>= checkAndAddTypeVarBindings
   let aet = substs bindings t
   return $ annotateExpr a {_eannExpr = et} aet eff
 inferExprType l@ELit {..} = do
@@ -413,7 +413,7 @@ inferExprType h@EHandle {..} = underScope $ do
       -- check if interface defintion match with implemention's or not
       let handleT' = handleT {_tfuncEff = emptyEff, _tfuncResult = unit}
           intfT' = intfT {_tfuncEff = emptyEff, _tfuncResult = unit}
-      collectVarBindings False intfT' handleT' >>= checkVarBindings
+      collectVarBindings False intfT' handleT' >>= checkAndAddTypeVarBindings
 
       -- check expression result type
       intfE <- inferExprType $ fromJust $ _funcExpr intf
