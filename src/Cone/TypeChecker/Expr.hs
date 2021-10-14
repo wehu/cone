@@ -140,8 +140,8 @@ getSpecializedFunc fn t = do
     else return fn
 
 -- | Select a function implementation based on type
-selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
-selectFuncImpl e@(EAnnMeta (EVar fn' _) t eff loc) = do
+selectFuncImpl :: (Has EnvEff sig m) => Expr -> Location -> m Expr
+selectFuncImpl e@(EAnnMeta (EVar fn' _) t eff _) loc = do
   let fn = name2String fn'
   impls <- getFuncImpls fn
   impls <- findSuperImpls impls >>= findBestImpls
@@ -196,7 +196,7 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t eff loc) = do
         )
         []
         (M.toList indegrees)
-selectFuncImpl e = return e
+selectFuncImpl e _ = return e
 
 -- | Infer expression's type
 inferExprType :: (Has EnvEff sig m) => Expr -> m Expr
@@ -236,7 +236,7 @@ inferExprType a@EApp {..} = do
   (t, ft) <- inferAppResultType appFuncType typeArgs argTypes
   t <- inferType t
   ft <- inferType ft
-  appFunc <- selectFuncImpl appFunc {_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft}
+  appFunc <- selectFuncImpl appFunc {_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft} _eloc
   return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t eff
 inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
