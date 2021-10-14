@@ -366,7 +366,7 @@ checkImplFuncDefs = mapMOf (topStmts . traverse . _ImplFDef) checkImplFuncDef
 removeAnn :: Expr -> Expr
 removeAnn e = transform remove e
   where
-    remove (EAnnMeta e _ _) = e
+    remove (EAnnMeta e _ _ _) = e
     remove (EAnn e _ _) = e
     remove e = e
 

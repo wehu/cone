@@ -26,11 +26,11 @@ import Unbound.Generics.LocallyNameless.Unsafe
 
 -- | Annotate expression with type
 annotateExpr :: Expr -> Type -> Expr
-annotateExpr e t = EAnnMeta e t (_eloc e)
+annotateExpr e t = EAnnMeta e t (EffList [] (_eloc e)) (_eloc e)
 
 -- | Return the type in annotation meta
 typeOfExpr :: (Has EnvEff sig m) => Expr -> m Type
-typeOfExpr (EAnnMeta _ t _) = return t
+typeOfExpr (EAnnMeta _ t eff _) = return t
 typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr e
 
 -- | Check a function type
@@ -136,7 +136,7 @@ getSpecializedFunc fn t = do
 
 -- | Select a function implementation based on type
 selectFuncImpl :: (Has EnvEff sig m) => Expr -> m Expr
-selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
+selectFuncImpl e@(EAnnMeta (EVar fn' _) t eff loc) = do
   let fn = name2String fn'
   impls <- getFuncImpls fn
   impls <- findSuperImpls impls >>= findBestImpls
@@ -155,7 +155,7 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t loc) = do
         isConcreteType t && isn't _Nothing f && isn't _Just (_funcExpr $ fromJust f)) $
     throwError $ "cannot find function implemenation for " ++ fn ++ " of type " ++ ppr t ++ ppr loc
   newFn <- getSpecializedFunc newFn t
-  return $ EAnnMeta (EVar (s2n newFn) loc) t loc
+  return $ EAnnMeta (EVar (s2n newFn) loc) t eff loc
   where
     findSuperImpls impls =
       foldM

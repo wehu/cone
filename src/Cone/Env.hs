@@ -36,7 +36,9 @@ type EffKinds = M.Map String EffKind
 
 type EffIntfs = M.Map String [String]
 
-type ExprTypes = M.Map String Type
+type FuncTypes = M.Map String Type
+
+type FuncEffs = M.Map String EffectType
 
 type FuncImpls = M.Map String [(Expr, Type)]
 
@@ -57,11 +59,12 @@ data Env = Env
   { _currentModuleName :: String,
     _typeKinds :: TypeKinds,
     _typeAliases :: TypeAliases,
-    _funcTypes :: ExprTypes,
+    _funcTypes :: FuncTypes,
+    _funcEffs :: FuncEffs,
     _funcImpls :: FuncImpls,
     _effKinds :: EffKinds,
     _effIntfs :: EffIntfs,
-    _localState :: ExprTypes,
+    _localState :: FuncTypes,
     _typeBinds :: TypeBinds,
     _kindBinds :: KindBinds,
     _effTypeBinds :: EffTypeBinds,
@@ -69,7 +72,7 @@ data Env = Env
     _diffAdjs :: DiffAdjs,
     _funcDefs :: FuncDefs,
     _specializedFuncs :: FuncDefs,
-    _specializedFuncTypes :: ExprTypes
+    _specializedFuncTypes :: FuncTypes
   }
   deriving (Show)
 
@@ -81,6 +84,7 @@ initialEnv =
       _typeKinds = M.empty,
       _typeAliases = M.empty,
       _funcTypes = M.empty,
+      _funcEffs = M.empty,
       _funcImpls = M.empty,
       _effKinds = M.empty,
       _effIntfs = M.empty,

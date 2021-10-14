@@ -265,7 +265,7 @@ data Expr
       }
   | ESeq {_eseq :: [Expr], _eloc :: Location}
   | EAnn {_eannExpr :: Expr, _eannType :: Type, _eloc :: Location}
-  | EAnnMeta {_eannMetaExpr :: Expr, _eannMetaType :: Type, _eloc :: Location}
+  | EAnnMeta {_eannMetaExpr :: Expr, _eannMetaType :: Type, _eannMetaEffType :: EffectType, _eloc :: Location}
   | EBoundTypeVars {_eboundTypeVars :: Bind [TVar] Expr, _eloc :: Location}
   | EBoundEffTypeVars {_eboundEffTypeVars :: Bind [EffVar] Expr, _eloc :: Location}
   | EBoundVars {_eboundVars :: Bind [EVar] Expr, _eloc :: Location}
@@ -318,7 +318,7 @@ instance Pretty Expr where
         ]
   pretty ESeq {..} = vsep $ map pretty _eseq
   pretty EAnn {..} = parens $ pretty _eannExpr <+> colon <+> pretty _eannType
-  pretty EAnnMeta {..} = parens $ pretty _eannMetaExpr <+> colon <+> pretty _eannMetaType
+  pretty EAnnMeta {..} = parens $ pretty _eannMetaExpr <+> colon <+> pretty _eannMetaEffType <+> pretty _eannMetaType
   pretty (EBoundTypeVars (B bs e) _) = anglesList bs <+> pretty e
   pretty (EBoundEffTypeVars (B bs e) _) = bracketsList bs <+> pretty e
   pretty (EBoundVars (B bs e) _) = bracketsList bs <+> pretty e
