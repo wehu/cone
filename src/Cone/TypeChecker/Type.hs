@@ -495,9 +495,9 @@ collectVarBindings bi a@TFunc {} b@TFunc {} =
                     collectVarBindings bi a b >>= checkVarBindings . (++) s)
                   []
                   [(aarg, barg) | aarg <- a ^. tfuncArgs | barg <- b ^. tfuncArgs]
-                <*> collectVarBindings bi (_tfuncResult a) (_tfuncResult b)
+                <*> collectVarBindings bi (_tfuncResult a) (_tfuncResult b) >>= checkVarBindings
             )
-        <*> collectVarBindingsInEff bi al bl
+        <*> collectVarBindingsInEff bi al bl >>= checkVarBindings
 collectVarBindings bi a@TList {} b@TList {} =
   if L.length (_tlist a) == L.length (_tlist b)
     then
@@ -593,9 +593,12 @@ collectVarBindingsInEff bi a@EffList {} b@EffList {} = do
         is <- isEffVar $ last al
         unless is error
   foldM
-    (\s e -> (++) s <$> e)
+    (\s (a, b) -> do
+      a <- inferEffType a
+      b <- inferEffType b
+      collectVarBindingsInEff bi a b >>= checkVarBindings . (++) s)
     []
-    [collectVarBindingsInEff bi aarg barg | aarg <- al | barg <- bl]
+    [(aarg, barg) | aarg <- al | barg <- bl]
 collectVarBindingsInEff bi a b = throwError $ "eff type mismatch: " ++ ppr a ++ ppr (_effLoc a) ++ " vs " ++ ppr b ++ ppr (_effLoc b)
 
 -- | Check all effect variables
@@ -882,6 +885,7 @@ isSubType s t = do
         then return False
         else do
           collectVarBindings False t s >>= checkVarBindings
+          collectEffVarBindingsInType False t s >>= checkEffVarBindings
           return True
     )
     (\(e :: String) -> return False)
@@ -892,6 +896,7 @@ isEqOrSubType s t = do
   catchError
     ( do
         collectVarBindings False t s >>= checkVarBindings
+        collectEffVarBindingsInType False t s >>= checkEffVarBindings
         return True
     )
     (\(e :: String) -> return False)
@@ -904,6 +909,7 @@ isSubEffType s t = do
         then return False
         else do
           collectEffVarBindings False t s >>= checkEffVarBindings
+          collectVarBindingsInEff False t s >>= checkVarBindings
           return True
     )
     (\(e :: String) -> return False)
@@ -914,6 +920,7 @@ isEqOrSubEffType s t = do
   catchError
     ( do
         collectEffVarBindings False t s >>= checkEffVarBindings
+        collectVarBindingsInEff False t s >>= checkVarBindings
         return True
     )
     (\(e :: String) -> return False)

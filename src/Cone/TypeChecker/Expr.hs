@@ -318,7 +318,7 @@ inferExprType s@ESeq {..} = do
     effs >>= inferEffType
   return $ annotateExpr s {_eseq = es} t effs
 inferExprType l@ELet {..} = do
-  p <- inferPattern _eletPattern
+  p <- inferExprInPattern _eletPattern
   et <- bindPatternVarTypes _eletState p _eletExpr
   bt <- inferExprType _eletBody
   t <- typeOfExpr bt >>= inferType
@@ -334,7 +334,7 @@ inferExprType c@ECase {..} = do
   -- infer all case patterns' types
   ts <- forM _ecaseBody $ \c -> underScope $ do
     bindPatternVarTypes False (_casePattern c) _ecaseExpr
-    p <- inferPattern $ _casePattern c
+    p <- inferExprInPattern $ _casePattern c
     pt <- inferPatternType p
     e <- inferExprType $ _caseExpr c
     et <- typeOfExpr e
@@ -452,12 +452,12 @@ inferExprType h@EHandle {..} = underScope $ do
 inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
-inferPattern :: (Has EnvEff sig m) => Pattern -> m Pattern
-inferPattern p@PVar {..} = return p
-inferPattern p@PApp {..} = do
-  args <- mapM inferPattern _pappArgs
+inferExprInPattern :: (Has EnvEff sig m) => Pattern -> m Pattern
+inferExprInPattern p@PVar {..} = return p
+inferExprInPattern p@PApp {..} = do
+  args <- mapM inferExprInPattern _pappArgs
   return p{_pappArgs = args}
-inferPattern p@PExpr {..} = do
+inferExprInPattern p@PExpr {..} = do
   e <- inferExprType _pExpr
   return p{_pExpr = e}
 
