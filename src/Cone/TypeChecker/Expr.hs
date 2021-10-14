@@ -376,7 +376,7 @@ inferExprType h@EHandle {..} = underScope $ do
   checkEffKind ek
   -- infer handle's expression's type
   scopeE <- inferExprType _ehandleScope
-  resT <- typeOfExpr scopeE
+  resT <- typeOfExpr scopeE >>= inferType
   effs <- effTypeOfExpr scopeE
   btk <- inferTypeKind resT
   checkTypeKind btk
@@ -428,8 +428,6 @@ inferExprType h@EHandle {..} = underScope $ do
     --checkTypeKind k
     return intfWithT
 
-  t <- inferType resT
-
   -- check intefaces
   effName <-
     if not $ isn't _EffVar _ehandleEff
@@ -449,7 +447,7 @@ inferExprType h@EHandle {..} = underScope $ do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   -- remove the handled effects
   effs <- removeEff effs _ehandleEff
-  return $ annotateExpr h {_ehandleScope = scopeE, _ehandleBindings = bs} t effs
+  return $ annotateExpr h {_ehandleScope = scopeE, _ehandleBindings = bs} resT effs
 inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
 
@@ -480,6 +478,7 @@ bindPatternVarTypes :: (Has EnvEff sig m) => Bool -> Pattern -> Expr -> m Expr
 bindPatternVarTypes isState p e = do
   eWithType <- inferExprType e
   eType <- typeOfExpr eWithType
+  eff <- effTypeOfExpr eWithType
   typeBindings <- extracePatternVarTypes p eType
   foldM_
     ( \bs (v, t) -> do
@@ -488,6 +487,7 @@ bindPatternVarTypes isState p e = do
           Just _ -> throwError $ "pattern rebind a variable: " ++ n ++ ppr (_eloc e)
           Nothing -> do
             setFuncType n t
+            setEnv (Just eff) $ funcEffs . at n
             -- set localState
             when isState $ setEnv (Just t) $ localState . at n
             return $ bs & at n ?~ True
