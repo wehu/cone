@@ -235,6 +235,7 @@ inferExprType a@EApp {..} = do
   eff <- inferAppResultEffType appFuncType typeArgs argTypes >>= inferEffType
   (t, ft) <- inferAppResultType appFuncType typeArgs argTypes
   t <- inferType t
+  ft <- inferType ft
   appFunc <- selectFuncImpl appFunc {_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft}
   return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t eff
 inferExprType l@ELam {..} = underScope $ do
