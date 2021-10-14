@@ -202,7 +202,7 @@ selectFuncImpl e = return e
 inferExprType :: (Has EnvEff sig m) => Expr -> m Expr
 inferExprType e@EVar {..} = do
   t <- getFuncType _eloc (name2String _evarName) >>= inferType
-  eff <- getEnv $ funcEffs . at (name2String _evarName) . non (EffList [] _eloc)
+  eff <- getEnv (funcEffs . at (name2String _evarName) . non (EffList [] _eloc)) >>= inferEffType
   return $ annotateExpr e t eff
 inferExprType a@EApp {..} = do
   -- check assign variable
@@ -232,9 +232,9 @@ inferExprType a@EApp {..} = do
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
   -- infer the result type
+  eff <- inferAppResultEffType appFuncType typeArgs argTypes >>= inferEffType
   (t, ft) <- inferAppResultType appFuncType typeArgs argTypes
   t <- inferType t
-  eff <- inferAppResultEffType appFuncType typeArgs argTypes
   appFunc <- selectFuncImpl appFunc {_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft}
   return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t eff
 inferExprType l@ELam {..} = underScope $ do
@@ -285,14 +285,14 @@ inferExprType l@ELam {..} = underScope $ do
               [(t, k) | t <- bvs | k <- _elamBoundVars ^.. traverse . _2]
               $ TFunc args _elamEffType eType _eloc
       -- infer effects
-      eff <- effTypeOfExpr lamE
+      eff <- effTypeOfExpr lamE >>= inferEffType
       checkEffTypeMatch _elamEffType eff
       return $ annotateExpr l {_elamExpr = Just lamE} t (EffList [] _eloc)
     _ -> throwError "should not be here"
 inferExprType a@EAnn {..} = do
   et <- inferExprType _eannExpr
   t <- typeOfExpr et
-  eff <- effTypeOfExpr et
+  eff <- effTypeOfExpr et >>= inferEffType
   k <- inferTypeKind _eannType
   checkTypeKind k
   at <- inferType _eannType
@@ -314,7 +314,7 @@ inferExprType s@ESeq {..} = do
         mergeEffs s e
     )
     (EffList [] _eloc)
-    effs
+    effs >>= inferEffType
   return $ annotateExpr s {_eseq = es} t effs
 inferExprType l@ELet {..} = do
   p <- inferPattern _eletPattern
@@ -322,14 +322,14 @@ inferExprType l@ELet {..} = do
   bt <- inferExprType _eletBody
   t <- typeOfExpr bt >>= inferType
   e0 <- effTypeOfExpr bt
-  e1 <- inferExprType _eletExpr >>= effTypeOfExpr
+  e1 <- inferExprType _eletExpr >>= effTypeOfExpr >>= inferEffType
   eff <- mergeEffs e0 e1
   return $ annotateExpr l {_eletPattern = p, _eletExpr = et, _eletBody = bt} t eff
 inferExprType c@ECase {..} = do
   -- infer case condition expression's type
   ce <- inferExprType _ecaseExpr
   ct <- typeOfExpr ce
-  ceff <- effTypeOfExpr ce
+  ceff <- effTypeOfExpr ce >>= inferEffType
   -- infer all case patterns' types
   ts <- forM _ecaseBody $ \c -> underScope $ do
     bindPatternVarTypes False (_casePattern c) _ecaseExpr
@@ -337,7 +337,7 @@ inferExprType c@ECase {..} = do
     pt <- inferPatternType p
     e <- inferExprType $ _caseExpr c
     et <- typeOfExpr e
-    eff <- effTypeOfExpr e
+    eff <- effTypeOfExpr e >>= inferEffType
     return (pt, et, eff, c {_casePattern = p, _caseExpr = e})
   -- check if condition's type match with case exprs' type or not
   sts <- getSpecialTypes (ts ^.. traverse . _2)
@@ -348,13 +348,13 @@ inferExprType c@ECase {..} = do
   -- return case's type
   t <- inferType $ last sts
   -- infer effects
-  effs <- foldM mergeEffs ceff (ts ^.. traverse . _3)
+  effs <- foldM mergeEffs ceff (ts ^.. traverse . _3) >>= inferEffType
   return $ annotateExpr c {_ecaseExpr = ce, _ecaseBody = ts ^.. traverse . _4} t effs
 inferExprType w@EWhile {..} = do
   -- infer while condition's type
   c <- inferExprType _ewhileCond
   t <- typeOfExpr c >>= inferType
-  ce <- effTypeOfExpr c
+  ce <- effTypeOfExpr c >>= inferEffType
   if aeq t (TPrim Pred _eloc)
     then return ()
     else throwError $ "while expected a bool as condition, but got " ++ ppr t ++ ppr _eloc
@@ -377,7 +377,7 @@ inferExprType h@EHandle {..} = underScope $ do
   -- infer handle's expression's type
   scopeE <- inferExprType _ehandleScope
   resT <- typeOfExpr scopeE >>= inferType
-  effs <- effTypeOfExpr scopeE
+  effs <- effTypeOfExpr scopeE >>= inferEffType
   btk <- inferTypeKind resT
   checkTypeKind btk
 
@@ -446,7 +446,7 @@ inferExprType h@EHandle {..} = underScope $ do
     Nothing -> do
       throwError $ "cannot find effect: " ++ ppr _ehandleEff ++ ppr _eloc
   -- remove the handled effects
-  effs <- removeEff effs _ehandleEff
+  effs <- removeEff effs _ehandleEff >>= inferEffType
   return $ annotateExpr h {_ehandleScope = scopeE, _ehandleBindings = bs} resT effs
 inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
