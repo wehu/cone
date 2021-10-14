@@ -468,14 +468,20 @@ collectVarBindings bi a@TVar {} t = do
           let tn = _tvar t
           ttk <- getEnv $ typeKinds . at (name2String tn)
           case ttk of
-            Nothing -> return [(tn, a)]
+            Nothing -> do bt <- getEnv $ typeBinds . at (name2String tn)
+                          case bt of
+                            Just bt -> return $ [(tn, a)] ++ [(tn, bt)]
+                            Nothing -> return [(tn, a)]
             Just _ -> throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr (_tloc a)
           else throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr (_tloc a)
     Nothing ->
       let fvars = t ^.. fv :: [TVar]
        in if not (aeq a t) && L.foldl' (\r e -> aeq e (_tvar a) || r) False fvars
             then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr (_tloc a)
-            else return [(_tvar a, t)]
+            else do bt <- getEnv $ typeBinds . at (name2String $ _tvar a)
+                    case bt of
+                      Just bt -> return $ [(_tvar a, t), (_tvar a, bt)]
+                      Nothing -> return [(_tvar a, t)]
 collectVarBindings bi t a@TVar {..} = do
   if bi
     then collectVarBindings bi a t
@@ -606,7 +612,10 @@ collectEffVarBindings :: (Has EnvEff sig m) => Bool -> EffectType -> EffectType 
 collectEffVarBindings bi ev@EffVar {..} e = do
   is <- isEffVar ev
   if is
-    then return [(_effVar, e)]
+    then do be <- getEnv $ effTypeBinds . at (name2String _effVar)
+            case be of
+              Just be -> return [(_effVar, e), (_effVar, be)]
+              Nothing -> return [(_effVar, e)]
     else return []
 collectEffVarBindings bi a b@EffVar {} = do
   if bi
