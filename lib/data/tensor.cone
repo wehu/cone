@@ -18,8 +18,8 @@ fun full<shape: @[num], a>(c : a, s : [i32]) : tensor<a, shape>
 
 diff full wrt (c) = full_diff
 
-fun full_diff<shape: @[num], a>(c: a, s: [i32], c____diff: a) : tensor<a, shape> {
-    full<shape, a>(c____diff, s)
+fun full_diff<shape: @[num], a>(c: a, s: [i32], c____diff: tensor<a, shape>) : a {
+    c
 }
 
 fun matmul<n:num, k:num, m:num, a>(lhs : tensor<a, @[n, k]>, rhs : tensor<a, @[k, m]>) : tensor<a, @[n, m]> {

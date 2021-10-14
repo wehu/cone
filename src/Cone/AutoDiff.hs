@@ -55,14 +55,25 @@ setupDiff d f@FuncDef {..} = do
       )
       (_diffWRT d)
   let argT : resT = reverse argTypes
-      resTypes = L.foldl' (\t e -> TApp (TVar (s2n "core/prelude/pair") (_tloc e)) [t, e] (_tloc e)) argT resT
+      resTypes = L.foldl' (\t e -> TApp (TVar (s2n "core/prelude/pair") (_tloc e)) [e, t] (_tloc e)) argT resT
       fType =
         bindTypeEffVar _funcBoundEffVars $
           bindTypeVar _funcBoundVars $
             TFunc (_funcArgs ^.. traverse . _2 ++ [_funcResultType]) (EffList [] _funcLoc) resTypes _funcLoc
-  let fn = _funcName ++ "____diff"
-  setFuncType fn fType
-  return f {_funcName = fn, _funcArgs = _funcArgs ++ [("____output____diff", _funcResultType)], _funcResultType=resTypes}
+  if isn't _Nothing (_diffAdj d) then do
+    let adjN = name2String $ _evarName (fromJust $ _diffAdj d)
+    t <- getEnv $ funcTypes . at adjN
+    forMOf _Nothing t $ \_ ->
+      throwError $ "cannot find function " ++ ppr adjN ++ ppr (_diffLoc d)
+    checkTypeMatch fType (fromJust t)
+    adj <- getEnv $ funcDefs . at adjN
+    forMOf _Nothing adj $ \_ ->
+      throwError $ "cannot find function " ++ ppr adjN ++ ppr (_diffLoc d)
+    return $ fromJust adj
+  else do
+    let fn = _funcName ++ "____diff"
+    setFuncType fn fType
+    return f {_funcName = fn, _funcArgs = _funcArgs ++ [("____output____diff", _funcResultType)], _funcResultType=resTypes}
 setupDiff d b@BoundFuncDef {..} = do
   let (vs, f) = unsafeUnbind _boundFuncDef
   f <- setupDiff d f
@@ -80,11 +91,11 @@ genDiffs m = do
       ( \ds f -> do
           d <- getEnv $ diffAdjs . at (_funcName f)
           case d of
-            Just d ->
-              if isn't _Just $ _diffAdj d
-                then do
-                  (\f -> (d ^. diffFunc, f) : ds) <$> (setupDiff d f >>= addTempVariables >>= genDiff d)
-                else return ds
+            Just d -> do
+              f <- setupDiff d f
+              if isn't _Just $ _diffAdj d then
+                (\f -> (d ^. diffFunc, f) : ds) <$> (addTempVariables f >>= genDiff d)
+              else return ds
             Nothing -> return ds
       )
       []

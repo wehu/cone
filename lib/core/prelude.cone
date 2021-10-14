@@ -44,7 +44,7 @@ impl fun ____sub(a : f32, b :f32) : f32 {
     inline_python<f32>("____result = a - b")
 }
 
-diff ____sub wrt (a) = ____sub_diff
+diff ____sub wrt (a, b) = ____sub_diff
 
 fun ____sub_diff<a>(a: a, b: a, do: a) : (a, a) {
     (do, - do)
