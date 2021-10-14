@@ -36,8 +36,8 @@ typeOfExpr e = throwError $ "expected an annotated expression, but got " ++ ppr 
 -- | Check a function type
 checkFuncType :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 checkFuncType f = underScope $ do
-  globalTypes <- fmap s2n . M.keys <$> getEnv types
-  globalEffTypes <- fmap s2n . M.keys <$> getEnv effs
+  globalTypes <- fmap s2n . M.keys <$> getEnv typeKinds
+  globalEffTypes <- fmap s2n . M.keys <$> getEnv effKinds
   let pos = f ^. funcLoc
       star = KStar pos
       btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
@@ -58,9 +58,9 @@ checkFuncType f = underScope $ do
         ++ "only exists in function eff type arguments: "
         ++ ppr fevars ++ ppr (_funcLoc f)
   -- add all bound type variables into env
-  forM_ btvars $ \(n, k) -> setEnv (Just k) $ types . at n
+  forM_ btvars $ \(n, k) -> setEnv (Just k) $ typeKinds . at n
   -- add all bound eff type variables into env
-  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
+  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effKinds . at n
   -- add function type into env
   mapM_
     (uncurry setFuncType)
@@ -123,7 +123,7 @@ getSpecializedFunc fn t = do
               checkEffVarBindings bindEffs
               let newF = (substs bindEffs $ substs binds newFdef){_funcName = fSel}
                   newT = bindTypeEffVar (_funcBoundEffVars newF) $ bindTypeVar (_funcBoundVars newF) ut
-              setEnv (Just newT) $ funcs . at fSel
+              setEnv (Just newT) $ funcTypes . at fSel
               setEnv (Just newT) $ specializedFuncTypes . at fSel
               setEnv (Just newF) $ specializedFuncs . at fSel
               newF <- checkFuncDef newF
@@ -240,10 +240,10 @@ inferExprType l@ELam {..} = underScope $ do
     l@ELam {..} -> do
       -- add all bound type variables into env
       mapM_
-        (\(t, k) -> setEnv (Just $ k ^. non (KStar _eloc)) $ types . at (name2String t))
+        (\(t, k) -> setEnv (Just $ k ^. non (KStar _eloc)) $ typeKinds . at (name2String t))
         [(t, k) | t <- bvs | k <- _elamBoundVars ^.. traverse . _2]
       -- add all bound eff type variables into env
-      mapM_ (\t -> setEnv (Just $ EKStar _eloc) $ effs . at (name2String t)) evs
+      mapM_ (\t -> setEnv (Just $ EKStar _eloc) $ effKinds . at (name2String t)) evs
       -- infer arguments
       args <-
         mapM
@@ -377,7 +377,7 @@ inferExprType h@EHandle {..} = underScope $ do
             bindTypeEffVar [] $
               bindTypeVar [] $
                 TFunc [_tfuncResult intfT] emptyEff resT _eloc
-      setEnv (Just resumeT) $ funcs . at "resume"
+      setEnv (Just resumeT) $ funcTypes . at "resume"
 
       -- check if interface defintion match with implemention's or not
       let handleT' = handleT {_tfuncEff = emptyEff, _tfuncResult = unit}
@@ -562,8 +562,8 @@ setupEffIntfType f = do
   let pos = f ^. funcLoc
       bvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non (KStar pos))) $ f ^.. funcBoundVars . traverse
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
-  forM_ bvars $ \(n, k) -> setEnv (Just k) $ types . at n
-  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effs . at n
+  forM_ bvars $ \(n, k) -> setEnv (Just k) $ typeKinds . at n
+  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effKinds . at n
   mapM_
     (uncurry setFuncType)
     (f ^. funcArgs)

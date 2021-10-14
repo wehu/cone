@@ -117,11 +117,11 @@ importModules cache paths m loaded = do
             let g1' = mapMaybeMissing $ \k v -> Nothing
                 g2' = mapMaybeMissing $ \k v -> Nothing
                 f' = zipWithMaybeMatched $ \k v1 v2 -> Just (v1, v2)
-                typeConflicts = merge g1' g2' f' (oldEnv ^. types) (env ^. types)
+                typeConflicts = merge g1' g2' f' (oldEnv ^. typeKinds) (env ^. typeKinds)
                 typeAliasConflicts = merge g1' g2' f' (oldEnv ^. typeAliases) (env ^. typeAliases)
-                effConflicts = merge g1' g2' f' (oldEnv ^. effs) (env ^. effs)
+                effConflicts = merge g1' g2' f' (oldEnv ^. effKinds) (env ^. effKinds)
                 effIntfConflicts = merge g1' g2' f' (oldEnv ^. effIntfs) (env ^. effIntfs)
-                funcConflicts = merge g1' g2' f' (oldEnv ^. funcs) (env ^. funcs)
+                funcConflicts = merge g1' g2' f' (oldEnv ^. funcTypes) (env ^. funcTypes)
                 diffAdjConflicts = merge g1' g2' f' (oldEnv ^. diffAdjs) (env ^. diffAdjs)
                 funcDefConflicts = merge g1' g2' f' (oldEnv ^. funcDefs) (env ^. funcDefs)
             unless (all (uncurry aeq) typeConflicts) $ throwError $ "there are type conflicts: " ++ show typeConflicts
@@ -137,11 +137,11 @@ importModules cache paths m loaded = do
                 mergeImpls = zipWithMaybeMatched $ \k v1 v2 -> Just $ nubBy aeq $ v1 ++ v2
             return
               ( oldEnv
-                  { _types = merge g1 g2 f (oldEnv ^. types) (env ^. types),
+                  { _typeKinds = merge g1 g2 f (oldEnv ^. typeKinds) (env ^. typeKinds),
                     _typeAliases = merge g1 g2 f (oldEnv ^. typeAliases) (env ^. typeAliases),
-                    _effs = merge g1 g2 f (oldEnv ^. effs) (env ^. effs),
+                    _effKinds = merge g1 g2 f (oldEnv ^. effKinds) (env ^. effKinds),
                     _effIntfs = merge g1 g2 f (oldEnv ^. effIntfs) (env ^. effIntfs),
-                    _funcs = merge g1 g2 f (oldEnv ^. funcs) (env ^. funcs),
+                    _funcTypes = merge g1 g2 f (oldEnv ^. funcTypes) (env ^. funcTypes),
                     _funcImpls = merge g1 g2 mergeImpls (oldEnv ^. funcImpls) (env ^. funcImpls),
                     _diffAdjs  = merge g1 g2 f (oldEnv ^. diffAdjs) (env ^. diffAdjs),
                     _funcDefs  = merge g1 g2 f (oldEnv ^. funcDefs) (env ^. funcDefs)

@@ -26,7 +26,7 @@ import Unbound.Generics.LocallyNameless.Unsafe
 
 getKindOfTVar :: (Has EnvEff sig m) => String -> Kind -> m Kind
 getKindOfTVar n defaultK = do
-  k <- getEnv $ types . at n
+  k <- getEnv $ typeKinds . at n
   case k of
     Just k -> return k
     Nothing -> do
@@ -95,12 +95,12 @@ inferTypeKind a@TAnn {..} = do
 inferTypeKind b@BoundType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind _boundType
       star = KStar _tloc
-  mapM_ (\(v, k) -> setEnv (Just $ k ^. non star) $ types . at (name2String v)) bvs
+  mapM_ (\(v, k) -> setEnv (Just $ k ^. non star) $ typeKinds . at (name2String v)) bvs
   inferTypeKind t
 inferTypeKind b@BoundEffVarType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind _boundEffVarType
       star = EKStar _tloc
-  mapM_ (\v -> setEnv (Just star) $ effs . at (name2String v)) bvs
+  mapM_ (\v -> setEnv (Just star) $ effKinds . at (name2String v)) bvs
   inferTypeKind t
 inferTypeKind v@TVar {..} = do
   let go = do
@@ -227,7 +227,7 @@ inferEffType l@EffList {..} = do
 
 getEffKindOfEffVar :: (Has EnvEff sig m) => String -> EffKind -> m EffKind
 getEffKindOfEffVar n defaultK = do
-  k <- getEnv $ effs . at n
+  k <- getEnv $ effKinds . at n
   case k of
     Just k -> return k
     Nothing -> do
@@ -242,7 +242,7 @@ inferEffKind v@EffVar {..} = do
   let kstar = EKStar _effLoc
   getEffKindOfEffVar (name2String _effVar) kstar
 inferEffKind a@EffApp {..} = do
-  k <- getEnv $ effs . at (name2String $ _effVar _effAppName)
+  k <- getEnv $ effKinds . at (name2String $ _effVar _effAppName)
   forMOf _Nothing k $ \k ->
     throwError $ "cannot find type: " ++ ppr a ++ ppr _effLoc
   let ak = fromJust k
@@ -318,7 +318,7 @@ toEffList' l@EffList {} =
 -- | Convert an effect type to effect list type
 toEffList :: (Has EnvEff sig m) => EffectType -> m EffectType
 toEffList eff = do
-  es <- getEnv effs
+  es <- getEnv effKinds
   let effs = toEffList' eff
       -- first part is application effect type and second part is effect variable list
       (el, vl) =
@@ -458,7 +458,7 @@ collectVarBindings bi a@TPrim {} b@TPrim {} = do
   checkTypeMatch a b
   return []
 collectVarBindings bi a@TVar {} t = do
-  tk <- getEnv $ types . at (name2String $ _tvar a)
+  tk <- getEnv $ typeKinds . at (name2String $ _tvar a)
   case tk of
     Just _ -> do
       ut <- unbindType t
@@ -466,7 +466,7 @@ collectVarBindings bi a@TVar {} t = do
         then return []
         else if bi && not (isn't _TVar t) then do
           let tn = _tvar t
-          ttk <- getEnv $ types . at (name2String tn)
+          ttk <- getEnv $ typeKinds . at (name2String tn)
           case ttk of
             Nothing -> return [(tn, a)]
             Just _ -> throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr (_tloc a)
@@ -551,7 +551,7 @@ collectVarBindings bi a b = throwError $ "type mismatch: " ++ ppr a ++ ppr (_tlo
 isEffVar :: (Has EnvEff sig m) => EffectType -> m Bool
 isEffVar e@EffVar {..} = do
   -- if a variable can be found in eff records, it is not a type variable
-  found <- getEnv $ effs . at (name2String _effVar)
+  found <- getEnv $ effKinds . at (name2String _effVar)
   case found of
     Just _ -> return False
     Nothing -> return True
@@ -662,7 +662,7 @@ collectEffVarBindingsInType bi a@TPrim {} b@TPrim {} = do
   checkTypeMatch a b
   return []
 collectEffVarBindingsInType bi a@TVar {} t = do
-  tk <- getEnv $ types . at (name2String $ _tvar a)
+  tk <- getEnv $ typeKinds . at (name2String $ _tvar a)
   case tk of
     Just _ -> do
       ut <- unbindType t
@@ -670,7 +670,7 @@ collectEffVarBindingsInType bi a@TVar {} t = do
         then return []
         else if bi && not (isn't _TVar t) then do
           let tn = _tvar t
-          ttk <- getEnv $ types . at (name2String tn)
+          ttk <- getEnv $ typeKinds . at (name2String tn)
           case ttk of
             Nothing -> return []
             Just _ -> throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr (_tloc a)
@@ -789,7 +789,7 @@ checkVarBindings bindings = do
             if isn't _TVar e
               then return (vars, nonVars ++ [e])
               else do
-                k <- getEnv $ types . at (name2String $ _tvar e)
+                k <- getEnv $ typeKinds . at (name2String $ _tvar e)
                 case k of
                   Just _ -> return (vars, nonVars ++ [e])
                   Nothing -> return (vars ++ [e], nonVars)
@@ -843,7 +843,7 @@ checkEffVarBindings bindings = do
             if isn't _EffVar e
               then return (vars, nonVars ++ [e])
               else do
-                k <- getEnv $ effs . at (name2String $ _effVar e)
+                k <- getEnv $ effKinds . at (name2String $ _effVar e)
                 case k of
                   Just _ -> return (vars, nonVars ++ [e])
                   Nothing -> return (vars ++ [e], nonVars)
@@ -921,7 +921,7 @@ isEqOrSubEffType s t = do
 -- | Set a function type into env
 setFuncType :: (Has EnvEff sig m) => String -> Type -> m ()
 setFuncType n t = do
-  setEnv (Just t) $ funcs . at n
+  setEnv (Just t) $ funcTypes . at n
   l <- getEnv localState
   -- clear the local state
   setEnv (M.delete n l) localState
@@ -935,7 +935,7 @@ getFuncType pos n = do
     Just v -> inferType v
     Nothing -> do
       -- try to find in local scope
-      v <- getEnv $ funcs . at n
+      v <- getEnv $ funcTypes . at n
       case v of
         Just v -> inferType v
         Nothing -> throwError $ "cannot find variable: " ++ n ++ ppr pos
@@ -993,7 +993,7 @@ searchFunc m fn loc = do
           "core/prelude/" :
           map (\i -> i ^. importPath ++ "/") (m ^. imports)
   n <- getNamePath m fn
-  fs <- getEnv funcs
+  fs <- getEnv funcTypes
   found <-
     filterOutAliasImports m n
       <$> foldM
@@ -1024,7 +1024,7 @@ setFuncImpl m impl = do
           bindTypeVar (funcD ^. funcBoundVars) $
             TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
   intfn <- searchFunc m (funcD ^. funcName) loc
-  ft <- fromJust <$> getEnv (funcs . at intfn)
+  ft <- fromJust <$> getEnv (funcTypes . at intfn)
   isSubT <- isSubType t ft
   if isSubT
     then return ()

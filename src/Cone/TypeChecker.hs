@@ -32,14 +32,14 @@ initTypeDef :: (Has EnvEff sig m) => TypeDef -> m TypeDef
 initTypeDef t = do
   prefix <- getEnv currentModuleName
   let tn = prefix ++ "/" ++ t ^. typeName
-  ot <- getEnv $ types . at tn
+  ot <- getEnv $ typeKinds . at tn
   -- check if it exists or not
   forMOf _Just ot $ \ot ->
     throwError $
       "redefine a type: " ++ tn ++ " vs " ++ ppr ot ++ ppr (_typeLoc t)
   -- record the kind of type
   let k = Just $ typeKindOf t
-  setEnv k $ types . at tn
+  setEnv k $ typeKinds . at tn
   return t {_typeName = tn}
   where
     typeKindOf t =
@@ -69,7 +69,7 @@ initTypeDefs = mapMOf (topStmts . traverse . _TDef) initTypeDef
 initTypeConDef :: (Has EnvEff sig m) => TypeDef -> m TypeDef
 initTypeConDef t = do
   prefix <- getEnv currentModuleName
-  globalTypes <- fmap s2n . M.keys <$> getEnv types
+  globalTypes <- fmap s2n . M.keys <$> getEnv typeKinds
   -- find all free type variables
   let b = bind (globalTypes::[TVar]) (bindTDef t)
       fvars = (b ^.. fv) :: [TVar]
@@ -85,13 +85,13 @@ initTypeConDef t = do
             cargs = c ^. typeConArgs
             pos = c ^. typeConLoc
         -- check if the type constructor exists or not
-        ot <- getEnv $ funcs . at cn
+        ot <- getEnv $ funcTypes . at cn
         forMOf _Just ot $ \t ->
           throwError $
             "type construct has conflict name: " ++ cn ++ " vs " ++ ppr t ++ ppr pos
         -- record the constructor's type
         let bt = tconType c t
-        setEnv (Just bt) $ funcs . at cn
+        setEnv (Just bt) $ funcTypes . at cn
         return c {_typeConName = cn}
     )
     t
@@ -121,7 +121,7 @@ checkTypeConDef :: (Has EnvEff sig m) => TypeDef -> m TypeDef
 checkTypeConDef t =
   forMOf (typeCons . traverse) t $ \c -> do
     let cn = c ^. typeConName
-    tt <- getEnv $ funcs . at cn
+    tt <- getEnv $ funcTypes . at cn
     forMOf _Nothing tt $ \_ ->
       throwError $
         "cannot find type constructor : " ++ cn ++ ppr (_typeLoc t)
@@ -146,11 +146,11 @@ preInitTypeAlias t = do
           then star
           else KFunc (args ^.. traverse . _2 . non star) star pos
   -- check if inteface exists or not
-  ot <- getEnv $ types . at name
+  ot <- getEnv $ typeKinds . at name
   forMOf _Just ot $ \t ->
     throwError $
       "type alias has conflict name: " ++ name ++ " vs " ++ ppr t ++ ppr pos
-  setEnv (Just kind) $ types . at name
+  setEnv (Just kind) $ typeKinds . at name
   return t {_typeAliasName = name}
 
 -- | Initialize all type aliases
@@ -160,7 +160,7 @@ preInitTypeAliases = mapMOf (topStmts . traverse . _TAlias) preInitTypeAlias
 -- | Check type alias
 initTypeAlias :: (Has EnvEff sig m) => TypeAlias -> m TypeAlias
 initTypeAlias t = do
-  globalTypes <- fmap s2n . M.keys <$> getEnv types
+  globalTypes <- fmap s2n . M.keys <$> getEnv typeKinds
   let args = t ^.. typeAliasArgs . traverse . _1
       aliasType = _typeAliasType t
       name = t ^. typeAliasName
@@ -191,11 +191,11 @@ initEffTypeDef :: (Has EnvEff sig m) => EffectDef -> m EffectDef
 initEffTypeDef e = do
   prefix <- getEnv currentModuleName
   let en = prefix ++ "/" ++ e ^. effectName
-  oe <- getEnv $ effs . at en
+  oe <- getEnv $ effKinds . at en
   forMOf _Just oe $ \oe ->
     throwError $
       "redefine an effect: " ++ en ++ " vs " ++ ppr oe ++ ppr (_effectLoc e)
-  setEnv (Just $ effKind e) $ effs . at en
+  setEnv (Just $ effKind e) $ effKinds . at en
   return e {_effectName = en}
   where
     effKind e =
@@ -215,8 +215,8 @@ initEffTypeDefs = mapMOf (topStmts . traverse . _EDef) initEffTypeDef
 initEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m EffectDef
 initEffIntfDef e = do
   prefix <- getEnv currentModuleName
-  globalTypes <- fmap s2n . M.keys <$> getEnv types
-  globalEffTypes <- fmap s2n . M.keys <$> getEnv effs
+  globalTypes <- fmap s2n . M.keys <$> getEnv typeKinds
+  globalEffTypes <- fmap s2n . M.keys <$> getEnv effKinds
   let is = e ^. effectIntfs
       en = e ^. effectName
       f = \i -> do
@@ -245,7 +245,7 @@ initEffIntfDef e = do
                     ++ ppr (_effectLoc e)
         addEffIntfs en intfn
         -- check if inteface exists or not
-        ot <- getEnv $ funcs . at intfn
+        ot <- getEnv $ funcTypes . at intfn
         forMOf _Just ot $ \t ->
           throwError $
             "eff interface has conflict name: " ++ intfn ++ " vs " ++ ppr t ++ ppr pos
@@ -262,7 +262,7 @@ initEffIntfDef e = do
                   pos
         --  add effect type to interface's effect list
         let bt = intfType i e effs
-        setEnv (Just bt) $ funcs . at intfn
+        setEnv (Just bt) $ funcTypes . at intfn
         return i {_intfName = intfn}
   mapMOf (effectIntfs . traverse) f e
   where
@@ -285,11 +285,11 @@ initEffIntfDefs = mapMOf (topStmts . traverse . _EDef) initEffIntfDef
 -- | Check an effect interface
 checkEffIntfDef :: (Has EnvEff sig m) => EffectDef -> m EffectDef
 checkEffIntfDef e = do
-  globalTypes <- fmap s2n . M.keys <$> getEnv types
+  globalTypes <- fmap s2n . M.keys <$> getEnv typeKinds
   let en = e ^. effectName
       f = \i -> do
         let intfn = i ^. intfName
-        t <- getEnv $ funcs . at intfn
+        t <- getEnv $ funcTypes . at intfn
         forMOf _Nothing t $ \t ->
           throwError $
             "cannot find eff interface: " ++ intfn ++ ppr (_effectLoc e)
@@ -311,10 +311,10 @@ initFuncDef f = do
       ft = funcDefType f
   k <- inferTypeKind ft
   checkTypeKind k
-  oft <- getEnv $ funcs . at fn
+  oft <- getEnv $ funcTypes . at fn
   forMOf _Just oft $ \oft ->
     throwError $ "function redefine: " ++ fn ++ ppr pos
-  setEnv (Just ft) $ funcs . at fn
+  setEnv (Just ft) $ funcTypes . at fn
   setEnv (Just f{_funcName = fn}) $ funcDefs . at fn
   return f {_funcName = fn}
 
@@ -404,8 +404,8 @@ addPrefixForTypes m' = do
           "core/prelude/" :
           map (\i -> i ^. importPath ++ "/") (m ^. imports)
       loc = m ^. moduleLoc
-  ts <- getEnv types
-  es <- getEnv effs
+  ts <- getEnv typeKinds
+  es <- getEnv effKinds
   bindTs <-
     foldM
       ( \s v -> do
@@ -468,7 +468,7 @@ addPrefixForExprs m' = do
           "core/prelude/" :
           map (\i -> i ^. importPath ++ "/") (m ^. imports)
       loc = m ^. moduleLoc
-  fs <- getEnv funcs
+  fs <- getEnv funcTypes
   binds <-
     foldM
       ( \s v -> do

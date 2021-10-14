@@ -55,11 +55,11 @@ type FuncDefs = M.Map String FuncDef
 -- | The environment
 data Env = Env
   { _currentModuleName :: String,
-    _types :: TypeKinds,
+    _typeKinds :: TypeKinds,
     _typeAliases :: TypeAliases,
-    _funcs :: ExprTypes,
+    _funcTypes :: ExprTypes,
     _funcImpls :: FuncImpls,
-    _effs :: EffKinds,
+    _effKinds :: EffKinds,
     _effIntfs :: EffIntfs,
     _localState :: ExprTypes,
     _typeBinds :: TypeBinds,
@@ -78,11 +78,11 @@ makeLenses ''Env
 initialEnv =
   Env
     { _currentModuleName = "",
-      _types = M.empty,
+      _typeKinds = M.empty,
       _typeAliases = M.empty,
-      _funcs = M.empty,
+      _funcTypes = M.empty,
       _funcImpls = M.empty,
-      _effs = M.empty,
+      _effKinds = M.empty,
       _effIntfs = M.empty,
       _localState = M.empty,
       _typeBinds = M.empty,
@@ -136,7 +136,7 @@ underScope f = do
   put env {_typeBinds = tbs, _kindBinds = kbs, _effTypeBinds = ebs, _effKindBinds = ekbs, 
            _specializedFuncs=sfs,
            _specializedFuncTypes=sfts,
-           _funcs = merge g1 g2 f (_funcs env) sfts}
+           _funcTypes = merge g1 g2 f (_funcTypes env) sfts}
   return res
 
 -- | Add effect interface into env
