@@ -609,14 +609,21 @@ collectVarBindingsInEff bi a b = throwError $ "eff type mismatch: " ++ ppr a ++ 
 
 -- | Check all effect variables
 collectEffVarBindings :: (Has EnvEff sig m) => Bool -> EffectType -> EffectType -> m [(EffVar, EffectType)]
-collectEffVarBindings bi ev@EffVar {..} e = do
+collectEffVarBindings bi ev@EffVar {} e = do
   is <- isEffVar ev
   if is
-    then do be <- getEnv $ effTypeBinds . at (name2String _effVar)
+    then do be <- getEnv $ effTypeBinds . at (name2String $ _effVar ev)
             case be of
-              Just be -> return [(_effVar, e), (_effVar, be)]
-              Nothing -> return [(_effVar, e)]
-    else return []
+              Just be -> return [(_effVar ev, e), (_effVar ev, be)]
+              Nothing -> return [(_effVar ev, e)]
+    else if aeq ev e then return []
+         else do is <- isEffVar e
+                 if bi && is then do
+                   be <- getEnv $ effTypeBinds . at (name2String $ _effVar e)
+                   case be of
+                     Just be -> return [(_effVar e, ev), (_effVar e, be)]
+                     Nothing -> return [(_effVar e, ev)]
+                 else throwError $ "only effect variable can be bound, but got " ++ ppr ev ++ ppr (_effLoc ev)
 collectEffVarBindings bi a b@EffVar {} = do
   if bi
     then collectEffVarBindings bi b a
