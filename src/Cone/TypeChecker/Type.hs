@@ -645,16 +645,22 @@ collectEffVarBindings bi a@EffList {} b@EffList {} = do
     then do
       bindings <-
         foldM
-          (\s e -> (++) s <$> e)
+          (\s (a, b) -> do
+            a <- inferEffType a
+            b <- inferEffType b
+            collectEffVarBindings bi a b >>= checkEffVarBindings . (++) s)
           []
-          [collectEffVarBindings bi aarg barg | aarg <- init al | barg <- bl]
+          [(aarg, barg) | aarg <- init al | barg <- bl]
       return $ bindings ++ [(_effVar (last al), EffList (drop (L.length al - 1) bl) (_effLoc b))]
     else do
       bindings <-
         foldM
-          (\s e -> (++) s <$> e)
+          (\s (a, b) -> do
+            a <- inferEffType a
+            b <- inferEffType b
+            collectEffVarBindings bi a b >>= checkEffVarBindings . (++) s)
           []
-          [collectEffVarBindings bi aarg barg | aarg <- al | barg <- bl]
+          [(aarg, barg) | aarg <- al | barg <- bl]
       if L.length al == L.length bl + 1
         then return $ bindings ++ [(_effVar (last al), EffList [] (_effLoc b))]
         else return bindings
