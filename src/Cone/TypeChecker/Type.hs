@@ -470,8 +470,10 @@ collectVarBindings bi a@TVar {} t = do
           case ttk of
             Nothing -> do bt <- getEnv $ typeBinds . at (name2String tn)
                           case bt of
-                            Just bt -> return $ [(tn, a)] ++ [(tn, bt)]
-                            Nothing -> return [(tn, a)]
+                            Just bt -> return [(tn, a), (tn, bt)]
+                            Nothing -> do
+                              setEnv (Just a) $ typeBinds . at (name2String tn)
+                              return [(tn, a)]
             Just _ -> throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr (_tloc a)
           else throwError $ "try to rebind type variable: " ++ ppr a ++ " to " ++ ppr t ++ ppr (_tloc a)
     Nothing ->
@@ -480,8 +482,10 @@ collectVarBindings bi a@TVar {} t = do
             then throwError $ "type mismatch: " ++ ppr a ++ " vs " ++ ppr t ++ ppr (_tloc a)
             else do bt <- getEnv $ typeBinds . at (name2String $ _tvar a)
                     case bt of
-                      Just bt -> return $ [(_tvar a, t), (_tvar a, bt)]
-                      Nothing -> return [(_tvar a, t)]
+                      Just bt -> return [(_tvar a, t), (_tvar a, bt)]
+                      Nothing -> do
+                        setEnv (Just t) $ typeBinds . at (name2String $ _tvar a)
+                        return [(_tvar a, t)]
 collectVarBindings bi t a@TVar {..} = do
   if bi
     then collectVarBindings bi a t
@@ -615,14 +619,18 @@ collectEffVarBindings bi ev@EffVar {} e = do
     then do be <- getEnv $ effTypeBinds . at (name2String $ _effVar ev)
             case be of
               Just be -> return [(_effVar ev, e), (_effVar ev, be)]
-              Nothing -> return [(_effVar ev, e)]
+              Nothing -> do
+                setEnv (Just e) $ effTypeBinds . at (name2String $ _effVar ev)
+                return [(_effVar ev, e)]
     else if aeq ev e then return []
          else do is <- isEffVar e
                  if bi && is then do
                    be <- getEnv $ effTypeBinds . at (name2String $ _effVar e)
                    case be of
                      Just be -> return [(_effVar e, ev), (_effVar e, be)]
-                     Nothing -> return [(_effVar e, ev)]
+                     Nothing -> do
+                       setEnv (Just ev) $ effTypeBinds . at (name2String $ _effVar e)
+                       return [(_effVar e, ev)]
                  else throwError $ "only effect variable can be bound, but got " ++ ppr ev ++ ppr (_effLoc ev)
 collectEffVarBindings bi a b@EffVar {} = do
   if bi
