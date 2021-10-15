@@ -103,7 +103,7 @@ getSpecializedFunc :: (Has EnvEff sig m) => [Type] -> String -> Type -> m String
 getSpecializedFunc targs fn t = do
   if isConcreteType t then do
     mn <- getEnv currentModuleName
-    let fSel = mn ++ "/" ++ last (splitOn "/" $ uniqueFuncImplName fn t)
+    let fSel = mn ++ "/" ++ last (splitOn "/" $ uniqueFuncImplName fn t) ++ join (map (uniqueFuncImplName "_") targs)
     f <- getEnv $ specializedFuncs . at fSel
     case f of
       Nothing -> do

@@ -14,6 +14,22 @@ impl fun ____mul<t, shape:@[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tens
     inline_python<tensor<t, shape>>("____result = a * b")
 }
 
+fun reshape<output_shape:@[num], t, input_shape:@[num]>(input:tensor<t, input_shape>) : tensor<t, output_shape> {
+    inline_python<tensor<t, output_shape>, output_shape>("""
+args = ____typeargs[1]
+____result = input.reshape(args)
+    """)
+}
+
+diff reshape wrt (input) = reshape_diff
+
+fun reshape_diff<output_shape:@[num], t, input_shape:@[num]>(input:tensor<t, input_shape>, output_diff:tensor<t, output_shape>) : tensor<t, input_shape> {
+    inline_python<tensor<t, input_shape>, input_shape>("""
+args = ____typeargs[1]
+____result = output_diff.reshape(args)
+    """)
+}
+
 fun full<shape: @[num], a>(c : a, s : [i32]) : tensor<a, shape>
 
 diff full wrt (c) = full_diff

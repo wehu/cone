@@ -189,5 +189,9 @@ fun main() : io unit {
 
    print(softmax(feature, 1))
 
+   print(t.reshape<@[4*3*16*16]>(feature))
+   val ones3 = t.full<@[4*3*16*16]>(1.0, [])
+   print(diff t.reshape<@[4*3*16*16]>(feature, ones3))
+
 }
 
