@@ -6,7 +6,7 @@ type dataset<t, shape: @[num]>
 
 effect iterator<t, shape: @[num]> {
     fun reset(dataset<t, shape>) : unit
-    fun next(dataset<t, shape>) : tensor<t, shape>
+    fun next(dataset<t, shape>) : (tensor<t, shape>, i32)
 }
 
 fun len<t, shape: @[num]>(ds : dataset<t, shape>) : i32 {
@@ -15,7 +15,7 @@ ____result = len(ds[0])
     """)
 }
 
-fun foreach<t, shape: @[num]>[e](ds : dataset<t, shape>, f : (tensor<t, shape>, i32) -> e unit) : e unit {
+fun foreach<t, shape: @[num]>[e](ds : dataset<t, shape>, f : ((tensor<t, shape>, i32), i32) -> e unit) : e unit {
     var i = 0
     val size = len(ds)
     handle iterator<t, shape> {
@@ -32,9 +32,9 @@ ds[1] = iter(ds[0])
             resume(unit)
         }
         fun next(ds : dataset<t, shape>) {
-            resume(inline_python<tensor<t, shape>>("""
-import numpy
-____result = next(ds[1])[0].numpy().astype(numpy.float32)
+            resume(inline_python<(tensor<t, shape>, i32)>("""
+data = next(ds[1])
+____result = (data[0].numpy(), data[1])
             """))
         }
     }
@@ -43,7 +43,11 @@ ____result = next(ds[1])[0].numpy().astype(numpy.float32)
 fun mnist(dir : str, train : bool) : dataset<f32, @[1, 28, 28]> {
     inline_python<dataset<f32, @[1, 28, 28]>>("""
 from torchvision import datasets, transforms
-ds = datasets.MNIST(dir, train=train, transform=transforms.ToTensor(), download=True)
+transform=transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))
+        ])
+ds = datasets.MNIST(dir, train=train, transform=transform, download=True)
 ____result = [ds, iter(ds)]
     """)
 }

@@ -32,13 +32,14 @@ fun main() : io unit {
     val (conv1_grad, conv2_grad) = diff mnist_model(input, conv1, conv2, grads)
     print(conv1_grad)
     print(conv2_grad)
-    // foreach(ds, fn(d : tensor<f32, @[1,28,28]>, i : i32) : io unit {
-    //     if (i < 1) {
-    //         val dd = reshape<@[1,1,28,28]>(d)
-    //         print(mnist_model(dd, conv1, conv2))
-	   //  //print(dd)
-    //     } else {
-    //         unit
-    //     }
-    // })
+    foreach(ds, fn(d : (tensor<f32, @[1,28,28]>, i32), i : i32) : io unit {
+        if (i < 1) {
+            val (data, target) = d
+            val dd = reshape<@[1,1,28,28]>(data)
+            //print(mnist_model(dd, conv1, conv2))
+            print(dd)
+        } else {
+            unit
+        }
+    })
 }
