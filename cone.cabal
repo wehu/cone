@@ -147,8 +147,6 @@ test-suite cone-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Parser.ParserSpec
-      TypeCheckerSpec
       Paths_cone
   hs-source-dirs:
       test

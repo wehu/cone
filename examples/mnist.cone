@@ -1,0 +1,12 @@
+module examples.mnist
+
+import ml.nn.conv2d
+import ml.nn.maxpool2d
+import ml.nn.softmax
+import ml.nn.relu
+import data.tensor
+
+fun main() : io unit {
+    val ones = full<@[4, 4, 16, 16]>(1.0, [])
+    print(ones)
+}
