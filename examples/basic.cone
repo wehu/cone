@@ -12,6 +12,7 @@ import ml.nn.conv2d
 import ml.nn.maxpool2d
 import ml.nn.softmax
 import ml.nn.relu
+import ml.optimizer.loss
 
 /*  
 comments here
