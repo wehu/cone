@@ -99,8 +99,8 @@ checkFuncDef f = underScope $ do
   checkTypeKind k
   checkFuncType f
 
-getSpecializedFunc :: (Has EnvEff sig m) => String -> Type -> m String
-getSpecializedFunc fn t = do
+getSpecializedFunc :: (Has EnvEff sig m) => [Type] -> String -> Type -> m String
+getSpecializedFunc targs fn t = do
   if isConcreteType t then do
     mn <- getEnv currentModuleName
     let fSel = mn ++ "/" ++ last (splitOn "/" $ uniqueFuncImplName fn t)
@@ -112,15 +112,16 @@ getSpecializedFunc fn t = do
           Just fdef -> do
             if isn't _Nothing (_funcExpr fdef) && not (null (_funcBoundVars fdef) && null (_funcBoundEffVars fdef))
             then underScope $ do
+              fdef <- applyTArgs fdef
               bs <- foldM (\s (v, _) -> do
                   vn <- freeVarName <$> fresh
                   return $ s ++ [(v, TVar vn (_tloc t))]) [] (_funcBoundVars fdef)
               effBs <- foldM (\s v -> do
                   vn <- freeEffVarName <$> fresh
                   return $ s ++ [(v, EffVar vn (_tloc t))]) [] (_funcBoundEffVars fdef)
-              let newFdef = substs effBs $ substs bs fdef
-                  gt' = TFunc (_funcArgs newFdef ^.. traverse . _2) (_funcEffectType newFdef) (_funcResultType newFdef) (_tloc t)
-              gt <- inferType gt'
+              let newFdef = (substs effBs $ substs bs fdef){_funcBoundVars=[], _funcBoundEffVars=[]}
+                  ft = funcDefType newFdef
+              gt <- unbindType ft >>= inferType
               ut <- unbindType t
               binds <- collectVarBindings False gt ut
               checkAndAddTypeVarBindings binds
@@ -138,10 +139,20 @@ getSpecializedFunc fn t = do
           Nothing -> return fn
       Just _ -> return fSel
     else return fn
+  where
+    applyTArgs fdef = do
+      let argsLen = L.length targs
+          bts = _funcBoundVars fdef
+          binds = [(n ^. _1, t) | n <- L.take argsLen bts | t <- targs]
+          ts = [(n ^. _2 . non (KStar (_tloc t)), t) | n <- L.take argsLen bts | t <- targs]
+      forM_ ts $ \(k, t) -> do
+        tk <- inferTypeKind t
+        checkKindMatch k tk
+      return $ substs binds fdef {_funcBoundVars = L.drop argsLen bts}
 
 -- | Select a function implementation based on type
-selectFuncImpl :: (Has EnvEff sig m) => Expr -> Location -> m Expr
-selectFuncImpl e@(EAnnMeta (EVar fn' _) t eff _) loc = do
+selectFuncImpl :: (Has EnvEff sig m) => [Type] -> Expr -> Location -> m Expr
+selectFuncImpl targs e@(EAnnMeta (EVar fn' _) t eff _) loc = do
   let fn = name2String fn'
   impls <- getFuncImpls fn
   impls <- findSuperImpls impls >>= findBestImpls
@@ -159,7 +170,7 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t eff _) loc = do
         fn /= "core/prelude/____zeros" &&
         isConcreteType t && isn't _Nothing f && isn't _Just (_funcExpr $ fromJust f)) $
     throwError $ "cannot find function implemenation for " ++ fn ++ " of type " ++ ppr t ++ ppr loc
-  newFn <- getSpecializedFunc newFn t
+  newFn <- getSpecializedFunc targs newFn t
   return $ EAnnMeta (EVar (s2n newFn) loc) t eff loc
   where
     findSuperImpls impls =
@@ -196,7 +207,7 @@ selectFuncImpl e@(EAnnMeta (EVar fn' _) t eff _) loc = do
         )
         []
         (M.toList indegrees)
-selectFuncImpl e _ = return e
+selectFuncImpl _ e _ = return e
 
 -- | Infer expression's type
 inferExprType :: (Has EnvEff sig m) => Expr -> m Expr
@@ -226,6 +237,7 @@ inferExprType a@EApp {..} = do
   appFunc <- inferExprType _eappFunc
   appFuncType <- typeOfExpr appFunc
   appFuncType <- applyTypeArgs appFuncType _eappTypeArgs >>= unbindType
+
   -- infer all arguments' types
   args <- mapM inferExprType _eappArgs
   argTypes <- mapM typeOfExpr args
@@ -236,7 +248,7 @@ inferExprType a@EApp {..} = do
   (t, ft) <- inferAppResultType appFuncType typeArgs argTypes
   t <- inferType t
   ft <- inferType ft
-  appFunc <- selectFuncImpl appFunc {_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft} _eloc
+  appFunc <- selectFuncImpl typeArgs appFunc {_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft} _eloc
   return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t eff
 inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables

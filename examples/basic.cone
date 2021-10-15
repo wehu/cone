@@ -9,6 +9,7 @@ import control.nodet
 import core.math
 import ml.vision.datasets as ds
 import ml.nn.conv2d
+import ml.nn.maxpool2d
 
 /*  
 comments here
@@ -180,5 +181,8 @@ fun main() : io unit {
    val (f_grad, w_grad) = diff conv2d(feature, weight, ones)
    print(f_grad)
    print(w_grad)
+
+   print(maxpool2d<2,2>(feature))
+
 }
 

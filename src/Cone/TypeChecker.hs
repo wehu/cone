@@ -306,9 +306,29 @@ checkEffIntfDefs = mapMOf (topStmts . traverse . _EDef) checkEffIntfDef
 initFuncDef :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 initFuncDef f = do
   prefix <- getEnv currentModuleName
+  globalTypes <- fmap s2n . M.keys <$> getEnv typeKinds
+  globalEffTypes <- fmap s2n . M.keys <$> getEnv effKinds
   let pos = f ^. funcLoc
       fn = prefix ++ "/" ++ f ^. funcName
       ft = funcDefType f
+      star = KStar pos
+      btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
+      bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
+      bt = bind (globalTypes::[TVar]) (bindFDef f)
+      be = bind (globalEffTypes::[EffVar]) (bindFDef f)
+      ftvars = (bt ^.. fv) :: [TVar]
+      fevars = (be ^.. fv) :: [EffVar]
+  -- check if has free type variables
+  when (ftvars /= []) $
+    throwError $
+      "function type variables should "
+        ++ "only exists in function type arguments: "
+        ++ ppr ftvars ++ ppr (_funcLoc f)
+  when (fevars /= []) $
+    throwError $
+      "function eff type variables should "
+        ++ "only exists in function eff type arguments: "
+        ++ ppr fevars ++ ppr (_funcLoc f)
   k <- inferTypeKind ft
   checkTypeKind k
   oft <- getEnv $ funcTypes . at fn
