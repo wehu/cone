@@ -382,6 +382,34 @@ checkImplFuncDef i = underScope $ do
 checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m Module
 checkImplFuncDefs = mapMOf (topStmts . traverse . _ImplFDef) checkImplFuncDef
 
+renameLocalVarsInExpr :: (Has EnvEff sig m) => Expr -> m Expr
+renameLocalVarsInExpr = transformM rename
+  where
+    rename l@ELet{..} = do
+      (pbinds, bbinds) <- genVarBinds _eletPattern
+      return l{_eletPattern=substs pbinds _eletPattern, _eletBody=substs bbinds _eletBody}
+    rename c@ECase{..} = do
+      cs <- mapM (\c -> do
+                    (pbinds, bbinds) <- genVarBinds (_casePattern c)
+                    return c{_casePattern=substs pbinds (_casePattern c),
+                             _caseExpr=substs bbinds (_caseExpr c)})
+                    _ecaseBody
+      return c{_ecaseBody=cs}
+    rename e = return e
+    genVarBinds p = do
+      let vs = L.nubBy aeq (p ^.. fv :: [PVar])
+      nvs <- mapM (\v -> do
+                    id <- fresh
+                    return (name2String v, name2String v ++ "_tmp_" ++ show id)) vs
+      let pbinds = map (\(n, nn) -> (s2n n, PVar (s2n nn) (_ploc p))) nvs
+          bbinds = map (\(n, nn) -> (s2n n, EVar (s2n nn) (_ploc p))) nvs
+      return (pbinds, bbinds)
+
+renameLocalVars :: (Has EnvEff sig m) => Module -> m Module
+renameLocalVars m =
+  mapMOf (topStmts . traverse . _FDef . funcExpr . _Just) renameLocalVarsInExpr m >>=
+    mapMOf (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) renameLocalVarsInExpr
+
 -- | Remove meta annotation
 removeAnn :: Expr -> Expr
 removeAnn e = transform remove e
@@ -527,7 +555,7 @@ initModule m env id =
   run . runError . runState env . runFresh id $
     do
       setEnv (m ^. moduleName) currentModuleName
-      return m
+      renameLocalVars m
       >>= initTypeDefs
       >>= initEffTypeDefs
       >>= preInitTypeAliases

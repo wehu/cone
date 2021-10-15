@@ -710,6 +710,26 @@ instance Subst Expr Expr where
 
 instance Subst Expr Pattern
 
+instance Subst Pattern Location
+
+instance Subst Pattern Kind
+
+instance Subst Pattern EffectType
+
+instance Subst Pattern Case
+
+instance Subst Pattern FuncDef
+
+instance Subst Pattern PrimType
+
+instance Subst Pattern Type
+
+instance Subst Pattern Expr
+
+instance Subst Pattern Pattern where
+  isvar (PVar x _) = Just (SubstName x)
+  isvar _ = Nothing
+
 makeLenses ''Pattern
 
 makePrisms ''Pattern
