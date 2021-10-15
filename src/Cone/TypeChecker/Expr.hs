@@ -252,7 +252,7 @@ inferExprType a@EApp {..} = do
   return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t eff
 inferExprType l@ELam {..} = underScope $ do
   -- clear localState, lambda cannot capture local state variables
-  setEnv M.empty localState
+  -- setEnv M.empty localState
   -- refresh all bound variables
   (bvs, newLam) <- refreshTypeVar (_elamBoundVars ^.. traverse . _1) l
   (evs, newLam) <- refreshEffVar _elamBoundEffVars newLam

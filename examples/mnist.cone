@@ -43,14 +43,22 @@ fun main() : io unit {
     var fcb1 = full<@[128]>(1.0, [])
     var fcw2 = full<@[10,128]>(1.0, [])
     var fcb2 = full<@[10]>(1.0, [])
+    val rate = 0.1
     foreach(ds, fn(d : (tensor<f32, @[1,28,28]>, f32), i : i32) : io unit {
         if (i < 1) {
             val (data, target) = d
             val data = reshape<@[1,1,28,28]>(data)
             val target = full<@[1]>(target, [])
-            val (conv1_grad, conv2_grad, fcw1_grad, fcb1_grad, fcw2_grad, fcb2_grad) = \
-                  diff mnist_train(data, target, conv1, conv2, fcw1, fcb1, fcw2, fcb2, 1.0)
-            print(conv2_grad)
+            print(data)
+            //val (conv1_grad, conv2_grad, fcw1_grad, fcb1_grad, fcw2_grad, fcb2_grad) = \
+            //      diff mnist_train(data, target, conv1, conv2, fcw1, fcb1, fcw2, fcb2, 1.0)
+            //print(conv2_grad)
+            conv1 = conv1 - full<@[32,1,3,3]>(1.0*rate, [])
+            conv2 = conv2 - full<@[64,32,3,3]>(1.0*rate, [])
+            fcw1 = fcw1 - full<@[128,9216]>(1.0*rate, [])
+            fcb1 = fcb1 - full<@[128]>(1.0*rate, [])
+            fcw2 = fcw2 - full<@[10,128]>(1.0*rate, [])
+            fcb2 = fcb2 - full<@[10]>(1.0*rate, [])
         } else {
             unit
         }

@@ -107,10 +107,15 @@ namespace cone {
     const std::vector<std::string> &names,
     const std::vector<object_t> &values,
     const object_t &e) {
-    stack_t stack = ____make_empty_stack();
-    *stack = *s; 
-    effects_t effs = ____make_empty_effs();
-    return std::experimental::any_cast<func_with_cont_t>(e)(k, ____set_parameters(stack, names, values), effs);
+    //stack_t stack = ____make_empty_stack();
+    //*stack = *s; 
+    //effects_t effs = ____make_empty_effs();
+    s->push_back({});
+    es->push_back({});
+    auto o = std::experimental::any_cast<func_with_cont_t>(e)(k, ____set_parameters(s, names, values), es);
+    s->pop_back();
+    es->pop_back();
+    return o;
   }
 
   struct ____deferred {
