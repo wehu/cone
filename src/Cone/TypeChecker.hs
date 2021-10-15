@@ -395,6 +395,13 @@ renameLocalVarsInExpr = transformM rename
                              _caseExpr=substs bbinds (_caseExpr c)})
                     _ecaseBody
       return c{_ecaseBody=cs}
+    rename l@ELam{..} = do
+      vs <- mapM (\v -> do
+                    id <- fresh
+                    return (v, v ++ "_arg_" ++ show id)) (_elamArgs ^..traverse._1)
+      let binds = map (\(n, nn) -> (s2n n, EVar (s2n nn) _eloc)) vs
+          args = [(v ^. _2, t ^. _2) | v <- vs | t <- _elamArgs]
+      return l{_elamArgs = args, _elamExpr=substs binds _elamExpr}
     rename e = return e
     genVarBinds p = do
       let vs = L.nubBy aeq (p ^.. fv :: [PVar])
