@@ -188,7 +188,8 @@ fun main() : io unit {
    val ones2 = t.full<@[4, 3, 13, 13]>(1.0, [])
    print(diff maxpool2d<4,4>(feature, ones2))
 
-   print(softmax(feature, 1))
+   print(log_softmax(feature, 1))
+   print(diff log_softmax(feature, 1, feature))
 
    print(t.reshape<@[4*3*16*16]>(feature))
    val ones3 = t.full<@[4*3*16*16]>(1.0, [])
