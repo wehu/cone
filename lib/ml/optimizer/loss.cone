@@ -2,23 +2,23 @@ module ml.optimizer.loss
 
 import data.tensor
 
-fun nll_loss<t, n:num, c:num>(input:tensor<t, @[n, c]>, target:tensor<t, @[n]>) : t {
+fun nll_loss<t, n:num, c:num>(input:tensor<t, @[n, c]>, target:tensor<i32, @[n]>) : t {
     inline_python<t>("""
 import torch
 import torch.nn.functional as F
-____result = F.nll_loss(torch.from_numpy(input), torch.from_numpy(target)).numpy()
+____result = F.nll_loss(torch.from_numpy(input), torch.from_numpy(target))
     """)    
 }
 
 diff nll_loss wrt(input) = nll_loss_diff
 
-fun nll_loss_diff<t, n:num, c:num>(input:tensor<t, @[n, c]>, target:tensor<t, @[n]>, output_diff:t) : tensor<t, @[n, c]> {
+fun nll_loss_diff<t, n:num, c:num>(input:tensor<t, @[n, c]>, target:tensor<i32, @[n]>, output_diff:t) : tensor<t, @[n, c]> {
     inline_python<tensor<t, @[n, c]>>("""
 import torch
 import torch.nn.functional as F
 a = torch.tensor(input, requires_grad=True)
-p = f.nll_loss(a, torch.from_numpy(target))
-p.backward(torch.from_numpy(output_diff))
+p = F.nll_loss(a, torch.from_numpy(target))
+p.backward()
 ____result = a.grad.numpy()
     """)    
 }
