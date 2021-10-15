@@ -32,10 +32,10 @@ ds[1] = iter(ds[0])
             resume(unit)
         }
         fun next(ds : dataset<t, shape>) {
-            val d = inline_python<tensor<t, shape>>("""
+            resume(inline_python<tensor<t, shape>>("""
+import numpy
 ____result = next(ds[1])[0].numpy()
-            """)
-            resume(d)
+            """))
         }
     }
 }
