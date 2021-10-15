@@ -183,6 +183,8 @@ fun main() : io unit {
    print(w_grad)
 
    print(maxpool2d<2,2>(feature))
+   val ones2 = t.full<@[4, 3, 13, 13]>(1.0, [])
+   print(diff maxpool2d<4,4>(feature, ones2))
 
 }
 
