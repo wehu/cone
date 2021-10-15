@@ -11,6 +11,7 @@ import ml.vision.datasets as ds
 import ml.nn.conv2d
 import ml.nn.maxpool2d
 import ml.nn.softmax
+import ml.nn.relu
 
 /*  
 comments here
@@ -192,6 +193,9 @@ fun main() : io unit {
    print(t.reshape<@[4*3*16*16]>(feature))
    val ones3 = t.full<@[4*3*16*16]>(1.0, [])
    print(diff t.reshape<@[4*3*16*16]>(feature, ones3))
+
+   print(relu(feature))
+   print(diff relu(feature,feature))
 
 }
 
