@@ -34,7 +34,7 @@ ds[1] = iter(ds[0])
         fun next(ds : dataset<t, shape>) {
             resume(inline_python<tensor<t, shape>>("""
 import numpy
-____result = next(ds[1])[0].numpy()
+____result = next(ds[1])[0].numpy().astype(numpy.float32)
             """))
         }
     }
