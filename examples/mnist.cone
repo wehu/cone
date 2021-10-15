@@ -11,13 +11,13 @@ import ml.optimizer.loss
 import ml.vision.datasets
 
 fun mnist_train(input:tensor<f32, @[1,1,28,28]>, \
+                target:tensor<f32, @[1]>,         \
                 conv1:tensor<f32, @[32,1,3,3]>,  \
 	            conv2:tensor<f32, @[64,32,3,3]>, \
-                fcw1:tensor<f32, @[128,9216]>, \
-                fcb1:tensor<f32, @[128]>, \
-                fcw2:tensor<f32, @[10,128]>, \
-                fcb2:tensor<f32, @[10]>, \
-                target:tensor<f32, @[1]>) : f32 {
+                fcw1:tensor<f32, @[128,9216]>,   \
+                fcb1:tensor<f32, @[128]>,        \
+                fcw2:tensor<f32, @[10,128]>,     \
+                fcb2:tensor<f32, @[10]>) : f32 {
     val x = conv2d(input, conv1)
     val x = relu(x)
     val x = conv2d(x, conv2)
@@ -43,18 +43,14 @@ fun main() : io unit {
     var fcb1 = full<@[128]>(1.0, [])
     var fcw2 = full<@[10,128]>(1.0, [])
     var fcb2 = full<@[10]>(1.0, [])
-    val input = full<@[1,1,28,28]>(1.0, [])
-    val target = full<@[1]>(1.0, []) 
-    val (conv1_grad, conv2_grad, fcw1_grad, fcb1_grad, fcw2_grad, fcb2_grad) = \
-        diff mnist_train(input, conv1, conv2, fcw1, fcb1, fcw2, fcb2, target, 1.0)
-    print(conv1_grad)
-    print(conv2_grad)
-    foreach(ds, fn(d : (tensor<f32, @[1,28,28]>, i32), i : i32) : io unit {
+    foreach(ds, fn(d : (tensor<f32, @[1,28,28]>, f32), i : i32) : io unit {
         if (i < 1) {
             val (data, target) = d
-            val dd = reshape<@[1,1,28,28]>(data)
-            //print(mnist_model(dd, conv1, conv2))
-            print(dd)
+            val data = reshape<@[1,1,28,28]>(data)
+            val target = full<@[1]>(target, [])
+            val (conv1_grad, conv2_grad, fcw1_grad, fcb1_grad, fcw2_grad, fcb2_grad) = \
+                  diff mnist_train(data, target, conv1, conv2, fcw1, fcb1, fcw2, fcb2, 1.0)
+            print(conv2_grad)
         } else {
             unit
         }
