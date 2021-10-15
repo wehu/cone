@@ -29,6 +29,7 @@ data-files:
     lib/data/tensor.cone
     lib/ml/nn/conv2d.cone
     lib/ml/nn/maxpool2d.cone
+    lib/ml/nn/softmax.cone
     lib/ml/vision/datasets.cone
     include/cone/builtins.h
     include/cone/data/tensor.h

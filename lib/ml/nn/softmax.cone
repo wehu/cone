@@ -1,0 +1,11 @@
+module ml.nn.softmax
+
+import data.tensor
+
+fun softmax<t, shape:@[num]>(input:tensor<t, shape>, dim:i32) : tensor<t, shape> {
+    inline_python<tensor<t, shape>>("""
+import torch
+import torch.nn.functional as F
+____result = F.softmax(torch.from_numpy(input), dim).numpy()
+    """)    
+}
