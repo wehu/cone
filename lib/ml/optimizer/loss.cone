@@ -2,7 +2,7 @@ module ml.optimizer.loss
 
 import data.tensor
 
-fun nll_loss<n:num, c:num, t>(input:tensor<t, @[n, c]>, target:tensor<t, @[n]>) : t {
+fun nll_loss<t, n:num, c:num>(input:tensor<t, @[n, c]>, target:tensor<t, @[n]>) : t {
     inline_python<t>("""
 import torch
 import torch.nn.functional as F
@@ -12,7 +12,7 @@ ____result = F.nll_loss(torch.from_numpy(input), torch.from_numpy(target)).numpy
 
 diff nll_loss wrt(input) = nll_loss_diff
 
-fun nll_loss_diff<n:num, c:num, t>(input:tensor<t, @[n, c]>, target:tensor<t, @[n]>, output_diff:t) : tensor<t, @[n, c]> {
+fun nll_loss_diff<t, n:num, c:num>(input:tensor<t, @[n, c]>, target:tensor<t, @[n]>, output_diff:t) : tensor<t, @[n, c]> {
     inline_python<tensor<t, @[n, c]>>("""
 import torch
 import torch.nn.functional as F
