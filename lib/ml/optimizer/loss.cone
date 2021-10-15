@@ -17,7 +17,7 @@ fun nll_loss_diff<n:num, c:num, t>(input:tensor<t, @[n, c]>, target:tensor<t, @[
 import torch
 import torch.nn.functional as F
 a = torch.tensor(input, requires_grad=True)
-p = torch.nll_loss(a, torch.from_numpy(target))
+p = f.nll_loss(a, torch.from_numpy(target))
 p.backward(torch.from_numpy(output_diff))
 ____result = a.grad.numpy()
     """)    
