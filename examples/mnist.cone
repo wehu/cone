@@ -6,6 +6,7 @@ import ml.nn.maxpool2d
 import ml.nn.softmax
 import ml.nn.relu
 import ml.nn.dropout
+import ml.nn.fc
 import ml.optimizer.loss
 import ml.vision.datasets
 

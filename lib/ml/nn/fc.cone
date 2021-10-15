@@ -1,0 +1,27 @@
+module ml.nn.fc
+
+import data.tensor
+
+fun fc<i:num, o:num, t, n:num>(input:tensor<t, @[n, i]>, weight:tensor<t, @[o, i]>, bias:tensor<t, @[o]>) : tensor<t, @[n, o]> {
+    inline_python<tensor<t, @[n, o]>>("""
+import torch
+import torch.nn.functional as F
+____result = F.linear(torch.from_numpy(input), torch.from_numpy(weight), torch.from_numpy(bias)).numpy()
+    """)    
+}
+
+diff fc wrt (input, weight, bias) = fc_diff
+
+fun fc_diff<i:num, o:num, t, n:num>(input:tensor<t, @[n, i]>, weight:tensor<t, @[o, i]>, bias:tensor<t, @[o]>, \
+      output_diff:tensor<t, @[n, o]>) : (tensor<t, @[n, i]>, tensor<t, @[o, i]>, tensor<t, @[o]>) {
+    inline_python<(tensor<t, @[n, i]>, tensor<t, @[o, i]>, tensor<t, @[o]>)>("""
+import torch
+import torch.nn.functional as F
+a = torch.tensor(input, requires_grad=True)
+b = torch.tensor(weight, requires_grad=True)
+c = torch.tensor(bias, requires_grad=True)
+p = F.linear(a, b, c)
+p.backward(torch.from_numpy(output_diff))
+____result = (a.grad.numpy(), b.grad.numpy(), c.grad.numpy())
+    """)    
+}

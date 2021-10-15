@@ -29,6 +29,7 @@ data-files:
     lib/data/tensor.cone
     lib/ml/nn/conv2d.cone
     lib/ml/nn/dropout.cone
+    lib/ml/nn/fc.cone
     lib/ml/nn/maxpool2d.cone
     lib/ml/nn/relu.cone
     lib/ml/nn/softmax.cone
