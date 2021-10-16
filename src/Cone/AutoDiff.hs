@@ -18,6 +18,7 @@ import Control.Effect.Fresh
 import Control.Effect.State
 import Control.Lens
 import Control.Lens.Plated
+import Control.Lens.Unsound (adjoin)
 import Control.Monad
 import qualified Data.List as L
 import qualified Data.Map as M
@@ -25,7 +26,6 @@ import Data.Maybe
 import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
-import Control.Lens.Unsound (adjoin)
 
 -- | Initializa diff rule
 initDiffDef :: (Has EnvEff sig m) => DiffDef -> m DiffDef
@@ -61,28 +61,29 @@ setupDiff d f@FuncDef {..} = do
         bindTypeEffVar _funcBoundEffVars $
           bindTypeVar _funcBoundVars $
             TFunc (_funcArgs ^.. traverse . _2 ++ [_funcResultType]) (EffList [] _funcLoc) resTypes _funcLoc
-  if isn't _Nothing (_diffAdj d) then do
-    let adjN = name2String $ _evarName (fromJust $ _diffAdj d)
-    t <- getEnv $ funcTypes . at adjN
-    forMOf _Nothing t $ \_ ->
-      throwError $ "cannot find function " ++ ppr adjN ++ ppr (_diffLoc d)
-    checkTypeMatch fType (fromJust t)
-    adj <- getEnv $ funcDefs . at adjN
-    forMOf _Nothing adj $ \_ ->
-      throwError $ "cannot find function " ++ ppr adjN ++ ppr (_diffLoc d)
-    return $ fromJust adj
-  else do
-    let fn = _funcName ++ "____diff"
-    setFuncType fn fType
-    return f {_funcName = fn, _funcArgs = _funcArgs ++ [("____output____diff", _funcResultType)], _funcResultType=resTypes}
+  if isn't _Nothing (_diffAdj d)
+    then do
+      let adjN = name2String $ _evarName (fromJust $ _diffAdj d)
+      t <- getEnv $ funcTypes . at adjN
+      forMOf _Nothing t $ \_ ->
+        throwError $ "cannot find function " ++ ppr adjN ++ ppr (_diffLoc d)
+      checkTypeMatch fType (fromJust t)
+      adj <- getEnv $ funcDefs . at adjN
+      forMOf _Nothing adj $ \_ ->
+        throwError $ "cannot find function " ++ ppr adjN ++ ppr (_diffLoc d)
+      return $ fromJust adj
+    else do
+      let fn = _funcName ++ "____diff"
+      setFuncType fn fType
+      return f {_funcName = fn, _funcArgs = _funcArgs ++ [("____output____diff", _funcResultType)], _funcResultType = resTypes}
 setupDiff d b@BoundFuncDef {..} = do
   let (vs, f) = unsafeUnbind _boundFuncDef
   f <- setupDiff d f
-  return $ b{_boundFuncDef = bind vs f}
+  return $ b {_boundFuncDef = bind vs f}
 setupDiff d b@BoundEffFuncDef {..} = do
   let (vs, f) = unsafeUnbind _boundEffFuncDef
   f <- setupDiff d f
-  return $ b{_boundEffFuncDef = bind vs f}
+  return $ b {_boundEffFuncDef = bind vs f}
 
 genDiffs :: (Has EnvEff sig m) => Module -> m Module
 genDiffs m = do
@@ -94,9 +95,9 @@ genDiffs m = do
           case d of
             Just d -> do
               f <- setupDiff d f
-              if isn't _Just $ _diffAdj d then
-                (\f -> (d ^. diffFunc, f) : ds) <$> (addTempVariables f >>= genDiff d)
-              else return ds
+              if isn't _Just $ _diffAdj d
+                then (\f -> (d ^. diffFunc, f) : ds) <$> (addTempVariables f >>= genDiff d)
+                else return ds
             Nothing -> return ds
       )
       []
@@ -149,11 +150,13 @@ genDiffForPattern p = throwError $ "unsupporeted pattern for diff " ++ ppr p ++ 
 
 genDiffForExpr :: (Has EnvEff sig m) => [String] -> Expr -> Expr -> m Expr
 genDiffForExpr fargs outputD e@EVar {..} = do
-  if name2String _evarName `elem` fargs then return e
-  else do
-    let diffN = name2String _evarName ++ "____diff"
-        diff = EVar (s2n diffN) _eloc
-    return $ EApp
+  if name2String _evarName `elem` fargs
+    then return e
+    else do
+      let diffN = name2String _evarName ++ "____diff"
+          diff = EVar (s2n diffN) _eloc
+      return $
+        EApp
           False
           (EVar (s2n "core/prelude/____assign") _eloc)
           []
@@ -196,10 +199,19 @@ genDiffForExpr fargs outputD a@(EApp False (EVar n _) targs args loc) = do
           | n <- inputDs ^.. traverse . _1
           | t <- diffs
         ]
-  return $ ELet p (EApp False (case _diffAdj $ fromJust f of
-                                 Just adj -> adj
-                                 Nothing  -> EVar (s2n $ _diffFunc (fromJust f) ++ "____diff") loc)
-                                 targs (args ++ [outputD]) loc) (ESeq setDiffs loc) False loc
+  return $
+    ELet
+      p
+      ( EApp
+          False
+          (_diffAdj (fromJust f) ^. non (EVar (s2n $ _diffFunc (fromJust f) ++ "____diff") loc))
+          targs
+          (args ++ [outputD])
+          loc
+      )
+      (ESeq setDiffs loc)
+      False
+      loc
 genDiffForExpr fargs outputD s@ESeq {..} = do
   es <- mapM (genDiffForExpr fargs outputD) (reverse _eseq)
   return s {_eseq = es}
@@ -208,9 +220,17 @@ genDiffForExpr fargs outputD l@(ELet p e body s loc) = do
   let vs = p ^.. fv :: [PVar]
   db <- genDiffForExpr fargs outputD body
   de <- genDiffForExpr fargs od e
-  cs<- mapM (\v -> genZerosByValue (EVar (s2n $ name2String v) loc)) vs
-  return l {_eletBody = L.foldl' (\s (v,c) ->
-    ELet (PVar (s2n (name2String v ++ "____diff")) loc) c s True loc) (ESeq [db, de] loc) [(v,c)|v<-vs|c<-cs]}
+  cs <- mapM (\v -> genZerosByValue (EVar (s2n $ name2String v) loc)) vs
+  return
+    l
+      { _eletBody =
+          L.foldl'
+            ( \s (v, c) ->
+                ELet (PVar (s2n (name2String v ++ "____diff")) loc) c s True loc
+            )
+            (ESeq [db, de] loc)
+            [(v, c) | v <- vs | c <- cs]
+      }
 genDiffForExpr fargs outputD w@EWhile {..} = do
   db <- genDiffForExpr fargs outputD _ewhileBody
   return w {_ewhileBody = db}
@@ -253,7 +273,7 @@ genDiff diff f@FuncDef {} = do
   let loc = _funcLoc f
   case _funcExpr f of
     Just e -> do
-      e <- genDiffForExpr ((_funcArgs f ^.. traverse._1) L.\\ _diffWRT diff) (EVar (s2n "____output____diff") loc) e
+      e <- genDiffForExpr ((_funcArgs f ^.. traverse . _1) L.\\ _diffWRT diff) (EVar (s2n "____output____diff") loc) e
       let d : ds = map (++ "____diff") (reverse $ _diffWRT diff)
           diffs = L.foldl' (\s e -> EApp False (EVar (s2n "core/prelude/pair") loc) [] [EVar (s2n e) loc, s] loc) (EVar (s2n d) loc) ds
       e <-
