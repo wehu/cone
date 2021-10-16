@@ -204,9 +204,9 @@ genDiffForExpr fargs outputD l@(ELet p e body s loc) = do
   let vs = p ^.. fv :: [PVar]
   db <- genDiffForExpr fargs outputD body
   de <- genDiffForExpr fargs od e
-  c <- genZerosByValue e
-  return l {_eletBody = L.foldl' (\s v -> 
-    ELet (PVar (s2n (name2String v ++ "____diff")) loc) c s True loc) (ESeq [db, de] loc) vs}
+  cs<- mapM (\v -> genZerosByValue (EVar (s2n $ name2String v) loc)) vs
+  return l {_eletBody = L.foldl' (\s (v,c) -> 
+    ELet (PVar (s2n (name2String v ++ "____diff")) loc) c s True loc) (ESeq [db, de] loc) [(v,c)|v<-vs|c<-cs]}
 genDiffForExpr fargs outputD w@EWhile {..} = do
   db <- genDiffForExpr fargs outputD _ewhileBody
   return w {_ewhileBody = db}

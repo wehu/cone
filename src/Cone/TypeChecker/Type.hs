@@ -519,7 +519,7 @@ collectVarBindings bi a@TList {} b@TList {} =
         []
         [(ae, be) | ae <- a ^. tlist | be <- b ^. tlist]
     else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
-collectVarBindings bi a@TApp {} b@TApp {} =
+collectVarBindings bi a@TApp {} b@TApp {} = do
   if L.length (_tappArgs a) == L.length (_tappArgs b)
     then do
       f <- collectVarBindings bi (_tappName a) (_tappName b)
