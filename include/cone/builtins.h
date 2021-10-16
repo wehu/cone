@@ -131,7 +131,7 @@ namespace cone {
     auto body = std::experimental::any_cast<func_with_cont_t>(body0);
     cont_t k2 = [=](const object_t &o) -> object_t {
       cont_t trampoline = [=](const object_t &o) -> object_t {
-         if (py::cast<bool>(std::experimental::any_cast<py::object>(o))) {
+        if (py::cast<bool>(std::experimental::any_cast<py::object>(o))) {
            stack->push_back({});
            return body([=](const object_t &o) -> object_t {
                         stack->pop_back();

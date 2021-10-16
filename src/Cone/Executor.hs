@@ -7,6 +7,7 @@ import Data.List.Split
 import System.Environment
 import System.FilePath
 import System.Process
+import System.Exit
 
 runCode :: FilePath -> [String] -> String -> FilePath -> IO String
 runCode exe args input fn =
@@ -17,5 +18,9 @@ runCode exe args input fn =
       case path of
         Just path -> setEnv "PYTHONPATH" $ (userDataDir </> "python") ++ ";" ++ path
         Nothing -> setEnv "PYTHONPATH" (userDataDir </> "python")
-      readProcess exe (args ++ ["-m", join $ intersperse "." $ splitOn "/" $ dropExtension fn]) ""
+      runC "." (args ++ ["-m", join $ intersperse "." $ splitOn "/" $ dropExtension fn])
+      return ""
     else return ""
+  where runC d args = do
+          ec <- runProcess exe args (Just d) Nothing Nothing Nothing Nothing >>= waitForProcess
+          when (ec /= ExitSuccess) $ exitWith ec
