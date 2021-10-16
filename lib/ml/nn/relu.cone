@@ -4,8 +4,9 @@ import data.tensor
 
 fun relu<t, shape:@[num]>(input:tensor<t, shape>) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("""
-from numpy import maximum
-____result = maximum(input, 0)
+import torch
+import torch.nn.functional as F
+____result = F.relu(torch.from_numpy(input)).numpy()
     """)    
 }
 
@@ -13,7 +14,11 @@ diff relu wrt(input) = relu_diff
 
 fun relu_diff<t, shape:@[num]>(input:tensor<t, shape>, output_diff:tensor<t, shape>) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("""
-from numpy import select
-____result = select([input>0, input<=0], [output_diff, 0])
+import torch
+import torch.nn.functional as F
+a = torch.tensor(input, requires_grad=True)
+p = F.relu(a)
+p.backward(torch.from_numpy(output_diff))
+____result = a.grad.numpy()
     """)    
 }
