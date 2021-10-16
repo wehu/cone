@@ -89,7 +89,7 @@ curl https://get-ghcup.haskell.org -sSf | sh
 编译运行例子
 
 ```bash
-stack run -- run examples/basic.cone
+stack run -- run examples/mnist
 ```
 
 
