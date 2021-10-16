@@ -1,5 +1,6 @@
 # Cone-lang
 
+这是一个概念证明项目，目的是试图开发一个语言以适用AI深度学习。
 Cone是一门函数式编程语言，基于algebraic effect handlers来隔离副作用，支持可微编程，同时和python生态无缝融合。
 
 ## 特点
