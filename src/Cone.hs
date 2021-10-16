@@ -115,7 +115,7 @@ buildAndRun BuildOpts {..} = do
     res <- runExceptT $ compile paths f target
     case res of
       Left err -> putStrLn err
-      Right code -> runCode target [] code f >>= putStrLn
+      Right code -> runCode target [] code f
 
 dump :: BuildOpts -> IO ()
 dump BuildOpts {..} = do
