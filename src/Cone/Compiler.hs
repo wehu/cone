@@ -126,7 +126,7 @@ compileCppToLib paths outputFile input = do
   userDataDir <- liftIO coneUserDataDir
   let cc = "g++"
       args =
-        ["-lstdc++", "-O3", "-std=c++14", "-shared", "-fPIC", "-I" ++ userDataDir </> "python"]
+        ["-lstdc++", "-O0", "-std=c++14", "-shared", "-fPIC", "-I" ++ userDataDir </> "python"]
           ++ pythonHeaderPaths
           ++ map (\p -> "-I" ++ (p </> "include")) paths
           ++ ["-o", outputFile, "-xc++", "-"]
