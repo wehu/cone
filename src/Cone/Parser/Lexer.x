@@ -61,7 +61,7 @@ tokens :-
   <0> \[                                    { mkL LBracket }
   <0> \]                                    { mkL RBracket }
   <0> \:                                    { mkL Colon }
-  <0> \,                                    { mkL Comma }
+  <0> \,$white*                             { mkL Comma }
   <0> \<                                    { mkL Less }
   <0> \>                                    { mkL Greater }
   <0> "<="                                  { mkL Le }
@@ -72,7 +72,7 @@ tokens :-
   <0> "&&"                                  { mkL And }
   <0> "||"                                  { mkL Or }
   <0> \|                                    { mkL Pipe }
-  <0> "="                                   { mkL Assign }
+  <0> "="$white*                            { mkL Assign }
   <0> "+="                                  { mkL AddAssign }
   <0> "-="                                  { mkL SubAssign }
   <0> "*="                                  { mkL MulAssign }
