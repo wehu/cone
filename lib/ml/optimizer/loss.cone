@@ -6,7 +6,7 @@ fun nll_loss<t, n:num, c:num>(input:tensor<t, @[n, c]>, target:tensor<i32, @[n]>
     inline_python<t>("""
 import torch
 import torch.nn.functional as F
-____result = F.nll_loss(torch.from_numpy(input), torch.from_numpy(target))
+____result = F.nll_loss(torch.from_numpy(input), torch.from_numpy(target)).item()
     """)    
 }
 

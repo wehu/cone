@@ -36,7 +36,7 @@ fun mnist_model(input:tensor<f32, @[1,1,28,28]>, \
 }
 
 fun mnist_train(input:tensor<f32, @[1,1,28,28]>, \
-                target:tensor<i32, @[1]>,         \
+                target:tensor<i32, @[1]>,        \
                 weights:mnist_weights) : f32 {
     val x = mnist_model(input, weights)
     nll_loss(x, target)
