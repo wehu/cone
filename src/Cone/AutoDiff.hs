@@ -138,7 +138,15 @@ addTempVariables = transformMOn (funcExpr . _Just) addTempVar
       return e
     addTempVar e = return e
 
-genDiffForExpr :: (Has EnvEff sig m) => [String] -> String -> Expr -> m Expr
+genDiffForPattern :: (Has EnvEff sig m) => Pattern -> m Expr
+genDiffForPattern (PVar n loc) = return $ EVar (s2n (name2String n ++ "____diff")) loc
+genDiffForPattern (PApp e@(EVar n _) targs args loc) | name2String n == "core/prelude/pair" = do
+  args <- mapM genDiffForPattern args
+  return $ EApp False e targs args loc
+genDiffForPattern (PExpr e loc) = return e
+genDiffForPattern p = throwError $ "unsupporeted pattern for diff " ++ ppr p ++ ppr (_ploc p)
+
+genDiffForExpr :: (Has EnvEff sig m) => [String] -> Expr -> Expr -> m Expr
 genDiffForExpr fargs outputD e@EVar {..} = do
   if name2String _evarName `elem` fargs then return e
   else do
@@ -153,13 +161,12 @@ genDiffForExpr fargs outputD e@EVar {..} = do
               False
               (EVar (s2n "core/prelude/____add") _eloc)
               []
-              [diff, EVar (s2n (outputD ++ "____diff")) _eloc]
+              [diff, outputD]
               _eloc
           ]
           _eloc
 genDiffForExpr fargs outputD a@(EApp False (EVar n _) targs args loc) = do
   let fn = name2String n
-      od = EVar (s2n (outputD ++ "____diff")) loc
   f <- getEnv $ diffAdjs . at fn
   forMOf _Nothing f $ \_ ->
     throwError $ "cannot find diff adj for function " ++ ppr fn ++ ppr loc
@@ -188,15 +195,18 @@ genDiffForExpr fargs outputD a@(EApp False (EVar n _) targs args loc) = do
           | n <- inputDs ^.. traverse . _1
           | t <- diffs
         ]
-  return $ ELet p (EApp False (fromJust $ _diffAdj $ fromJust f) targs (args ++ [od]) loc) (ESeq setDiffs loc) False loc
+  return $ ELet p (EApp False (fromJust $ _diffAdj $ fromJust f) targs (args ++ [outputD]) loc) (ESeq setDiffs loc) False loc
 genDiffForExpr fargs outputD s@ESeq {..} = do
   es <- mapM (genDiffForExpr fargs outputD) (reverse _eseq)
   return s {_eseq = es}
-genDiffForExpr fargs outputD l@(ELet p@(PVar v _) e body s loc) = do
+genDiffForExpr fargs outputD l@(ELet p e body s loc) = do
+  od <- genDiffForPattern p
+  let vs = p ^.. fv :: [PVar]
   db <- genDiffForExpr fargs outputD body
-  de <- genDiffForExpr fargs (name2String v) e
+  de <- genDiffForExpr fargs od e
   c <- genZerosByValue e
-  return l {_eletBody = ELet (PVar (s2n (name2String v ++ "____diff")) loc) c (ESeq [db, de] loc) True loc}
+  return l {_eletBody = L.foldl' (\s v -> 
+    ELet (PVar (s2n (name2String v ++ "____diff")) loc) c s True loc) (ESeq [db, de] loc) vs}
 genDiffForExpr fargs outputD w@EWhile {..} = do
   db <- genDiffForExpr fargs outputD _ewhileBody
   return w {_ewhileBody = db}
@@ -239,7 +249,7 @@ genDiff diff f@FuncDef {} = do
   let loc = _funcLoc f
   case _funcExpr f of
     Just e -> do
-      e <- genDiffForExpr ((_funcArgs f ^.. traverse._1) L.\\ _diffWRT diff) "____output" e
+      e <- genDiffForExpr ((_funcArgs f ^.. traverse._1) L.\\ _diffWRT diff) (EVar (s2n "____output____diff") loc) e
       let d : ds = map (++ "____diff") (reverse $ _diffWRT diff)
           diffs = L.foldl' (\s e -> EApp False (EVar (s2n "core/prelude/pair") loc) [] [EVar (s2n e) loc, s] loc) (EVar (s2n d) loc) ds
       e <-
