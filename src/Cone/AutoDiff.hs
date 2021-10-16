@@ -25,6 +25,7 @@ import Data.Maybe
 import Debug.Trace
 import Unbound.Generics.LocallyNameless hiding (Fresh (..), fresh)
 import Unbound.Generics.LocallyNameless.Unsafe
+import Control.Lens.Unsound (adjoin)
 
 -- | Initializa diff rule
 initDiffDef :: (Has EnvEff sig m) => DiffDef -> m DiffDef
@@ -195,7 +196,10 @@ genDiffForExpr fargs outputD a@(EApp False (EVar n _) targs args loc) = do
           | n <- inputDs ^.. traverse . _1
           | t <- diffs
         ]
-  return $ ELet p (EApp False (fromJust $ _diffAdj $ fromJust f) targs (args ++ [outputD]) loc) (ESeq setDiffs loc) False loc
+  return $ ELet p (EApp False (case _diffAdj $ fromJust f of
+                                 Just adj -> adj
+                                 Nothing  -> EVar (s2n $ _diffFunc (fromJust f) ++ "____diff") loc)
+                                 targs (args ++ [outputD]) loc) (ESeq setDiffs loc) False loc
 genDiffForExpr fargs outputD s@ESeq {..} = do
   es <- mapM (genDiffForExpr fargs outputD) (reverse _eseq)
   return s {_eseq = es}
@@ -205,7 +209,7 @@ genDiffForExpr fargs outputD l@(ELet p e body s loc) = do
   db <- genDiffForExpr fargs outputD body
   de <- genDiffForExpr fargs od e
   cs<- mapM (\v -> genZerosByValue (EVar (s2n $ name2String v) loc)) vs
-  return l {_eletBody = L.foldl' (\s (v,c) -> 
+  return l {_eletBody = L.foldl' (\s (v,c) ->
     ELet (PVar (s2n (name2String v ++ "____diff")) loc) c s True loc) (ESeq [db, de] loc) [(v,c)|v<-vs|c<-cs]}
 genDiffForExpr fargs outputD w@EWhile {..} = do
   db <- genDiffForExpr fargs outputD _ewhileBody
@@ -255,7 +259,7 @@ genDiff diff f@FuncDef {} = do
       e <-
         foldM
           ( \s e -> do
-              c0 <- genZerosByValue (EVar (s2n e) loc) 
+              c0 <- genZerosByValue (EVar (s2n e) loc)
               return $ ELet (PVar (s2n (e ++ "____diff")) loc) c0 s True loc
           )
           (ESeq [e, diffs] loc)
