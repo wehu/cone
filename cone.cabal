@@ -27,6 +27,7 @@ data-files:
     lib/data/map.cone
     lib/data/set.cone
     lib/data/tensor.cone
+    lib/ml/nn/argmax.cone
     lib/ml/nn/conv2d.cone
     lib/ml/nn/dropout.cone
     lib/ml/nn/fc.cone

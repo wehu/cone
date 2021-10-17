@@ -7,6 +7,7 @@ import ml.nn.softmax
 import ml.nn.relu
 import ml.nn.dropout
 import ml.nn.fc
+import ml.nn.argmax
 import ml.optimizer.loss
 import ml.vision.datasets
 
@@ -65,7 +66,8 @@ fun main() : io unit {
                              fcb1_grad * full<@[128]>(rate, []),
                              fcw2_grad * full<@[10,128]>(rate, []),
                              fcb2_grad * full<@[10]>(rate, []))
-        val result = mnist_train(data, target, weights)
+        val result = argmax(mnist_model(data, weights))
+        print(target)
         print(result)
     })
     print("finished")
