@@ -313,7 +313,7 @@ typeTerm =
               P.<|> (A.TPrim <$> primType <*> getPos P.<?> "primitive type")
               P.<|> (A.TNum <$> (Just . read <$> literalInt) <*> getPos P.<?> "number type")
               P.<|> (A.TNum Nothing <$ question <*> getPos P.<?> "unknown number type")
-              P.<|> (A.TList <$ at_ <*> brackets (P.sepBy1 type_ comma) <*> getPos P.<?> "type list kind")
+              P.<|> (tlistK <$ at_ <*> brackets (P.sepBy1 type_ comma) <*> getPos P.<?> "type list kind")
               P.<|> (tlist <$> brackets type_ <*> getPos P.<?> "type list")
           )
   )
@@ -330,6 +330,8 @@ typeTerm =
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
+    tlistK (t:ts) pos = A.TApp (A.TVar (s2n "cons") pos) [t, tlistK ts pos] pos
+    tlistK [] pos = A.TApp (A.TVar (s2n "nil") pos) [] pos
     tlist t pos = A.TApp (A.TVar (s2n "list") pos) [t] pos
     ttuple (t0 : t1 : ts) pos = A.TApp (A.TVar (s2n "pair") pos) [t0, ttuple (t1 : ts) pos] pos
     ttuple [t] pos = t

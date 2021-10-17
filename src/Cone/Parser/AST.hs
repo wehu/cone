@@ -132,7 +132,6 @@ data Type
         _tloc :: Location
       }
   | TNum {_tnum :: Maybe Int, _tloc :: Location}
-  | TList {_tlist :: [Type], _tloc :: Location}
   | TApp {_tappName :: Type, _tappArgs :: [Type], _tloc :: Location}
   | TAnn {_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
   | BoundType {_boundType :: Bind [(TVar, Maybe Kind)] Type, _tloc :: Location}
@@ -144,7 +143,6 @@ instance Pretty Type where
   pretty TVar {..} = pretty _tvar
   pretty TNum {..} =
     maybe "?" pretty _tnum
-  pretty TList {..} = bracketsList _tlist
   pretty TFunc {..} = parens $ parensList _tfuncArgs <+> "->" <+> pretty _tfuncEff <+> pretty _tfuncResult
   pretty TApp {..} = parens $ pretty _tappName <+> parensList _tappArgs
   pretty TAnn {..} = parens $ pretty _tannType <+> colon <+> pretty _tannKind

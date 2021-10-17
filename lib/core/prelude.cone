@@ -188,6 +188,8 @@ type min<a:num, a:num>
 
 type cons<a:num, b:@[num]>
 
+type nil
+
 type list<a> {
     nil
     cons(a, list<a>)

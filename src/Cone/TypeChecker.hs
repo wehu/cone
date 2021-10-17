@@ -56,8 +56,10 @@ initTypeDef t = do
             "mod" -> num
             "max" -> num
             "min" -> num
+            "cons" -> KList num loc
+            "nil" -> KList num loc
             _ -> star
-       in if null args -- if no arguments, it is just a simple enum
+       in if null args && t ^. typeName /= "nil" -- if no arguments, it is just a simple enum
             then star
             else KFunc (args ^.. traverse . _2 . non star) resK loc
 

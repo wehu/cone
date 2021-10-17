@@ -99,14 +99,12 @@ inferType a@TApp {..} =
 inferType a@TAnn {..} =
   let t = inferType _tannType
    in a {_tannType = t}
-inferType l@TList {..} =
-  let es = map inferType _tlist
-   in l {_tlist = es}
 inferType t = t
 
 genTypeInfo :: Type -> Doc a
-genTypeInfo t@TList {..} =
-  "[]()"
+genTypeInfo t@(TApp (TVar n _) args loc) | name2String n == "core/prelude/cons" =
+  let tlist = genTList t
+   in "[]()"
     <> braces
       ( fst
           ( foldl'
@@ -123,12 +121,15 @@ genTypeInfo t@TList {..} =
                     i + 1
                   )
               )
-              ("auto ____t =  py::tuple(" <> pretty (length _tlist) <> ");", 0 :: Int)
-              _tlist
+              ("auto ____t =  py::tuple(" <> pretty (length tlist) <> ");", 0 :: Int)
+              tlist
           )
           <> "return ____t;"
       )
     <> "()"
+  where genTList (TApp (TVar n _) [a, b] loc) | name2String n == "core/prelude/cons" = a:genTList b
+        genTList (TApp (TVar n _) [] loc) | name2String n == "core/prelude/nil" = []
+        genTList _ = undefined
 genTypeInfo TPrim {..} =
   case _tprim of
     I8 -> "py::module_::import(\"numpy\").attr(\"int8\")"

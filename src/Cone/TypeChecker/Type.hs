@@ -123,12 +123,6 @@ inferTypeKind f@TFunc {..} = do
   checkTypeKind rk
   return $ KStar _tloc
 inferTypeKind n@TNum {..} = return $ KNum _tloc
-inferTypeKind l@TList {..} = do
-  es' <- mapM inferTypeKind _tlist
-  let e : es = es'
-  forM_ es $ \k ->
-    checkKindMatch e k
-  return $ KList e _tloc
 inferTypeKind t = return $ KStar $ _tloc t
 
 -- | Eval a type if there is number calc
@@ -186,9 +180,6 @@ inferType f@TFunc {..} = do
   eff <- inferEffType _tfuncEff
   res <- inferType _tfuncResult
   return f {_tfuncArgs = args, _tfuncEff = eff, _tfuncResult = res}
-inferType l@TList {..} = do
-  es <- mapM inferType _tlist
-  return l {_tlist = es}
 inferType v@TVar {..} = do
   let go = do
         t <- getEnv $ typeBinds . at (name2String _tvar)
@@ -508,17 +499,6 @@ collectVarBindings bi a@TFunc {} b@TFunc {} =
                 <*> collectVarBindings bi (_tfuncResult a) (_tfuncResult b) >>= checkAndAddTypeVarBindings
             )
         <*> collectVarBindingsInEff bi al bl >>= checkAndAddTypeVarBindings
-collectVarBindings bi a@TList {} b@TList {} =
-  if L.length (_tlist a) == L.length (_tlist b)
-    then
-      foldM
-        (\s (a, b) -> do
-          a <- inferType a
-          b <- inferType b
-          collectVarBindings bi a b >>= checkAndAddTypeVarBindings . (++) s)
-        []
-        [(ae, be) | ae <- a ^. tlist | be <- b ^. tlist]
-    else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectVarBindings bi a@TApp {} b@TApp {} = do
   if L.length (_tappArgs a) == L.length (_tappArgs b)
     then do
@@ -735,17 +715,6 @@ collectEffVarBindingsInType bi a@TFunc {} b@TFunc {} =
                 <*> collectEffVarBindingsInType bi (_tfuncResult a) (_tfuncResult b) >>= checkAndAddEffVarBindings
             )
         <*> collectEffVarBindings bi al bl >>= checkAndAddEffVarBindings
-collectEffVarBindingsInType bi a@TList {} b@TList {} =
-  if L.length (_tlist a) == L.length (_tlist b)
-    then
-      foldM
-        (\s (a, b) -> do
-          a <- inferType a
-          b <- inferType b
-          collectEffVarBindingsInType bi a b >>= checkAndAddEffVarBindings . (++) s)
-        []
-        [(ae, be) | ae <- a ^. tlist | be <- b ^. tlist]
-    else throwError $ "type mismatch: " ++ ppr a ++ ppr (_tloc a) ++ " vs " ++ ppr b ++ ppr (_tloc b)
 collectEffVarBindingsInType bi a@TApp {} b@TApp {} =
   if L.length (_tappArgs a) == L.length (_tappArgs b)
     then do
