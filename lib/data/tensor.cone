@@ -22,7 +22,7 @@ fun rand<shape:@[num]>(f: f32) : tensor<f32, shape> {
     inline_python<tensor<f32, shape>, shape>("""
 import numpy as np
 args = ____typeargs[1]
-____result = (np.random.rand(args) - 0.5)*f
+____result = (np.random.rand(*args)*2.0-1.0)*f
     """)
 }
 
