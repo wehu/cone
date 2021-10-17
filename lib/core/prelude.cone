@@ -186,6 +186,8 @@ type max<a:num, a:num>
 
 type min<a:num, a:num>
 
+type cons<a:num, b:@[num]>
+
 type list<a> {
     nil
     cons(a, list<a>)

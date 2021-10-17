@@ -169,6 +169,14 @@ inferType a@TApp {..} = do
         "core/prelude/mod" -> return $ evalType2 t args mod
         "core/prelude/max" -> return $ evalType2 t args max
         "core/prelude/min" -> return $ evalType2 t args min
+        "core/prelude/cons" -> do
+          when (L.length args /= 2) $ do
+            throwError $ "type cons expected 2 arguments, but got " ++ ppr args ++ ppr _tloc
+          let [a, b] = args
+          bk <- inferTypeKind b
+          when (isn't _TList b) $ do
+            throwError $ "expects a type list, but got " ++ ppr b ++ ppr (b ^. tloc)
+          return $ TList (a:_tlist b) _tloc
         _ -> return t
 inferType a@TAnn {..} = do
   t <- inferType _tannType

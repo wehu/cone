@@ -56,6 +56,7 @@ initTypeDef t = do
             "mod" -> num
             "max" -> num
             "min" -> num
+            "cons" -> KList num loc
             _ -> star
        in if null args -- if no arguments, it is just a simple enum
             then star
