@@ -65,7 +65,7 @@ fun main() : io unit {
                              fcb1_grad * full<@[128]>(rate, []),
                              fcw2_grad * full<@[10,128]>(rate, []),
                              fcb2_grad * full<@[10]>(rate, []))
-        val result = mnist(data, weights)
+        val result = mnist_model(data, weights)
         print(target)
         print(result)
     })
