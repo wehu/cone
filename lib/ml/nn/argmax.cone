@@ -1,0 +1,10 @@
+module ml.nn.argmax
+
+import data.tensor
+
+fun argmax<t, n:num, c:num>(input:tensor<t, @[n, c]>) : tensor<t, @[n]> {
+    inline_python<tensor<t, @[n]>>("""
+import torch
+____result = torch.from_numpy(input).argmax(dim=1).numpy()
+    """)    
+}
