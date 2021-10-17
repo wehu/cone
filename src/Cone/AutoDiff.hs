@@ -96,7 +96,9 @@ genDiffs m = do
             Just d -> do
               f <- setupDiff d f
               if isn't _Just $ _diffAdj d
-                then (\f -> (d ^. diffFunc, f) : ds) <$> (addTempVariables f >>= genDiff d)
+                then (\f -> (d ^. diffFunc, f) : ds) <$> (addTempVariables f 
+                              >>= removeTempVariables (f ^.. funcArgs . traverse . _1)
+                              >>= genDiff d)
                 else return ds
             Nothing -> return ds
       )
@@ -139,6 +141,14 @@ addTempVariables = transformMOn (funcExpr . _Just) addTempVar
           (reverse tempVs)
       return e
     addTempVar e = return e
+
+
+removeTempVariables :: (Has EnvEff sig m) => [String] -> FuncDef -> m FuncDef
+removeTempVariables wrt = transformMOn (funcExpr . _Just) removeTempVar
+  where
+    removeTempVar a@(ELet (PVar n _) e@(EVar en _) b False loc) | name2String en `L.notElem` wrt = do
+      return $ substs [(s2n $ name2String n, e)] b
+    removeTempVar e = return e
 
 genDiffForPattern :: (Has EnvEff sig m) => Pattern -> m Expr
 genDiffForPattern (PVar n loc) = return $ EVar (s2n (name2String n ++ "____diff")) loc
