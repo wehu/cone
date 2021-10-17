@@ -284,7 +284,9 @@ genDiff diff f@FuncDef {} = do
           )
           (ESeq [e, diffs] loc)
           (_diffWRT diff)
-      return f {_funcExpr = Just e}
+      let f' = f {_funcExpr = Just e}
+      setEnv (Just f') $ funcDefs . at (_funcName f)
+      return f'
     Nothing -> return f
 genDiff d BoundFuncDef {..} = do
   let (vs, f) = unsafeUnbind _boundFuncDef
