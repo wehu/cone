@@ -273,8 +273,7 @@ typeTable =
     ],
     [ typeBinary add "add" PE.AssocLeft,
       typeBinary sub "sub" PE.AssocLeft
-    ],
-    [ typeBinary pipe_ "cons" PE.AssocLeft]
+    ]
   ]
 
 typePrefix op name = PE.Prefix $ do
