@@ -55,7 +55,7 @@ fun main() : io unit {
                    rand<@[128]>(1.0/sqrt(9216.0)),
                    rand<@[10,128]>(1.0/sqrt(128.0)),
                    rand<@[10]>(1.0/sqrt(128.0)))
-    val rate = 0.01
+    val rate = 0.1
     foreach(ds, fn(d : (tensor<f32, @[1,1,28,28]>, tensor<i32, @[1]>), i : i32) : io unit {
         val (data, target) = d
         val (conv1_grad, conv2_grad, fcw1_grad, fcb1_grad, fcw2_grad, fcb2_grad) = 
