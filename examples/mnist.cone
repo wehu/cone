@@ -58,15 +58,14 @@ fun main() : io unit {
         val (data, target) = d
         val data = reshape<@[64,1,28,28]>(data)
         val (conv1_grad, conv2_grad, fcw1_grad, fcb1_grad, fcw2_grad, fcb2_grad) = 
-            diff mnist_train<64>(data, target, weights, 1.0)
+            diff mnist_train(data, target, weights, 1.0)
         weights = weights - (conv1_grad * full<@[32,1,3,3]>(rate, []),
                              conv2_grad * full<@[64,32,3,3]>(rate, []),
                              fcw1_grad * full<@[128,9216]>(rate, []),
                              fcb1_grad * full<@[128]>(rate, []),
                              fcw2_grad * full<@[10,128]>(rate, []),
                              fcb2_grad * full<@[10]>(rate, []))
-        val result = mnist_model(data, weights)
-        print(target)
+        val result = mnist_train(data, target, weights)
         print(result)
     })
     print("finished")
