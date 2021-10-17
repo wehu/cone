@@ -54,10 +54,9 @@ fun main() : io unit {
                    full<@[128]>(1.0/128.0, []),
                    full<@[10,128]>(1.0/10.0, []),
                    full<@[10]>(1.0/10.0, []))
-    val rate = 1.0
-    foreach(ds, fn(d : (tensor<f32, @[64,28,28]>, tensor<i32, @[64]>), i : i32) : io unit {
+    val rate = 0.1
+    foreach(ds, fn(d : (tensor<f32, @[64,1,28,28]>, tensor<i32, @[64]>), i : i32) : io unit {
         val (data, target) = d
-        val data = reshape<@[64,1,28,28]>(data)
         val (conv1_grad, conv2_grad, fcw1_grad, fcb1_grad, fcw2_grad, fcb2_grad) = 
             diff mnist_train(data, target, weights, 1.0)
         weights = weights - (conv1_grad * full<@[32,1,3,3]>(rate, []),
