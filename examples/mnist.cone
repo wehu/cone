@@ -54,7 +54,7 @@ fun main() : io unit {
                    full<@[128]>(1.0/128.0, []),
                    full<@[10,128]>(1.0/10.0, []),
                    full<@[10]>(1.0/10.0, []))
-    val rate = 1.0
+    val rate = 0.1
     foreach(ds, fn(d : (tensor<f32, @[16,1,28,28]>, tensor<i32, @[16]>), i : i32) : io unit {
         val (data, target) = d
         val (conv1_grad, conv2_grad, fcw1_grad, fcb1_grad, fcw2_grad, fcb2_grad) = 
