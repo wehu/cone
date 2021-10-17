@@ -4,9 +4,9 @@ import data.tensor
 
 type dataset<t, shape: @[num]>
 
-effect iterator<t, n:num, h:num, w:num> {
-    fun reset(dataset<t, @[n,1,h,w]>) : unit
-    fun next(dataset<t, @[n,1,h,w]>) : (tensor<t, @[n,1,h,w]>, tensor<i32, @[n]>)
+effect iterator<t, n:num, c:num, h:num, w:num> {
+    fun reset(dataset<t, @[n,c,h,w]>) : unit
+    fun next(dataset<t, @[n,c,h,w]>) : (tensor<t, @[n,c,h,w]>, tensor<i32, @[n]>)
 }
 
 fun len<t, shape: @[num]>(ds : dataset<t, shape>) : i32 {
@@ -15,24 +15,24 @@ ____result = len(ds[0])
     """)
 }
 
-fun foreach<t, n:num, h:num, w:num>[e](ds : dataset<t, @[n,1,h,w]>, f : ((tensor<t, @[n,1,h,w]>, tensor<i32, @[n]>), i32) -> e unit) : e unit {
+fun foreach<t, n:num, c:num, h:num, w:num>[e](ds : dataset<t, @[n,c,h,w]>, f : ((tensor<t, @[n,c,h,w]>, tensor<i32, @[n]>), i32) -> e unit) : e unit {
     var i = 0
     val size = len(ds)
-    handle iterator<t, n, h, w> {
+    handle iterator<t, n, c, h, w> {
         reset(ds)
         while i < size {
             f(next(ds), i)
             i = i + 1
         }
     } with {
-        fun reset(ds : dataset<t, @[n,1,h,w]>) {
+        fun reset(ds : dataset<t, @[n,c,h,w]>) {
             inline_python<unit>("""
 ds[1] = iter(ds[0])
             """)
             resume(unit)
         }
-        fun next(ds : dataset<t, @[n,1,h,w]>) {
-            resume(inline_python<(tensor<t, @[n,1,h,w]>, tensor<i32, @[n]>)>("""
+        fun next(ds : dataset<t, @[n,c,h,w]>) {
+            resume(inline_python<(tensor<t, @[n,c,h,w]>, tensor<i32, @[n]>)>("""
 data = next(ds[1])
 ____result = (data[0].numpy().astype(float), data[1].numpy())
             """))
