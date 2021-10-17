@@ -18,6 +18,14 @@ impl fun ____mul<t, shape:@[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tens
     inline_python<tensor<t, shape>>("____result = a * b")
 }
 
+fun rand<shape:@[num]>(f: f32) : tensor<f32, shape> {
+    inline_python<tensor<f32, shape>, shape>("""
+import numpy as np
+args = ____typeargs[1]
+____result = (np.random.rand(args) - 0.5)*f
+    """)
+}
+
 fun reshape<output_shape:@[num], t, input_shape:@[num]>(input:tensor<t, input_shape>) : tensor<t, output_shape> {
     inline_python<tensor<t, output_shape>, output_shape>("""
 args = ____typeargs[1]

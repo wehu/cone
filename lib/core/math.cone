@@ -31,3 +31,14 @@ from math import cos
 ____result = cos(a)
 """)
 }
+
+// sqrt
+
+fun sqrt<a>(a : a) : a
+
+impl fun sqrt(a : f32) : f32 {
+    inline_python<f32>("""
+from math import sqrt
+____result = sqrt(a)
+    """)
+}
