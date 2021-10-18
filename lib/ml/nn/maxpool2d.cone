@@ -20,7 +20,10 @@ fun maxpool2d_diff<r:num, s:num, t, n:num, c:num, h:num, w:num>( \
 import torch
 import torch.nn.functional as F
 args = ____typeargs[1]
-(d, indices) = F.max_pool2d(torch.from_numpy(input), (args[0], args[1]), return_indices=True)
-____result = F.max_unpool2d(d, indices, (args[0], args[1])).numpy()
+
+a = torch.tensor(input, requires_grad=True)
+p = F.max_pool2d(a, (args[0], args[1]))
+p.backward(torch.from_numpy(output_diff))
+____result = a.grad.numpy()
     """)    
 }
