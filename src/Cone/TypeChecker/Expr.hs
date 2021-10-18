@@ -541,3 +541,26 @@ setupEffIntfType f = do
   mapM_
     (uncurry setFuncType)
     (f ^. funcArgs)
+
+isExprWithFuncType :: Expr -> Bool
+isExprWithFuncType (EAnnMeta e TFunc{} eff loc) = True
+isExprWithFuncType _ = False
+
+collectLastFuncTypeExpr :: Expr -> [Expr]
+collectLastFuncTypeExpr ESeq{..} = [last _eseq | isExprWithFuncType (last _eseq)]
+collectLastFuncTypeExpr ELet{..} = collectLastFuncTypeExpr _eletBody
+collectLastFuncTypeExpr ECase{..} = join $ map (collectLastFuncTypeExpr . _caseExpr) _ecaseBody
+collectLastFuncTypeExpr EHandle{..} = collectLastFuncTypeExpr _ehandleScope
+collectLastFuncTypeExpr _ = []
+
+checkLocalState :: (Has EnvEff sig m) => Expr -> m Expr
+checkLocalState l@ELet{..} | _eletState = do
+  let fs = collectLastFuncTypeExpr l
+  forM_ fs $ \f -> do
+    let bf = bindExprV f
+        vs = map name2String (bf ^.. fv :: [EVar])
+        ps = map name2String (_eletPattern ^.. fv :: [PVar])
+    unless (null $ ps `L.intersect` vs) $ do
+      throwError $ "a functional expression includes local state which would be out of scope " ++ ppr l ++ ppr (f ^.eloc)
+  return l
+checkLocalState e = return e

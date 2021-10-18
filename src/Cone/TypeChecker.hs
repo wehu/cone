@@ -384,6 +384,11 @@ checkImplFuncDef i = underScope $ do
 checkImplFuncDefs :: (Has EnvEff sig m) => Module -> m Module
 checkImplFuncDefs = mapMOf (topStmts . traverse . _ImplFDef) checkImplFuncDef
 
+-- | Check local states
+checkeLocalStates :: (Has EnvEff sig m) => Module -> m Module
+checkeLocalStates m = mapMOf (topStmts . traverse . _FDef . funcExpr . _Just) checkLocalState m 
+  >>= mapMOf (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) checkLocalState
+
 renameLocalVarsInExpr :: (Has EnvEff sig m) => Expr -> m Expr
 renameLocalVarsInExpr = transformM rename
   where
@@ -590,4 +595,5 @@ checkType m env id rmAnns =
       >>= checkFuncDefs
       >>= checkImplFuncDefs
       >>= addSpecializedFuncs
+      >>= checkeLocalStates
       >>= (\m -> return $ if rmAnns then removeAnns m else m)

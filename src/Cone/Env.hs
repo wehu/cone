@@ -358,6 +358,25 @@ removeTypeBindings m =
         }
     removeBindingsForCase c = c
 
+bindExprV :: Expr -> Expr
+bindExprV l@ELam {..} =
+  let boundVars = map s2n $ L.nub $ _elamArgs ^.. traverse . _1
+      loc = _eloc
+   in l {_elamExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) _elamExpr}
+bindExprV l@ELet {..} =
+  let vs = map (s2n . name2String) ((l ^.. fv) :: [PVar])
+   in EBoundVars (bind vs l) _eloc
+bindExprV c@ECase {..} =
+  let ps =
+        map
+          ( \p ->
+              let vs = map (s2n . name2String) ((p ^.. fv) :: [PVar])
+               in BoundCase (bind vs p) (_caseLoc p)
+          )
+          _ecaseBody
+   in c {_ecaseBody = ps}
+bindExprV expr = expr
+
 -- | Add variable bindings
 addVarBindings :: Module -> Module
 addVarBindings m =
@@ -368,26 +387,9 @@ addVarBindings m =
     bindFDef fdef =
       let boundVars = map s2n $ L.nub $ fdef ^.. funcArgs . traverse . _1
           loc = fdef ^. funcLoc
-          expr = transform bindExpr <$> _funcExpr fdef
+          expr = transform bindExprV <$> _funcExpr fdef
        in fdef {_funcExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) expr}
     bindDiffDef ddef = BoundDiffDef (bind [] ddef) (_diffLoc ddef)
-    bindExpr l@ELam {..} =
-      let boundVars = map s2n $ L.nub $ _elamArgs ^.. traverse . _1
-          loc = _eloc
-       in l {_elamExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) _elamExpr}
-    bindExpr l@ELet {..} =
-      let vs = map (s2n . name2String) ((l ^.. fv) :: [PVar])
-       in EBoundVars (bind vs l) _eloc
-    bindExpr c@ECase {..} =
-      let ps =
-            map
-              ( \p ->
-                  let vs = map (s2n . name2String) ((p ^.. fv) :: [PVar])
-                   in BoundCase (bind vs p) (_caseLoc p)
-              )
-              _ecaseBody
-       in c {_ecaseBody = ps}
-    bindExpr expr = expr
 
 -- | Remove variable bindings
 removeVarBindings :: Module -> Module
