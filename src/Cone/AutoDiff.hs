@@ -46,6 +46,8 @@ initDiffDefs = mapMOf (topStmts . traverse . _DDef) initDiffDef
 
 setupDiff :: (Has EnvEff sig m) => DiffDef -> FuncDef -> m FuncDef
 setupDiff d f@FuncDef {..} = do
+  unless (aeq _funcEffectType (EffList [] _funcLoc)) $ do
+    throwError $ "cannot diff for a function with effect type " ++ ppr d ++ ppr (_diffLoc d)
   argTypes <-
     mapM
       ( \a -> do
