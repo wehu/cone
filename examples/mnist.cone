@@ -27,11 +27,11 @@ fun mnist_model<n:num>(input:tensor<f32, [n,1,28,28]>,
     val x = conv2d(x, conv2)
     val x = relu(x)
     val x = maxpool2d<2,2>(x)
-    val x = dropout(x, 0.25)
+    //val x = dropout(x, 0.25)
     val x = reshape<[n, 9216]>(x)
     val x = fc(x, fcw1, fcb1)
     val x = relu(x)
-    val x = dropout(x, 0.5)
+    //val x = dropout(x, 0.5)
     val x = fc(x, fcw2, fcb2)
     val x = log_softmax(x,1)
     x
@@ -40,7 +40,19 @@ fun mnist_model<n:num>(input:tensor<f32, [n,1,28,28]>,
 fun mnist_train<n:num>(input:tensor<f32, [n,1,28,28]>,
                 target:tensor<i32, [n]>,
                 weights:mnist_weights) : f32 {
-    val x = mnist_model(input, weights)
+    val (conv1, conv2, fcw1, fcb1, fcw2, fcb2) = weights
+    val x = conv2d(input, conv1)
+    val x = relu(x)
+    val x = conv2d(x, conv2)
+    val x = relu(x)
+    val x = maxpool2d<2,2>(x)
+    //val x = dropout(x, 0.25)
+    val x = reshape<[n, 9216]>(x)
+    val x = fc(x, fcw1, fcb1)
+    val x = relu(x)
+    //val x = dropout(x, 0.5)
+    val x = fc(x, fcw2, fcb2)
+    val x = log_softmax(x,1)
     nll_loss(x, target)
 }
 
@@ -48,7 +60,7 @@ diff mnist_model wrt (weights) = auto
 diff mnist_train wrt (weights) = auto
 
 fun main() : io unit {
-    val ds = mnist<64>("./data", true)
+    val ds = mnist<1>("./data", true)
     var weights = (rand<[32,1,3,3]>(1.0/sqrt(3.0*3.0)),
                    rand<[64,32,3,3]>(1.0/sqrt(32.0*3.0*3.0)),
                    rand<[128,9216]>(1.0/sqrt(9216.0)),
@@ -73,7 +85,7 @@ fun main() : io unit {
              full<[128]>(0.5, []),
              full<[10,128]>(0.5, []),
              full<[10]>(0.5, []))
-    foreach(ds, fn(d : (tensor<f32, [64,1,28,28]>, tensor<i32, [64]>), i : i32) : io unit {
+    foreach(ds, fn(d : (tensor<f32, [1,1,28,28]>, tensor<i32, [1]>), i : i32) : io unit {
         val (data, target) = d
         val grads = diff mnist_train(data, target, weights, 1.0)
         v = u * v + grads
