@@ -24,7 +24,7 @@ diff sin(x, dx) -- will call sin's diff function
 
 ### Algebraic effect handlers
 
-Learing from [Koka-lang](https://koka-lang.github.io/koka/doc/book.html), the type annotation of function as below:
+Learning from [Koka-lang](https://koka-lang.github.io/koka/doc/book.html), the type annotation of function as below:
 
 ```haskell
 fun foo(x: i32)   :       e        i32
