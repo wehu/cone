@@ -75,9 +75,9 @@ setupDiff d f@FuncDef {..} = do
         throwError $ "cannot find function " ++ ppr adjN ++ ppr (_diffLoc d)
       return $ fromJust adj
     else do
-      let fn = _funcName ++ "____diff"
+      let fn = _funcName ++ "_$diff"
       setFuncType fn fType
-      return f {_funcName = fn, _funcArgs = _funcArgs ++ [("____output____diff", _funcResultType)], _funcResultType = resTypes}
+      return f {_funcName = fn, _funcArgs = _funcArgs ++ [("____output_$diff", _funcResultType)], _funcResultType = resTypes}
 setupDiff d b@BoundFuncDef {..} = do
   let (vs, f) = unsafeUnbind _boundFuncDef
   f <- setupDiff d f
@@ -132,7 +132,7 @@ addTempVariables :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 addTempVariables = transformMOn (funcExpr . _Just) addTempVar
   where
     addTempVar a@(EApp False _ targs args loc) = do
-      tempVs <- mapM (\arg -> fresh >>= (\id -> return $ "____temp" ++ show id)) args
+      tempVs <- mapM (\arg -> fresh >>= (\id -> return $ "_$tmp" ++ show id)) args
       let newApp = a {_eappArgs = map (\v -> EVar (s2n v) loc) tempVs}
       (_, e) <-
         foldM
@@ -153,7 +153,7 @@ removeTempVariables wrt = transformMOn (funcExpr . _Just) removeTempVar
     removeTempVar e = return e
 
 genDiffForPattern :: (Has EnvEff sig m) => Pattern -> m Expr
-genDiffForPattern (PVar n loc) = return $ EVar (s2n (name2String n ++ "____diff")) loc
+genDiffForPattern (PVar n loc) = return $ EVar (s2n (name2String n ++ "_$diff")) loc
 genDiffForPattern (PApp e@(EVar n _) targs args loc) | name2String n == "core/prelude/pair" = do
   args <- mapM genDiffForPattern args
   return $ EApp False e targs args loc
@@ -165,7 +165,7 @@ genDiffForExpr fargs outputD e@EVar {..} = do
   if name2String _evarName `elem` fargs
     then return e
     else do
-      let diffN = name2String _evarName ++ "____diff"
+      let diffN = name2String _evarName ++ "_$diff"
           diff = EVar (s2n diffN) _eloc
       return $
         EApp
@@ -193,7 +193,7 @@ genDiffForExpr fargs outputD a@(EApp False (EVar n _) targs args loc) = do
     L.nub
       <$> foldM
         ( \all (arg, farg) -> case arg of
-            EVar an _ -> if farg ^. _1 `elem` _diffWRT (fromJust f) then return $ all ++ [(name2String an ++ "____diff", farg ^. _2)] else return all
+            EVar an _ -> if farg ^. _1 `elem` _diffWRT (fromJust f) then return $ all ++ [(name2String an ++ "_$diff", farg ^. _2)] else return all
             e -> throwError $ "unsupported " ++ ppr e
         )
         []
@@ -216,7 +216,7 @@ genDiffForExpr fargs outputD a@(EApp False (EVar n _) targs args loc) = do
       p
       ( EApp
           False
-          (_diffAdj (fromJust f) ^. non (EVar (s2n $ _diffFunc (fromJust f) ++ "____diff") loc))
+          (_diffAdj (fromJust f) ^. non (EVar (s2n $ _diffFunc (fromJust f) ++ "_$diff") loc))
           targs
           (args ++ [outputD])
           loc
@@ -238,7 +238,7 @@ genDiffForExpr fargs outputD l@(ELet p e body s loc) = do
       { _eletBody =
           L.foldl'
             ( \s (v, c) ->
-                ELet (PVar (s2n (name2String v ++ "____diff")) loc) c s True loc
+                ELet (PVar (s2n (name2String v ++ "_$diff")) loc) c s True loc
             )
             (ESeq [db, de] loc)
             [(v, c) | v <- vs | c <- cs]
@@ -285,14 +285,14 @@ genDiff diff f@FuncDef {} = do
   let loc = _funcLoc f
   case _funcExpr f of
     Just e -> do
-      e <- genDiffForExpr ((_funcArgs f ^.. traverse . _1) L.\\ _diffWRT diff) (EVar (s2n "____output____diff") loc) e
-      let d : ds = map (++ "____diff") (reverse $ _diffWRT diff)
+      e <- genDiffForExpr ((_funcArgs f ^.. traverse . _1) L.\\ _diffWRT diff) (EVar (s2n "____output_$diff") loc) e
+      let d : ds = map (++ "_$diff") (reverse $ _diffWRT diff)
           diffs = L.foldl' (\s e -> EApp False (EVar (s2n "core/prelude/pair") loc) [] [EVar (s2n e) loc, s] loc) (EVar (s2n d) loc) ds
       e <-
         foldM
           ( \s e -> do
               c0 <- genZerosByValue (EVar (s2n e) loc)
-              return $ ELet (PVar (s2n (e ++ "____diff")) loc) c0 s True loc
+              return $ ELet (PVar (s2n (e ++ "_$diff")) loc) c0 s True loc
           )
           (ESeq [e, diffs] loc)
           (_diffWRT diff)

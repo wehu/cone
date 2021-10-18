@@ -8,6 +8,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Cone.CodeGen.Backend where
 
@@ -24,6 +25,7 @@ import qualified Data.Map as M
 import Data.Proxy
 import Debug.Trace
 import Prettyprinter
+import qualified Data.Text as T
 
 type Eff s e = Fresh :+: State s :+: Error e
 
@@ -63,6 +65,9 @@ underScope f = do
   res <- f
   put env
   return res
+
+replaceSpecialChars :: String -> String
+replaceSpecialChars = T.unpack . T.replace (T.pack "$") (T.pack "_C_O_N_E_") . T.pack
 
 -- | Targe proxy
 data Target

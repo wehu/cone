@@ -405,7 +405,7 @@ renameLocalVarsInExpr = transformM rename
     rename l@ELam{..} = do
       vs <- mapM (\v -> do
                     id <- fresh
-                    return (v, v ++ "_arg_" ++ show id)) (_elamArgs ^..traverse._1)
+                    return (v, v ++ "_$arg" ++ show id)) (_elamArgs ^..traverse._1)
       let binds = map (\(n, nn) -> (s2n n, EVar (s2n nn) _eloc)) vs
           args = [(v ^. _2, t ^. _2) | v <- vs | t <- _elamArgs]
       return l{_elamArgs = args, _elamExpr=substs binds _elamExpr}
@@ -414,7 +414,7 @@ renameLocalVarsInExpr = transformM rename
       let vs = L.nubBy aeq (p ^.. fv :: [PVar])
       nvs <- mapM (\v -> do
                     id <- fresh
-                    return (name2String v, name2String v ++ "_tmp_" ++ show id)) vs
+                    return (name2String v, name2String v ++ "_$tmp" ++ show id)) vs
       let pbinds = map (\(n, nn) -> (s2n n, PVar (s2n nn) (_ploc p))) nvs
           bbinds = map (\(n, nn) -> (s2n n, EVar (s2n nn) (_ploc p))) nvs
       return (pbinds, bbinds)

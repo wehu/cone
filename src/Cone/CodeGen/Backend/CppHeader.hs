@@ -32,7 +32,7 @@ import Unbound.Generics.LocallyNameless.Unsafe
 data CppHeader a = CppHeader
 
 pythonTypeNamePath n =
-  let ns = splitOn "/" n
+  let ns = splitOn "/" $ replaceSpecialChars n
    in "py::module_::import(\"" <> pretty (join (intersperse "." (init ns)))
         <> "____t\").attr(\""
         <> pretty ("Cone__" ++ last ns)
@@ -178,7 +178,7 @@ instance Backend CppHeader where
   typeN proxy prefix n' =
     let prefixLen = length prefix
         n = if prefix == take prefixLen n' then drop (prefixLen + 1) n' else n'
-        ns = splitOn "/" n
+        ns = splitOn "/" $ replaceSpecialChars n
         ps = init ns
         tn = "Cone__" ++ last ns
      in pretty $ join $ intersperse "::" $ ps ++ [tn]
@@ -186,7 +186,7 @@ instance Backend CppHeader where
   funcN proxy prefix n' =
     let prefixLen = length prefix
         n = if prefix == take prefixLen n' then drop (prefixLen + 1) n' else n'
-        ns = splitOn "/" n
+        ns = splitOn "/" $ replaceSpecialChars n
         ps = init ns
         fn = "cone__" ++ last ns
      in pretty $ join $ intersperse "::" $ ps ++ [fn]
