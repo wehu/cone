@@ -48,7 +48,7 @@ library:
   source-dirs: src
 
 executables:
-  cone-exe:
+  cone:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
