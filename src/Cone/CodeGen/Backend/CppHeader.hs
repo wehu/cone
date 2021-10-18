@@ -382,11 +382,11 @@ instance Backend CppHeader where
                       <> ")))"
                   )
           Nothing -> throwError "lambda expected a expression"
-      parameterNames prefix = encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)
-      parameterValues prefix = encloseSep lbrace rbrace comma (map (funcN proxy prefix) $ _elamArgs ^.. traverse . _1)
+      -- parameterNames prefix = encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)
+      -- parameterValues prefix = encloseSep lbrace rbrace comma (map (funcN proxy prefix) $ _elamArgs ^.. traverse . _1)
       callCpsWithclearedVars es prefix =
         encloseSep lparen rparen comma $
-          "____k" : "____stack" : "____effs" : parameterNames prefix : parameterValues prefix : [es]
+          "____k" : "____stack" : "____effs" : {- parameterNames prefix : parameterValues prefix : -} [es]
   genExpr proxy EWhile {..} = do
     c <- genExpr proxy _ewhileCond
     underScope $ do

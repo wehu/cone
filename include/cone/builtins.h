@@ -114,13 +114,13 @@ namespace cone {
 
   inline object_t ____call_cps_with_cleared_vars(
     const cont_t &k, stack_t s, effects_t es,
-    const std::vector<std::string> &names,
-    const std::vector<object_t> &values,
+    //const std::vector<std::string> &names,
+    //const std::vector<object_t> &values,
     const object_t &e) {
     stack_t stack = ____make_empty_stack();
     *stack = *s; 
     effects_t effs = ____make_empty_effs();
-    return std::experimental::any_cast<func_with_cont_t>(e)(k, ____set_parameters(stack, names, values), effs);
+    return std::experimental::any_cast<func_with_cont_t>(e)(k, stack /*____set_parameters(stack, names, values)*/, effs);
   }
 
   struct ____deferred {
