@@ -1,7 +1,7 @@
 # Cone-lang
 
 This is a POC project and attempt to develop a language for AI. Cone-lang is a functional language, 
-which handles with side-effect with algebraic effect handlers, supports autodiff and integrated with python seamlessly.
+which handles with side-effect by algebraic effect handlers, supports autodiff and integrates with python seamlessly.
 
 ## Features
 
@@ -9,7 +9,7 @@ which handles with side-effect with algebraic effect handlers, supports autodiff
 * Support tensor type and operations
 * Support autodiff
 * Support algebraic effect handlers
-* Seamlessly integrated with python
+* Seamlessly integrate with python
 * Use python package as package management
 
 ### Autodiff
@@ -32,19 +32,15 @@ fun foo(x: i32)   :       e        i32
          arg-type   effect-type  result-type
 ```
 
-### Inline lower level code 
+### Integration with python
 
-Inline python code
+Inline python code and generate the python package for package release
 
 ```haskell
 fun sin(x: a) : a {
   inline_python<a>("____result = sin(x)")
 }   
 ```
-
-### Integration with python
-
-Inline python code and generate the python package for package release
 
 ## Install
 
