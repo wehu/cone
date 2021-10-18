@@ -394,7 +394,7 @@ instance Backend CppHeader where
       return $ exprToCps $ "____while" <> encloseSep lparen rparen comma ["____k", "____stack", "____effs", c, es]
   genExpr proxy ELet {..} = underScope $ do
     e <- genExpr proxy _eletExpr
-    p <- genPatternMatch proxy _eletPattern
+    p <- genPatternMatch proxy _eletState _eletPattern
     b <- genExpr proxy _eletBody
     return $
       exprToCps $
@@ -512,7 +512,7 @@ instance Backend CppHeader where
           <+> encloseSep lbrace rbrace comma handlers <> ")"
   genExpr proxy ECase {..} = do
     c <- genExpr proxy _ecaseExpr
-    pes <- mapM (\pe -> underScope $ (,) <$> genPatternMatch proxy (_casePattern pe) <*> genExpr proxy (_caseExpr pe)) _ecaseBody
+    pes <- mapM (\pe -> underScope $ (,) <$> genPatternMatch proxy False (_casePattern pe) <*> genExpr proxy (_caseExpr pe)) _ecaseBody
     let cs = [fst pe | pe <- pes]
         es = [snd pe | pe <- pes]
     return $
@@ -531,23 +531,23 @@ instance Backend CppHeader where
   genExpr proxy EAnnMeta {..} = genExpr proxy _eannMetaExpr
   genExpr proxy e = throwError $ "unsupported expression: " ++ ppr e ++ ppr (_eloc e)
 
-  genPatternMatch proxy PVar {..} = do
+  genPatternMatch proxy isState PVar {..} = do
     setEnv (Just True) $ localState . at (name2String _pvar)
     prefix <- getEnv currentModuleName
     return $
       parens $
         "[=](const object_t &____e) -> object_t {____add_var(____stack, \"" <> funcN proxy prefix (name2String _pvar)
           <> "\""
-          <> comma <+> "____e); return py::object(py::bool_(true));}"
-  genPatternMatch proxy PExpr {..} = do
+          <> comma <+> "____e" <> comma <+> (if isState then "true" else "false") <> "); return py::object(py::bool_(true));}"
+  genPatternMatch proxy isState PExpr {..} = do
     p <- (`callWithCps` "____identity_k") <$> genExpr proxy _pExpr
     return $ parens $ "[=](const object_t &____e) -> object_t { return py::object(py::bool_(____to_py_object(" <+> p <+> ").attr(\"__eq__\")(____to_py_object(____e))));}"
-  genPatternMatch proxy PApp {..} = do
+  genPatternMatch proxy isState PApp {..} = do
     prefix <- getEnv currentModuleName
     bindings <-
       mapM
         ( \(p, ee) -> do
-            b <- genPatternMatch proxy p
+            b <- genPatternMatch proxy isState p
             return $
               parens $ "py::cast<bool>(____to_py_object(" <> b <> parens ee <> "))"
         )

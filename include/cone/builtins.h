@@ -61,7 +61,12 @@ namespace cone {
   inline object_t ____lookup_var(stack_t s, const std::string &key) {
     for (auto it=s->rbegin(); it != s->rend(); ++it) {
       if (it->find(key) != it->end()) {
-        return (*it)[key];
+        auto & o = (*it)[key];
+        if (o.type() == typeid(std::shared_ptr<object_t>)) {
+          return *std::experimental::any_cast<std::shared_ptr<object_t>>(o);
+        } else {
+          return o;
+        }
       }
     }
     return py::object(py::none());
@@ -76,15 +81,20 @@ namespace cone {
     return py::object(py::none());
   }
 
-  inline object_t ____add_var(stack_t s, const std::string &key, const object_t &k) {
-    s->back()[key] = k;
+  inline object_t ____add_var(stack_t s, const std::string &key, const object_t &k, bool is_state) {
+    s->back()[key] = is_state ? std::make_shared<object_t>(k) : k;
     return py::object(py::none());
   }
 
   inline object_t ____update_stack(stack_t s, const std::string &key, const object_t &k) {
     for (auto it=s->rbegin(); it != s->rend(); ++it) {
       if (it->find(key) != it->end()) {
-        (*it)[key] = k;
+        auto &&o = (*it)[key];
+        if (o.type() == typeid(std::shared_ptr<object_t>)) {
+          *std::experimental::any_cast<std::shared_ptr<object_t>>(o) = k;
+        } else {
+          o = k;
+        }
         return py::object(py::none());
       }
     }
@@ -107,15 +117,10 @@ namespace cone {
     const std::vector<std::string> &names,
     const std::vector<object_t> &values,
     const object_t &e) {
-    //stack_t stack = ____make_empty_stack();
-    //*stack = *s; 
-    //effects_t effs = ____make_empty_effs();
-    s->push_back({});
-    es->push_back({});
-    auto o = std::experimental::any_cast<func_with_cont_t>(e)(k, ____set_parameters(s, names, values), es);
-    s->pop_back();
-    es->pop_back();
-    return o;
+    stack_t stack = ____make_empty_stack();
+    *stack = *s; 
+    effects_t effs = ____make_empty_effs();
+    return std::experimental::any_cast<func_with_cont_t>(e)(k, ____set_parameters(stack, names, values), effs);
   }
 
   struct ____deferred {
@@ -126,21 +131,22 @@ namespace cone {
   inline object_t ____while(const cont_t &k, stack_t stack, effects_t effs,
                           const object_t &cond0,
                           const object_t &body0) {
-    stack->push_back({});
+    // since we unify the variable names, so no need to push stack
+    //stack->push_back({});
     auto cond = std::experimental::any_cast<func_with_cont_t>(cond0);
     auto body = std::experimental::any_cast<func_with_cont_t>(body0);
     cont_t k2 = [=](const object_t &o) -> object_t {
       cont_t trampoline = [=](const object_t &o) -> object_t {
         if (py::cast<bool>(std::experimental::any_cast<py::object>(o))) {
-           stack->push_back({});
+           //stack->push_back({});
            return body([=](const object_t &o) -> object_t {
-                        stack->pop_back();
+                        //stack->pop_back();
                         return cond([](const object_t &o) -> object_t { 
                                return object_t(____deferred(o));},
                                stack, effs);}
                 , stack, effs);
          } else {
-           stack->pop_back();
+           //stack->pop_back();
            return k(o);
          }
       };
@@ -158,15 +164,15 @@ namespace cone {
     for (unsigned i=0; i<conds.size(); ++i) {
       const auto &p = conds[i];
       const auto &e = std::experimental::any_cast<func_with_cont_t>(exprs[i]);
-      stack->push_back({});
+      //stack->push_back({});
       cont_t k2 = [stack, k](const object_t &o) {
-        stack->pop_back();
+        //stack->pop_back();
         return k(o);
       };
       if (py::cast<bool>(std::experimental::any_cast<py::object>(p(ce)))) {
         return e(k2, stack, effs);
       } else {
-        stack->pop_back();
+        //stack->pop_back();
       }
     }
     throw ____cone_exception("no matched case");

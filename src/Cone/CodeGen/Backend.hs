@@ -93,7 +93,7 @@ class Backend t where
 
   genExpr :: (Has EnvEff sig m) => t Target -> Expr -> m (Doc a)
 
-  genPatternMatch :: (Has EnvEff sig m) => t Target -> Pattern -> m (Doc a)
+  genPatternMatch :: (Has EnvEff sig m) => t Target -> Bool -> Pattern -> m (Doc a)
 
   genDiffDef :: (Has EnvEff sig m) => t Target -> DiffDef -> m (Doc a)
   genDiffDef _ _ = return emptyDoc 

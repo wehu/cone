@@ -175,29 +175,29 @@ fun main() : io unit {
    //     }
    // })
 
-   val feature = t.full<@[4, 3, 16, 16]>(0.1, [])
-   val weight  = t.full<@[2, 3, 4, 4]>(0.1, [])
-   print(feature)
-   print(conv2d(feature, weight))
+   // val feature = t.full<@[4, 3, 16, 16]>(0.1, [])
+   // val weight  = t.full<@[2, 3, 4, 4]>(0.1, [])
+   // print(feature)
+   // print(conv2d(feature, weight))
 
-   val ones = t.full<@[4, 2, 13, 13]>(1.0, [])
-   val (f_grad, w_grad) = diff conv2d(feature, weight, ones)
-   print(f_grad)
-   print(w_grad)
+   // val ones = t.full<@[4, 2, 13, 13]>(1.0, [])
+   // val (f_grad, w_grad) = diff conv2d(feature, weight, ones)
+   // print(f_grad)
+   // print(w_grad)
 
-   print(maxpool2d<2,2>(feature))
-   val ones2 = t.full<@[4, 3, 4, 4]>(1.0, [])
-   print(diff maxpool2d<4,4>(feature, ones2))
+   // print(maxpool2d<2,2>(feature))
+   // val ones2 = t.full<@[4, 3, 4, 4]>(1.0, [])
+   // print(diff maxpool2d<4,4>(feature, ones2))
 
-   print(log_softmax(feature, 1))
-   print(diff log_softmax(feature, 1, feature))
+   // print(log_softmax(feature, 1))
+   // print(diff log_softmax(feature, 1, feature))
 
-   print(t.reshape<@[4*3*16*16]>(feature))
-   val ones3 = t.full<@[4*3*16*16]>(1.0, [])
-   print(diff t.reshape<@[4*3*16*16]>(feature, ones3))
+   // print(t.reshape<@[4*3*16*16]>(feature))
+   // val ones3 = t.full<@[4*3*16*16]>(1.0, [])
+   // print(diff t.reshape<@[4*3*16*16]>(feature, ones3))
 
-   print(relu(feature))
-   print(diff relu(feature,feature))
+   // print(relu(feature))
+   // print(diff relu(feature,feature))
 
 }
 

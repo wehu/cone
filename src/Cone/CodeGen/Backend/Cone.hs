@@ -27,7 +27,7 @@ instance Backend Cone where
 
   genExpr _ _ = return emptyDoc
 
-  genPatternMatch _ _ = return emptyDoc
+  genPatternMatch _ _ _ = return emptyDoc
 
   genPrologue _ = return emptyDoc
 
