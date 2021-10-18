@@ -59,7 +59,7 @@ fun test3(a : f32, b : f32) : f32 {
 
 diff test3 wrt (a, b) = auto
 
-fun test4(a : t.tensor<f32, @[4, 4]>) : t.tensor<f32, @[4,4]> {
+fun test4(a : t.tensor<f32, [4, 4]>) : t.tensor<f32, [4,4]> {
     sin(a)
 }
 
@@ -105,13 +105,13 @@ fun main() : io unit {
    val s0 = s.empty() : s.intset
    print(s.insert(s0, 4))
 
-   val t0 = t.full<@[4, 4+2], f32>(0.1, [])
-   val t1 = t.full<@[6, 2]>(1.0, [])
+   val t0 = t.full<[4, 4+2], f32>(0.1, [])
+   val t1 = t.full<[6, 2]>(1.0, [])
 
-   val t3 = t.full<@[4, ?, ?]>(2.0, [4, 4])
+   val t3 = t.full<[4, ?, ?]>(2.0, [4, 4])
    print(t3)
 
-   print(t.matmul(t0, t1) + t.full<@[4, 2]>(0.9, []))
+   print(t.matmul(t0, t1) + t.full<[4, 2]>(0.9, []))
 
    print(sin(t1))
 
@@ -164,10 +164,10 @@ fun main() : io unit {
    print(a)
    test_inline("test")
 
-   print(diff test4(t.full<@[4,4]>(0.2, []), t.full<@[4,4]>(1.0, [])))
+   print(diff test4(t.full<[4,4]>(0.2, []), t.full<[4,4]>(1.0, [])))
 
    // val ds = ds.mnist("./data", true)
-   // ds.foreach(ds, fn(d : t.tensor<f32, @[1, 28, 28]>, i : i32) : io unit {
+   // ds.foreach(ds, fn(d : t.tensor<f32, [1, 28, 28]>, i : i32) : io unit {
    //     if (i < 10) {
    //         print(d)
    //     } else {
@@ -175,26 +175,26 @@ fun main() : io unit {
    //     }
    // })
 
-   // val feature = t.full<@[4, 3, 16, 16]>(0.1, [])
-   // val weight  = t.full<@[2, 3, 4, 4]>(0.1, [])
+   // val feature = t.full<[4, 3, 16, 16]>(0.1, [])
+   // val weight  = t.full<[2, 3, 4, 4]>(0.1, [])
    // print(feature)
    // print(conv2d(feature, weight))
 
-   // val ones = t.full<@[4, 2, 13, 13]>(1.0, [])
+   // val ones = t.full<[4, 2, 13, 13]>(1.0, [])
    // val (f_grad, w_grad) = diff conv2d(feature, weight, ones)
    // print(f_grad)
    // print(w_grad)
 
    // print(maxpool2d<2,2>(feature))
-   // val ones2 = t.full<@[4, 3, 4, 4]>(1.0, [])
+   // val ones2 = t.full<[4, 3, 4, 4]>(1.0, [])
    // print(diff maxpool2d<4,4>(feature, ones2))
 
    // print(log_softmax(feature, 1))
    // print(diff log_softmax(feature, 1, feature))
 
-   // print(t.reshape<@[4*3*16*16]>(feature))
-   // val ones3 = t.full<@[4*3*16*16]>(1.0, [])
-   // print(diff t.reshape<@[4*3*16*16]>(feature, ones3))
+   // print(t.reshape<[4*3*16*16]>(feature))
+   // val ones3 = t.full<[4*3*16*16]>(1.0, [])
+   // print(diff t.reshape<[4*3*16*16]>(feature, ones3))
 
    // print(relu(feature))
    // print(diff relu(feature,feature))

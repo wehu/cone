@@ -3,8 +3,8 @@ module ml.nn.maxpool2d
 import data.tensor
 
 fun maxpool2d<r:num, s:num, t, n:num, c:num, h:num, w:num>( \
-    input:tensor<t, @[n, c, h, w]>) : tensor<t, @[n, c, (h-r)/r+1, (w-s)/s+1]> {
-    inline_python<tensor<t, @[n, c, (h-r)/r+1, (w-s)/s+1]>, @[r, s]>("""
+    input:tensor<t, [n, c, h, w]>) : tensor<t, [n, c, (h-r)/r+1, (w-s)/s+1]> {
+    inline_python<tensor<t, [n, c, (h-r)/r+1, (w-s)/s+1]>, [r, s]>("""
 import torch
 import torch.nn.functional as F
 args = ____typeargs[1]
@@ -15,8 +15,8 @@ ____result = F.max_pool2d(torch.from_numpy(input), (args[0], args[1])).numpy()
 diff maxpool2d wrt (input) = maxpool2d_diff
 
 fun maxpool2d_diff<r:num, s:num, t, n:num, c:num, h:num, w:num>( \
-    input:tensor<t, @[n, c, h, w]>, output_diff: tensor<t, @[n, c, (h-r)/r+1, (w-s)/s+1]>) : tensor<t, @[n, c, h, w]> {
-    inline_python<tensor<t, @[n, c, h, w]>, @[r, s]>("""
+    input:tensor<t, [n, c, h, w]>, output_diff: tensor<t, [n, c, (h-r)/r+1, (w-s)/s+1]>) : tensor<t, [n, c, h, w]> {
+    inline_python<tensor<t, [n, c, h, w]>, [r, s]>("""
 import torch
 import torch.nn.functional as F
 args = ____typeargs[1]

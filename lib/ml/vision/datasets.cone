@@ -2,20 +2,20 @@ module ml.vision.datasets
 
 import data.tensor
 
-type dataset<t, shape: @[num]>
+type dataset<t, shape: [num]>
 
-effect iterator<t, n:num, shape:@[num]> {
+effect iterator<t, n:num, shape:[num]> {
     fun reset(dataset<t, n|shape>) : unit
-    fun next(dataset<t, n|shape>) : (tensor<t, n|shape>, tensor<i32, @[n]>)
+    fun next(dataset<t, n|shape>) : (tensor<t, n|shape>, tensor<i32, [n]>)
 }
 
-fun len<t, shape: @[num]>(ds : dataset<t, shape>) : i32 {
+fun len<t, shape: [num]>(ds : dataset<t, shape>) : i32 {
     inline_python<i32>("""
 ____result = len(ds[0])
     """)
 }
 
-fun foreach<t, n:num, shape:@[num]>[e](ds : dataset<t, n|shape>, f : ((tensor<t, n|shape>, tensor<i32, @[n]>), i32) -> e unit) : e unit {
+fun foreach<t, n:num, shape:[num]>[e](ds : dataset<t, n|shape>, f : ((tensor<t, n|shape>, tensor<i32, [n]>), i32) -> e unit) : e unit {
     var i = 0
     val size = len(ds)
     handle iterator<t, n, shape> {
@@ -32,7 +32,7 @@ ds[1] = iter(ds[0])
             resume(unit)
         }
         fun next(ds : dataset<t, n|shape>) {
-            resume(inline_python<(tensor<t, n|shape>, tensor<i32, @[n]>)>("""
+            resume(inline_python<(tensor<t, n|shape>, tensor<i32, [n]>)>("""
 data = next(ds[1])
 ____result = (data[0].numpy().astype(float), data[1].numpy())
             """))
@@ -40,8 +40,8 @@ ____result = (data[0].numpy().astype(float), data[1].numpy())
     }
 }
 
-fun mnist<n:num>(dir : str, train : bool) : dataset<f32, @[n, 1, 28, 28]> {
-    inline_python<dataset<f32, @[n, 1, 28, 28]>, @[n]>("""
+fun mnist<n:num>(dir : str, train : bool) : dataset<f32, [n, 1, 28, 28]> {
+    inline_python<dataset<f32, [n, 1, 28, 28]>, [n]>("""
 import torch
 from torchvision import datasets, transforms
 transform=transforms.Compose([

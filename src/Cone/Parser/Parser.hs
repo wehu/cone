@@ -236,7 +236,7 @@ kind :: Parser A.Kind
 kind =
   (( A.KStar <$ star <*> getPos P.<?> "star kind")
       P.<|> (A.KNum <$ kNum <*> getPos P.<?> "num kind")
-      P.<|> (A.KList <$ at_ <*> brackets kind <*> getPos P.<?> "list kind")
+      P.<|> (A.KList <$> brackets kind <*> getPos P.<?> "list kind")
       P.<|> (((,,) <$> parens (P.sepBy kind comma) <*> P.optionMaybe (arrow *> kind) <*> getPos P.<?> "function kind") >>= f)
   ) P.<?> "type kind"
   where
@@ -314,8 +314,7 @@ typeTerm =
               P.<|> (A.TPrim <$> primType <*> getPos P.<?> "primitive type")
               P.<|> (A.TNum <$> (Just . read <$> literalInt) <*> getPos P.<?> "number type")
               P.<|> (A.TNum Nothing <$ question <*> getPos P.<?> "unknown number type")
-              P.<|> (tlistK <$ at_ <*> brackets (P.sepBy1 type_ comma) <*> getPos P.<?> "type list kind")
-              P.<|> (tlist <$> brackets type_ <*> getPos P.<?> "type list")
+              P.<|> (tlist <$> brackets (P.sepBy1 type_ comma) <*> getPos P.<?> "type list")
           )
   )
     <*> P.optionMaybe (colon *> kind P.<?> "type kind annotation")
@@ -331,9 +330,8 @@ typeTerm =
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
-    tlistK (t:ts) pos = A.TApp (A.TVar (s2n "cons") pos) [t, tlistK ts pos] pos
-    tlistK [] pos = A.TApp (A.TVar (s2n "nil") pos) [] pos
-    tlist t pos = A.TApp (A.TVar (s2n "list") pos) [t] pos
+    tlist (t:ts) pos = A.TApp (A.TVar (s2n "cons") pos) [t, tlist ts pos] pos
+    tlist [] pos = A.TApp (A.TVar (s2n "nil") pos) [] pos
     ttuple (t0 : t1 : ts) pos = A.TApp (A.TVar (s2n "pair") pos) [t0, ttuple (t1 : ts) pos] pos
     ttuple [t] pos = t
     ttuple _ _ = undefined

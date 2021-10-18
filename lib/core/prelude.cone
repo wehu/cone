@@ -186,7 +186,7 @@ type max<a:num, a:num>
 
 type min<a:num, a:num>
 
-type cons<a:num, b:@[num]>
+type cons<a:num, b:[num]>
 
 type nil
 
@@ -235,7 +235,7 @@ impl fun ____ne<a, b>(a : pair<a, b>, b : pair<a, b>) : bool {
 
 // inline python
 
-fun inline_python<a, args:@[num]>(code:str) : a
+fun inline_python<a, args:[num]>(code:str) : a
 
 // io effect
 effect io {

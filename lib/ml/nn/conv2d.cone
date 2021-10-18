@@ -3,8 +3,8 @@ module ml.nn.conv2d
 import data.tensor
 
 fun conv2d<t, n:num, ci:num, h:num, w:num, co:num, r:num, s:num>( \
-    feature:tensor<t, @[n, ci, h, w]>, weight:tensor<t, @[co, ci, r, s]>) : tensor<t, @[n, co, h-r+1, w-s+1]> {
-    inline_python<tensor<t, @[n, co, h-r+1, w-s+1]>>("""
+    feature:tensor<t, [n, ci, h, w]>, weight:tensor<t, [co, ci, r, s]>) : tensor<t, [n, co, h-r+1, w-s+1]> {
+    inline_python<tensor<t, [n, co, h-r+1, w-s+1]>>("""
 import torch
 import torch.nn.functional as F
 ____result = F.conv2d(torch.from_numpy(feature), torch.from_numpy(weight)).numpy()
@@ -14,9 +14,9 @@ ____result = F.conv2d(torch.from_numpy(feature), torch.from_numpy(weight)).numpy
 diff conv2d wrt (feature, weight) = conv2d_diff
 
 fun conv2d_diff<t, n:num, ci:num, h:num, w:num, co:num, r:num, s:num>( \
-    feature:tensor<t, @[n, ci, h, w]>, weight:tensor<t, @[co, ci, r, s]>, \
-    output_diff:tensor<t, @[n, co, h-r+1, w-s+1]>) : (tensor<t, @[n, ci, h, w]>, tensor<t, @[co, ci, r, s]>) {
-    inline_python<(tensor<t, @[n, ci, h, w]>, tensor<t, @[co, ci, r, s]>)>("""
+    feature:tensor<t, [n, ci, h, w]>, weight:tensor<t, [co, ci, r, s]>, \
+    output_diff:tensor<t, [n, co, h-r+1, w-s+1]>) : (tensor<t, [n, ci, h, w]>, tensor<t, [co, ci, r, s]>) {
+    inline_python<(tensor<t, [n, ci, h, w]>, tensor<t, [co, ci, r, s]>)>("""
 import torch
 import torch.nn.functional as F
 ____result = (F.grad.conv2d_input(feature.shape, torch.from_numpy(weight), torch.from_numpy(output_diff)).numpy(),

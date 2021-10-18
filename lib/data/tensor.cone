@@ -4,21 +4,21 @@ import core.math
 
 // tensor types
 
-type tensor<t, shape:@[num]>
+type tensor<t, shape:[num]>
 
-impl fun ____add<t, shape:@[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
+impl fun ____add<t, shape:[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("____result = a + b")
 }
 
-impl fun ____sub<t, shape:@[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
+impl fun ____sub<t, shape:[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("____result = a - b")
 }
 
-impl fun ____mul<t, shape:@[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
+impl fun ____mul<t, shape:[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("____result = a * b")
 }
 
-fun rand<shape:@[num]>(f: f32) : tensor<f32, shape> {
+fun rand<shape:[num]>(f: f32) : tensor<f32, shape> {
     inline_python<tensor<f32, shape>, shape>("""
 import numpy as np
 args = ____typeargs[1]
@@ -26,7 +26,7 @@ ____result = (np.random.rand(*args)*2.0-1.0)*f
     """)
 }
 
-fun reshape<output_shape:@[num], t, input_shape:@[num]>(input:tensor<t, input_shape>) : tensor<t, output_shape> {
+fun reshape<output_shape:[num], t, input_shape:[num]>(input:tensor<t, input_shape>) : tensor<t, output_shape> {
     inline_python<tensor<t, output_shape>, output_shape>("""
 args = ____typeargs[1]
 ____result = input.reshape(args)
@@ -35,58 +35,58 @@ ____result = input.reshape(args)
 
 diff reshape wrt (input) = reshape_diff
 
-fun reshape_diff<output_shape:@[num], t, input_shape:@[num]>(input:tensor<t, input_shape>, output_diff:tensor<t, output_shape>) : tensor<t, input_shape> {
+fun reshape_diff<output_shape:[num], t, input_shape:[num]>(input:tensor<t, input_shape>, output_diff:tensor<t, output_shape>) : tensor<t, input_shape> {
     inline_python<tensor<t, input_shape>, input_shape>("""
 args = ____typeargs[1]
 ____result = output_diff.reshape(args)
     """)
 }
 
-fun full<shape: @[num], a>(c : a, s : [i32]) : tensor<a, shape>
+fun full<shape: [num], a>(c : a, s : list<i32>) : tensor<a, shape>
 
 diff full wrt (c) = full_diff
 
-fun full_diff<shape: @[num], a>(c: a, s: [i32], c____diff: tensor<a, shape>) : a {
+fun full_diff<shape: [num], a>(c: a, s: list<i32>, c____diff: tensor<a, shape>) : a {
     c
 }
 
-fun matmul<n:num, k:num, m:num, a>(lhs : tensor<a, @[n, k]>, rhs : tensor<a, @[k, m]>) : tensor<a, @[n, m]> {
-    inline_python<tensor<a, @[n, m]>>("""
+fun matmul<n:num, k:num, m:num, a>(lhs : tensor<a, [n, k]>, rhs : tensor<a, [k, m]>) : tensor<a, [n, m]> {
+    inline_python<tensor<a, [n, m]>>("""
 from numpy import matmul
 ____result = matmul(lhs, rhs)
 """)  
 }
 
-fun convolve_full<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[n+m-1]> {
-    inline_python<tensor<a, @[n+m-1]>>("""
+fun convolve_full<n:num, m:num, a>(lhs : tensor<a, [n]>, rhs : tensor <a, [m]>) : tensor<a, [n+m-1]> {
+    inline_python<tensor<a, [n+m-1]>>("""
 from numpy import convolve
 ____result = convolve(lhs, rhs)
 """)    
 }
 
-fun convolve_same<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[max<n,m>]> {
-    inline_python<tensor<a, @[max<n,m>]>>("""
+fun convolve_same<n:num, m:num, a>(lhs : tensor<a, [n]>, rhs : tensor <a, [m]>) : tensor<a, [max<n,m>]> {
+    inline_python<tensor<a, [max<n,m>]>>("""
 from numpy import convolve
 ____result = convolve(lhs, rhs, mode="same")
 """)    
 }
 
-fun convolve_valid<n:num, m:num, a>(lhs : tensor<a, @[n]>, rhs : tensor <a, @[m]>) : tensor<a, @[max<n,m> - min<n,m> + 1]> {
-    inline_python<tensor<a, @[max<n,m> - min<n,m> + 1]>>("""
+fun convolve_valid<n:num, m:num, a>(lhs : tensor<a, [n]>, rhs : tensor <a, [m]>) : tensor<a, [max<n,m> - min<n,m> + 1]> {
+    inline_python<tensor<a, [max<n,m> - min<n,m> + 1]>>("""
 from numpy import convolve
 ____result = convolve(lhs, rhs, mode="valid")
 """)  
 }
 
 // math related
-impl fun sin<shape:@[num]>(a : tensor<f32, shape>) : tensor<f32, shape> {
+impl fun sin<shape:[num]>(a : tensor<f32, shape>) : tensor<f32, shape> {
     inline_python<tensor<f32, shape>>("""
 from numpy import sin
 ____result = sin(a)
 """)
 }
 
-impl fun cos<shape:@[num]>(a : tensor<f32, shape>) : tensor<f32, shape> {
+impl fun cos<shape:[num]>(a : tensor<f32, shape>) : tensor<f32, shape> {
     inline_python<tensor<f32, shape>>("""
 from numpy import cos
 ____result = cos(a)

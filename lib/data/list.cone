@@ -1,6 +1,6 @@
 module data.list
 
-fun reverse<a>(l : [a]) : [a] {
+fun reverse<a>(l : list<a>) : list<a> {
     var rest = l
     var newl = []
     while (rest != []) {
@@ -11,7 +11,7 @@ fun reverse<a>(l : [a]) : [a] {
     newl
 }
 
-fun map<a, b>[e](l : [a], f : (a) -> e b) : e [b] {
+fun map<a, b>[e](l : list<a>, f : (a) -> e b) : e list<b> {
     if l == [] {
         []
     } else {
@@ -20,7 +20,7 @@ fun map<a, b>[e](l : [a], f : (a) -> e b) : e [b] {
     }
 }
 
-fun length<a>(l : [a]) : i32 {
+fun length<a>(l : list<a>) : i32 {
     if l == [] {
         0
     } else {

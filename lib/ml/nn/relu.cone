@@ -2,7 +2,7 @@ module ml.nn.relu
 
 import data.tensor
 
-fun relu<t, shape:@[num]>(input:tensor<t, shape>) : tensor<t, shape> {
+fun relu<t, shape:[num]>(input:tensor<t, shape>) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("""
 import torch
 import torch.nn.functional as F
@@ -12,7 +12,7 @@ ____result = F.relu(torch.from_numpy(input)).numpy()
 
 diff relu wrt(input) = relu_diff
 
-fun relu_diff<t, shape:@[num]>(input:tensor<t, shape>, output_diff:tensor<t, shape>) : tensor<t, shape> {
+fun relu_diff<t, shape:[num]>(input:tensor<t, shape>, output_diff:tensor<t, shape>) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("""
 import torch
 import torch.nn.functional as F

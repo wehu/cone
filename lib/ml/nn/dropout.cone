@@ -2,7 +2,7 @@ module ml.nn.dropout
 
 import data.tensor
 
-fun dropout<t, shape:@[num]>(input:tensor<t, shape>, p:f32) : tensor<t, shape> {
+fun dropout<t, shape:[num]>(input:tensor<t, shape>, p:f32) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("""
 import torch
 import torch.nn.functional as F
@@ -12,7 +12,7 @@ ____result = F.dropout(torch.from_numpy(input), p).numpy()
 
 diff dropout wrt (input) = dropout_diff
 
-fun dropout_diff<t, shape:@[num]>(input:tensor<t, shape>, p:f32, output_diff:tensor<t, shape>) : tensor<t, shape> {
+fun dropout_diff<t, shape:[num]>(input:tensor<t, shape>, p:f32, output_diff:tensor<t, shape>) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("""
 import torch
 import torch.nn.functional as F

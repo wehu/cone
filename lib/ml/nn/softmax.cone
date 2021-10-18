@@ -2,7 +2,7 @@ module ml.nn.softmax
 
 import data.tensor
 
-fun log_softmax<t, shape:@[num]>(input:tensor<t, shape>, dim:i32) : tensor<t, shape> {
+fun log_softmax<t, shape:[num]>(input:tensor<t, shape>, dim:i32) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("""
 import torch
 import torch.nn.functional as F
@@ -12,7 +12,7 @@ ____result = F.log_softmax(torch.from_numpy(input), dim).numpy()
 
 diff log_softmax wrt (input) = log_softmax_diff
 
-fun log_softmax_diff<t, shape:@[num]>(input:tensor<t, shape>, dim:i32, output_diff:tensor<t, shape>) : tensor<t, shape> {
+fun log_softmax_diff<t, shape:[num]>(input:tensor<t, shape>, dim:i32, output_diff:tensor<t, shape>) : tensor<t, shape> {
     inline_python<tensor<t, shape>>("""
 import torch
 import torch.nn.functional as F
