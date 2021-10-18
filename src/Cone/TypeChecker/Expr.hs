@@ -551,6 +551,7 @@ collectLastFuncTypeExpr ESeq{..} = [last _eseq | isExprWithFuncType (last _eseq)
 collectLastFuncTypeExpr ELet{..} = collectLastFuncTypeExpr _eletBody
 collectLastFuncTypeExpr ECase{..} = join $ map (collectLastFuncTypeExpr . _caseExpr) _ecaseBody
 collectLastFuncTypeExpr EHandle{..} = collectLastFuncTypeExpr _ehandleScope
+collectLastFuncTypeExpr e | isExprWithFuncType e = [e]
 collectLastFuncTypeExpr _ = []
 
 checkLocalState :: (Has EnvEff sig m) => Expr -> m Expr
