@@ -55,18 +55,31 @@ fun main() : io unit {
                    rand<[128]>(1.0/sqrt(9216.0)),
                    rand<[10,128]>(1.0/sqrt(128.0)),
                    rand<[10]>(1.0/sqrt(128.0)))
-    val rate = 0.1
+    var v       = (rand<[32,1,3,3]>(0.0),
+                   rand<[64,32,3,3]>(0.0),
+                   rand<[128,9216]>(0.0),
+                   rand<[128]>(0.0),
+                   rand<[10,128]>(0.0),
+                   rand<[10]>(0.0))
+    val lr = (full<[32,1,3,3]>(0.01, []),
+              full<[64,32,3,3]>(0.01, []),
+              full<[128,9216]>(0.01, []),
+              full<[128]>(0.01, []),
+              full<[10,128]>(0.01, []),
+              full<[10]>(0.01, []))
+    val u = (full<[32,1,3,3]>(0.5, []),
+             full<[64,32,3,3]>(0.5, []),
+             full<[128,9216]>(0.5, []),
+             full<[128]>(0.5, []),
+             full<[10,128]>(0.5, []),
+             full<[10]>(0.5, []))
     foreach(ds, fn(d : (tensor<f32, [64,1,28,28]>, tensor<i32, [64]>), i : i32) : io unit {
         val (data, target) = d
-        val (conv1_grad, conv2_grad, fcw1_grad, fcb1_grad, fcw2_grad, fcb2_grad) = 
-            diff mnist_train(data, target, weights, 1.0)
-        weights = weights - (conv1_grad * full<[32,1,3,3]>(rate, []),
-                             conv2_grad * full<[64,32,3,3]>(rate, []),
-                             fcw1_grad * full<[128,9216]>(rate, []),
-                             fcb1_grad * full<[128]>(rate, []),
-                             fcw2_grad * full<[10,128]>(rate, []),
-                             fcb2_grad * full<[10]>(rate, []))
+        val grads = diff mnist_train(data, target, weights, 1.0)
+        v = u * v + grads
+        weights = weights - lr * v 
         val result = argmax(mnist_model(data, weights))
+        val (conv1_grad, _) = grads
         print(conv1_grad)
         print(target)
         print(result)
