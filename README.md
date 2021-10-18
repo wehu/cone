@@ -18,7 +18,7 @@ which handles with side-effect with algebraic effect handlers, supports autodiff
 fun sin(x: f32) : f32
 fun cos(x: f32) : f32
 
-diff fun sin wrt(x) = cos
+diff sin wrt(x) = cos
 diff sin(x, dx) -- will call sin's diff function
 ```
 
