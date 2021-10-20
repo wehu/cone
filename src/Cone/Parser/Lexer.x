@@ -122,6 +122,7 @@ tokens :-
   <0> "diff"                                { mkL Diff }
   <0> "wrt"                                 { mkL WRT }
   <0> "auto"                                { mkL Auto }
+  <0> "interface"                           { mkL Interface }
   <0> @decimal 
         | 0[oO] @octal
         | 0[xX] @hexadecimal		            { mkL LInt }
@@ -218,6 +219,7 @@ data Tok =
     Auto            |
     Num             |
     Question        |
+    Interface       |
     EOF             |
     Unknown
   deriving (Eq, Ord, Show, Read, Data, Typeable)

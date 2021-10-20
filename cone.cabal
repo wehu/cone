@@ -35,6 +35,7 @@ data-files:
     lib/ml/nn/relu.cone
     lib/ml/nn/softmax.cone
     lib/ml/optimizer/loss.cone
+    lib/ml/optimizer/sgd.cone
     lib/ml/vision/datasets.cone
     include/cone/builtins.h
     include/cone/data/tensor.h
