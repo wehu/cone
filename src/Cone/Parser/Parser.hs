@@ -189,6 +189,8 @@ kDiff = keyword L.Diff "diff"
 
 kAuto = keyword L.Auto "auto"
 
+kInterface = keyword L.Interface "interface"
+
 kWrt = keyword L.WRT "wrt"
 
 tokenP :: Monoid a => Prism' L.Tok a -> String -> Parser String
@@ -609,6 +611,18 @@ funcIntf =
   where
     f n bs es args (e, r) pos = A.FuncIntf n bs es args e r pos
 
+interface :: Parser A.Interface
+interface =
+  f <$ kInterface <*> ident <*>
+   angles ((,) <$> (s2n <$> ident) <*> (colon *> (brackets (P.sepBy1 ident comma) P.<|> return [])) P.<?> "interface dependencies") <*>
+   braces (P.sepBy1 funcIntf $ P.try $ semi <* P.notFollowedBy rBrace) <*> getPos P.<?> "interface"
+  where f n (tn, deps) is pos = A.Interface n tn deps is pos
+
+implInterface :: Parser A.ImplInterface 
+implInterface =
+  A.ImplInterface <$ kImpl <* kInterface <*> ident <*> type_ <*>
+   braces (P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace) <*> getPos P.<?> "impl interface"
+
 effectDef :: Parser A.EffectDef
 effectDef =
   A.EffectDef <$ kEffect <*> ident <*> typeArgs
@@ -640,6 +654,8 @@ topStmt =
       P.<|> A.TAlias <$> typeAlias
       P.<|> A.EDef <$> effectDef
       P.<|> A.DDef <$> diffDef
+      P.<|> A.IDef <$> interface
+      P.<|> P.try (A.ImplIDef <$> implInterface)
       P.<|> (A.ImplFDef <$ kImpl <*> (A.ImplFuncDef <$> func) P.<?> "function implementation")
   )
     <* semi
