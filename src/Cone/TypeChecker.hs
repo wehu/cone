@@ -351,7 +351,7 @@ initFuncDef f = do
                       intfs <- getEnv $ intfFuncs . at cn
                       when (isn't _Just intfs) $
                         throwError $ "cannot find interface " ++ cn ++ ppr pos
-                      let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n n) pos) $ fromJust intfs) pos
+                      let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n $ n ++ "_$" ++ name2String v) pos) $ fromJust intfs) pos
                       return (ELet p (EVar (s2n $ _funcArgs f !! i ^. _1) pos) s False pos, i + 1)
                   )
                   (s, i)
@@ -656,7 +656,7 @@ convertInterfaceDefs m = do
                 _typeCons = [c],
                 _typeLoc = _interfaceLoc
               }
-      setEnv (Just $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
+      setEnv (Just $ map (\n -> prefix ++ "/" ++ n) $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
       return $ TDef {_tdef = t} : map FDef (intfs ^.. traverse . _2)
     convert prefix BoundInterfaceDef {..} =
       let (_, b) = unsafeUnbind _boundInterfaceDef
@@ -676,7 +676,7 @@ convertImplInterfaceDefs m =
           intfs =
             map
               ( \f ->
-                  let fn = uniqueFuncImplName (_funcName f) t
+                  let fn = uniqueFuncImplName (_funcName f ++ "_$dict") t
                       lambda = ELam (_funcBoundVars f) (_funcBoundEffVars f) (_funcArgs f) (_funcEffectType f) (_funcResultType f) (_funcExpr f) loc
                       c = EApp False (EVar (s2n iname) loc) [t] [lambda] loc
                    in FDef $ FuncDef fn bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc
