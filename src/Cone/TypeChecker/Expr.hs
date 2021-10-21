@@ -113,7 +113,7 @@ getSpecializedFunc targs fn t = do
             if isn't _Nothing (_funcExpr fdef) && not (null (_funcBoundVars fdef) && null (_funcBoundEffVars fdef))
             then underScope $ do
               fdef <- applyTArgs fdef
-              bs <- foldM (\s (v, _) -> do
+              bs <- foldM (\s (v, _, _) -> do
                   vn <- freeVarName <$> fresh
                   return $ s ++ [(v, TVar vn (_tloc t))]) [] (_funcBoundVars fdef)
               effBs <- foldM (\s v -> do
@@ -295,7 +295,7 @@ inferExprType l@ELam {..} = underScope $ do
         inferType $
           bindTypeEffVar evs $
             bindTypeVar
-              [(t, k) | t <- bvs | k <- _elamBoundVars ^.. traverse . _2]
+              [(t, k, cs) | t <- bvs | (_, k, cs) <- _elamBoundVars]
               $ TFunc args _elamEffType eType _eloc
       -- infer effects
       eff <- effTypeOfExpr lamE >>= inferEffType

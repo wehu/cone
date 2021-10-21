@@ -346,9 +346,10 @@ typeTerm =
 type_ :: Parser A.Type
 type_ = PE.buildExpressionParser typeTable typeTerm P.<?> "type"
 
-boundTVars :: Parser [(A.TVar, Maybe A.Kind)]
+boundTVars :: Parser [(A.TVar, Maybe A.Kind, [A.Type])]
 boundTVars =
-  (angles (P.sepBy1 ((,) <$> (s2n <$> ident) <*> P.optionMaybe (colon *> kind P.<?> "type kind annotation")) comma) P.<?> "type variable list")
+  angles (P.sepBy1 ((,,) <$> (s2n <$> ident) <*> (P.optionMaybe (colon *> kind P.<?> "type kind annotation") P.<?> "type variable list")
+           <*> ((doubleArrow *> brackets (P.sepBy1 (A.TVar . s2n <$> ident <*> getPos) comma) P.<|> return []) P.<?> "interface dependencies")) comma)
     P.<|> return []
 
 boundEffVars :: Parser [A.EffVar]

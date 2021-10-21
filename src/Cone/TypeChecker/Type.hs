@@ -95,7 +95,7 @@ inferTypeKind a@TAnn {..} = do
 inferTypeKind b@BoundType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind _boundType
       star = KStar _tloc
-  mapM_ (\(v, k) -> setEnv (Just $ k ^. non star) $ typeKinds . at (name2String v)) bvs
+  mapM_ (\(v, k, _) -> setEnv (Just $ k ^. non star) $ typeKinds . at (name2String v)) bvs
   inferTypeKind t
 inferTypeKind b@BoundEffVarType {..} = underScope $ do
   let (bvs, t) = unsafeUnbind _boundEffVarType

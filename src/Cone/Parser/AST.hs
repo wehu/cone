@@ -134,7 +134,7 @@ data Type
   | TNum {_tnum :: Maybe Int, _tloc :: Location}
   | TApp {_tappName :: Type, _tappArgs :: [Type], _tloc :: Location}
   | TAnn {_tannType :: Type, _tannKind :: Kind, _tloc :: Location}
-  | BoundType {_boundType :: Bind [(TVar, Maybe Kind)] Type, _tloc :: Location}
+  | BoundType {_boundType :: Bind [(TVar, Maybe Kind, [Type])] Type, _tloc :: Location}
   | BoundEffVarType {_boundEffVarType :: Bind [EffVar] Type, _tloc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
@@ -237,7 +237,7 @@ data Expr
   = EVar {_evarName :: EVar, _eloc :: Location}
   | ELit {_lit :: String, _litType :: Type, _eloc :: Location}
   | ELam
-      { _elamBoundVars :: [(TVar, Maybe Kind)],
+      { _elamBoundVars :: [(TVar, Maybe Kind, [Type])],
         _elamBoundEffVars :: [EffVar],
         _elamArgs :: [(String, Type)],
         _elamEffType :: EffectType,
@@ -373,7 +373,7 @@ instance Pretty TypeAlias where
 data FuncIntf
   = FuncIntf
       { _intfName :: String,
-        _intfBoundVars :: [(TVar, Maybe Kind)],
+        _intfBoundVars :: [(TVar, Maybe Kind, [Type])],
         _intfBoundEffVars :: [EffVar],
         _intfArgs :: [Type],
         _intfEffectType :: EffectType,
@@ -472,7 +472,7 @@ instance Pretty InterfaceDef where
   pretty (BoundInterfaceDef (B vs i) _) = anglesList vs <+> pretty i
 
 data ImplInterfaceDef = ImplInterfaceDef
-  { _implInterfaceBoundVars :: [(TVar, Maybe Kind)],
+  { _implInterfaceBoundVars :: [(TVar, Maybe Kind, [Type])],
     _implInterfaceDefName :: String,
     _implInterfaceDefType :: Type,
     _implInterfaceDefFuncs :: [FuncDef],
@@ -500,7 +500,7 @@ instance Pretty ImplInterfaceDef where
 data FuncDef
   = FuncDef
       { _funcName :: String,
-        _funcBoundVars :: [(TVar, Maybe Kind)],
+        _funcBoundVars :: [(TVar, Maybe Kind, [Type])],
         _funcBoundEffVars :: [EffVar],
         _funcArgs :: [(String, Type)],
         _funcEffectType :: EffectType,

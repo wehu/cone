@@ -175,7 +175,7 @@ closeEffType t =
    in bind fvars t
 
 -- | Bind a type with type variables
-bindTypeVar :: [(TVar, Maybe Kind)] -> Type -> Type
+bindTypeVar :: [(TVar, Maybe Kind, [Type])] -> Type -> Type
 bindTypeVar bvs t = BoundType (bind bvs t) (_tloc t)
 
 -- | Bind an effect type with type variables
@@ -211,7 +211,7 @@ unbindType b@BoundEffVarType {..} = do
 unbindType t = return t
 
 -- | Just simply unbind a type
-unbindTypeSimple :: Type -> ([(TVar, Maybe Kind)], [EffVar], Type)
+unbindTypeSimple :: Type -> ([(TVar, Maybe Kind, [Type])], [EffVar], Type)
 unbindTypeSimple b@BoundType {..} =
   let (bvs, t) = unsafeUnbind _boundType
       (bvs', evs, t') = unbindTypeSimple t
@@ -230,10 +230,10 @@ bindEDef edef =
 
 bindEffIntf :: [(TVar, Maybe Kind)] -> FuncIntf -> FuncIntf
 bindEffIntf bvs intf =
-  let boundVars = L.nub $ bvs ++ intf ^. intfBoundVars
+  let boundVars = L.nub $ bvs ^.. traverse . _1 ++ intf ^.. intfBoundVars . traverse . _1
       boundEffVars = L.nub $ intf ^. intfBoundEffVars
       loc = intf ^. intfLoc
-   in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind (boundVars ^.. traverse . _1) intf) loc) loc
+   in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind boundVars intf) loc) loc
 
 bindTDef :: TypeDef -> TypeDef
 bindTDef tdef =

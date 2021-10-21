@@ -102,7 +102,7 @@ initTypeConDef t = do
       let targs = c ^. typeConArgs
           tn = t ^. typeName
           pos = c ^. typeConLoc
-          tvars = t ^. typeArgs
+          tvars = map (\(n, t) -> (n, t, [])) (t ^. typeArgs)
           rt =
             if null tvars
               then TVar (s2n tn) pos
@@ -274,7 +274,7 @@ initEffIntfDef e = do
           intfn = i ^. intfName
           bvars = i ^. intfBoundVars
           pos = i ^. intfLoc
-          tvars = e ^. effectArgs
+          tvars = map (\(n, t)-> (n, t, [])) (e ^. effectArgs)
           evars = i ^. intfBoundEffVars
        in bindTypeEffVar evars $
             bindTypeVar tvars $
