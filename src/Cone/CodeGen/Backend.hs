@@ -119,4 +119,5 @@ class Backend t where
   genTopStmt proxy FDef {..} = genFuncDef proxy _fdef
   genTopStmt proxy DDef {..} = genDiffDef proxy _ddef
   genTopStmt proxy ImplFDef {..} = genImplFuncDef proxy _implFdef
-  genTopStmt proxy d = throwError $ "unsupported " ++ ppr d
+  genTopStmt proxy d = return emptyDoc -- throwError $ "unsupported " ++ ppr d
+

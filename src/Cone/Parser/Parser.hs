@@ -141,6 +141,8 @@ at_ = symbol L.At "@"
 
 arrow = symbol L.Arrow "->"
 
+doubleArrow = symbol L.DoubleArrow "=>"
+
 star = symbol L.Star "*"
 
 dot = symbol L.Dot "."
@@ -236,36 +238,39 @@ imports =
 
 kind :: Parser A.Kind
 kind =
-  (( A.KStar <$ star <*> getPos P.<?> "star kind")
+  ( (A.KStar <$ star <*> getPos P.<?> "star kind")
       P.<|> (A.KNum <$ kNum <*> getPos P.<?> "num kind")
       P.<|> (A.KList <$> brackets kind <*> getPos P.<?> "list kind")
       P.<|> (((,,) <$> parens (P.sepBy kind comma) <*> P.optionMaybe (arrow *> kind) <*> getPos P.<?> "function kind") >>= f)
-  ) P.<?> "type kind"
+  )
+    P.<?> "type kind"
   where
     f (ks, k, pos) =
       case k of
         Just k -> return $ A.KFunc ks k pos
         Nothing -> case ks of
-                    [k] -> return k
-                    _ -> P.unexpected "zero or more than one kinds"
+          [k] -> return k
+          _ -> P.unexpected "zero or more than one kinds"
 
 primType :: Parser A.PrimType
 primType =
-  (A.I8 <$ i8
-    P.<|> (A.I16 <$ i16)
-    P.<|> (A.I32 <$ i32)
-    P.<|> (A.I64 <$ i64)
-    P.<|> (A.U8 <$ u8)
-    P.<|> (A.U16 <$ u16)
-    P.<|> (A.U32 <$ u32)
-    P.<|> (A.U64 <$ u64)
-    P.<|> (A.F16 <$ f16)
-    P.<|> (A.F32 <$ f32)
-    P.<|> (A.F64 <$ f64)
-    P.<|> (A.BF16 <$ bf16)
-    P.<|> (A.Pred <$ bool)
-    P.<|> (A.Str <$ str)
-    P.<|> (A.Unit <$ unit)) P.<?> "primitive type"
+  ( A.I8 <$ i8
+      P.<|> (A.I16 <$ i16)
+      P.<|> (A.I32 <$ i32)
+      P.<|> (A.I64 <$ i64)
+      P.<|> (A.U8 <$ u8)
+      P.<|> (A.U16 <$ u16)
+      P.<|> (A.U32 <$ u32)
+      P.<|> (A.U64 <$ u64)
+      P.<|> (A.F16 <$ f16)
+      P.<|> (A.F32 <$ f32)
+      P.<|> (A.F64 <$ f64)
+      P.<|> (A.BF16 <$ bf16)
+      P.<|> (A.Pred <$ bool)
+      P.<|> (A.Str <$ str)
+      P.<|> (A.Unit <$ unit)
+  )
+    P.<?> "primitive type"
 
 typeTable =
   [ [typePrefix sub "neg"],
@@ -276,7 +281,7 @@ typeTable =
     [ typeBinary add "add" PE.AssocLeft,
       typeBinary sub "sub" PE.AssocLeft
     ],
-    [ typeBinary pipe_ "cons" PE.AssocLeft]
+    [typeBinary pipe_ "cons" PE.AssocLeft]
   ]
 
 typePrefix op name = PE.Prefix $ do
@@ -332,7 +337,7 @@ typeTerm =
     tann t k pos = case k of
       Just k' -> A.TAnn t k' pos
       _ -> t
-    tlist (t:ts) pos = A.TApp (A.TVar (s2n "cons") pos) [t, tlist ts pos] pos
+    tlist (t : ts) pos = A.TApp (A.TVar (s2n "cons") pos) [t, tlist ts pos] pos
     tlist [] pos = A.TApp (A.TVar (s2n "nil") pos) [] pos
     ttuple (t0 : t1 : ts) pos = A.TApp (A.TVar (s2n "pair") pos) [t0, ttuple (t1 : ts) pos] pos
     ttuple [t] pos = t
@@ -356,21 +361,25 @@ resultType = ((,) <$> (P.try (effType <* P.lookAhead type_) P.<|> A.EffList [] <
 
 effKind :: Parser A.EffKind
 effKind =
-  (( A.EKStar <$ (star P.<?> "effect star kind")
-      P.<|> P.try (A.EKFunc <$> parens (P.sepBy kind comma) <* arrow <*> effKind P.<?> "effect function kind")
+  ( ( A.EKStar <$ (star P.<?> "effect star kind")
+        P.<|> P.try (A.EKFunc <$> parens (P.sepBy kind comma) <* arrow <*> effKind P.<?> "effect function kind")
+    )
+      <*> getPos
+      P.<|> parens effKind
   )
-    <*> getPos
-    P.<|> parens effKind) P.<?> "effect kind"
+    P.<?> "effect kind"
 
 effType :: Parser A.EffectType
 effType =
-  (parens effType
-    P.<|> ( ( effapp <$> (A.EffVar . s2n <$> namePath <*> getPos)
-                <*> P.optionMaybe (angles (P.sepBy1 type_ comma))
-                <*> getPos P.<?> "effect application type"
+  ( parens effType
+      P.<|> ( ( effapp <$> (A.EffVar . s2n <$> namePath <*> getPos)
+                  <*> P.optionMaybe (angles (P.sepBy1 type_ comma))
+                  <*> getPos P.<?> "effect application type"
+              )
+                P.<|> (brackets (A.EffList <$> P.sepBy effType comma) <*> getPos P.<?> "effect type list")
             )
-              P.<|> (brackets (A.EffList <$> P.sepBy effType comma) <*> getPos P.<?> "effect type list")
-          )) P.<?> "effect type"
+  )
+    P.<?> "effect type"
   where
     effapp n args pos =
       case args of
@@ -437,18 +446,20 @@ exprBinary op name =
 
 pat :: Parser A.Pattern
 pat =
-  (pcons
-    <$> ( (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple or single pattern")
-            P.<|> ( papp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
-                      <*> P.optionMaybe (angles (P.sepBy type_ comma))
-                      <*> P.optionMaybe (parens (P.sepBy pat comma))
-                      <*> getPos
-                      P.<?> "pattern application or variable"
-                  )
-            P.<|> (A.PExpr <$> expr <*> getPos P.<?> "pattern expr")
-        )
-    <*> P.optionMaybe (pipe_ *> pat P.<?> "pattern list cons")
-    <*> getPos) P.<?> "pattern"
+  ( pcons
+      <$> ( (ptuple <$> parens (P.sepBy1 pat comma) <*> getPos P.<?> "pattern tuple or single pattern")
+              P.<|> ( papp <$> (A.EVar <$> (s2n <$> namePath) <*> getPos)
+                        <*> P.optionMaybe (angles (P.sepBy type_ comma))
+                        <*> P.optionMaybe (parens (P.sepBy pat comma))
+                        <*> getPos
+                        P.<?> "pattern application or variable"
+                    )
+              P.<|> (A.PExpr <$> expr <*> getPos P.<?> "pattern expr")
+          )
+      <*> P.optionMaybe (pipe_ *> pat P.<?> "pattern list cons")
+      <*> getPos
+  )
+    P.<?> "pattern"
   where
     papp n targs pargs pos =
       if isn't _Nothing targs || isn't _Nothing pargs
@@ -606,22 +617,25 @@ typeAlias =
 funcIntf :: Parser A.FuncIntf
 funcIntf =
   f <$ kFunc <*> ident <*> boundTVars <*> boundEffVars
-    <*> parens (P.sepBy type_ comma) <*> (colon *> resultType P.<?> "type")
+    <*> parens (P.sepBy type_ comma)
+    <*> (colon *> resultType P.<?> "type")
     <*> getPos P.<?> "effect interface definition"
   where
     f n bs es args (e, r) pos = A.FuncIntf n bs es args e r pos
 
-interface :: Parser A.Interface
-interface =
-  f <$ kInterface <*> ident <*>
-   angles ((,) <$> (s2n <$> ident) <*> (colon *> (brackets (P.sepBy1 ident comma) P.<|> return [])) P.<?> "interface dependencies") <*>
-   braces (P.sepBy1 funcIntf $ P.try $ semi <* P.notFollowedBy rBrace) <*> getPos P.<?> "interface"
-  where f n (tn, deps) is pos = A.Interface n tn deps is pos
+interfaceDef :: Parser A.InterfaceDef
+interfaceDef =
+  A.InterfaceDef <$ kInterface <*> ident
+    <*> angles ((,) <$> (s2n <$> ident) <*> P.optionMaybe (colon *> kind) P.<?> "type kind")
+    <*> ((doubleArrow *> brackets (P.sepBy1 ident comma) P.<|> return []) P.<?> "interface dependencies")
+    <*> braces (P.sepBy1 funcIntf $ P.try $ semi <* P.notFollowedBy rBrace)
+    <*> getPos P.<?> "interface"
 
-implInterface :: Parser A.ImplInterface 
-implInterface =
-  A.ImplInterface <$ kImpl <* kInterface <*> ident <*> type_ <*>
-   braces (P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace) <*> getPos P.<?> "impl interface"
+implInterfaceDef :: Parser A.ImplInterfaceDef
+implInterfaceDef =
+  A.ImplInterfaceDef <$ kImpl <* kInterface <*> ident <*> angles type_
+    <*> braces (P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace)
+    <*> getPos P.<?> "impl interface"
 
 effectDef :: Parser A.EffectDef
 effectDef =
@@ -654,8 +668,8 @@ topStmt =
       P.<|> A.TAlias <$> typeAlias
       P.<|> A.EDef <$> effectDef
       P.<|> A.DDef <$> diffDef
-      P.<|> A.IDef <$> interface
-      P.<|> P.try (A.ImplIDef <$> implInterface)
+      P.<|> A.IDef <$> interfaceDef
+      P.<|> P.try (A.ImplIDef <$> implInterfaceDef)
       P.<|> (A.ImplFDef <$ kImpl <*> (A.ImplFuncDef <$> func) P.<?> "function implementation")
   )
     <* semi

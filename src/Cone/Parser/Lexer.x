@@ -85,6 +85,7 @@ tokens :-
   <0> "#"                                   { mkL Sharp }
   <0> \\                                    { mkL Backslash }
   <0> "->"                                  { mkL Arrow }
+  <0> "=>"                                  { mkL DoubleArrow }
   <0> \*                                    { mkL Star }
   <0> \?                                    { mkL Question }
   <0> \@                                    { mkL At }
@@ -184,6 +185,7 @@ data Tok =
     Pipe            |
     Backslash       |
     Arrow           |
+    DoubleArrow     |
     Star            |
     I8              |
     I16             |

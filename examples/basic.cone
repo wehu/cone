@@ -63,6 +63,16 @@ fun test4(a : t.tensor<f32, [4, 4]>) : t.tensor<f32, [4,4]> {
     sin(a)
 }
 
+interface test_i<a> {
+    fun intf0(a) : a
+}
+
+impl interface test_i<i32> {
+    fun intf0(a:i32) : i32 {
+        a
+    }
+}
+
 diff test4 wrt (a) = auto
 
 fun main() : io unit {

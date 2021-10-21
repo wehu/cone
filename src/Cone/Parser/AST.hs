@@ -18,9 +18,9 @@ import Data.Maybe
 import GHC.Generics (Generic)
 import Prettyprinter
 import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless (Alpha)
 import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Name
-import Unbound.Generics.LocallyNameless (Alpha)
 
 deriving instance Data a => Data (Name a)
 
@@ -445,13 +445,13 @@ instance Pretty ImportStmt where
               Nothing -> emptyDoc
           )
 
-data Interface
-  = Interface 
-      { _interfaceName :: String,
-        _interfaceTVar :: TVar,
-        _interfaceDeps :: [String],
-        _interfaceFuncs :: [FuncIntf],
-        _inferfaceLoc :: Location}
+data InterfaceDef = InterfaceDef
+  { _interfaceName :: String,
+    _interfaceTVar :: (TVar, Maybe Kind),
+    _interfaceDeps :: [String],
+    _interfaceFuncs :: [FuncIntf],
+    _interfaceLoc :: Location
+  }
   deriving
     ( Eq,
       Ord,
@@ -462,17 +462,19 @@ data Interface
       Generic
     )
 
-instance Pretty Interface where
-  pretty Interface{..} = vsep [
-    "interface" <+> pretty _interfaceName <+> anglesList [_interfaceTVar],
-    braces $ line <> indent 4 (vsep $ map pretty _interfaceFuncs) <> line]
+instance Pretty InterfaceDef where
+  pretty InterfaceDef {..} =
+    vsep
+      [ "interface" <+> pretty _interfaceName <+> anglesList [_interfaceTVar],
+        braces $ line <> indent 4 (vsep $ map pretty _interfaceFuncs) <> line
+      ]
 
-data ImplInterface
-  = ImplInterface 
-      { _implInterfaceName :: String,
-        _implInterfaceType :: Type,
-        _implInterfaceFuncs :: [FuncDef],
-        _implInferfaceLoc :: Location}
+data ImplInterfaceDef = ImplInterfaceDef
+  { _implInterfaceDefName :: String,
+    _implInterfaceDefType :: Type,
+    _implInterfaceDefFuncs :: [FuncDef],
+    _implInferfaceLoc :: Location
+  }
   deriving
     ( Eq,
       Ord,
@@ -483,10 +485,12 @@ data ImplInterface
       Generic
     )
 
-instance Pretty ImplInterface where
-  pretty ImplInterface{..} = vsep [
-    "impl" <+> "interface" <+> pretty _implInterfaceName <+> anglesList [_implInterfaceType],
-    braces $ line <> indent 4 (vsep $ map pretty _implInterfaceFuncs) <> line]
+instance Pretty ImplInterfaceDef where
+  pretty ImplInterfaceDef {..} =
+    vsep
+      [ "impl" <+> "interface" <+> pretty _implInterfaceDefName <+> anglesList [_implInterfaceDefType],
+        braces $ line <> indent 4 (vsep $ map pretty _implInterfaceDefFuncs) <> line
+      ]
 
 data FuncDef
   = FuncDef
@@ -524,14 +528,14 @@ instance Pretty FuncDef where
   pretty (BoundFuncDef (B vs f) _) = anglesList vs <+> pretty f
   pretty (BoundEffFuncDef (B vs f) _) = bracketsList vs <+> pretty f
 
-data ImplFuncDef = ImplFuncDef { _implFunDef :: FuncDef}
+data ImplFuncDef = ImplFuncDef {_implFunDef :: FuncDef}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance Pretty ImplFuncDef where
   pretty ImplFuncDef {..} = "impl" <+> pretty _implFunDef
 
-data DiffDef =
-  DiffDef {_diffFunc :: String, _diffWRT :: [String], _diffAdj :: Maybe Expr, _diffLoc :: Location}
+data DiffDef
+  = DiffDef {_diffFunc :: String, _diffWRT :: [String], _diffAdj :: Maybe Expr, _diffLoc :: Location}
   | BoundDiffDef {_boundDiff :: Bind [EVar] DiffDef, _diffLoc :: Location}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
@@ -545,8 +549,8 @@ data TopStmt
   | TAlias {_talias :: TypeAlias}
   | EDef {_edef :: EffectDef}
   | DDef {_ddef :: DiffDef}
-  | IDef {_idef :: Interface}
-  | ImplIDef {_implIdef :: ImplInterface}
+  | IDef {_idef :: InterfaceDef}
+  | ImplIDef {_implIdef :: ImplInterfaceDef}
   | ImplFDef {_implFdef :: ImplFuncDef}
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
@@ -625,9 +629,9 @@ instance Subst EffectType Location
 
 instance Subst Expr Location
 
-instance Subst Interface Location
+instance Subst InterfaceDef Location
 
-instance Subst ImplInterface Location
+instance Subst ImplInterfaceDef Location
 
 makeLenses ''Location
 
@@ -646,9 +650,9 @@ instance Subst EffectType PrimType
 
 instance Subst Expr PrimType
 
-instance Subst Interface PrimType
+instance Subst InterfaceDef PrimType
 
-instance Subst ImplInterface PrimType
+instance Subst ImplInterfaceDef PrimType
 
 makeLenses ''PrimType
 
@@ -681,13 +685,13 @@ instance Subst EffectType EffectType where
 
 instance Subst Expr Kind
 
-instance Subst Interface Kind
+instance Subst InterfaceDef Kind
 
-instance Subst ImplInterface Kind
+instance Subst ImplInterfaceDef Kind
 
-instance Subst Interface EffectType
+instance Subst InterfaceDef EffectType
 
-instance Subst ImplInterface EffectType
+instance Subst ImplInterfaceDef EffectType
 
 instance Subst EffectType Type
 
@@ -695,9 +699,9 @@ instance Subst Expr EffectType
 
 instance Subst Expr Type
 
-instance Subst Interface Type
+instance Subst InterfaceDef Type
 
-instance Subst ImplInterface Type
+instance Subst ImplInterfaceDef Type
 
 makeLenses ''Type
 
@@ -753,21 +757,21 @@ instance Subst Type Case
 
 instance Subst Type FuncDef
 
-instance Subst Interface FuncDef
+instance Subst InterfaceDef FuncDef
 
-instance Subst ImplInterface FuncDef
+instance Subst ImplInterfaceDef FuncDef
 
-instance Subst Interface Pattern
+instance Subst InterfaceDef Pattern
 
-instance Subst ImplInterface Pattern
+instance Subst ImplInterfaceDef Pattern
 
-instance Subst Interface Case
+instance Subst InterfaceDef Case
 
-instance Subst ImplInterface Case
+instance Subst ImplInterfaceDef Case
 
-instance Subst Interface Expr
+instance Subst InterfaceDef Expr
 
-instance Subst ImplInterface Expr
+instance Subst ImplInterfaceDef Expr
 
 instance Subst Type Expr
 
@@ -854,13 +858,13 @@ instance Subst Expr TypeCon
 
 instance Subst Expr TypeDef
 
-instance Subst Interface TypeCon
+instance Subst InterfaceDef TypeCon
 
-instance Subst ImplInterface TypeCon
+instance Subst ImplInterfaceDef TypeCon
 
-instance Subst Interface TypeDef
+instance Subst InterfaceDef TypeDef
 
-instance Subst ImplInterface TypeDef
+instance Subst ImplInterfaceDef TypeDef
 
 makeLenses ''TypeDef
 
@@ -879,9 +883,9 @@ instance Subst EffectType TypeAlias
 
 instance Subst Expr TypeAlias
 
-instance Subst Interface TypeAlias
+instance Subst InterfaceDef TypeAlias
 
-instance Subst ImplInterface TypeAlias
+instance Subst ImplInterfaceDef TypeAlias
 
 makeLenses ''TypeAlias
 
@@ -917,13 +921,13 @@ instance Subst Expr FuncIntf
 
 instance Subst Expr EffectDef
 
-instance Subst Interface FuncIntf
+instance Subst InterfaceDef FuncIntf
 
-instance Subst ImplInterface FuncIntf
+instance Subst ImplInterfaceDef FuncIntf
 
-instance Subst Interface EffectDef
+instance Subst InterfaceDef EffectDef
 
-instance Subst ImplInterface EffectDef
+instance Subst ImplInterfaceDef EffectDef
 
 makeLenses ''EffectDef
 
@@ -966,45 +970,45 @@ makePrisms ''FuncDef
 
 -------------------------------
 
-instance Plated Interface where
+instance Plated InterfaceDef where
   plate = uniplate
 
-instance Subst Expr Interface
+instance Subst Expr InterfaceDef
 
-instance Subst EffectType Interface
+instance Subst EffectType InterfaceDef
 
-instance Subst Type Interface
+instance Subst Type InterfaceDef
 
-instance Subst Interface Interface
+instance Subst InterfaceDef InterfaceDef
 
-instance Subst ImplInterface Interface
+instance Subst ImplInterfaceDef InterfaceDef
 
-instance Alpha Interface
+instance Alpha InterfaceDef
 
-makeLenses ''Interface
+makeLenses ''InterfaceDef
 
-makePrisms ''Interface
+makePrisms ''InterfaceDef
 
 -------------------------------
 
-instance Plated ImplInterface where
+instance Plated ImplInterfaceDef where
   plate = uniplate
 
-instance Subst Expr ImplInterface
+instance Subst Expr ImplInterfaceDef
 
-instance Subst EffectType ImplInterface
+instance Subst EffectType ImplInterfaceDef
 
-instance Subst Type ImplInterface
+instance Subst Type ImplInterfaceDef
 
-instance Subst ImplInterface ImplInterface
+instance Subst ImplInterfaceDef ImplInterfaceDef
 
-instance Subst Interface ImplInterface
+instance Subst InterfaceDef ImplInterfaceDef
 
-instance Alpha ImplInterface
+instance Alpha ImplInterfaceDef
 
-makeLenses ''ImplInterface
+makeLenses ''ImplInterfaceDef
 
-makePrisms ''ImplInterface
+makePrisms ''ImplInterfaceDef
 
 -------------------------------
 
@@ -1019,9 +1023,9 @@ instance Subst EffectType DiffDef
 
 instance Subst Expr DiffDef
 
-instance Subst Interface DiffDef
+instance Subst InterfaceDef DiffDef
 
-instance Subst ImplInterface DiffDef
+instance Subst ImplInterfaceDef DiffDef
 
 makeLenses ''DiffDef
 
@@ -1040,9 +1044,9 @@ instance Subst EffectType ImplFuncDef
 
 instance Subst Expr ImplFuncDef
 
-instance Subst Interface ImplFuncDef
+instance Subst InterfaceDef ImplFuncDef
 
-instance Subst ImplInterface ImplFuncDef
+instance Subst ImplInterfaceDef ImplFuncDef
 
 makeLenses ''ImplFuncDef
 
@@ -1061,9 +1065,9 @@ instance Subst EffectType TopStmt
 
 instance Subst Expr TopStmt
 
-instance Subst Interface TopStmt
+instance Subst InterfaceDef TopStmt
 
-instance Subst ImplInterface TopStmt
+instance Subst ImplInterfaceDef TopStmt
 
 makeLenses ''TopStmt
 

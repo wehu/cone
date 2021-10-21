@@ -563,13 +563,35 @@ addSpecializedFuncs m = do
   fs <- getEnv specializedFuncs
   return m{_topStmts=_topStmts m ++ map FDef (M.elems fs)}
 
+convertInterfaceDefs :: Module -> Module
+convertInterfaceDefs = over (topStmts . traverse) convert
+  where convert :: TopStmt -> TopStmt
+        convert IDef{..} = 
+          let i = _idef
+              loc = _interfaceLoc i
+              iname = _interfaceName i
+              tn = _interfaceTVar i ^. _1
+              tvar = TVar tn loc
+              deps = map (\n -> TApp (TVar (s2n n) loc) [tvar] loc) (_interfaceDeps i)
+              intfs = map (\f -> 
+                            let bvs = _intfBoundVars f
+                                bes = _intfBoundEffVars f
+                             in bindTypeEffVar bes $ bindTypeVar bvs $ TFunc (_intfArgs f) (_intfEffectType f) (_intfResultType f) loc) (_interfaceFuncs i)
+              c = TypeCon iname (deps ++ intfs) loc
+              t = TypeDef{_typeName=iname,
+                          _typeArgs=[_interfaceTVar i],
+                          _typeCons=[c],
+                          _typeLoc=_interfaceLoc i}
+            in TDef{_tdef=t}
+        convert s = s
+
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id =
   run . runError . runState env . runFresh id $
     do
       setEnv (m ^. moduleName) currentModuleName
-      renameLocalVars m
+      (renameLocalVars . convertInterfaceDefs) m
       >>= initTypeDefs
       >>= initEffTypeDefs
       >>= preInitTypeAliases
