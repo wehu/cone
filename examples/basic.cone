@@ -67,7 +67,11 @@ interface test_i<a> {
     fun intf0(a) : a
 }
 
-impl interface<a> test_i<list<a>> {
+interface test_i2<a> {
+    fun intf0(a) : a
+}
+
+impl interface<a => [test_i2]> test_i<list<a>> {
     fun intf0(a:list<a>) : list<a> {
         a
     }
