@@ -629,7 +629,7 @@ convertInterfaceDefs m = do
                       ft = bindTypeEffVar bes $
                         bindTypeVar bvs $
                           TFunc (args ++ _intfArgs f) (_intfEffectType f) (_intfResultType f) (_intfLoc f)
-                      fi = FuncDef{_funcName = _intfName f, _funcBoundVars=(_interfaceTVar ^._1, _interfaceTVar ^._2, [TVar (s2n iname) loc]):bvs, _funcBoundEffVars=bes,
+                      fi = FuncDef{_funcName = _intfName f, _funcBoundVars=(_interfaceTVar ^._1, _interfaceTVar ^._2, []):bvs, _funcBoundEffVars=bes,
                                    _funcArgs=fiArgs,
                                    _funcEffectType=_intfEffectType f,
                                    _funcResultType=_intfResultType f,
