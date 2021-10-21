@@ -337,8 +337,19 @@ initFuncDef f = do
   forMOf _Just oft $ \oft ->
     throwError $ "function redefine: " ++ fn ++ ppr pos
   setEnv (Just ft) $ funcTypes . at fn
-  setEnv (Just f{_funcName = fn}) $ funcDefs . at fn
-  return f {_funcName = fn}
+  fBody <- if isn't _Nothing (_funcExpr f) then
+           Just <$> foldM (\s (v, _, cs) -> do
+                    foldM (\s c -> do
+                      let cn = name2String $ _tvar c
+                      intfs <- getEnv $ intfFuncs . at cn
+                      when (isn't _Just intfs) $
+                        throwError $ "cannot find interface " ++ cn
+                      let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n n) pos) $ fromJust intfs) pos
+                      return $ ELet p (EVar (s2n $ "____implicit_$" ++ name2String v) pos) s False pos) s cs) (fromJust $ _funcExpr f) (_funcBoundVars f)
+           else return Nothing 
+  let f' = f{_funcName=fn, _funcExpr=fBody}
+  setEnv (Just f') $ funcDefs . at fn
+  return f'
 
 -- | Initialize all function definitons
 initFuncDefs :: (Has EnvEff sig m) => Module -> m Module
