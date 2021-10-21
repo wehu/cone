@@ -607,7 +607,7 @@ convertInterfaceDefs m = do
   prefix <- getEnv currentModuleName
   let is = m ^.. topStmts . traverse . _IDef
   intfs <- mapM (convert prefix) is
-  return m {_topStmts = [s | s <- _topStmts m, isn't _IDef s] ++ intfs}
+  return m {_topStmts = [s | s <- _topStmts m, isn't _IDef s] ++ join intfs}
   where
     convert prefix InterfaceDef {..} = do
       let i = _idef
@@ -616,17 +616,29 @@ convertInterfaceDefs m = do
           tn = _interfaceTVar ^. _1
           tvar = TVar tn loc
           -- deps = map (\n -> TApp n [tvar] loc) _interfaceDeps
-          intfs =
-            map
-              ( \f ->
+      intfs <-
+            mapM
+              ( \f -> do
+                  fiArgs <- mapM (\t -> do
+                                  id <- fresh
+                                  let n = "__arg_$" ++ show id
+                                  return (n, t)) (_intfArgs f)
                   let bvs = _intfBoundVars f
                       bes = _intfBoundEffVars f
-                   in bindTypeEffVar bes $
+                      args = join $ map (\(n, _, cs) -> [TApp c [TVar n loc] loc | c <- cs]) (_intfBoundVars f)
+                      ft = bindTypeEffVar bes $
                         bindTypeVar bvs $
-                          TFunc (_intfArgs f) (_intfEffectType f) (_intfResultType f) loc
+                          TFunc (args ++ _intfArgs f) (_intfEffectType f) (_intfResultType f) loc
+                      fi = FuncDef{_funcName = _intfName f, _funcBoundVars=(_interfaceTVar ^._1, _interfaceTVar ^._2, []):bvs, _funcBoundEffVars=bes,
+                                   _funcArgs=fiArgs,
+                                   _funcEffectType=_intfEffectType f,
+                                   _funcResultType=_intfResultType f,
+                                   _funcExpr = Nothing,
+                                   _funcLoc = loc}
+                   in return (ft, fi)
               )
               _interfaceFuncs
-          c = TypeCon iname {-deps ++ -} intfs loc
+      let c = TypeCon iname {-deps ++ -} (intfs ^.. traverse . _1) loc
           t =
             TypeDef
               { _typeName = iname,
@@ -635,7 +647,7 @@ convertInterfaceDefs m = do
                 _typeLoc = _interfaceLoc
               }
       setEnv (Just $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
-      return TDef {_tdef = t}
+      return $ TDef {_tdef = t} : map FDef (intfs ^.. traverse . _2)
     convert prefix BoundInterfaceDef {..} =
       let (_, b) = unsafeUnbind _boundInterfaceDef
        in convert prefix b
