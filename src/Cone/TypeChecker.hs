@@ -350,7 +350,7 @@ initFuncDef f = do
                       let cn = name2String $ _tvar c
                       intfs <- getEnv $ intfFuncs . at cn
                       when (isn't _Just intfs) $
-                        throwError $ "cannot find interface " ++ cn
+                        throwError $ "cannot find interface " ++ cn ++ ppr pos
                       let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n n) pos) $ fromJust intfs) pos
                       return (ELet p (EVar (s2n $ _funcArgs f !! i ^. _1) pos) s False pos, i+1)
                   )
