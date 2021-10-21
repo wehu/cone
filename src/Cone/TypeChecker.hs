@@ -610,13 +610,27 @@ convertImplInterfaceDefs m =
           let (_, b) = unsafeUnbind _boundImplInterfaceDef
             in convert b 
 
+addImplicitArgs :: Module -> Module
+addImplicitArgs m = over (topStmts . traverse . _FDef) convert $ 
+                     over (topStmts . traverse . _ImplFDef . implFunDef) convert m
+  where convert f@FuncDef{..} =
+          let loc = _funcLoc
+              args = join $ map (\(n, _, cs) -> [(name2String n, TApp c [TVar n loc] loc)| c <- cs]) _funcBoundVars 
+            in f{_funcArgs=args ++ _funcArgs}
+        convert BoundFuncDef{..} =
+          let (_, b) = unsafeUnbind _boundFuncDef
+            in convert b
+        convert BoundEffFuncDef{..} =
+          let (_, b) = unsafeUnbind _boundEffFuncDef
+            in convert b
+
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id =
   run . runError . runState env . runFresh id $
     do
       setEnv (m ^. moduleName) currentModuleName
-      (renameLocalVars . convertImplInterfaceDefs . convertInterfaceDefs) m
+      (renameLocalVars . addImplicitArgs . convertImplInterfaceDefs . convertInterfaceDefs) m
       >>= initTypeDefs
       >>= initEffTypeDefs
       >>= preInitTypeAliases
