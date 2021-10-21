@@ -351,7 +351,7 @@ initFuncDef f = do
                       intfs <- getEnv $ intfFuncs . at cn
                       when (isn't _Just intfs) $
                         throwError $ "cannot find interface " ++ cn ++ ppr pos
-                      let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n $ n ++ "_$" ++ name2String v) pos) $ fromJust intfs) pos
+                      let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n n) pos) $ fromJust intfs) pos
                       return (ELet p (EVar (s2n $ _funcArgs f !! i ^. _1) pos) s False pos, i + 1)
                   )
                   (s, i)
@@ -645,7 +645,18 @@ convertInterfaceDefs m = do
                         _funcExpr = Nothing,
                         _funcLoc = _intfLoc f
                       }
-               in return (ft, fi)
+                  fiDict =
+                    FuncDef
+                      { _funcName = _intfName f ++ "_$dict",
+                        _funcBoundVars = [(_interfaceTVar ^. _1, _interfaceTVar ^. _2, [])],
+                        _funcBoundEffVars = [],
+                        _funcArgs = [],
+                        _funcEffectType = EffList [] loc,
+                        _funcResultType = TApp (TVar (s2n iname) loc) [tvar] loc,
+                        _funcExpr = Nothing,
+                        _funcLoc = _intfLoc f
+                      }
+               in return (ft, fi, fiDict)
           )
           _interfaceFuncs
       let c = TypeCon iname {-deps ++ -} (intfs ^.. traverse . _1) loc
@@ -657,7 +668,7 @@ convertInterfaceDefs m = do
                 _typeLoc = _interfaceLoc
               }
       setEnv (Just $ map (\n -> prefix ++ "/" ++ n) $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
-      return $ TDef {_tdef = t} : map FDef (intfs ^.. traverse . _2)
+      return $ TDef {_tdef = t} : map FDef (intfs ^.. traverse . _2 ++ intfs ^.. traverse . _3)
     convert prefix BoundInterfaceDef {..} =
       let (_, b) = unsafeUnbind _boundInterfaceDef
        in convert prefix b
