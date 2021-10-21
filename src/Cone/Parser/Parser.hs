@@ -627,7 +627,7 @@ interfaceDef :: Parser A.InterfaceDef
 interfaceDef =
   A.InterfaceDef <$ kInterface <*> ident
     <*> angles ((,) <$> (s2n <$> ident) <*> P.optionMaybe (colon *> kind) P.<?> "type kind")
-    <*> ((doubleArrow *> brackets (P.sepBy1 ident comma) P.<|> return []) P.<?> "interface dependencies")
+    <*> ((doubleArrow *> brackets (P.sepBy1 (A.TVar . s2n <$> ident <*> getPos) comma) P.<|> return []) P.<?> "interface dependencies")
     <*> braces (P.sepBy1 funcIntf $ P.try $ semi <* P.notFollowedBy rBrace)
     <*> getPos P.<?> "interface"
 

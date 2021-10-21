@@ -564,33 +564,37 @@ addSpecializedFuncs m = do
   return m{_topStmts=_topStmts m ++ map FDef (M.elems fs)}
 
 convertInterfaceDefs :: Module -> Module
-convertInterfaceDefs = over (topStmts . traverse) convert
-  where convert :: TopStmt -> TopStmt
-        convert IDef{..} = 
+convertInterfaceDefs m =
+  let is = m ^.. topStmts . traverse . _IDef
+      intfs = map convert is
+    in m{_topStmts=_topStmts m ++ intfs}
+  where convert InterfaceDef{..} = 
           let i = _idef
-              loc = _interfaceLoc i
-              iname = _interfaceName i
-              tn = _interfaceTVar i ^. _1
+              loc = _interfaceLoc
+              iname = _interfaceName
+              tn = _interfaceTVar ^. _1
               tvar = TVar tn loc
-              deps = map (\n -> TApp (TVar (s2n n) loc) [tvar] loc) (_interfaceDeps i)
+              deps = map (\n -> TApp n [tvar] loc) _interfaceDeps
               intfs = map (\f -> 
                             let bvs = _intfBoundVars f
                                 bes = _intfBoundEffVars f
                              in bindTypeEffVar bes $ bindTypeVar bvs $ 
-                                   TFunc (_intfArgs f) (_intfEffectType f) (_intfResultType f) loc) (_interfaceFuncs i)
+                                   TFunc (_intfArgs f) (_intfEffectType f) (_intfResultType f) loc) _interfaceFuncs
               c = TypeCon iname (deps ++ intfs) loc
               t = TypeDef{_typeName=iname,
-                          _typeArgs=[_interfaceTVar i],
+                          _typeArgs=[_interfaceTVar],
                           _typeCons=[c],
-                          _typeLoc=_interfaceLoc i}
+                          _typeLoc=_interfaceLoc}
             in TDef{_tdef=t}
-        convert s = s
+        convert BoundInterfaceDef{..} =
+          let (_, b) = unsafeUnbind _boundInterfaceDef
+            in convert b 
 
 convertImplInterfaceDefs :: Module -> Module
 convertImplInterfaceDefs m = 
   let implIntfs = m ^.. topStmts . traverse . _ImplIDef
       intfs = join $ map convert implIntfs
-    in m{_topStmts=[s | s <- _topStmts m, isn't _ImplIDef s] ++ intfs}
+    in m{_topStmts=_topStmts m ++ intfs}
   where convert ImplInterfaceDef{..} = 
           let loc = _implInferfaceLoc
               iname = _implInterfaceDefName
@@ -602,6 +606,9 @@ convertImplInterfaceDefs m =
                                c = EApp False (EVar (s2n iname) loc) [t] [lambda] loc
                             in FDef $ FuncDef fn bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc) _implInterfaceDefFuncs 
             in intfs
+        convert BoundImplInterfaceDef{..} =
+          let (_, b) = unsafeUnbind _boundImplInterfaceDef
+            in convert b 
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))

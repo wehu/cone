@@ -245,6 +245,16 @@ bindTAlias talias =
   let boundVars = L.nub $ talias ^.. typeAliasArgs . traverse . _1
    in BoundTypeAlias (bind boundVars talias) (_typeAliasLoc talias)
 
+bindIDef :: InterfaceDef -> InterfaceDef
+bindIDef idef =
+  let boundVars = [idef ^. interfaceTVar . _1]
+   in BoundInterfaceDef (bind boundVars idef) (_interfaceLoc idef)
+
+bindImplIDef :: ImplInterfaceDef -> ImplInterfaceDef
+bindImplIDef idef =
+  let boundVars = idef ^.. implInterfaceBoundVars . traverse . _1
+   in BoundImplInterfaceDef (bind boundVars idef) (_implInterfaceLoc idef)
+
 bindFDef :: FuncDef -> FuncDef
 bindFDef fdef =
   let boundVars = L.nub $ fdef ^. funcBoundVars
@@ -267,7 +277,9 @@ addTypeBindings m =
     over (topStmts . traverse . _TDef) bindTDef $
       over (topStmts . traverse . _FDef) bindFDef $
         over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef $
-          over (topStmts . traverse . _TAlias) bindTAlias m
+          over (topStmts . traverse . _TAlias) bindTAlias $
+            over (topStmts . traverse . _IDef ) bindIDef $
+              over (topStmts . traverse . _ImplIDef) bindImplIDef m
 
 -- | Remove type bindings
 removeTypeBindings :: Module -> Module
@@ -276,7 +288,9 @@ removeTypeBindings m =
     over (topStmts . traverse . _TDef) removeBindingsForTDef $
       over (topStmts . traverse . _FDef) removeBindingsForFDef $
         over (topStmts . traverse . _ImplFDef . implFunDef) removeBindingsForFDef $
-          over (topStmts . traverse . _TAlias) removeBindingsForTypeAlias m
+          over (topStmts . traverse . _TAlias) removeBindingsForTypeAlias $
+            over (topStmts . traverse ._IDef) removeBindingsForIDef $
+              over (topStmts . traverse . _ImplIDef) removeBindingsForImplIDef m
   where
     removeBindingsForEDef (BoundEffectDef b _) =
       let (_, e) = unsafeUnbind b
@@ -294,6 +308,14 @@ removeTypeBindings m =
       let (_, t) = unsafeUnbind b
        in removeBindingsForTDef t
     removeBindingsForTDef t = t
+    removeBindingsForIDef (BoundInterfaceDef b _) =
+      let (_, t) = unsafeUnbind b
+       in removeBindingsForIDef t
+    removeBindingsForIDef t = t
+    removeBindingsForImplIDef (BoundImplInterfaceDef b _) =
+      let (_, t) = unsafeUnbind b
+       in removeBindingsForImplIDef t
+    removeBindingsForImplIDef t = t
     removeBindingsForTypeAlias (BoundTypeAlias b _) =
       let (_, t) = unsafeUnbind b
        in removeBindingsForTypeAlias t

@@ -448,10 +448,11 @@ instance Pretty ImportStmt where
 data InterfaceDef = InterfaceDef
   { _interfaceName :: String,
     _interfaceTVar :: (TVar, Maybe Kind),
-    _interfaceDeps :: [String],
+    _interfaceDeps :: [Type],
     _interfaceFuncs :: [FuncIntf],
     _interfaceLoc :: Location
   }
+  | BoundInterfaceDef {_boundInterfaceDef :: Bind [TVar] InterfaceDef, _interfaceLoc :: Location}
   deriving
     ( Eq,
       Ord,
@@ -468,6 +469,7 @@ instance Pretty InterfaceDef where
       [ "interface" <+> pretty _interfaceName <+> anglesList [_interfaceTVar],
         braces $ line <> indent 4 (vsep $ map pretty _interfaceFuncs) <> line
       ]
+  pretty (BoundInterfaceDef (B vs i) _) = anglesList vs <+> pretty i
 
 data ImplInterfaceDef = ImplInterfaceDef
   { _implInterfaceBoundVars :: [(TVar, Maybe Kind)],
@@ -476,6 +478,7 @@ data ImplInterfaceDef = ImplInterfaceDef
     _implInterfaceDefFuncs :: [FuncDef],
     _implInferfaceLoc :: Location
   }
+  | BoundImplInterfaceDef {_boundImplInterfaceDef :: Bind [TVar] ImplInterfaceDef, _implInterfaceLoc :: Location}
   deriving
     ( Eq,
       Ord,
@@ -492,6 +495,7 @@ instance Pretty ImplInterfaceDef where
       [ "impl" <+> "interface" <+> pretty _implInterfaceDefName <+> anglesList [_implInterfaceDefType],
         braces $ line <> indent 4 (vsep $ map pretty _implInterfaceDefFuncs) <> line
       ]
+  pretty (BoundImplInterfaceDef (B vs i) _) = anglesList vs <+> pretty i
 
 data FuncDef
   = FuncDef
