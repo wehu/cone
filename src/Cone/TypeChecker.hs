@@ -563,12 +563,13 @@ addSpecializedFuncs m = do
   fs <- getEnv specializedFuncs
   return m{_topStmts=_topStmts m ++ map FDef (M.elems fs)}
 
-convertInterfaceDefs :: Module -> Module
-convertInterfaceDefs m =
+convertInterfaceDefs :: (Has EnvEff sig m) => Module -> m Module
+convertInterfaceDefs m = do
+  prefix <- getEnv currentModuleName
   let is = m ^.. topStmts . traverse . _IDef
-      intfs = map convert is
-    in m{_topStmts=[s | s <- _topStmts m, isn't _IDef s] ++ intfs}
-  where convert InterfaceDef{..} = 
+  intfs <- mapM (convert prefix) is
+  return m{_topStmts=[s | s <- _topStmts m, isn't _IDef s] ++ intfs}
+  where convert prefix InterfaceDef{..} = do
           let i = _idef
               loc = _interfaceLoc
               iname = _interfaceName
@@ -585,10 +586,11 @@ convertInterfaceDefs m =
                           _typeArgs=[_interfaceTVar],
                           _typeCons=[c],
                           _typeLoc=_interfaceLoc}
-            in TDef{_tdef=t}
-        convert BoundInterfaceDef{..} =
+          setEnv (Just $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
+          return TDef{_tdef=t}
+        convert prefix BoundInterfaceDef{..} =
           let (_, b) = unsafeUnbind _boundInterfaceDef
-            in convert b 
+            in convert prefix b 
 
 convertImplInterfaceDefs :: Module -> Module
 convertImplInterfaceDefs m = 
@@ -636,7 +638,8 @@ initModule m env id =
   run . runError . runState env . runFresh id $
     do
       setEnv (m ^. moduleName) currentModuleName
-      (renameLocalVars . addImplicitArgs . convertImplInterfaceDefs . convertInterfaceDefs) m
+      convertInterfaceDefs m
+      >>= (renameLocalVars . addImplicitArgs . convertImplInterfaceDefs)
       >>= initTypeDefs
       >>= initEffTypeDefs
       >>= preInitTypeAliases

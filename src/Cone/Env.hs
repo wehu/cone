@@ -54,6 +54,8 @@ type DiffAdjs = M.Map String DiffDef
 
 type FuncDefs = M.Map String FuncDef
 
+type IntfFuncs = M.Map String [String]
+
 -- | The environment
 data Env = Env
   { _currentModuleName :: String,
@@ -72,7 +74,8 @@ data Env = Env
     _diffAdjs :: DiffAdjs,
     _funcDefs :: FuncDefs,
     _specializedFuncs :: FuncDefs,
-    _specializedFuncTypes :: FuncTypes
+    _specializedFuncTypes :: FuncTypes,
+    _intfFuncs :: IntfFuncs
   }
   deriving (Show)
 
@@ -96,7 +99,8 @@ initialEnv =
       _diffAdjs = M.empty,
       _funcDefs = M.empty,
       _specializedFuncs = M.empty,
-      _specializedFuncTypes = M.empty
+      _specializedFuncTypes = M.empty,
+      _intfFuncs = M.empty
     }
 
 type EnvEff = Eff Env String
