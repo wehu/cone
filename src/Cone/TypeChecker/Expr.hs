@@ -290,9 +290,9 @@ inferExprType l@ELam {..} = underScope $ do
       k <- inferTypeKind _elamResultType
       checkTypeKind k
       checkTypeMatch eType _elamResultType
-      forM_ _elamBoundVars $ \(_, _, cs) ->
-        unless (null cs) $
-          throwError $ "lambda does not support constraints yes " ++ ppr cs ++ ppr _eloc
+      -- forM_ _elamBoundVars $ \(_, _, cs) ->
+      --   unless (null cs) $
+      --     throwError $ "lambda does not support constraints yes " ++ ppr cs ++ ppr _eloc
       -- return the lambda type
       t <-
         inferType $

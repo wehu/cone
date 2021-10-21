@@ -342,22 +342,22 @@ initFuncDef f = do
   fBody <-
     if isn't _Nothing (_funcExpr f)
       then
-        Just
+        (\(e, _) -> Just e)
           <$> foldM
-            ( \s (v, _, cs) -> do
+            ( \(s, i) (v, _, cs) -> do
                 foldM
-                  ( \s c -> do
+                  ( \(s, i) c -> do
                       let cn = name2String $ _tvar c
                       intfs <- getEnv $ intfFuncs . at cn
                       when (isn't _Just intfs) $
                         throwError $ "cannot find interface " ++ cn
                       let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n n) pos) $ fromJust intfs) pos
-                      return $ ELet p (EVar (s2n $ "____implicit_$" ++ name2String v) pos) s False pos
+                      return (ELet p (EVar (s2n $ _funcArgs f !! i ^. _1) pos) s False pos, i+1)
                   )
-                  s
+                  (s, i)
                   cs
             )
-            (fromJust $ _funcExpr f)
+            (fromJust $ _funcExpr f, 0)
             (_funcBoundVars f)
       else return Nothing
   let f' = f {_funcName = fn, _funcExpr = fBody}
@@ -673,14 +673,14 @@ addImplicitArgs m =
     convert f@FuncDef {..} =
       let loc = _funcLoc
           args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _funcBoundVars
-          -- e = fmap (transform convertLam) _funcExpr
-       in f {_funcArgs = args ++ _funcArgs{-, _funcExpr = e-}}
-      -- where
-      --   convertLam l@ELam {..} =
-      --     let loc = _eloc
-      --         args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _elamBoundVars
-      --      in l {_elamArgs = args ++ _elamArgs}
-      --   convertLam e = e
+          e = fmap (transform convertLam) _funcExpr
+       in f {_funcArgs = args ++ _funcArgs, _funcExpr = e}
+      where
+        convertLam l@ELam {..} =
+          let loc = _eloc
+              args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _elamBoundVars
+           in l {_elamArgs = args ++ _elamArgs}
+        convertLam e = e
     convert BoundFuncDef {..} =
       let (_, b) = unsafeUnbind _boundFuncDef
        in convert b
