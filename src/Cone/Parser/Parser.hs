@@ -141,8 +141,6 @@ at_ = symbol L.At "@"
 
 arrow = symbol L.Arrow "->"
 
-doubleArrow = symbol L.DoubleArrow "=>"
-
 star = symbol L.Star "*"
 
 dot = symbol L.Dot "."
@@ -349,7 +347,7 @@ type_ = PE.buildExpressionParser typeTable typeTerm P.<?> "type"
 boundTVars :: Parser [(A.TVar, Maybe A.Kind, [A.Type])]
 boundTVars =
   angles (P.sepBy1 ((,,) <$> (s2n <$> ident) <*> (P.optionMaybe (colon *> kind P.<?> "type kind annotation") P.<?> "type variable list")
-           <*> ((doubleArrow *> brackets (P.sepBy1 (A.TVar . s2n <$> ident <*> getPos) comma) P.<|> return []) P.<?> "interface dependencies")) comma)
+           <*> ((le *> brackets (P.sepBy1 (A.TVar . s2n <$> ident <*> getPos) comma) P.<|> return []) P.<?> "interface dependencies")) comma)
     P.<|> return []
 
 boundEffVars :: Parser [A.EffVar]
@@ -628,7 +626,6 @@ interfaceDef :: Parser A.InterfaceDef
 interfaceDef =
   A.InterfaceDef <$ kInterface <*> ident
     <*> angles ((,) <$> (s2n <$> ident) <*> P.optionMaybe (colon *> kind) P.<?> "type kind")
-    -- <*> ((doubleArrow *> brackets (P.sepBy1 (A.TVar . s2n <$> ident <*> getPos) comma) P.<|> return []) P.<?> "interface dependencies")
     <*> braces (P.sepBy1 funcIntf $ P.try $ semi <* P.notFollowedBy rBrace)
     <*> getPos P.<?> "interface"
 
