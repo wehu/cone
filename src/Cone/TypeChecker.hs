@@ -628,13 +628,13 @@ convertInterfaceDefs m = do
                       args = join $ map (\(n, _, cs) -> [TApp c [TVar n loc] loc | c <- cs]) (_intfBoundVars f)
                       ft = bindTypeEffVar bes $
                         bindTypeVar bvs $
-                          TFunc (args ++ _intfArgs f) (_intfEffectType f) (_intfResultType f) loc
-                      fi = FuncDef{_funcName = _intfName f, _funcBoundVars=(_interfaceTVar ^._1, _interfaceTVar ^._2, []):bvs, _funcBoundEffVars=bes,
+                          TFunc (args ++ _intfArgs f) (_intfEffectType f) (_intfResultType f) (_intfLoc f)
+                      fi = FuncDef{_funcName = _intfName f, _funcBoundVars=(_interfaceTVar ^._1, _interfaceTVar ^._2, [TVar (s2n iname) loc]):bvs, _funcBoundEffVars=bes,
                                    _funcArgs=fiArgs,
                                    _funcEffectType=_intfEffectType f,
                                    _funcResultType=_intfResultType f,
                                    _funcExpr = Nothing,
-                                   _funcLoc = loc}
+                                   _funcLoc = _intfLoc f}
                    in return (ft, fi)
               )
               _interfaceFuncs
