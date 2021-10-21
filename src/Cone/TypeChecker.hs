@@ -673,14 +673,14 @@ addImplicitArgs m =
     convert f@FuncDef {..} =
       let loc = _funcLoc
           args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _funcBoundVars
-          e = fmap (transform convertLam) _funcExpr
-       in f {_funcArgs = args ++ _funcArgs, _funcExpr = e}
-      where
-        convertLam l@ELam {..} =
-          let loc = _eloc
-              args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _elamBoundVars
-           in l {_elamArgs = args ++ _elamArgs}
-        convertLam e = e
+          -- e = fmap (transform convertLam) _funcExpr
+       in f {_funcArgs = args ++ _funcArgs{-, _funcExpr = e-}}
+      -- where
+      --   convertLam l@ELam {..} =
+      --     let loc = _eloc
+      --         args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _elamBoundVars
+      --      in l {_elamArgs = args ++ _elamArgs}
+      --   convertLam e = e
     convert BoundFuncDef {..} =
       let (_, b) = unsafeUnbind _boundFuncDef
        in convert b
