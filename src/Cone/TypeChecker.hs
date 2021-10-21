@@ -74,7 +74,7 @@ initTypeConDef t = do
   globalTypes <- fmap s2n . M.keys <$> getEnv typeKinds
   -- find all free type variables
   let b = bind (globalTypes::[TVar]) (bindTDef t)
-      fvars = (b ^.. fv) :: [TVar]
+      fvars = L.nubBy aeq (b ^.. fv) :: [TVar]
   when (fvars /= []) $
           throwError $
             "type constructor's type variables should "
@@ -167,7 +167,7 @@ initTypeAlias t = do
       aliasType = _typeAliasType t
       name = t ^. typeAliasName
       b = bind (globalTypes::[TVar]) (bindTAlias t)
-      fvars = (b ^.. fv) :: [TVar]
+      fvars = L.nubBy aeq (b ^.. fv) :: [TVar]
       pos = _typeAliasLoc t
   -- check if has free type variables
   when (fvars /= []) $
@@ -229,9 +229,9 @@ initEffIntfDef e = do
             tvars = i ^.. intfBoundVars .traverse._1
             evars = i ^. intfBoundEffVars
             tb = bind (globalTypes ++ tvars) (bindEDef e)
-            ftvars = (tb ^.. fv) :: [TVar]
+            ftvars = L.nubBy aeq (tb ^.. fv) :: [TVar]
             eb = bind (globalEffTypes ++ evars) (bindEDef e)
-            fevars = (eb ^.. fv) :: [EffVar]
+            fevars = L.nubBy aeq (eb ^.. fv) :: [EffVar]
         -- check if has free type variables
         when (ftvars /= []) $
                 throwError $
@@ -318,8 +318,8 @@ initFuncDef f = do
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
       bt = bind (globalTypes::[TVar]) (bindFDef f)
       be = bind (globalEffTypes::[EffVar]) (bindFDef f)
-      ftvars = (bt ^.. fv) :: [TVar]
-      fevars = (be ^.. fv) :: [EffVar]
+      ftvars = L.nubBy aeq (bt ^.. fv) :: [TVar]
+      fevars = L.nubBy aeq (be ^.. fv) :: [EffVar]
   -- check if has free type variables
   when (ftvars /= []) $
     throwError $
@@ -567,20 +567,20 @@ convertInterfaceDefs :: Module -> Module
 convertInterfaceDefs m =
   let is = m ^.. topStmts . traverse . _IDef
       intfs = map convert is
-    in m{_topStmts=_topStmts m ++ intfs}
+    in m{_topStmts=[s | s <- _topStmts m, isn't _IDef s] ++ intfs}
   where convert InterfaceDef{..} = 
           let i = _idef
               loc = _interfaceLoc
               iname = _interfaceName
               tn = _interfaceTVar ^. _1
               tvar = TVar tn loc
-              deps = map (\n -> TApp n [tvar] loc) _interfaceDeps
+              -- deps = map (\n -> TApp n [tvar] loc) _interfaceDeps
               intfs = map (\f -> 
                             let bvs = _intfBoundVars f
                                 bes = _intfBoundEffVars f
                              in bindTypeEffVar bes $ bindTypeVar bvs $ 
                                    TFunc (_intfArgs f) (_intfEffectType f) (_intfResultType f) loc) _interfaceFuncs
-              c = TypeCon iname (deps ++ intfs) loc
+              c = TypeCon iname {-deps ++ -}intfs loc
               t = TypeDef{_typeName=iname,
                           _typeArgs=[_interfaceTVar],
                           _typeCons=[c],
@@ -594,7 +594,7 @@ convertImplInterfaceDefs :: Module -> Module
 convertImplInterfaceDefs m = 
   let implIntfs = m ^.. topStmts . traverse . _ImplIDef
       intfs = join $ map convert implIntfs
-    in m{_topStmts=_topStmts m ++ intfs}
+    in m{_topStmts=[s | s <- _topStmts m, isn't _ImplIDef s] ++ intfs}
   where convert ImplInterfaceDef{..} = 
           let loc = _implInferfaceLoc
               iname = _implInterfaceDefName
@@ -604,7 +604,7 @@ convertImplInterfaceDefs m =
                            let fn = uniqueFuncImplName (_funcName f) t
                                lambda = ELam (_funcBoundVars f) (_funcBoundEffVars f) (_funcArgs f) (_funcEffectType f) (_funcResultType f) (_funcExpr f) loc
                                c = EApp False (EVar (s2n iname) loc) [t] [lambda] loc
-                            in FDef $ FuncDef fn bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc) _implInterfaceDefFuncs 
+                            in FDef $ FuncDef fn bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc) _implInterfaceDefFuncs
             in intfs
         convert BoundImplInterfaceDef{..} =
           let (_, b) = unsafeUnbind _boundImplInterfaceDef

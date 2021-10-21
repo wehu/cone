@@ -448,7 +448,7 @@ instance Pretty ImportStmt where
 data InterfaceDef = InterfaceDef
   { _interfaceName :: String,
     _interfaceTVar :: (TVar, Maybe Kind),
-    _interfaceDeps :: [Type],
+   -- _interfaceDeps :: [Type],
     _interfaceFuncs :: [FuncIntf],
     _interfaceLoc :: Location
   }

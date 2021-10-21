@@ -49,8 +49,8 @@ checkFuncType f = underScope $ do
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
       bt = bind (globalTypes::[TVar]) (bindFDef f)
       be = bind (globalEffTypes::[EffVar]) (bindFDef f)
-      ftvars = (bt ^.. fv) :: [TVar]
-      fevars = (be ^.. fv) :: [EffVar]
+      ftvars = L.nubBy aeq (bt ^.. fv) :: [TVar]
+      fevars = L.nubBy aeq (be ^.. fv) :: [EffVar]
   -- check if has free type variables
   when (ftvars /= []) $
     throwError $
