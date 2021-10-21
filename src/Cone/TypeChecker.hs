@@ -5,8 +5,8 @@
 
 module Cone.TypeChecker (initModule, checkType) where
 
-import Cone.Parser.AST
 import Cone.Env
+import Cone.Parser.AST
 import Cone.TypeChecker.Expr
 import Cone.TypeChecker.Type
 import Control.Carrier.Error.Either
@@ -73,13 +73,13 @@ initTypeConDef t = do
   prefix <- getEnv currentModuleName
   globalTypes <- fmap s2n . M.keys <$> getEnv typeKinds
   -- find all free type variables
-  let b = bind (globalTypes::[TVar]) (bindTDef t)
+  let b = bind (globalTypes :: [TVar]) (bindTDef t)
       fvars = L.nubBy aeq (b ^.. fv) :: [TVar]
   when (fvars /= []) $
-          throwError $
-            "type constructor's type variables should "
-              ++ "only exists in type arguments: "
-              ++ ppr fvars
+    throwError $
+      "type constructor's type variables should "
+        ++ "only exists in type arguments: "
+        ++ ppr fvars
   mapMOf
     (typeCons . traverse)
     ( \c -> do
@@ -166,7 +166,7 @@ initTypeAlias t = do
   let args = t ^.. typeAliasArgs . traverse . _1
       aliasType = _typeAliasType t
       name = t ^. typeAliasName
-      b = bind (globalTypes::[TVar]) (bindTAlias t)
+      b = bind (globalTypes :: [TVar]) (bindTAlias t)
       fvars = L.nubBy aeq (b ^.. fv) :: [TVar]
       pos = _typeAliasLoc t
   -- check if has free type variables
@@ -226,7 +226,7 @@ initEffIntfDef e = do
             iargs = i ^. intfArgs
             iresult = _intfResultType i
             pos = i ^. intfLoc
-            tvars = i ^.. intfBoundVars .traverse._1
+            tvars = i ^.. intfBoundVars . traverse . _1
             evars = i ^. intfBoundEffVars
             tb = bind (globalTypes ++ tvars) (bindEDef e)
             ftvars = L.nubBy aeq (tb ^.. fv) :: [TVar]
@@ -234,17 +234,17 @@ initEffIntfDef e = do
             fevars = L.nubBy aeq (eb ^.. fv) :: [EffVar]
         -- check if has free type variables
         when (ftvars /= []) $
-                throwError $
-                  "eff interfaces's type variables should "
-                    ++ "only exists in eff type arguments: "
-                    ++ ppr ftvars
-                    ++ ppr (_effectLoc e)
+          throwError $
+            "eff interfaces's type variables should "
+              ++ "only exists in eff type arguments: "
+              ++ ppr ftvars
+              ++ ppr (_effectLoc e)
         when (fevars /= []) $
-                throwError $
-                  "eff interfaces's eff type variables should "
-                    ++ "only exists in eff type arguments: "
-                    ++ ppr fevars
-                    ++ ppr (_effectLoc e)
+          throwError $
+            "eff interfaces's eff type variables should "
+              ++ "only exists in eff type arguments: "
+              ++ ppr fevars
+              ++ ppr (_effectLoc e)
         addEffIntfs en intfn
         -- check if inteface exists or not
         ot <- getEnv $ funcTypes . at intfn
@@ -274,7 +274,7 @@ initEffIntfDef e = do
           intfn = i ^. intfName
           bvars = i ^. intfBoundVars
           pos = i ^. intfLoc
-          tvars = map (\(n, t)-> (n, t, [])) (e ^. effectArgs)
+          tvars = map (\(n, t) -> (n, t, [])) (e ^. effectArgs)
           evars = i ^. intfBoundEffVars
        in bindTypeEffVar evars $
             bindTypeVar tvars $
@@ -316,8 +316,8 @@ initFuncDef f = do
       star = KStar pos
       btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
-      bt = bind (globalTypes::[TVar]) (bindFDef f)
-      be = bind (globalEffTypes::[EffVar]) (bindFDef f)
+      bt = bind (globalTypes :: [TVar]) (bindFDef f)
+      be = bind (globalEffTypes :: [EffVar]) (bindFDef f)
       ftvars = L.nubBy aeq (bt ^.. fv) :: [TVar]
       fevars = L.nubBy aeq (be ^.. fv) :: [EffVar]
   -- check if has free type variables
@@ -325,29 +325,42 @@ initFuncDef f = do
     throwError $
       "function type variables should "
         ++ "only exists in function type arguments: "
-        ++ ppr ftvars ++ ppr (_funcLoc f)
+        ++ ppr ftvars
+        ++ ppr (_funcLoc f)
   when (fevars /= []) $
     throwError $
       "function eff type variables should "
         ++ "only exists in function eff type arguments: "
-        ++ ppr fevars ++ ppr (_funcLoc f)
+        ++ ppr fevars
+        ++ ppr (_funcLoc f)
   k <- inferTypeKind ft
   checkTypeKind k
   oft <- getEnv $ funcTypes . at fn
   forMOf _Just oft $ \oft ->
     throwError $ "function redefine: " ++ fn ++ ppr pos
   setEnv (Just ft) $ funcTypes . at fn
-  fBody <- if isn't _Nothing (_funcExpr f) then
-           Just <$> foldM (\s (v, _, cs) -> do
-                    foldM (\s c -> do
+  fBody <-
+    if isn't _Nothing (_funcExpr f)
+      then
+        Just
+          <$> foldM
+            ( \s (v, _, cs) -> do
+                foldM
+                  ( \s c -> do
                       let cn = name2String $ _tvar c
                       intfs <- getEnv $ intfFuncs . at cn
                       when (isn't _Just intfs) $
                         throwError $ "cannot find interface " ++ cn
                       let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n n) pos) $ fromJust intfs) pos
-                      return $ ELet p (EVar (s2n $ "____implicit_$" ++ name2String v) pos) s False pos) s cs) (fromJust $ _funcExpr f) (_funcBoundVars f)
-           else return Nothing 
-  let f' = f{_funcName=fn, _funcExpr=fBody}
+                      return $ ELet p (EVar (s2n $ "____implicit_$" ++ name2String v) pos) s False pos
+                  )
+                  s
+                  cs
+            )
+            (fromJust $ _funcExpr f)
+            (_funcBoundVars f)
+      else return Nothing
+  let f' = f {_funcName = fn, _funcExpr = fBody}
   setEnv (Just f') $ funcDefs . at fn
   return f'
 
@@ -356,7 +369,7 @@ initFuncDefs :: (Has EnvEff sig m) => Module -> m Module
 initFuncDefs = mapMOf (topStmts . traverse . _FDef) initFuncDef
 
 -- | Initializa function definition
-addFuncDef :: (Has EnvEff sig m) =>  FuncDef -> m FuncDef
+addFuncDef :: (Has EnvEff sig m) => FuncDef -> m FuncDef
 addFuncDef f = do
   let fn = f ^. funcName
   setEnv (Just f) $ funcDefs . at fn
@@ -397,43 +410,58 @@ checkImplFuncDefs = mapMOf (topStmts . traverse . _ImplFDef) checkImplFuncDef
 
 -- | Check local states
 checkeLocalStates :: (Has EnvEff sig m) => Module -> m Module
-checkeLocalStates m = mapMOf (topStmts . traverse . _FDef . funcExpr . _Just) checkLocalState m 
-  >>= mapMOf (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) checkLocalState
+checkeLocalStates m =
+  mapMOf (topStmts . traverse . _FDef . funcExpr . _Just) checkLocalState m
+    >>= mapMOf (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) checkLocalState
 
 renameLocalVarsInExpr :: (Has EnvEff sig m) => Expr -> m Expr
 renameLocalVarsInExpr = transformM rename
   where
-    rename l@ELet{..} = do
+    rename l@ELet {..} = do
       (pbinds, bbinds) <- genVarBinds _eletPattern
-      return l{_eletPattern=substs pbinds _eletPattern, _eletBody=substs bbinds _eletBody}
-    rename c@ECase{..} = do
-      cs <- mapM (\c -> do
-                    (pbinds, bbinds) <- genVarBinds (_casePattern c)
-                    return c{_casePattern=substs pbinds (_casePattern c),
-                             _caseExpr=substs bbinds (_caseExpr c)})
-                    _ecaseBody
-      return c{_ecaseBody=cs}
-    rename l@ELam{..} = do
-      vs <- mapM (\v -> do
-                    id <- fresh
-                    return (v, v ++ "_$arg" ++ show id)) (_elamArgs ^..traverse._1)
+      return l {_eletPattern = substs pbinds _eletPattern, _eletBody = substs bbinds _eletBody}
+    rename c@ECase {..} = do
+      cs <-
+        mapM
+          ( \c -> do
+              (pbinds, bbinds) <- genVarBinds (_casePattern c)
+              return
+                c
+                  { _casePattern = substs pbinds (_casePattern c),
+                    _caseExpr = substs bbinds (_caseExpr c)
+                  }
+          )
+          _ecaseBody
+      return c {_ecaseBody = cs}
+    rename l@ELam {..} = do
+      vs <-
+        mapM
+          ( \v -> do
+              id <- fresh
+              return (v, v ++ "_$arg" ++ show id)
+          )
+          (_elamArgs ^.. traverse . _1)
       let binds = map (\(n, nn) -> (s2n n, EVar (s2n nn) _eloc)) vs
           args = [(v ^. _2, t ^. _2) | v <- vs | t <- _elamArgs]
-      return l{_elamArgs = args, _elamExpr=substs binds _elamExpr}
+      return l {_elamArgs = args, _elamExpr = substs binds _elamExpr}
     rename e = return e
     genVarBinds p = do
       let vs = L.nubBy aeq (p ^.. fv :: [PVar])
-      nvs <- mapM (\v -> do
-                    id <- fresh
-                    return (name2String v, name2String v ++ "_$tmp" ++ show id)) vs
+      nvs <-
+        mapM
+          ( \v -> do
+              id <- fresh
+              return (name2String v, name2String v ++ "_$tmp" ++ show id)
+          )
+          vs
       let pbinds = map (\(n, nn) -> (s2n n, PVar (s2n nn) (_ploc p))) nvs
           bbinds = map (\(n, nn) -> (s2n n, EVar (s2n nn) (_ploc p))) nvs
       return (pbinds, bbinds)
 
 renameLocalVars :: (Has EnvEff sig m) => Module -> m Module
 renameLocalVars m =
-  mapMOf (topStmts . traverse . _FDef . funcExpr . _Just) renameLocalVarsInExpr m >>=
-    mapMOf (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) renameLocalVarsInExpr
+  mapMOf (topStmts . traverse . _FDef . funcExpr . _Just) renameLocalVarsInExpr m
+    >>= mapMOf (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) renameLocalVarsInExpr
 
 -- | Remove meta annotation
 removeAnn :: Expr -> Expr
@@ -572,76 +600,93 @@ addPrefixForExprs m' = do
 addSpecializedFuncs :: (Has EnvEff sig m) => Module -> m Module
 addSpecializedFuncs m = do
   fs <- getEnv specializedFuncs
-  return m{_topStmts=_topStmts m ++ map FDef (M.elems fs)}
+  return m {_topStmts = _topStmts m ++ map FDef (M.elems fs)}
 
 convertInterfaceDefs :: (Has EnvEff sig m) => Module -> m Module
 convertInterfaceDefs m = do
   prefix <- getEnv currentModuleName
   let is = m ^.. topStmts . traverse . _IDef
   intfs <- mapM (convert prefix) is
-  return m{_topStmts=[s | s <- _topStmts m, isn't _IDef s] ++ intfs}
-  where convert prefix InterfaceDef{..} = do
-          let i = _idef
-              loc = _interfaceLoc
-              iname = _interfaceName
-              tn = _interfaceTVar ^. _1
-              tvar = TVar tn loc
-              -- deps = map (\n -> TApp n [tvar] loc) _interfaceDeps
-              intfs = map (\f -> 
-                            let bvs = _intfBoundVars f
-                                bes = _intfBoundEffVars f
-                             in bindTypeEffVar bes $ bindTypeVar bvs $ 
-                                   TFunc (_intfArgs f) (_intfEffectType f) (_intfResultType f) loc) _interfaceFuncs
-              c = TypeCon iname {-deps ++ -}intfs loc
-              t = TypeDef{_typeName=iname,
-                          _typeArgs=[_interfaceTVar],
-                          _typeCons=[c],
-                          _typeLoc=_interfaceLoc}
-          setEnv (Just $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
-          return TDef{_tdef=t}
-        convert prefix BoundInterfaceDef{..} =
-          let (_, b) = unsafeUnbind _boundInterfaceDef
-            in convert prefix b 
+  return m {_topStmts = [s | s <- _topStmts m, isn't _IDef s] ++ intfs}
+  where
+    convert prefix InterfaceDef {..} = do
+      let i = _idef
+          loc = _interfaceLoc
+          iname = _interfaceName
+          tn = _interfaceTVar ^. _1
+          tvar = TVar tn loc
+          -- deps = map (\n -> TApp n [tvar] loc) _interfaceDeps
+          intfs =
+            map
+              ( \f ->
+                  let bvs = _intfBoundVars f
+                      bes = _intfBoundEffVars f
+                   in bindTypeEffVar bes $
+                        bindTypeVar bvs $
+                          TFunc (_intfArgs f) (_intfEffectType f) (_intfResultType f) loc
+              )
+              _interfaceFuncs
+          c = TypeCon iname {-deps ++ -} intfs loc
+          t =
+            TypeDef
+              { _typeName = iname,
+                _typeArgs = [_interfaceTVar],
+                _typeCons = [c],
+                _typeLoc = _interfaceLoc
+              }
+      setEnv (Just $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
+      return TDef {_tdef = t}
+    convert prefix BoundInterfaceDef {..} =
+      let (_, b) = unsafeUnbind _boundInterfaceDef
+       in convert prefix b
 
 convertImplInterfaceDefs :: Module -> Module
-convertImplInterfaceDefs m = 
+convertImplInterfaceDefs m =
   let implIntfs = m ^.. topStmts . traverse . _ImplIDef
       intfs = join $ map convert implIntfs
-    in m{_topStmts=[s | s <- _topStmts m, isn't _ImplIDef s] ++ intfs}
-  where convert ImplInterfaceDef{..} = 
-          let loc = _implInferfaceLoc
-              iname = _implInterfaceDefName
-              t = _implInterfaceDefType
-              bvs = _implInterfaceBoundVars
-              intfs = map (\f ->
-                           let fn = uniqueFuncImplName (_funcName f) t
-                               lambda = ELam (_funcBoundVars f) (_funcBoundEffVars f) (_funcArgs f) (_funcEffectType f) (_funcResultType f) (_funcExpr f) loc
-                               c = EApp False (EVar (s2n iname) loc) [t] [lambda] loc
-                            in FDef $ FuncDef fn bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc) _implInterfaceDefFuncs
-            in intfs
-        convert BoundImplInterfaceDef{..} =
-          let (_, b) = unsafeUnbind _boundImplInterfaceDef
-            in convert b 
+   in m {_topStmts = [s | s <- _topStmts m, isn't _ImplIDef s] ++ intfs}
+  where
+    convert ImplInterfaceDef {..} =
+      let loc = _implInferfaceLoc
+          iname = _implInterfaceDefName
+          t = _implInterfaceDefType
+          bvs = _implInterfaceBoundVars
+          intfs =
+            map
+              ( \f ->
+                  let fn = uniqueFuncImplName (_funcName f) t
+                      lambda = ELam (_funcBoundVars f) (_funcBoundEffVars f) (_funcArgs f) (_funcEffectType f) (_funcResultType f) (_funcExpr f) loc
+                      c = EApp False (EVar (s2n iname) loc) [t] [lambda] loc
+                   in FDef $ FuncDef fn bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc
+              )
+              _implInterfaceDefFuncs
+       in intfs
+    convert BoundImplInterfaceDef {..} =
+      let (_, b) = unsafeUnbind _boundImplInterfaceDef
+       in convert b
 
 addImplicitArgs :: Module -> Module
-addImplicitArgs m = over (topStmts . traverse . _FDef) convert $ 
-                     over (topStmts . traverse . _ImplFDef . implFunDef) convert m
-  where convert f@FuncDef{..} =
-          let loc = _funcLoc
-              args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc)| c <- cs]) _funcBoundVars 
-              e = fmap (transform convertLam) _funcExpr
-            in f{_funcArgs=args ++ _funcArgs, _funcExpr=e}
-          where convertLam l@ELam{..} =
-                  let loc = _eloc
-                      args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _elamBoundVars
-                    in l{_elamArgs = args ++ _elamArgs}
-                convertLam e = e
-        convert BoundFuncDef{..} =
-          let (_, b) = unsafeUnbind _boundFuncDef
-            in convert b
-        convert BoundEffFuncDef{..} =
-          let (_, b) = unsafeUnbind _boundEffFuncDef
-            in convert b
+addImplicitArgs m =
+  over (topStmts . traverse . _FDef) convert $
+    over (topStmts . traverse . _ImplFDef . implFunDef) convert m
+  where
+    convert f@FuncDef {..} =
+      let loc = _funcLoc
+          args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _funcBoundVars
+          e = fmap (transform convertLam) _funcExpr
+       in f {_funcArgs = args ++ _funcArgs, _funcExpr = e}
+      where
+        convertLam l@ELam {..} =
+          let loc = _eloc
+              args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _elamBoundVars
+           in l {_elamArgs = args ++ _elamArgs}
+        convertLam e = e
+    convert BoundFuncDef {..} =
+      let (_, b) = unsafeUnbind _boundFuncDef
+       in convert b
+    convert BoundEffFuncDef {..} =
+      let (_, b) = unsafeUnbind _boundEffFuncDef
+       in convert b
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
