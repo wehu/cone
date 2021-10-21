@@ -470,7 +470,8 @@ instance Pretty InterfaceDef where
       ]
 
 data ImplInterfaceDef = ImplInterfaceDef
-  { _implInterfaceDefName :: String,
+  { _implInterfaceBoundVars :: [(TVar, Maybe Kind)],
+    _implInterfaceDefName :: String,
     _implInterfaceDefType :: Type,
     _implInterfaceDefFuncs :: [FuncDef],
     _implInferfaceLoc :: Location

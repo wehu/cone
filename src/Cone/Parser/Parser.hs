@@ -633,7 +633,7 @@ interfaceDef =
 
 implInterfaceDef :: Parser A.ImplInterfaceDef
 implInterfaceDef =
-  A.ImplInterfaceDef <$ kImpl <* kInterface <*> ident <*> angles type_
+  A.ImplInterfaceDef <$ kImpl <* kInterface <*> boundTVars <*> ident <*> angles type_
     <*> braces (P.sepBy1 func $ P.try $ semi <* P.notFollowedBy rBrace)
     <*> getPos P.<?> "impl interface"
 

@@ -576,7 +576,8 @@ convertInterfaceDefs = over (topStmts . traverse) convert
               intfs = map (\f -> 
                             let bvs = _intfBoundVars f
                                 bes = _intfBoundEffVars f
-                             in bindTypeEffVar bes $ bindTypeVar bvs $ TFunc (_intfArgs f) (_intfEffectType f) (_intfResultType f) loc) (_interfaceFuncs i)
+                             in bindTypeEffVar bes $ bindTypeVar bvs $ 
+                                   TFunc (_intfArgs f) (_intfEffectType f) (_intfResultType f) loc) (_interfaceFuncs i)
               c = TypeCon iname (deps ++ intfs) loc
               t = TypeDef{_typeName=iname,
                           _typeArgs=[_interfaceTVar i],
@@ -585,13 +586,30 @@ convertInterfaceDefs = over (topStmts . traverse) convert
             in TDef{_tdef=t}
         convert s = s
 
+convertImplInterfaceDefs :: Module -> Module
+convertImplInterfaceDefs m = 
+  let implIntfs = m ^.. topStmts . traverse . _ImplIDef
+      intfs = join $ map convert implIntfs
+    in m{_topStmts=[s | s <- _topStmts m, isn't _ImplIDef s] ++ intfs}
+  where convert ImplInterfaceDef{..} = 
+          let loc = _implInferfaceLoc
+              iname = _implInterfaceDefName
+              t = _implInterfaceDefType
+              bvs = _implInterfaceBoundVars
+              intfs = map (\f ->
+                           let fn = uniqueFuncImplName (_funcName f) t
+                               lambda = ELam (_funcBoundVars f) (_funcBoundEffVars f) (_funcArgs f) (_funcEffectType f) (_funcResultType f) (_funcExpr f) loc
+                               c = EApp False (EVar (s2n iname) loc) [t] [lambda] loc
+                            in FDef $ FuncDef fn bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc) _implInterfaceDefFuncs 
+            in intfs
+
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id =
   run . runError . runState env . runFresh id $
     do
       setEnv (m ^. moduleName) currentModuleName
-      (renameLocalVars . convertInterfaceDefs) m
+      (renameLocalVars . convertImplInterfaceDefs . convertInterfaceDefs) m
       >>= initTypeDefs
       >>= initEffTypeDefs
       >>= preInitTypeAliases
