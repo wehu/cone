@@ -352,7 +352,7 @@ initFuncDef f = do
                       when (isn't _Just intfs) $
                         throwError $ "cannot find interface " ++ cn ++ ppr pos
                       let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n n) pos) $ fromJust intfs) pos
-                      return (ELet p (EVar (s2n $ _funcArgs f !! i ^. _1) pos) s False pos, i+1)
+                      return (ELet p (EVar (s2n $ _funcArgs f !! i ^. _1) pos) s False pos, i + 1)
                   )
                   (s, i)
                   cs
@@ -615,29 +615,39 @@ convertInterfaceDefs m = do
           iname = _interfaceName
           tn = _interfaceTVar ^. _1
           tvar = TVar tn loc
-          -- deps = map (\n -> TApp n [tvar] loc) _interfaceDeps
+      -- deps = map (\n -> TApp n [tvar] loc) _interfaceDeps
       intfs <-
-            mapM
-              ( \f -> do
-                  fiArgs <- mapM (\t -> do
-                                  id <- fresh
-                                  let n = "__arg_$" ++ show id
-                                  return (n, t)) (_intfArgs f)
-                  let bvs = _intfBoundVars f
-                      bes = _intfBoundEffVars f
-                      args = join $ map (\(n, _, cs) -> [TApp c [TVar n loc] loc | c <- cs]) (_intfBoundVars f)
-                      ft = bindTypeEffVar bes $
-                        bindTypeVar bvs $
-                          TFunc (args ++ _intfArgs f) (_intfEffectType f) (_intfResultType f) (_intfLoc f)
-                      fi = FuncDef{_funcName = _intfName f, _funcBoundVars=(_interfaceTVar ^._1, _interfaceTVar ^._2, []):bvs, _funcBoundEffVars=bes,
-                                   _funcArgs=fiArgs,
-                                   _funcEffectType=_intfEffectType f,
-                                   _funcResultType=_intfResultType f,
-                                   _funcExpr = Nothing,
-                                   _funcLoc = _intfLoc f}
-                   in return (ft, fi)
-              )
-              _interfaceFuncs
+        mapM
+          ( \f -> do
+              fiArgs <-
+                mapM
+                  ( \t -> do
+                      id <- fresh
+                      let n = "__arg_$" ++ show id
+                      return (n, t)
+                  )
+                  (_intfArgs f)
+              let bvs = _intfBoundVars f
+                  bes = _intfBoundEffVars f
+                  args = join $ map (\(n, _, cs) -> [TApp c [TVar n loc] loc | c <- cs]) (_intfBoundVars f)
+                  ft =
+                    bindTypeEffVar bes $
+                      bindTypeVar bvs $
+                        TFunc (args ++ _intfArgs f) (_intfEffectType f) (_intfResultType f) (_intfLoc f)
+                  fi =
+                    FuncDef
+                      { _funcName = _intfName f,
+                        _funcBoundVars = (_interfaceTVar ^. _1, _interfaceTVar ^. _2, []) : bvs,
+                        _funcBoundEffVars = bes,
+                        _funcArgs = fiArgs,
+                        _funcEffectType = _intfEffectType f,
+                        _funcResultType = _intfResultType f,
+                        _funcExpr = Nothing,
+                        _funcLoc = _intfLoc f
+                      }
+               in return (ft, fi)
+          )
+          _interfaceFuncs
       let c = TypeCon iname {-deps ++ -} (intfs ^.. traverse . _1) loc
           t =
             TypeDef
