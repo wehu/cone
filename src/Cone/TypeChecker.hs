@@ -339,12 +339,12 @@ initFuncDef f = do
   forMOf _Just oft $ \oft ->
     throwError $ "function redefine: " ++ fn ++ ppr pos
   setEnv (Just ft) $ funcTypes . at fn
-  fBody <- mapMOf _Just (addImplicitVars (_funcBoundVars f)) (_funcExpr f)
-  fBody <- transformMOn _Just addImplicitVarsForLam (_funcExpr f)
+  fBody <- mapMOf _Just (addImplicitVars (_funcBoundVars f) (_funcArgs f)) (_funcExpr f)
+  fBody <- transformMOn _Just addImplicitVarsForLam fBody
   let f' = f {_funcName = fn, _funcExpr = fBody}
   setEnv (Just f') $ funcDefs . at fn
   return f'
-  where addImplicitVars bvs e = do
+  where addImplicitVars bvs args e = do
           let pos = _eloc e
           (r, _) <- foldM
             ( \(s, i) (v, _, cs) -> do
@@ -355,7 +355,7 @@ initFuncDef f = do
                       when (isn't _Just intfs) $
                         throwError $ "cannot find interface " ++ cn ++ ppr pos
                       let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n $ n ++ "_$" ++ name2String v) pos) $ fromJust intfs) pos
-                      return (ELet p (EVar (s2n $ _funcArgs f !! i ^. _1) pos) s False pos, i + 1)
+                      return (ELet p (EVar (s2n $ args !! i ^. _1) pos) s False pos, i + 1)
                   )
                   (s, i)
                   cs
@@ -364,7 +364,7 @@ initFuncDef f = do
             bvs
           return r
         addImplicitVarsForLam l@ELam{..} = do
-          b <- mapMOf _Just (addImplicitVars _elamBoundVars) _elamExpr 
+          b <- mapMOf _Just (addImplicitVars _elamBoundVars _elamArgs) _elamExpr 
           return l{_elamExpr = b}
         addImplicitVarsForLam e = return e
 
