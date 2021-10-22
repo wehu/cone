@@ -351,7 +351,7 @@ initFuncDef f = do
                       intfs <- getEnv $ intfFuncs . at cn
                       when (isn't _Just intfs) $
                         throwError $ "cannot find interface " ++ cn ++ ppr pos
-                      let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n n) pos) $ fromJust intfs) pos
+                      let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n $ n ++ "_$" ++ name2String v) pos) $ fromJust intfs) pos
                       return (ELet p (EVar (s2n $ _funcArgs f !! i ^. _1) pos) s False pos, i + 1)
                   )
                   (s, i)
@@ -656,8 +656,19 @@ convertInterfaceDefs m = do
                 _typeCons = [c],
                 _typeLoc = _interfaceLoc
               }
+          placeHolder =
+            FuncDef
+              { _funcName = iname ++ "_$dict",
+                _funcBoundVars = [(_interfaceTVar ^. _1, _interfaceTVar ^. _2, [])],
+                _funcBoundEffVars = [],
+                _funcArgs = [],
+                _funcEffectType = EffList [] loc,
+                _funcResultType = TApp (TVar (s2n iname) loc) [tvar] loc,
+                _funcExpr = Nothing,
+                _funcLoc = loc
+              }
       setEnv (Just $ map (\n -> prefix ++ "/" ++ n) $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
-      return $ TDef {_tdef = t} : map FDef (intfs ^.. traverse . _2)
+      return $ TDef {_tdef = t} : FDef {_fdef = placeHolder} : map FDef (intfs ^.. traverse . _2)
     convert prefix BoundInterfaceDef {..} =
       let (_, b) = unsafeUnbind _boundInterfaceDef
        in convert prefix b

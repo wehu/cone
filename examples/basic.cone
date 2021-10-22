@@ -83,6 +83,10 @@ impl interface<a<=[test_i2]> test_i<list<a>> {
     }
 }
 
+fun test_i3<a<=[test_i]>(a : a) : a{
+    a
+}
+
 diff test4 wrt (a) = auto
 
 fun main() : io unit {
@@ -100,6 +104,7 @@ fun main() : io unit {
    print(t3)
 
    // intf0([2])
+   //test_i3(32)
 
    print(sin(0.2))
 

@@ -236,10 +236,14 @@ inferExprType a@EApp {..} = do
   -- infer app function type
   appFunc <- inferExprType _eappFunc
   appFuncType <- typeOfExpr appFunc
+
+  -- add implicit argument placeholders
+  placeHolders <- genImplicitArgPlaceHolders appFuncType
+
   appFuncType <- applyTypeArgs appFuncType _eappTypeArgs >>= unbindType
 
   -- infer all arguments' types
-  args <- mapM inferExprType _eappArgs
+  args <- mapM inferExprType $ if isn't _TFunc appFuncType || L.length (_tfuncArgs appFuncType) == L.length _eappArgs then _eappArgs else placeHolders ++ _eappArgs
   argTypes <- mapM typeOfExpr args
   argKinds <- mapM inferTypeKind argTypes
   mapM_ checkTypeKind argKinds
@@ -466,6 +470,21 @@ inferExprType h@EHandle {..} = underScope $ do
   return $ annotateExpr h {_ehandleScope = scopeE, _ehandleBindings = bs} resT effs
 inferExprType a@EAnnMeta {..} = inferExprType _eannMetaExpr
 inferExprType e = throwError $ "unsupported: " ++ ppr e ++ ppr (_eloc e)
+
+genImplicitArgPlaceHolders :: (Has EnvEff sig m) => Type -> m [Expr]
+genImplicitArgPlaceHolders BoundEffVarType{..} = do
+  let (_, t) = unsafeUnbind _boundEffVarType
+  genImplicitArgPlaceHolders t
+genImplicitArgPlaceHolders BoundType{..} = do
+  let (bvs, t) = unsafeUnbind _boundType
+  foldM (\s (n, t, cs) -> do
+    foldM (\s c -> do
+      let cn = name2String (_tvar c) ++ "_$dict"
+          pos = _tloc
+      return $ s++[EApp False (EVar (s2n cn) pos) [] [] pos]) s cs)
+    []
+    bvs
+genImplicitArgPlaceHolders t = throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)
 
 inferExprInPattern :: (Has EnvEff sig m) => Pattern -> m Pattern
 inferExprInPattern p@PVar {..} = return p
