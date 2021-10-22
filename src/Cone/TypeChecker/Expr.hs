@@ -18,6 +18,8 @@ import Control.Monad
 import qualified Data.List as L
 import Data.List.Split
 import qualified Data.Map as M
+import Data.Digest.Pure.MD5
+import qualified Data.ByteString.Lazy.UTF8 as BLU
 import Data.Maybe
 import Debug.Trace
 import GHC.Real
@@ -587,3 +589,104 @@ checkLocalState l@ELet{..} | _eletState = do
       throwError $ "a functional expression includes local state which would be out of scope " ++ ppr l ++ ppr (f ^.eloc)
   return l
 checkLocalState e = return e
+
+-- | Get real name if there is alias prefix
+getNamePath :: (Has EnvEff sig m) => Module -> String -> m String
+getNamePath m n = do
+  aliases <-
+    foldM
+      ( \s i ->
+          case i ^. importAlias of
+            Just alias -> do
+              let old = s ^. at alias
+              case old of
+                Just old -> throwError $ "import alias conflict: import " ++ ppr old ++ " as " ++ ppr alias ++ " vs " ++ ppr i ++ ppr (_importLoc i)
+                Nothing -> return $ s & at alias ?~ i ^. importPath
+            Nothing -> return s
+      )
+      M.empty
+      $ m ^. imports
+  let n' = last $ splitOn "/" n
+      ns = join $ L.intersperse "/" $ L.init $ splitOn "/" n
+  case aliases ^. at ns of
+    Just prefix -> return $ prefix ++ "/" ++ n'
+    Nothing -> return n
+
+filterOutAliasImports :: Module -> String -> [String] -> [String]
+filterOutAliasImports m n ns =
+  let aliasImports =
+        L.nub $
+          L.foldl'
+            ( \s i ->
+                case i ^. importAlias of
+                  Just alias -> s ++ [(i ^. importPath) ++ "/" ++ n]
+                  Nothing -> s
+            )
+            []
+            $ m ^. imports
+   in L.nub ns L.\\ aliasImports
+
+-- | Func implementation selector
+funcImplSelector :: Type -> String
+-- TODO md5 is not good, better just replace the special chars
+funcImplSelector t = show $ md5 $ BLU.fromString $ ppr t
+
+uniqueFuncImplName :: String -> Type -> String
+uniqueFuncImplName fn t = fn ++ funcImplSelector t
+
+searchFunc :: (Has EnvEff sig m) => Module -> String -> Location -> m String
+searchFunc m fn loc = do
+  let prefixes =
+        L.nub $
+          "" :
+          (m ^. moduleName ++ "/") :
+          "core/prelude/" :
+          map (\i -> i ^. importPath ++ "/") (m ^. imports)
+  n <- getNamePath m fn
+  fs <- getEnv funcTypes
+  found <-
+    filterOutAliasImports m n
+      <$> foldM
+        ( \f p -> do
+            let ffn = p ++ n
+            case fs ^. at ffn of
+              Just _ -> return $ f ++ [ffn]
+              Nothing -> return f
+        )
+        []
+        prefixes
+  if null found
+    then throwError $ "no function definition found for : " ++ fn ++ ppr loc
+    else
+      if L.length found == 1
+        then return $ head found
+        else throwError $ "found more than one function for " ++ fn ++ ppr found ++ ppr loc
+
+-- | Set a function implementation
+setFuncImpl :: (Has EnvEff sig m) => Module -> ImplFuncDef -> m ImplFuncDef
+setFuncImpl m impl = do
+  prefix <- getEnv currentModuleName
+  let funcD = impl ^. implFunDef
+      fn = prefix ++ "/" ++ funcD ^. funcName
+      loc = funcD ^. funcLoc
+      t =
+        bindTypeEffVar (funcD ^. funcBoundEffVars) $
+          bindTypeVar (funcD ^. funcBoundVars) $
+            TFunc (funcD ^.. funcArgs . traverse . _2) (_funcEffectType funcD) (_funcResultType funcD) loc
+  intfn <- searchFunc m (funcD ^. funcName) loc
+  ft <- fromJust <$> getEnv (funcTypes . at intfn)
+  isSubT <- isSubType t ft
+  if isSubT
+    then return ()
+    else
+      throwError $
+        "implementation type is not subtype of general type: "
+          ++ ppr t
+          ++ ppr loc
+          ++ " vs "
+          ++ ppr ft
+          ++ ppr (_tloc ft)
+  let sel = uniqueFuncImplName fn t
+      i = EVar (s2n sel) loc
+  addFuncImpl intfn i t
+  return impl {_implFunDef = funcD {_funcName = fn}}
