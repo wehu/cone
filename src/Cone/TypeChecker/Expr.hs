@@ -256,8 +256,9 @@ inferExprType a@EApp {..} = do
   return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t eff
 inferExprType l@ELam {..} = underScope $ do
   -- refresh all bound variables
-  (bvs, newLam) <- refreshTypeVar (_elamBoundVars ^.. traverse . _1) l
-  (evs, newLam) <- refreshEffVar _elamBoundEffVars newLam
+  (bvs, newLam') <- refreshTypeVar (_elamBoundVars ^.. traverse . _1) l{_elamExpr=fmap bindExpr _elamExpr}
+  (evs, newLam') <- refreshEffVar _elamBoundEffVars newLam'
+  let newLam = removeBindingsForExpr newLam'
   case newLam of
     l@ELam {..} -> do
       -- add all bound type variables into env
