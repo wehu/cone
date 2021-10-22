@@ -285,17 +285,6 @@ addTypeBindings m =
             over (topStmts . traverse . _IDef ) bindTypeIDef $
               over (topStmts . traverse . _ImplIDef) bindTypeImplIDef m
 
--- | Remove type bindings
-removeTypeBindings :: Module -> Module
-removeTypeBindings m =
-  over (topStmts . traverse . _EDef) removeTypeBindingsForEDef $
-    over (topStmts . traverse . _TDef) removeTypeBindingsForTDef $
-      over (topStmts . traverse . _FDef) removeTypeBindingsForFDef $
-        over (topStmts . traverse . _ImplFDef . implFunDef) removeTypeBindingsForFDef $
-          over (topStmts . traverse . _TAlias) removeTypeBindingsForTypeAlias $
-            over (topStmts . traverse ._IDef) removeTypeBindingsForIDef $
-              over (topStmts . traverse . _ImplIDef) removeTypeBindingsForImplIDef m
-
 removeTypeBindingsForEDef :: EffectDef -> EffectDef
 removeTypeBindingsForEDef (BoundEffectDef b _) =
   let (_, e) = unsafeUnbind b
@@ -403,6 +392,17 @@ removeTypeBindingsForCase c@Case {..} =
     }
 removeTypeBindingsForCase c = c
 
+-- | Remove type bindings
+removeTypeBindings :: Module -> Module
+removeTypeBindings m =
+  over (topStmts . traverse . _EDef) removeTypeBindingsForEDef $
+    over (topStmts . traverse . _TDef) removeTypeBindingsForTDef $
+      over (topStmts . traverse . _FDef) removeTypeBindingsForFDef $
+        over (topStmts . traverse . _ImplFDef . implFunDef) removeTypeBindingsForFDef $
+          over (topStmts . traverse . _TAlias) removeTypeBindingsForTypeAlias $
+            over (topStmts . traverse ._IDef) removeTypeBindingsForIDef $
+              over (topStmts . traverse . _ImplIDef) removeTypeBindingsForImplIDef m
+
 bindVarExpr :: Expr -> Expr
 bindVarExpr l@ELam {..} =
   let boundVars = map s2n $ L.nub $ _elamArgs ^.. traverse . _1
@@ -439,61 +439,68 @@ addVarBindings m =
 -- | Remove variable bindings
 removeVarBindings :: Module -> Module
 removeVarBindings m =
-  over (topStmts . traverse . _FDef . funcExpr . _Just) removeBindingsForExpr $
-    over (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeBindingsForExpr $
-      over (topStmts . traverse . _DDef) removeBindingsForDiffDef m
-  where
-    removeBindingsForDiffDef (BoundDiffDef b _) =
-      let (_, d) = unsafeUnbind b
-       in removeBindingsForDiffDef d
-    removeBindingsForDiffDef d = d 
-    removeBindingsForExpr (EBoundVars b _) =
-      let (_, e) = unsafeUnbind b
-       in removeBindingsForExpr e
-    removeBindingsForExpr l@ELam {..} =
-      l {_elamExpr = fmap removeBindingsForExpr _elamExpr}
-    removeBindingsForExpr e@ECase {..} =
-      e
-        { _ecaseExpr = removeBindingsForExpr _ecaseExpr,
-          _ecaseBody = over traverse removeBindingsForCase _ecaseBody
-        }
-    removeBindingsForExpr w@EWhile {..} =
-      w
-        { _ewhileCond = removeBindingsForExpr _ewhileCond,
-          _ewhileBody = removeBindingsForExpr _ewhileBody
-        }
-    removeBindingsForExpr a@EApp {..} =
-      a
-        { _eappFunc = removeBindingsForExpr _eappFunc,
-          _eappArgs = over traverse removeBindingsForExpr _eappArgs
-        }
-    removeBindingsForExpr l@ELet {..} =
-      l
-        { _eletExpr = removeBindingsForExpr _eletExpr,
-          _eletPattern = removeBindingsForPattern _eletPattern,
-          _eletBody = removeBindingsForExpr _eletBody
-        }
-    removeBindingsForExpr h@EHandle {..} =
-      h
-        { _ehandleScope = removeBindingsForExpr _ehandleScope,
-          _ehandleBindings = over (traverse . funcExpr . _Just) removeBindingsForExpr _ehandleBindings
-        }
-    removeBindingsForExpr s@ESeq {..} =
-      s {_eseq = map removeBindingsForExpr _eseq}
-    removeBindingsForExpr e@EAnn {..} =
-      e {_eannExpr = removeBindingsForExpr _eannExpr}
-    removeBindingsForExpr e@EAnnMeta {..} =
-      e {_eannMetaExpr = removeBindingsForExpr _eannMetaExpr}
-    removeBindingsForExpr expr = expr
-    removeBindingsForPattern p@PExpr {..} =
-      p {_pExpr = removeBindingsForExpr _pExpr}
-    removeBindingsForPattern p = p
-    removeBindingsForCase BoundCase {..} =
-      let (_, c) = unsafeUnbind _boundCase
-       in removeBindingsForCase c
-    removeBindingsForCase c@Case {..} =
-      c
-        { _caseExpr = removeBindingsForExpr _caseExpr,
-          _casePattern = removeBindingsForPattern _casePattern
-        }
+  over (topStmts . traverse . _FDef . funcExpr . _Just) removeVarBindingsForExpr $
+    over (topStmts . traverse . _ImplFDef . implFunDef . funcExpr . _Just) removeVarBindingsForExpr $
+      over (topStmts . traverse . _DDef) removeVarBindingsForDiffDef m
+
+removeVarBindingsForDiffDef :: DiffDef -> DiffDef
+removeVarBindingsForDiffDef (BoundDiffDef b _) =
+  let (_, d) = unsafeUnbind b
+   in removeVarBindingsForDiffDef d
+removeVarBindingsForDiffDef d = d 
+
+removeVarBindingsForExpr :: Expr -> Expr
+removeVarBindingsForExpr (EBoundVars b _) =
+  let (_, e) = unsafeUnbind b
+   in removeVarBindingsForExpr e
+removeVarBindingsForExpr l@ELam {..} =
+  l {_elamExpr = fmap removeVarBindingsForExpr _elamExpr}
+removeVarBindingsForExpr e@ECase {..} =
+  e
+    { _ecaseExpr = removeVarBindingsForExpr _ecaseExpr,
+      _ecaseBody = over traverse removeVarBindingsForCase _ecaseBody
+    }
+removeVarBindingsForExpr w@EWhile {..} =
+  w
+    { _ewhileCond = removeVarBindingsForExpr _ewhileCond,
+      _ewhileBody = removeVarBindingsForExpr _ewhileBody
+    }
+removeVarBindingsForExpr a@EApp {..} =
+  a
+    { _eappFunc = removeVarBindingsForExpr _eappFunc,
+      _eappArgs = over traverse removeVarBindingsForExpr _eappArgs
+    }
+removeVarBindingsForExpr l@ELet {..} =
+  l
+    { _eletExpr = removeVarBindingsForExpr _eletExpr,
+      _eletPattern = removeVarBindingsForPattern _eletPattern,
+      _eletBody = removeVarBindingsForExpr _eletBody
+    }
+removeVarBindingsForExpr h@EHandle {..} =
+  h
+    { _ehandleScope = removeVarBindingsForExpr _ehandleScope,
+      _ehandleBindings = over (traverse . funcExpr . _Just) removeVarBindingsForExpr _ehandleBindings
+    }
+removeVarBindingsForExpr s@ESeq {..} =
+  s {_eseq = map removeVarBindingsForExpr _eseq}
+removeVarBindingsForExpr e@EAnn {..} =
+  e {_eannExpr = removeVarBindingsForExpr _eannExpr}
+removeVarBindingsForExpr e@EAnnMeta {..} =
+  e {_eannMetaExpr = removeVarBindingsForExpr _eannMetaExpr}
+removeVarBindingsForExpr expr = expr
+
+removeVarBindingsForPattern :: Pattern -> Pattern
+removeVarBindingsForPattern p@PExpr {..} =
+  p {_pExpr = removeVarBindingsForExpr _pExpr}
+removeVarBindingsForPattern p = p
+
+removeVarBindingsForCase :: Case -> Case
+removeVarBindingsForCase BoundCase {..} =
+  let (_, c) = unsafeUnbind _boundCase
+   in removeVarBindingsForCase c
+removeVarBindingsForCase c@Case {..} =
+  c
+    { _caseExpr = removeVarBindingsForExpr _caseExpr,
+      _casePattern = removeVarBindingsForPattern _casePattern
+    }
         
