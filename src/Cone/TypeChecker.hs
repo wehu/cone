@@ -73,7 +73,7 @@ initTypeConDef t = do
   prefix <- getEnv currentModuleName
   globalTypes <- fmap s2n . M.keys <$> getEnv typeKinds
   -- find all free type variables
-  let b = bind (globalTypes :: [TVar]) (bindTDef t)
+  let b = bind (globalTypes :: [TVar]) (bindTypeTDef t)
       fvars = L.nubBy aeq (b ^.. fv) :: [TVar]
   when (fvars /= []) $
     throwError $
@@ -166,7 +166,7 @@ initTypeAlias t = do
   let args = t ^.. typeAliasArgs . traverse . _1
       aliasType = _typeAliasType t
       name = t ^. typeAliasName
-      b = bind (globalTypes :: [TVar]) (bindTAlias t)
+      b = bind (globalTypes :: [TVar]) (bindTypeTAlias t)
       fvars = L.nubBy aeq (b ^.. fv) :: [TVar]
       pos = _typeAliasLoc t
   -- check if has free type variables
@@ -228,9 +228,9 @@ initEffIntfDef e = do
             pos = i ^. intfLoc
             tvars = i ^.. intfBoundVars . traverse . _1
             evars = i ^. intfBoundEffVars
-            tb = bind (globalTypes ++ tvars) (bindEDef e)
+            tb = bind (globalTypes ++ tvars) (bindTypeEDef e)
             ftvars = L.nubBy aeq (tb ^.. fv) :: [TVar]
-            eb = bind (globalEffTypes ++ evars) (bindEDef e)
+            eb = bind (globalEffTypes ++ evars) (bindTypeEDef e)
             fevars = L.nubBy aeq (eb ^.. fv) :: [EffVar]
         -- check if has free type variables
         when (ftvars /= []) $
@@ -316,8 +316,8 @@ initFuncDef f = do
       star = KStar pos
       btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
-      bt = bind (globalTypes :: [TVar]) (bindFDef f)
-      be = bind (globalEffTypes :: [EffVar]) (bindFDef f)
+      bt = bind (globalTypes :: [TVar]) (bindTypeFDef f)
+      be = bind (globalEffTypes :: [EffVar]) (bindTypeFDef f)
       ftvars = L.nubBy aeq (bt ^.. fv) :: [TVar]
       fevars = L.nubBy aeq (be ^.. fv) :: [EffVar]
   -- check if has free type variables

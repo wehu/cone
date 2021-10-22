@@ -226,64 +226,64 @@ unbindTypeSimple b@BoundEffVarType {..} =
    in (bvs, evs ++ evs', t')
 unbindTypeSimple t = ([], [], t)
 
-bindEDef :: EffectDef -> EffectDef
-bindEDef edef =
+bindTypeEDef :: EffectDef -> EffectDef
+bindTypeEDef edef =
   let boundVars = L.nub $ edef ^.. effectArgs . traverse
-      edef' = over (effectIntfs . traverse) (bindEffIntf boundVars) edef
+      edef' = over (effectIntfs . traverse) (bindTypeEffIntf boundVars) edef
    in BoundEffectDef (bind (boundVars ^.. traverse . _1) edef') (_effectLoc edef)
 
-bindEffIntf :: [(TVar, Maybe Kind)] -> FuncIntf -> FuncIntf
-bindEffIntf bvs intf =
+bindTypeEffIntf :: [(TVar, Maybe Kind)] -> FuncIntf -> FuncIntf
+bindTypeEffIntf bvs intf =
   let boundVars = L.nub $ bvs ^.. traverse . _1 ++ intf ^.. intfBoundVars . traverse . _1
       boundEffVars = L.nub $ intf ^. intfBoundEffVars
       loc = intf ^. intfLoc
    in BoundEffFuncIntf (bind boundEffVars $ BoundFuncIntf (bind boundVars intf) loc) loc
 
-bindTDef :: TypeDef -> TypeDef
-bindTDef tdef =
+bindTypeTDef :: TypeDef -> TypeDef
+bindTypeTDef tdef =
   let boundVars = L.nub $ tdef ^.. typeArgs . traverse . _1
    in BoundTypeDef (bind boundVars tdef) (_typeLoc tdef)
 
-bindTAlias :: TypeAlias -> TypeAlias
-bindTAlias talias =
+bindTypeTAlias :: TypeAlias -> TypeAlias
+bindTypeTAlias talias =
   let boundVars = L.nub $ talias ^.. typeAliasArgs . traverse . _1
    in BoundTypeAlias (bind boundVars talias) (_typeAliasLoc talias)
 
-bindIDef :: InterfaceDef -> InterfaceDef
-bindIDef idef =
+bindTypeIDef :: InterfaceDef -> InterfaceDef
+bindTypeIDef idef =
   let boundVars = [idef ^. interfaceTVar . _1]
    in BoundInterfaceDef (bind boundVars idef) (_interfaceLoc idef)
 
-bindImplIDef :: ImplInterfaceDef -> ImplInterfaceDef
-bindImplIDef idef =
+bindTypeImplIDef :: ImplInterfaceDef -> ImplInterfaceDef
+bindTypeImplIDef idef =
   let boundVars = idef ^.. implInterfaceBoundVars . traverse . _1
    in BoundImplInterfaceDef (bind boundVars idef) (_implInterfaceLoc idef)
 
-bindFDef :: FuncDef -> FuncDef
-bindFDef fdef =
+bindTypeFDef :: FuncDef -> FuncDef
+bindTypeFDef fdef =
   let boundVars = L.nub $ fdef ^. funcBoundVars
       boundEffVars = L.nub $ fdef ^. funcBoundEffVars
       loc = fdef ^. funcLoc
-      expr = transform bindExpr <$> _funcExpr fdef
+      expr = transform bindTypeExpr <$> _funcExpr fdef
    in BoundEffFuncDef (bind boundEffVars $ BoundFuncDef (bind (boundVars ^.. traverse . _1) fdef {_funcExpr = expr}) loc) loc
 
-bindExpr :: Expr -> Expr
-bindExpr l@ELam {..} =
+bindTypeExpr :: Expr -> Expr
+bindTypeExpr l@ELam {..} =
   let boundVars = L.nub _elamBoundVars
       boundEffVars = L.nub _elamBoundEffVars
    in  EBoundEffTypeVars (bind boundEffVars $ EBoundTypeVars (bind (boundVars ^.. traverse . _1) l) _eloc) _eloc
-bindExpr expr = expr
+bindTypeExpr expr = expr
 
 -- | Add type bindings
 addTypeBindings :: Module -> Module
 addTypeBindings m =
-  over (topStmts . traverse . _EDef) bindEDef $
-    over (topStmts . traverse . _TDef) bindTDef $
-      over (topStmts . traverse . _FDef) bindFDef $
-        over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef $
-          over (topStmts . traverse . _TAlias) bindTAlias $
-            over (topStmts . traverse . _IDef ) bindIDef $
-              over (topStmts . traverse . _ImplIDef) bindImplIDef m
+  over (topStmts . traverse . _EDef) bindTypeEDef $
+    over (topStmts . traverse . _TDef) bindTypeTDef $
+      over (topStmts . traverse . _FDef) bindTypeFDef $
+        over (topStmts . traverse . _ImplFDef . implFunDef) bindTypeFDef $
+          over (topStmts . traverse . _TAlias) bindTypeTAlias $
+            over (topStmts . traverse . _IDef ) bindTypeIDef $
+              over (topStmts . traverse . _ImplIDef) bindTypeImplIDef m
 
 -- | Remove type bindings
 removeTypeBindings :: Module -> Module
@@ -403,15 +403,15 @@ removeTypeBindingsForCase c@Case {..} =
     }
 removeTypeBindingsForCase c = c
 
-bindExprV :: Expr -> Expr
-bindExprV l@ELam {..} =
+bindVarExpr :: Expr -> Expr
+bindVarExpr l@ELam {..} =
   let boundVars = map s2n $ L.nub $ _elamArgs ^.. traverse . _1
       loc = _eloc
    in l {_elamExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) _elamExpr}
-bindExprV l@ELet {..} =
+bindVarExpr l@ELet {..} =
   let vs = map (s2n . name2String) ((l ^.. fv) :: [PVar])
    in EBoundVars (bind vs l) _eloc
-bindExprV c@ECase {..} =
+bindVarExpr c@ECase {..} =
   let ps =
         map
           ( \p ->
@@ -420,19 +420,19 @@ bindExprV c@ECase {..} =
           )
           _ecaseBody
    in c {_ecaseBody = ps}
-bindExprV expr = expr
+bindVarExpr expr = expr
 
 -- | Add variable bindings
 addVarBindings :: Module -> Module
 addVarBindings m =
-  over (topStmts . traverse . _FDef) bindFDef $
-    over (topStmts . traverse . _ImplFDef . implFunDef) bindFDef $
+  over (topStmts . traverse . _FDef) bindTypeFDef $
+    over (topStmts . traverse . _ImplFDef . implFunDef) bindTypeFDef $
       over (topStmts . traverse . _DDef) bindDiffDef m
   where
-    bindFDef fdef =
+    bindTypeFDef fdef =
       let boundVars = map s2n $ L.nub $ fdef ^.. funcArgs . traverse . _1
           loc = fdef ^. funcLoc
-          expr = transform bindExprV <$> _funcExpr fdef
+          expr = transform bindVarExpr <$> _funcExpr fdef
        in fdef {_funcExpr = fmap (\e -> EBoundVars (bind boundVars e) loc) expr}
     bindDiffDef ddef = BoundDiffDef (bind [] ddef) (_diffLoc ddef)
 

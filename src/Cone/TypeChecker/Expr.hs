@@ -47,8 +47,8 @@ checkFuncType f = underScope $ do
       star = KStar pos
       btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
       bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
-      bt = bind (globalTypes::[TVar]) (bindFDef f)
-      be = bind (globalEffTypes::[EffVar]) (bindFDef f)
+      bt = bind (globalTypes::[TVar]) (bindTypeFDef f)
+      be = bind (globalEffTypes::[EffVar]) (bindTypeFDef f)
       ftvars = L.nubBy aeq (bt ^.. fv) :: [TVar]
       fevars = L.nubBy aeq (be ^.. fv) :: [EffVar]
   -- check if has free type variables
@@ -256,7 +256,7 @@ inferExprType a@EApp {..} = do
   return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t eff
 inferExprType l@ELam {..} = underScope $ do
   -- refresh all bound variables
-  (bvs, newLam') <- refreshTypeVar (_elamBoundVars ^.. traverse . _1) l{_elamExpr=fmap bindExpr _elamExpr}
+  (bvs, newLam') <- refreshTypeVar (_elamBoundVars ^.. traverse . _1) l{_elamExpr=fmap bindTypeExpr _elamExpr}
   (evs, newLam') <- refreshEffVar _elamBoundEffVars newLam'
   let newLam = removeTypeBindingsForExpr newLam'
   case newLam of
@@ -580,7 +580,7 @@ checkLocalState :: (Has EnvEff sig m) => Expr -> m Expr
 checkLocalState l@ELet{..} | _eletState = do
   let fs = collectLastFuncTypeExpr l
   forM_ fs $ \f -> do
-    let bf = bindExprV f
+    let bf = bindVarExpr f
         vs = map name2String (bf ^.. fv :: [EVar])
         ps = map name2String (_eletPattern ^.. fv :: [PVar])
     unless (null $ ps `L.intersect` vs) $ do
