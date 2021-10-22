@@ -339,11 +339,14 @@ initFuncDef f = do
   forMOf _Just oft $ \oft ->
     throwError $ "function redefine: " ++ fn ++ ppr pos
   setEnv (Just ft) $ funcTypes . at fn
-  fBody <-
-    if isn't _Nothing (_funcExpr f)
-      then
-        (\(e, _) -> Just e)
-          <$> foldM
+  fBody <- mapMOf _Just (addImplicitVars (_funcBoundVars f)) (_funcExpr f)
+  fBody <- transformMOn _Just addImplicitVarsForLam (_funcExpr f)
+  let f' = f {_funcName = fn, _funcExpr = fBody}
+  setEnv (Just f') $ funcDefs . at fn
+  return f'
+  where addImplicitVars bvs e = do
+          let pos = _eloc e
+          (r, _) <- foldM
             ( \(s, i) (v, _, cs) -> do
                 foldM
                   ( \(s, i) c -> do
@@ -357,12 +360,13 @@ initFuncDef f = do
                   (s, i)
                   cs
             )
-            (fromJust $ _funcExpr f, 0)
-            (_funcBoundVars f)
-      else return Nothing
-  let f' = f {_funcName = fn, _funcExpr = fBody}
-  setEnv (Just f') $ funcDefs . at fn
-  return f'
+            (e, 0)
+            bvs
+          return r
+        addImplicitVarsForLam l@ELam{..} = do
+          b <- mapMOf _Just (addImplicitVars _elamBoundVars) _elamExpr 
+          return l{_elamExpr = b}
+        addImplicitVarsForLam e = return e
 
 -- | Initialize all function definitons
 initFuncDefs :: (Has EnvEff sig m) => Module -> m Module
