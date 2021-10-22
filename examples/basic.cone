@@ -72,7 +72,7 @@ interface test_i2<a> {
     fun intf2(a) : a
 }
 
-impl interface<a <= [test_i2]> test_i<list<a>> {
+impl interface<a <= test_i2> test_i<list<a>> {
     fun intf1(a:list<a>, b:list<a>) : list<a> {
         val x|_ = a
         intf2(x)|_
@@ -83,7 +83,7 @@ impl interface<a <= [test_i2]> test_i<list<a>> {
     }
 }
 
-fun test_i3<a<=[test_i2]>(a : a) : a{
+fun test_i3<a <= test_i2>(a : a) : a{
     intf0(a)
 }
 
