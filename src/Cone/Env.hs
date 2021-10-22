@@ -288,120 +288,120 @@ addTypeBindings m =
 -- | Remove type bindings
 removeTypeBindings :: Module -> Module
 removeTypeBindings m =
-  over (topStmts . traverse . _EDef) removeBindingsForEDef $
-    over (topStmts . traverse . _TDef) removeBindingsForTDef $
-      over (topStmts . traverse . _FDef) removeBindingsForFDef $
-        over (topStmts . traverse . _ImplFDef . implFunDef) removeBindingsForFDef $
-          over (topStmts . traverse . _TAlias) removeBindingsForTypeAlias $
-            over (topStmts . traverse ._IDef) removeBindingsForIDef $
-              over (topStmts . traverse . _ImplIDef) removeBindingsForImplIDef m
+  over (topStmts . traverse . _EDef) removeTypeBindingsForEDef $
+    over (topStmts . traverse . _TDef) removeTypeBindingsForTDef $
+      over (topStmts . traverse . _FDef) removeTypeBindingsForFDef $
+        over (topStmts . traverse . _ImplFDef . implFunDef) removeTypeBindingsForFDef $
+          over (topStmts . traverse . _TAlias) removeTypeBindingsForTypeAlias $
+            over (topStmts . traverse ._IDef) removeTypeBindingsForIDef $
+              over (topStmts . traverse . _ImplIDef) removeTypeBindingsForImplIDef m
 
-removeBindingsForEDef :: EffectDef -> EffectDef
-removeBindingsForEDef (BoundEffectDef b _) =
+removeTypeBindingsForEDef :: EffectDef -> EffectDef
+removeTypeBindingsForEDef (BoundEffectDef b _) =
   let (_, e) = unsafeUnbind b
-   in removeBindingsForEDef e
-removeBindingsForEDef e =
-  over (effectIntfs . traverse) removeBindingsForIntf e
+   in removeTypeBindingsForEDef e
+removeTypeBindingsForEDef e =
+  over (effectIntfs . traverse) removeTypeBindingsForIntf e
   
-removeBindingsForIntf :: FuncIntf -> FuncIntf
-removeBindingsForIntf (BoundFuncIntf b _) =
+removeTypeBindingsForIntf :: FuncIntf -> FuncIntf
+removeTypeBindingsForIntf (BoundFuncIntf b _) =
   let (_, i) = unsafeUnbind b
-   in removeBindingsForIntf i
-removeBindingsForIntf (BoundEffFuncIntf b _) =
+   in removeTypeBindingsForIntf i
+removeTypeBindingsForIntf (BoundEffFuncIntf b _) =
   let (_, i) = unsafeUnbind b
-   in removeBindingsForIntf i
-removeBindingsForIntf intf = intf
+   in removeTypeBindingsForIntf i
+removeTypeBindingsForIntf intf = intf
 
-removeBindingsForTDef :: TypeDef -> TypeDef
-removeBindingsForTDef (BoundTypeDef b _) =
+removeTypeBindingsForTDef :: TypeDef -> TypeDef
+removeTypeBindingsForTDef (BoundTypeDef b _) =
   let (_, t) = unsafeUnbind b
-   in removeBindingsForTDef t
-removeBindingsForTDef t = t
+   in removeTypeBindingsForTDef t
+removeTypeBindingsForTDef t = t
 
-removeBindingsForIDef :: InterfaceDef -> InterfaceDef
-removeBindingsForIDef (BoundInterfaceDef b _) =
+removeTypeBindingsForIDef :: InterfaceDef -> InterfaceDef
+removeTypeBindingsForIDef (BoundInterfaceDef b _) =
   let (_, t) = unsafeUnbind b
-   in removeBindingsForIDef t
-removeBindingsForIDef t = t
+   in removeTypeBindingsForIDef t
+removeTypeBindingsForIDef t = t
 
-removeBindingsForImplIDef :: ImplInterfaceDef -> ImplInterfaceDef
-removeBindingsForImplIDef (BoundImplInterfaceDef b _) =
+removeTypeBindingsForImplIDef :: ImplInterfaceDef -> ImplInterfaceDef
+removeTypeBindingsForImplIDef (BoundImplInterfaceDef b _) =
   let (_, t) = unsafeUnbind b
-   in removeBindingsForImplIDef t
-removeBindingsForImplIDef t = t
+   in removeTypeBindingsForImplIDef t
+removeTypeBindingsForImplIDef t = t
 
-removeBindingsForTypeAlias :: TypeAlias -> TypeAlias
-removeBindingsForTypeAlias (BoundTypeAlias b _) =
+removeTypeBindingsForTypeAlias :: TypeAlias -> TypeAlias
+removeTypeBindingsForTypeAlias (BoundTypeAlias b _) =
   let (_, t) = unsafeUnbind b
-   in removeBindingsForTypeAlias t
-removeBindingsForTypeAlias t = t
+   in removeTypeBindingsForTypeAlias t
+removeTypeBindingsForTypeAlias t = t
 
-removeBindingsForFDef :: FuncDef -> FuncDef
-removeBindingsForFDef (BoundFuncDef b _) =
+removeTypeBindingsForFDef :: FuncDef -> FuncDef
+removeTypeBindingsForFDef (BoundFuncDef b _) =
   let (_, f) = unsafeUnbind b
-   in removeBindingsForFDef f
-removeBindingsForFDef (BoundEffFuncDef b _) =
+   in removeTypeBindingsForFDef f
+removeTypeBindingsForFDef (BoundEffFuncDef b _) =
   let (_, f) = unsafeUnbind b
-   in removeBindingsForFDef f
-removeBindingsForFDef fdef =
-  let expr = removeBindingsForExpr <$> _funcExpr fdef
+   in removeTypeBindingsForFDef f
+removeTypeBindingsForFDef fdef =
+  let expr = removeTypeBindingsForExpr <$> _funcExpr fdef
    in fdef {_funcExpr = expr}
 
-removeBindingsForExpr :: Expr -> Expr
-removeBindingsForExpr (EBoundTypeVars b _) =
+removeTypeBindingsForExpr :: Expr -> Expr
+removeTypeBindingsForExpr (EBoundTypeVars b _) =
   let (_, e) = unsafeUnbind b
-   in removeBindingsForExpr e
-removeBindingsForExpr (EBoundEffTypeVars b _) =
+   in removeTypeBindingsForExpr e
+removeTypeBindingsForExpr (EBoundEffTypeVars b _) =
   let (_, e) = unsafeUnbind b
-   in removeBindingsForExpr e
-removeBindingsForExpr l@ELam {..} =
-  l {_elamExpr = fmap removeBindingsForExpr _elamExpr}
-removeBindingsForExpr e@ECase {..} =
+   in removeTypeBindingsForExpr e
+removeTypeBindingsForExpr l@ELam {..} =
+  l {_elamExpr = fmap removeTypeBindingsForExpr _elamExpr}
+removeTypeBindingsForExpr e@ECase {..} =
   e
-    { _ecaseExpr = removeBindingsForExpr _ecaseExpr,
-      _ecaseBody = over traverse removeBindingsForCase _ecaseBody
+    { _ecaseExpr = removeTypeBindingsForExpr _ecaseExpr,
+      _ecaseBody = over traverse removeTypeBindingsForCase _ecaseBody
     }
-removeBindingsForExpr w@EWhile {..} =
+removeTypeBindingsForExpr w@EWhile {..} =
   w
-    { _ewhileCond = removeBindingsForExpr _ewhileCond,
-      _ewhileBody = removeBindingsForExpr _ewhileBody
+    { _ewhileCond = removeTypeBindingsForExpr _ewhileCond,
+      _ewhileBody = removeTypeBindingsForExpr _ewhileBody
     }
-removeBindingsForExpr a@EApp {..} =
+removeTypeBindingsForExpr a@EApp {..} =
   a
-    { _eappFunc = removeBindingsForExpr _eappFunc,
-      _eappArgs = over traverse removeBindingsForExpr _eappArgs
+    { _eappFunc = removeTypeBindingsForExpr _eappFunc,
+      _eappArgs = over traverse removeTypeBindingsForExpr _eappArgs
     }
-removeBindingsForExpr l@ELet {..} =
+removeTypeBindingsForExpr l@ELet {..} =
   l
-    { _eletExpr = removeBindingsForExpr _eletExpr,
-      _eletPattern = removeBindingsForPattern _eletPattern,
-      _eletBody = removeBindingsForExpr _eletBody
+    { _eletExpr = removeTypeBindingsForExpr _eletExpr,
+      _eletPattern = removeTypeBindingsForPattern _eletPattern,
+      _eletBody = removeTypeBindingsForExpr _eletBody
     }
-removeBindingsForExpr h@EHandle {..} =
+removeTypeBindingsForExpr h@EHandle {..} =
   h
-    { _ehandleScope = removeBindingsForExpr _ehandleScope,
-      _ehandleBindings = map removeBindingsForFDef _ehandleBindings
+    { _ehandleScope = removeTypeBindingsForExpr _ehandleScope,
+      _ehandleBindings = map removeTypeBindingsForFDef _ehandleBindings
     }
-removeBindingsForExpr s@ESeq {..} =
-  s {_eseq = map removeBindingsForExpr _eseq}
-removeBindingsForExpr e@EAnn {..} =
-  e {_eannExpr = removeBindingsForExpr _eannExpr}
-removeBindingsForExpr e@EAnnMeta {..} =
-  e {_eannMetaExpr = removeBindingsForExpr _eannMetaExpr}
-removeBindingsForExpr expr = expr
+removeTypeBindingsForExpr s@ESeq {..} =
+  s {_eseq = map removeTypeBindingsForExpr _eseq}
+removeTypeBindingsForExpr e@EAnn {..} =
+  e {_eannExpr = removeTypeBindingsForExpr _eannExpr}
+removeTypeBindingsForExpr e@EAnnMeta {..} =
+  e {_eannMetaExpr = removeTypeBindingsForExpr _eannMetaExpr}
+removeTypeBindingsForExpr expr = expr
 
-removeBindingsForPattern :: Pattern -> Pattern
-removeBindingsForPattern p@PExpr {..} =
-  p {_pExpr = removeBindingsForExpr _pExpr}
-removeBindingsForPattern p = p
+removeTypeBindingsForPattern :: Pattern -> Pattern
+removeTypeBindingsForPattern p@PExpr {..} =
+  p {_pExpr = removeTypeBindingsForExpr _pExpr}
+removeTypeBindingsForPattern p = p
 
-removeBindingsForCase :: Case -> Case
-removeBindingsForCase c@Case {..} =
+removeTypeBindingsForCase :: Case -> Case
+removeTypeBindingsForCase c@Case {..} =
   c
-    { _caseExpr = removeBindingsForExpr _caseExpr,
-      _casePattern = removeBindingsForPattern _casePattern
+    { _caseExpr = removeTypeBindingsForExpr _caseExpr,
+      _casePattern = removeTypeBindingsForPattern _casePattern
     }
-removeBindingsForCase c = c
+removeTypeBindingsForCase c = c
 
 bindExprV :: Expr -> Expr
 bindExprV l@ELam {..} =

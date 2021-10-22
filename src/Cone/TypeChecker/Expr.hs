@@ -258,7 +258,7 @@ inferExprType l@ELam {..} = underScope $ do
   -- refresh all bound variables
   (bvs, newLam') <- refreshTypeVar (_elamBoundVars ^.. traverse . _1) l{_elamExpr=fmap bindExpr _elamExpr}
   (evs, newLam') <- refreshEffVar _elamBoundEffVars newLam'
-  let newLam = removeBindingsForExpr newLam'
+  let newLam = removeTypeBindingsForExpr newLam'
   case newLam of
     l@ELam {..} -> do
       -- add all bound type variables into env
