@@ -676,8 +676,7 @@ convertImplInterfaceDefs m =
           intfs =
             map
               ( \f ->
-                  let lambda = ELam (_funcBoundVars f) (_funcBoundEffVars f) (_funcArgs f) (_funcEffectType f) (_funcResultType f) (_funcExpr f) loc
-                   in lambda   
+                  ELam (_funcBoundVars f) (_funcBoundEffVars f) (_funcArgs f) (_funcEffectType f) (_funcResultType f) (_funcExpr f) loc
               )
               _implInterfaceDefFuncs
           c = EApp False (EVar (s2n iname) loc) [t] intfs loc
