@@ -647,7 +647,7 @@ convertInterfaceDefs m = do
                       }
                in return (ft, fi)
           )
-          _interfaceFuncs
+          (L.sortBy (\a b -> _intfName a `compare` _intfName b) _interfaceFuncs)
       let c = TypeCon iname {-deps ++ -} (intfs ^.. traverse . _1) loc
           t =
             TypeDef
@@ -667,7 +667,7 @@ convertInterfaceDefs m = do
                 _funcExpr = Nothing,
                 _funcLoc = loc
               }
-      setEnv (Just $ map (\n -> prefix ++ "/" ++ n) $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
+      setEnv (Just $ map (\n -> prefix ++ "/" ++ n) $ L.sort $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
       return $ TDef {_tdef = t} : FDef {_fdef = placeHolder} : map FDef (intfs ^.. traverse . _2)
     convert prefix BoundInterfaceDef {..} =
       let (_, b) = unsafeUnbind _boundInterfaceDef
@@ -689,7 +689,7 @@ convertImplInterfaceDefs m =
               ( \f ->
                   ELam (_funcBoundVars f) (_funcBoundEffVars f) (_funcArgs f) (_funcEffectType f) (_funcResultType f) (_funcExpr f) loc
               )
-              _implInterfaceDefFuncs
+              (L.sortBy (\a b -> _funcName a `compare` _funcName b) _implInterfaceDefFuncs)
           c = EApp False (EVar (s2n iname) loc) [t] intfs loc
           dict = uniqueFuncImplName (iname ++ "_$dict") t
       in FDef $ FuncDef dict bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc
