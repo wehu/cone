@@ -645,18 +645,7 @@ convertInterfaceDefs m = do
                         _funcExpr = Nothing,
                         _funcLoc = _intfLoc f
                       }
-                  fiDict =
-                    FuncDef
-                      { _funcName = _intfName f ++ "_$dict",
-                        _funcBoundVars = [(_interfaceTVar ^. _1, _interfaceTVar ^. _2, [])],
-                        _funcBoundEffVars = [],
-                        _funcArgs = [],
-                        _funcEffectType = EffList [] loc,
-                        _funcResultType = TApp (TVar (s2n iname) loc) [tvar] loc,
-                        _funcExpr = Nothing,
-                        _funcLoc = _intfLoc f
-                      }
-               in return (ft, fi, fiDict)
+               in return (ft, fi)
           )
           _interfaceFuncs
       let c = TypeCon iname {-deps ++ -} (intfs ^.. traverse . _1) loc
@@ -668,7 +657,7 @@ convertInterfaceDefs m = do
                 _typeLoc = _interfaceLoc
               }
       setEnv (Just $ map (\n -> prefix ++ "/" ++ n) $ _interfaceFuncs ^.. traverse . intfName) $ intfFuncs . at (prefix ++ "/" ++ iname)
-      return $ TDef {_tdef = t} : map FDef (intfs ^.. traverse . _2 ++ intfs ^.. traverse . _3)
+      return $ TDef {_tdef = t} : map FDef (intfs ^.. traverse . _2)
     convert prefix BoundInterfaceDef {..} =
       let (_, b) = unsafeUnbind _boundInterfaceDef
        in convert prefix b
@@ -676,7 +665,7 @@ convertInterfaceDefs m = do
 convertImplInterfaceDefs :: Module -> Module
 convertImplInterfaceDefs m =
   let implIntfs = m ^.. topStmts . traverse . _ImplIDef
-      intfs = join $ map convert implIntfs
+      intfs = map convert implIntfs
    in m {_topStmts = [s | s <- _topStmts m, isn't _ImplIDef s] ++ intfs}
   where
     convert ImplInterfaceDef {..} =
@@ -687,13 +676,13 @@ convertImplInterfaceDefs m =
           intfs =
             map
               ( \f ->
-                  let fn = uniqueFuncImplName (_funcName f ++ "_$dict") t
-                      lambda = ELam (_funcBoundVars f) (_funcBoundEffVars f) (_funcArgs f) (_funcEffectType f) (_funcResultType f) (_funcExpr f) loc
-                      c = EApp False (EVar (s2n iname) loc) [t] [lambda] loc
-                   in FDef $ FuncDef fn bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc
+                  let lambda = ELam (_funcBoundVars f) (_funcBoundEffVars f) (_funcArgs f) (_funcEffectType f) (_funcResultType f) (_funcExpr f) loc
+                   in lambda   
               )
               _implInterfaceDefFuncs
-       in intfs
+          c = EApp False (EVar (s2n iname) loc) [t] intfs loc
+          dict = uniqueFuncImplName (iname ++ "_$dict") t
+      in FDef $ FuncDef dict bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc
     convert BoundImplInterfaceDef {..} =
       let (_, b) = unsafeUnbind _boundImplInterfaceDef
        in convert b
