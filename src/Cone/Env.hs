@@ -56,6 +56,10 @@ type FuncDefs = M.Map String FuncDef
 
 type IntfFuncs = M.Map String [String]
 
+type IntfImpl = (String,Type,Type,Int)
+
+type IntfImpls = M.Map String [IntfImpl]
+
 -- | The environment
 data Env = Env
   { _currentModuleName :: String,
@@ -75,9 +79,10 @@ data Env = Env
     _funcDefs :: FuncDefs,
     _specializedFuncs :: FuncDefs,
     _specializedFuncTypes :: FuncTypes,
-    _intfFuncs :: IntfFuncs
+    _intfFuncs :: IntfFuncs,
+    _intfImpls :: IntfImpls
   }
-  deriving (Show)
+  deriving (Show, Eq)
 
 makeLenses ''Env
 
@@ -100,7 +105,8 @@ initialEnv =
       _funcDefs = M.empty,
       _specializedFuncs = M.empty,
       _specializedFuncTypes = M.empty,
-      _intfFuncs = M.empty
+      _intfFuncs = M.empty,
+      _intfImpls = M.empty
     }
 
 type EnvEff = Eff Env String

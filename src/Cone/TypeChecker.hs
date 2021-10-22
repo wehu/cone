@@ -681,7 +681,7 @@ convertImplInterfaceDefs :: Module -> Module
 convertImplInterfaceDefs m =
   let implIntfs = m ^.. topStmts . traverse . _ImplIDef
       intfs = map convert implIntfs
-   in m {_topStmts = [s | s <- _topStmts m, isn't _ImplIDef s] ++ intfs}
+   in m {_topStmts = _topStmts m ++ intfs}
   where
     convert ImplInterfaceDef {..} =
       let loc = _implInferfaceLoc
@@ -724,6 +724,32 @@ addImplicitArgs m =
       let (_, b) = unsafeUnbind _boundEffFuncDef
        in convert b
 
+initIntfImpls :: (Has EnvEff sig m) => Module -> m Module
+initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
+  where initIntfImpl i@ImplInterfaceDef{..} = do
+          prefix <- getEnv currentModuleName 
+          let iname = _implInterfaceDefName
+              loc = _implInterfaceLoc i
+              t = _implInterfaceDefType
+          intf <- searchInterface m iname loc
+          funcNames <- getEnv $ intfFuncs . at intf
+          when (isn't _Just funcNames) $
+            throwError $ "cannot find interface " ++ ppr intf ++ ppr loc
+          let implFuncNames = L.sort $_implInterfaceDefFuncs ^.. traverse . funcName
+          when (fromJust funcNames /= implFuncNames) $
+            throwError $ "interface implementation function mismatch: " ++ ppr funcNames ++ " vs " ++ ppr implFuncNames
+          let impls = L.foldl' (\(s, i) f ->
+                             ((prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
+                               bindTypeEffVar (_funcBoundEffVars f) $ 
+                                                bindTypeVar (_implInterfaceBoundVars++_funcBoundVars f) $
+                                                   TFunc (_funcArgs f ^.. traverse . _2) (_funcEffectType f) (_funcResultType  f) (_funcLoc f),
+                               t,
+                               i):s, i+1)) ([], 0) _implInterfaceDefFuncs
+          oldImpls <- getEnv $ intfImpls . at intf . non []
+          setEnv (Just $ oldImpls ++ impls ^. _1) $ intfImpls . at intf
+          return i
+        initIntfImpl i = return i
+
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
 initModule m env id =
@@ -744,6 +770,7 @@ initModule m env id =
       >>= initImplFuncDefs
       >>= addPrefixForExprs
       >>= addFuncDefs
+      >>= initIntfImpls
 
 -- | Type checking a module
 checkType :: Module -> Env -> Int -> Bool -> Either String (Env, (Int, Module))

@@ -690,3 +690,31 @@ setFuncImpl m impl = do
       i = EVar (s2n sel) loc
   addFuncImpl intfn i t
   return impl {_implFunDef = funcD {_funcName = fn}}
+
+searchInterface :: (Has EnvEff sig m) => Module -> String -> Location -> m String
+searchInterface m iname loc = do
+  let prefixes =
+        L.nub $
+          "" :
+          (m ^. moduleName ++ "/") :
+          "core/prelude/" :
+          map (\i -> i ^. importPath ++ "/") (m ^. imports)
+  n <- getNamePath m iname
+  is <- getEnv intfFuncs
+  found <-
+    filterOutAliasImports m n
+      <$> foldM
+        ( \f p -> do
+            let iin = p ++ n
+            case is ^. at iin of
+              Just _ -> return $ f ++ [iin]
+              Nothing -> return f
+        )
+        []
+        prefixes
+  if null found
+    then throwError $ "no interface definition found for : " ++ iname ++ ppr loc
+    else
+      if L.length found == 1
+        then return $ head found
+        else throwError $ "found more than one interface for " ++ iname ++ ppr found ++ ppr loc
