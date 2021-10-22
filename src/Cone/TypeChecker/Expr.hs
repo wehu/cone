@@ -296,16 +296,17 @@ inferExprType l@ELam {..} = underScope $ do
       --   unless (null cs) $
       --     throwError $ "lambda does not support constraints yes " ++ ppr cs ++ ppr _eloc
       -- return the lambda type
+      let nbvs = [(t, k, cs) | t <- bvs | (_, k, cs) <- _elamBoundVars]
       t <-
         inferType $
           bindTypeEffVar evs $
             bindTypeVar
-              [(t, k, cs) | t <- bvs | (_, k, cs) <- _elamBoundVars]
+              nbvs
               $ TFunc args _elamEffType eType _eloc
       -- infer effects
       eff <- effTypeOfExpr lamE >>= inferEffType
       checkEffTypeMatch _elamEffType eff
-      return $ annotateExpr l {_elamExpr = Just lamE} t (EffList [] _eloc)
+      return $ annotateExpr l {_elamBoundVars=nbvs, _elamBoundEffVars = evs, _elamExpr = Just lamE} t (EffList [] _eloc)
     _ -> throwError "should not be here"
 inferExprType a@EAnn {..} = do
   et <- inferExprType _eannExpr
