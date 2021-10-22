@@ -65,7 +65,7 @@ fun test4(a : t.tensor<f32, [4, 4]>) : t.tensor<f32, [4,4]> {
 
 interface test_i<a> {
     fun intf0(a) : a
-    fun intf1(a) : a
+    fun intf1(a, a) : a
 }
 
 interface test_i2<a> {
@@ -73,18 +73,18 @@ interface test_i2<a> {
 }
 
 impl interface<a <= [test_i2]> test_i<list<a>> {
-    fun intf0(a:list<a>) : list<a> {
+    fun intf1(a:list<a>, b:list<a>) : list<a> {
         val x|_ = a
         intf2(x)|_
     }
-    fun intf1(a:list<a>) : list<a> {
+    fun intf0(a:list<a>) : list<a> {
         val x|_ = a
         intf2(x)|_
     }
 }
 
-fun test_i3<a<=[test_i]>(a : a) : a{
-    a
+fun test_i3<a<=[test_i2]>(a : a) : a{
+    intf0(a)
 }
 
 diff test4 wrt (a) = auto
