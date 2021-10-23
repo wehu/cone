@@ -744,8 +744,14 @@ initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
                                                 bindTypeVar (_implInterfaceBoundVars++_funcBoundVars f) $
                                                    TFunc (_funcArgs f ^.. traverse . _2) (_funcEffectType f) (_funcResultType  f) (_funcLoc f),
                                i):s, i+1)) ([], 0) _implInterfaceDefFuncs
+              cntr = (prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
+                        bindTypeEffVar [] $ 
+                            bindTypeVar _implInterfaceBoundVars $
+                                TApp (TVar (s2n intf) loc) [t] loc)
           oldImpls <- getEnv $ intfImpls . at intf . non []
           setEnv (Just $ oldImpls ++ impls ^. _1) $ intfImpls . at intf
+          oldCntrs <- getEnv $ intfCntrs . at (intf ++ "_$dict") . non []
+          setEnv (Just $ cntr : oldCntrs) $ intfCntrs . at (intf ++ "_$dict")
           return i
         initIntfImpl i = return i
 

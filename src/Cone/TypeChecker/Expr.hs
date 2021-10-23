@@ -720,11 +720,12 @@ searchInterface m iname loc = do
         else throwError $ "found more than one interface for " ++ iname ++ ppr found ++ ppr loc
 
 selectIntf :: (Has EnvEff sig m) => Expr -> m Expr
-selectIntf v@(EAnnMeta EVar{..} t et loc) = do
+selectIntf v@(EAnnMeta EVar{..} t' et loc) = do
+  t <- inferType t'
   impls <- getEnv $ intfImpls . at (name2String _evarName)
   case impls of
     Just impls -> do
-      fs <- findSuperImpls impls >>= findBestImpls
+      fs <- findSuperImpls t impls >>= findBestImpls t
       when (null fs) $ throwError $ "cannot find interface implementation " ++ ppr v ++ ppr loc
       when (L.length fs > 1) $ throwError $ "there are more than one interface implemention matched " ++ show fs ++ ppr loc
       let (cntr, ft, index) = head fs
@@ -732,7 +733,7 @@ selectIntf v@(EAnnMeta EVar{..} t et loc) = do
       return v
     Nothing -> return v
   where
-    findSuperImpls impls =
+    findSuperImpls t impls =
       foldM
         ( \f (e, it, i) -> do
             is <- isEqOrSubType t it
@@ -742,7 +743,7 @@ selectIntf v@(EAnnMeta EVar{..} t et loc) = do
         )
         []
         impls
-    findBestImpls impls' = do
+    findBestImpls t impls' = do
       let impls = L.nubBy aeq impls'
       indegrees <-
         foldM
