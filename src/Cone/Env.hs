@@ -54,7 +54,7 @@ type DiffAdjs = M.Map String DiffDef
 
 type FuncDefs = M.Map String FuncDef
 
-type IntfFuncs = M.Map String [String]
+type IntfFuncs = M.Map String [(String, Type, Int)]
 
 type IntfImpls = M.Map String [(String, Type, Int)]
 
