@@ -743,7 +743,6 @@ initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
                                bindTypeEffVar (_funcBoundEffVars f) $ 
                                                 bindTypeVar (_implInterfaceBoundVars++_funcBoundVars f) $
                                                    TFunc (_funcArgs f ^.. traverse . _2) (_funcEffectType f) (_funcResultType  f) (_funcLoc f),
-                               t,
                                i):s, i+1)) ([], 0) _implInterfaceDefFuncs
           oldImpls <- getEnv $ intfImpls . at intf . non []
           setEnv (Just $ oldImpls ++ impls ^. _1) $ intfImpls . at intf

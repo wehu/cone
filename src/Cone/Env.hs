@@ -56,9 +56,9 @@ type FuncDefs = M.Map String FuncDef
 
 type IntfFuncs = M.Map String [String]
 
-type IntfImpl = (String,Type,Type,Int)
+type IntfImpls = M.Map String [(String, Type, Int)]
 
-type IntfImpls = M.Map String [IntfImpl]
+type IntfCntrs = M.Map String [(String, Type)]
 
 -- | The environment
 data Env = Env
@@ -80,7 +80,8 @@ data Env = Env
     _specializedFuncs :: FuncDefs,
     _specializedFuncTypes :: FuncTypes,
     _intfFuncs :: IntfFuncs,
-    _intfImpls :: IntfImpls
+    _intfImpls :: IntfImpls,
+    _intfCntrs :: IntfCntrs
   }
   deriving (Show, Eq)
 
@@ -106,7 +107,8 @@ initialEnv =
       _specializedFuncs = M.empty,
       _specializedFuncTypes = M.empty,
       _intfFuncs = M.empty,
-      _intfImpls = M.empty
+      _intfImpls = M.empty,
+      _intfCntrs = M.empty
     }
 
 type EnvEff = Eff Env String

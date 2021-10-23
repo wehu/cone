@@ -138,6 +138,7 @@ importModules cache paths m loaded = do
                 f = zipWithMaybeMatched $ \k v1 v2 -> Just v1
                 mergeImpls0 = zipWithMaybeMatched $ \k v1 v2 -> Just $ nubBy aeq $ v1 ++ v2
                 mergeImpls1 = zipWithMaybeMatched $ \k v1 v2 -> Just $ nubBy aeq $ v1 ++ v2
+                mergeImpls2 = zipWithMaybeMatched $ \k v1 v2 -> Just $ nubBy aeq $ v1 ++ v2
             return
               ( oldEnv
                   { _typeKinds = merge g1 g2 f (oldEnv ^. typeKinds) (env ^. typeKinds),
@@ -148,8 +149,9 @@ importModules cache paths m loaded = do
                     _funcImpls = merge g1 g2 mergeImpls0 (oldEnv ^. funcImpls) (env ^. funcImpls),
                     _diffAdjs  = merge g1 g2 f (oldEnv ^. diffAdjs) (env ^. diffAdjs),
                     _funcDefs  = merge g1 g2 f (oldEnv ^. funcDefs) (env ^. funcDefs),
-                    _intfFuncs  = merge g1 g2 f (oldEnv ^. intfFuncs) (env ^. intfFuncs),
-                    _intfImpls  = merge g1 g2 mergeImpls1 (oldEnv ^. intfImpls) (env ^. intfImpls)
+                    _intfFuncs = merge g1 g2 f (oldEnv ^. intfFuncs) (env ^. intfFuncs),
+                    _intfImpls = merge g1 g2 mergeImpls1 (oldEnv ^. intfImpls) (env ^. intfImpls),
+                    _intfCntrs = merge g1 g2 mergeImpls2 (oldEnv ^. intfCntrs) (env ^. intfCntrs)
                   },
                 id,
                 m,

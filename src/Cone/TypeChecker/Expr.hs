@@ -718,3 +718,52 @@ searchInterface m iname loc = do
       if L.length found == 1
         then return $ head found
         else throwError $ "found more than one interface for " ++ iname ++ ppr found ++ ppr loc
+
+selectIntf :: (Has EnvEff sig m) => Expr -> m Expr
+selectIntf v@(EAnnMeta EVar{..} t et loc) = do
+  impls <- getEnv $ intfImpls . at (name2String _evarName)
+  case impls of
+    Just impls -> do
+      fs <- findSuperImpls impls >>= findBestImpls
+      when (null fs) $ throwError $ "cannot find interface implementation " ++ ppr v ++ ppr loc
+      when (L.length fs > 1) $ throwError $ "there are more than one interface implemention matched " ++ show fs ++ ppr loc
+      let (cntr, ft, index) = head fs
+      
+      return v
+    Nothing -> return v
+  where
+    findSuperImpls impls =
+      foldM
+        ( \f (e, it, i) -> do
+            is <- isEqOrSubType t it
+            if is
+              then return $ f ++ [(e, it, i)]
+              else return f
+        )
+        []
+        impls
+    findBestImpls impls' = do
+      let impls = L.nubBy aeq impls'
+      indegrees <-
+        foldM
+          ( \s (a, b) -> do
+              is <- isSubType (a ^. _2) (b ^. _2)
+              if is
+                then return $ s & at b ?~ (1 + fromJust (s ^. at b))
+                else do
+                  is <- isSubType (b ^. _2) (a ^. _2)
+                  if is
+                    then return $ s & at a ?~ (1 + fromJust (s ^. at a))
+                    else return s
+          )
+          (L.foldl' (\s e -> s & at e ?~ (0 :: Int)) M.empty impls)
+          [(a, b) | a <- impls, b <- impls]
+      foldM
+        ( \s (i, c) ->
+            if c == 0
+              then return $ s ++ [i]
+              else return s
+        )
+        []
+        (M.toList indegrees)
+selectIntf e = return e
