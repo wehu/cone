@@ -742,18 +742,20 @@ initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
           let implFuncNames = L.sort $_implInterfaceDefFuncs ^.. traverse . funcName
           when (fromJust funcNames ^.. traverse . _1 /= implFuncNames) $
             throwError $ "interface implementation function mismatch: " ++ ppr funcNames ++ " vs " ++ ppr implFuncNames
+          let intfPrefix = join $ L.intersperse "/" $ init $ splitOn "/" intf
           let impls = L.foldl' (\(s, i) f ->
-                             ((prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
+                             ((intfPrefix ++ "/" ++ _funcName f, (prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
                                bindTypeEffVar (_funcBoundEffVars f) $
                                                 bindTypeVar (_implInterfaceBoundVars++_funcBoundVars f) $
                                                    TFunc (_funcArgs f ^.. traverse . _2) (_funcEffectType f) (_funcResultType  f) (_funcLoc f),
-                               i):s, i+1)) ([], 0) _implInterfaceDefFuncs
+                               i)):s, i+1)) ([], 0) _implInterfaceDefFuncs
               cntr = (prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
                         bindTypeEffVar [] $
                             bindTypeVar _implInterfaceBoundVars $
                                 TApp (TVar (s2n intf) loc) [t] loc)
-          oldImpls <- getEnv $ intfImpls . at intf . non []
-          setEnv (Just $ oldImpls ++ impls ^. _1) $ intfImpls . at intf
+          forM_ (impls ^. _1) $ \(intf, impl) -> do
+            oldImpls <- getEnv $ intfImpls . at intf . non []
+            setEnv (Just $ impl:oldImpls) $ intfImpls . at intf
           oldCntrs <- getEnv $ intfCntrs . at (intf ++ "_$dict") . non []
           setEnv (Just $ cntr : oldCntrs) $ intfCntrs . at (intf ++ "_$dict")
           return i
@@ -774,16 +776,18 @@ selectIntfs = mapMOf (topStmts . traverse . _FDef) select
                  let intfN = name2String n
                  intfs <- getEnv $ intfFuncs . at intfN
                  when (isn't _Just intfs) $ throwError $ "cannot find interface " ++ ppr n ++ ppr loc
-                 let impls = map (\(_, t, index) -> (_funcArgs !! i ^. _1, t, index)) (fromJust intfs)
-                 oldImpls <- getEnv $ intfImpls . at intfN . non []
-                 setEnv (Just $ impls ++ oldImpls) $ intfImpls . at intfN
+                 let prefix = join $ L.intersperse "/" $ init $ splitOn "/" intfN
+                     impls = map (\(n, t, index) -> (prefix ++ "/" ++ n, (_funcArgs !! i ^. _1, t, index))) (fromJust intfs)
+                 forM_ impls $ \(intf, impl) -> do
+                   oldImpls <- getEnv $ intfImpls . at intf . non []
+                   setEnv (Just $ impl:oldImpls) $ intfImpls . at intf
                  return $ i+1
                _ -> throwError $ "expect a type var, but got " ++ ppr c ++ ppr (_tloc c))
                i
                cs)
             (0::Int)
             _funcBoundVars
-          return f
+          mapMOf (funcExpr . _Just) selectIntf f
         select f = return f
 
 -- | Initialize a module
