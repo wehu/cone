@@ -775,7 +775,8 @@ initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
             ( prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
               bindTypeEffVar [] $
                 bindTypeVar _implInterfaceBoundVars $
-                  TApp (TVar (s2n intf) loc) [t] loc
+                  TApp (TVar (s2n intf) loc) [t] loc,
+              0
             )
       forM_ (impls ^. _1) $ \(intf, impl) -> do
         oldImpls <- getEnv $ intfImpls . at intf . non []

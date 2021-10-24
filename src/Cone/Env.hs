@@ -58,7 +58,7 @@ type IntfFuncs = M.Map String [(String, Type, Int)]
 
 type IntfImpls = M.Map String [(String, Type, Int)]
 
-type IntfCntrs = M.Map String [(String, Type)]
+type IntfCntrs = M.Map String [(String, Type, Int)]
 
 -- | The environment
 data Env = Env

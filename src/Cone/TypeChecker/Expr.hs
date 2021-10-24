@@ -719,6 +719,27 @@ searchInterface m iname loc = do
         then return $ head found
         else throwError $ "found more than one interface for " ++ iname ++ ppr found ++ ppr loc
 
+genIntfCntr :: (Has EnvEff sig m) => Location -> String -> m Expr
+genIntfCntr loc fn = do
+  ft <- getFuncType loc fn
+  case ft of
+    TFunc args eff rt loc -> do
+      args <- mapM (\t -> do
+        case t of
+          TVar n loc -> do
+            impls <- getEnv $ intfCntrs . at (name2String n)
+            case impls of
+              Just impls -> do
+                cntrs <- findSuperIntfImpls t impls >>= findBestIntfImpls t
+                when (null cntrs) $ throwError $ "cannot find interface " ++ ppr t ++ ppr loc
+                when (L.length cntrs > 1) $ throwError $ "there are more than one interface matched " ++ show cntrs ++ ppr loc
+                let (cntr, _, _) = head cntrs
+                genIntfCntr loc cntr
+              Nothing -> throwError $ "cannot find interface " ++ ppr t ++ ppr loc
+          t -> throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)) args
+      return $ EApp False (EVar (s2n fn) loc) [] args loc 
+    _ -> return $ EVar (s2n fn) loc
+
 selectIntf :: (Has EnvEff sig m) => Expr -> m Expr
 selectIntf v@(EAnnMeta EVar{..} t et loc) = do
   t <- inferType t
@@ -728,7 +749,9 @@ selectIntf v@(EAnnMeta EVar{..} t et loc) = do
       fs <- findSuperIntfImpls t impls >>= findBestIntfImpls t
       when (null fs) $ throwError $ "cannot find interface implementation " ++ ppr v ++ ppr loc
       when (L.length fs > 1) $ throwError $ "there are more than one interface implemention matched " ++ show fs ++ ppr loc
-      let (cntr, ft, index) = head fs
+      let (cntr, _, index) = head fs
+      c <- genIntfCntr loc cntr
+      
       return v
     Nothing -> return v
 selectIntf l@ELit{..} = return l
@@ -828,7 +851,9 @@ selectIntfForFunc f@FuncDef {..} = underScope $ do
 selectIntfForFunc f = return f
 
 setupIntfEnvs :: (Has EnvEff sig m) => [(TVar, Maybe Kind, [Type])] -> [(String, Type)] -> m ()
-setupIntfEnvs boundVars funcArgs =
+setupIntfEnvs boundVars funcArgs = do
+  forM_ funcArgs $ \(n, t) -> do
+    setEnv (Just t) $ funcTypes . at n
   foldM_
     ( \i (v, k, cs) -> do
         foldM
@@ -836,7 +861,7 @@ setupIntfEnvs boundVars funcArgs =
               case c of
                 t@(TVar n loc) -> do
                   let cntrN = name2String n ++ "_$dict"
-                      cntr = (funcArgs !! i ^. _1, TApp t [TVar v loc] loc)
+                      cntr = (funcArgs !! i ^. _1, TApp t [TVar v loc] loc, 0)
                   oldCntrs <- getEnv $ intfCntrs . at cntrN . non []
                   setEnv (Just $ cntr : oldCntrs) $ intfCntrs . at cntrN
 
