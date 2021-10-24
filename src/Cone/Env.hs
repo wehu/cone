@@ -188,11 +188,11 @@ closeEffType t =
 
 -- | Bind a type with type variables
 bindTypeVar :: [(TVar, Maybe Kind, [Type])] -> Type -> Type
-bindTypeVar bvs t = BoundType (bind bvs t) (_tloc t)
+bindTypeVar bvs t = BoundType (bind (L.nubBy aeq bvs) t) (_tloc t)
 
 -- | Bind an effect type with type variables
 bindTypeEffVar :: [EffVar] -> Type -> Type
-bindTypeEffVar bvs t = BoundEffVarType (bind bvs t) (_tloc t)
+bindTypeEffVar bvs t = BoundEffVarType (bind (L.nubBy aeq bvs) t) (_tloc t)
 
 -- | Refresh all bound type variables with new names
 refreshTypeVar :: (Has EnvEff sig m) => [TVar] -> Expr -> m ([TVar], Expr)

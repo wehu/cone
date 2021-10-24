@@ -399,10 +399,10 @@ initImplFuncDefs m = mapMOf (topStmts . traverse . _ImplFDef) (initImplFuncDef m
 -- | Check a function implementation
 checkImplFuncDef :: (Has EnvEff sig m) => ImplFuncDef -> m ImplFuncDef
 checkImplFuncDef i = underScope $ do
-  setEnv M.empty typeBinds
-  setEnv M.empty kindBinds
-  setEnv M.empty effTypeBinds
-  setEnv M.empty effKindBinds
+  --setEnv M.empty typeBinds
+  --setEnv M.empty kindBinds
+  --setEnv M.empty effTypeBinds
+  --setEnv M.empty effKindBinds
   let f = i ^. implFunDef
   let ft = funcDefType f
   k <- inferTypeKind ft
