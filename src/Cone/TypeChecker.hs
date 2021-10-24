@@ -796,12 +796,12 @@ initModule m env id =
     do
       setEnv (m ^. moduleName) currentModuleName
       convertInterfaceDefs m
-      >>= (renameLocalVars . addImplicitArgs . convertImplInterfaceDefs)
       >>= initTypeDefs
       >>= initEffTypeDefs
       >>= preInitTypeAliases
       >>= addPrefixForTypes
-      >>= (return . convertFuncImplToFuncs)
+      >>= (renameLocalVars . addImplicitArgs . convertImplInterfaceDefs . convertFuncImplToFuncs)
+      >>= addPrefixForTypes
       >>= initTypeAliases
       >>= initTypeConDefs
       >>= initEffIntfDefs
