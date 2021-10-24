@@ -725,82 +725,82 @@ selectIntf v@(EAnnMeta EVar{..} t' et loc) = do
   impls <- getEnv $ intfImpls . at (name2String _evarName)
   case impls of
     Just impls -> do
-      fs <- findSuperImpls t impls >>= findBestImpls t
+      fs <- findSuperIntfImpls t impls >>= findBestIntfImpls t
       when (null fs) $ throwError $ "cannot find interface implementation " ++ ppr v ++ ppr loc
       when (L.length fs > 1) $ throwError $ "there are more than one interface implemention matched " ++ show fs ++ ppr loc
       let (cntr, ft, index) = head fs
       return v
     Nothing -> return v
-  where
-    findSuperImpls t impls =
-      foldM
-        ( \f (e, it, i) -> do
-            is <- isEqOrSubType t it
-            if is
-              then return $ f ++ [(e, it, i)]
-              else return f
-        )
-        []
-        impls
-    findBestImpls t impls' = do
-      let impls = L.nubBy aeq impls'
-      indegrees <-
-        foldM
-          ( \s (a, b) -> do
-              is <- isSubType (a ^. _2) (b ^. _2)
-              if is
-                then return $ s & at b ?~ (1 + fromJust (s ^. at b))
-                else do
-                  is <- isSubType (b ^. _2) (a ^. _2)
-                  if is
-                    then return $ s & at a ?~ (1 + fromJust (s ^. at a))
-                    else return s
-          )
-          (L.foldl' (\s e -> s & at e ?~ (0 :: Int)) M.empty impls)
-          [(a, b) | a <- impls, b <- impls]
-      foldM
-        ( \s (i, c) ->
-            if c == 0
-              then return $ s ++ [i]
-              else return s
-        )
-        []
-        (M.toList indegrees)
 selectIntf e = return e
 
+findSuperIntfImpls :: (Has EnvEff sig m) => Type -> [(String, Type, Int)] -> m [(String, Type, Int)]
+findSuperIntfImpls t = foldM
+    ( \f (e, it, i) -> do
+        is <- isEqOrSubType t it
+        if is
+          then return $ f ++ [(e, it, i)]
+          else return f
+    )
+    []
+
+findBestIntfImpls :: (Has EnvEff sig m) => Type -> [(String, Type, Int)] -> m [(String, Type, Int)]
+findBestIntfImpls t impls' = do
+  let impls = L.nubBy aeq impls'
+  indegrees <-
+    foldM
+      ( \s (a, b) -> do
+          is <- isSubType (a ^. _2) (b ^. _2)
+          if is
+            then return $ s & at b ?~ (1 + fromJust (s ^. at b))
+            else do
+              is <- isSubType (b ^. _2) (a ^. _2)
+              if is
+                then return $ s & at a ?~ (1 + fromJust (s ^. at a))
+                else return s
+      )
+      (L.foldl' (\s e -> s & at e ?~ (0 :: Int)) M.empty impls)
+      [(a, b) | a <- impls, b <- impls]
+  foldM
+    ( \s (i, c) ->
+        if c == 0
+          then return $ s ++ [i]
+          else return s
+    )
+    []
+    (M.toList indegrees)
 
 setupIntfEnvs :: (Has EnvEff sig m) => [(TVar, Maybe Kind, [Type])] -> [(String, Type)] -> m ()
 setupIntfEnvs boundVars funcArgs =
   foldM_
-        ( \i (v, k, cs) -> do
-            foldM
-              ( \i c -> do
-                  case c of
-                    t@(TVar n loc) -> do
-                      let cntrN = name2String n ++ "_$dict"
-                          cntr = (funcArgs !! i ^. _1, TApp t [TVar v loc] loc)
-                      oldCntrs <- getEnv $ intfCntrs . at cntrN . non []
-                      setEnv (Just $ cntr : oldCntrs) $ intfCntrs . at cntrN
+    ( \i (v, k, cs) -> do
+        foldM
+          ( \i c -> do
+              case c of
+                t@(TVar n loc) -> do
+                  let cntrN = name2String n ++ "_$dict"
+                      cntr = (funcArgs !! i ^. _1, TApp t [TVar v loc] loc)
+                  oldCntrs <- getEnv $ intfCntrs . at cntrN . non []
+                  setEnv (Just $ cntr : oldCntrs) $ intfCntrs . at cntrN
 
-                      let intfN = name2String n
-                      intfs <- getEnv $ intfFuncs . at intfN
-                      when (isn't _Just intfs) $ throwError $ "cannot find interface " ++ ppr n ++ ppr loc
-                      let prefix = join $ L.intersperse "/" $ init $ splitOn "/" intfN
-                      impls <-
-                        mapM
-                          ( \(n, t', index) -> do
-                              t <- applyTypeArgs t' [TVar v loc]
-                              return (prefix ++ "/" ++ n, (funcArgs !! i ^. _1, t, index))
-                          )
-                          (fromJust intfs)
-                      forM_ impls $ \(intf, impl) -> do
-                        oldImpls <- getEnv $ intfImpls . at intf . non []
-                        setEnv (Just $ impl : oldImpls) $ intfImpls . at intf
-                      return $ i + 1
-                    _ -> throwError $ "expect a type var, but got " ++ ppr c ++ ppr (_tloc c)
-              )
-              i
-              cs
-        )
-        (0 :: Int)
-        boundVars
+                  let intfN = name2String n
+                  intfs <- getEnv $ intfFuncs . at intfN
+                  when (isn't _Just intfs) $ throwError $ "cannot find interface " ++ ppr n ++ ppr loc
+                  let prefix = join $ L.intersperse "/" $ init $ splitOn "/" intfN
+                  impls <-
+                    mapM
+                      ( \(n, t', index) -> do
+                          t <- applyTypeArgs t' [TVar v loc]
+                          return (prefix ++ "/" ++ n, (funcArgs !! i ^. _1, t, index))
+                      )
+                      (fromJust intfs)
+                  forM_ impls $ \(intf, impl) -> do
+                    oldImpls <- getEnv $ intfImpls . at intf . non []
+                    setEnv (Just $ impl : oldImpls) $ intfImpls . at intf
+                  return $ i + 1
+                _ -> throwError $ "expect a type var, but got " ++ ppr c ++ ppr (_tloc c)
+          )
+          i
+          cs
+    )
+    (0 :: Int)
+    boundVars
