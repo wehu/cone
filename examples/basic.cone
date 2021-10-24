@@ -84,10 +84,10 @@ impl interface<a <= test_i2> test_i<list<a>> {
 }
 
 fun test_i3<a <= test_i>(a : a) : a{
-    val f = fn <a <= test_i> (a:a) : a {
-        intf0(a)
-    }
-    f(a)
+    //val f = fn <a <= test_i> (a:a) : a {
+    //    intf0(a)
+    //}
+    //f(a)
     intf0(a)
 }
 

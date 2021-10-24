@@ -830,7 +830,7 @@ selectIntfs = mapMOf (topStmts . traverse . _FDef) select
         )
         (0 :: Int)
         _funcBoundVars
-      -- transformMOn (funcExpr . _Just) selectIntf f
+      transformMOn (funcExpr . _Just) selectIntf f
       return f
     select f = return f
 
