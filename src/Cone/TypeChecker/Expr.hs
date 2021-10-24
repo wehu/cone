@@ -720,8 +720,8 @@ searchInterface m iname loc = do
         else throwError $ "found more than one interface for " ++ iname ++ ppr found ++ ppr loc
 
 selectIntf :: (Has EnvEff sig m) => Expr -> m Expr
-selectIntf v@(EAnnMeta EVar{..} t' et loc) = do
-  t <- inferType t'
+selectIntf v@(EAnnMeta EVar{..} t et loc) = do
+  t <- inferType t
   impls <- getEnv $ intfImpls . at (name2String _evarName)
   case impls of
     Just impls -> do
@@ -731,6 +731,50 @@ selectIntf v@(EAnnMeta EVar{..} t' et loc) = do
       let (cntr, ft, index) = head fs
       return v
     Nothing -> return v
+selectIntf l@ELit{..} = return l
+selectIntf l@ELam{..} = underScope $ do
+  -- add all bound type variables into env
+  mapM_
+    (\(t, k, []) -> setEnv (Just $ k ^. non (KStar _eloc)) $ typeKinds . at (name2String t)) _elamBoundVars
+  -- add all bound eff type variables into env
+  mapM_ (\t -> setEnv (Just $ EKStar _eloc) $ effKinds . at (name2String t)) _elamBoundEffVars
+  setupIntfEnvs _elamBoundVars _elamArgs
+  mapMOf (elamExpr . _Just) selectIntf l
+selectIntf c@ECase{..} = do
+  e <- selectIntf _ecaseExpr
+  cs <- mapMOf (traverse . caseExpr) selectIntf _ecaseBody
+  return c{_ecaseExpr=e, _ecaseBody=cs}
+selectIntf w@EWhile{..} = do
+  c <- selectIntf _ewhileCond
+  b <- selectIntf _ewhileBody
+  return w{_ewhileCond=c, _ewhileBody=b}
+selectIntf a@EApp{..} = do
+  f <- selectIntf _eappFunc
+  args <- mapM selectIntf _eappArgs
+  return a{_eappFunc=f, _eappArgs=args}
+selectIntf l@ELet{..} = do
+  e <- selectIntf _eletExpr
+  b <- selectIntf _eletBody
+  return l{_eletExpr=e, _eletBody=b}
+selectIntf h@EHandle{..} = underScope $ do
+  e <- selectIntf _ehandleScope
+  binds <- mapM selectIntfForFunc _ehandleBindings
+  return h{_ehandleScope = e, _ehandleBindings = binds}
+selectIntf s@ESeq{..} = mapMOf (eseq . traverse) selectIntf s
+selectIntf a@EAnn{..} = mapMOf eannExpr selectIntf a
+selectIntf a@EAnnMeta{..} = mapMOf eannMetaExpr selectIntf a
+selectIntf b@EBoundTypeVars {..} = do
+  let (vs, e) = unsafeUnbind _eboundTypeVars
+  e <- selectIntf e
+  return b{_eboundTypeVars=bind vs e}
+selectIntf b@EBoundEffTypeVars {..} = do
+  let (vs, e) = unsafeUnbind _eboundEffTypeVars
+  e <- selectIntf e
+  return b{_eboundEffTypeVars=bind vs e}
+selectIntf b@EBoundVars{..} = do
+  let (vs, e) = unsafeUnbind _eboundVars
+  e <- selectIntf e
+  return b{_eboundVars=bind vs e}
 selectIntf e = return e
 
 findSuperIntfImpls :: (Has EnvEff sig m) => Type -> [(String, Type, Int)] -> m [(String, Type, Int)]
@@ -768,6 +812,20 @@ findBestIntfImpls t impls' = do
     )
     []
     (M.toList indegrees)
+
+selectIntfForFunc :: (Has EnvEff sig m) => FuncDef -> m FuncDef
+selectIntfForFunc f@FuncDef {..} = underScope $ do
+  let pos = _funcLoc
+      star = KStar pos
+      btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
+      bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
+  -- add all bound type variables into env
+  forM_ btvars $ \(n, k) -> setEnv (Just k) $ typeKinds . at n
+  -- add all bound eff type variables into env
+  forM_ bevars $ \(n, k) -> setEnv (Just k) $ effKinds . at n
+  setupIntfEnvs _funcBoundVars _funcArgs
+  mapMOf (funcExpr . _Just) selectIntf f
+selectIntfForFunc f = return f
 
 setupIntfEnvs :: (Has EnvEff sig m) => [(TVar, Maybe Kind, [Type])] -> [(String, Type)] -> m ()
 setupIntfEnvs boundVars funcArgs =

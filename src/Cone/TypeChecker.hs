@@ -786,21 +786,7 @@ initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
     initIntfImpl i = return i
 
 selectIntfs :: (Has EnvEff sig m) => Module -> m Module
-selectIntfs = mapMOf (topStmts . traverse . _FDef) select
-  where
-    select f@FuncDef {..} = underScope $ do
-      let pos = _funcLoc
-          star = KStar pos
-          btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
-          bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
-      -- add all bound type variables into env
-      forM_ btvars $ \(n, k) -> setEnv (Just k) $ typeKinds . at n
-      -- add all bound eff type variables into env
-      forM_ bevars $ \(n, k) -> setEnv (Just k) $ effKinds . at n
-      setupIntfEnvs _funcBoundVars _funcArgs
-      transformMOn (funcExpr . _Just) selectIntf f
-      return f
-    select f = return f
+selectIntfs = mapMOf (topStmts . traverse . _FDef) selectIntfForFunc
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
