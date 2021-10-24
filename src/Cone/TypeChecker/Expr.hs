@@ -754,9 +754,10 @@ selectIntf v@(EAnnMeta EVar{..} t et loc) = do
       ct <- inferExprType c >>= typeOfExpr
       case ct of
         TApp (TVar n loc) targs _ -> do
-          let vs = L.foldl' (\(s, i) _ -> (s++[PVar (s2n $ "____$tmp"++ show i) loc], i+1)) ([],0) targs
+          id <- fresh
+          let vs = L.foldl' (\(s, i) _ -> (s++[PVar (s2n $ "____$tmp" ++ show id ++ "____" ++ show i) loc], i+1)) ([],0) targs
               p = PApp (EVar (s2n $ name2String n) loc) [] (vs ^._1) loc
-          return $ ELet p c (EVar (s2n $ "____$tmp"++show index) loc) False loc
+          return $ ELet p c (EVar (s2n $ "____$tmp" ++ show id ++ "____" ++show index) loc) False loc
         t -> throwError $ "unsupported type " ++ ppr ct ++ ppr loc
     Nothing -> return v
 selectIntf l@ELit{..} = return l
