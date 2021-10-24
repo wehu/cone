@@ -730,6 +730,7 @@ genIntfCntr loc fn = do
             impls <- getEnv $ intfCntrs . at (name2String n ++ "_$dict")
             case impls of
               Just impls -> do
+                t <- bindTypeEffVar [] . bindTypeVar [] <$> inferType t
                 cntrs <- findSuperIntfImpls t impls >>= findBestIntfImpls t
                 when (null cntrs) $ throwError $ "cannot find interface for " ++ ppr t ++ ppr loc
                 when (L.length cntrs > 1) $ throwError $ "there are more than one interface matched " ++ show cntrs ++ ppr loc
@@ -737,7 +738,7 @@ genIntfCntr loc fn = do
                 genIntfCntr loc cntr
               Nothing -> throwError $ "cannot find interface for " ++ ppr t ++ ppr loc
           t -> throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)) args
-      return $ EApp False (EVar (s2n fn) loc) [] args loc 
+      return $ EApp False (EVar (s2n fn) loc) [] args loc
     _ -> return $ EVar (s2n fn) loc
 
 selectIntf :: (Has EnvEff sig m) => Expr -> m Expr
@@ -777,11 +778,12 @@ selectIntf w@EWhile{..} = do
   c <- selectIntf _ewhileCond
   b <- underScope $ selectIntf _ewhileBody
   return w{_ewhileCond=c, _ewhileBody=b}
-selectIntf a@(EApp _ (EAnnMeta (EVar n loc) t et _) targs [] _) = do
+selectIntf a@(EAnnMeta (EApp _ (EAnnMeta (EVar n loc) _ _ _) targs [] _) t et _) = do
   impls <- getEnv $ intfCntrs . at (name2String n)
-  t <- inferType t
+  t <- bindTypeEffVar [] . bindTypeVar [] <$> inferType t
   case impls of
     Just impls -> do
+      trace (ppr impls) return ()
       cntrs <- findSuperIntfImpls t impls >>= findBestIntfImpls t
       when (null cntrs) $ throwError $ "cannot find interface for " ++ ppr t ++ ppr loc
       when (L.length cntrs > 1) $ throwError $ "there are more than one interface matched " ++ show cntrs ++ ppr loc

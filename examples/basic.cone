@@ -72,6 +72,15 @@ interface test_i2<a> {
     fun intf2(a) : a
 }
 
+impl interface test_i<i32> {
+    fun intf0(a:i32) : i32 {
+        a
+    }
+    fun intf1(a:i32, a:i32) : i32 {
+        a
+    }
+}
+
 impl interface<a <= test_i2> test_i<list<a>> {
     fun intf1(a:list<a>, b:list<a>) : list<a> {
         val x|_ = a
@@ -108,7 +117,7 @@ fun main() : io unit {
    print(t3)
 
    // intf0([2])
-   //test_i3(32)
+   test_i3(32)
 
    print(sin(0.2))
 
