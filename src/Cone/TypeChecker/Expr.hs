@@ -739,14 +739,14 @@ selectIntf l@ELam{..} = underScope $ do
   -- add all bound eff type variables into env
   mapM_ (\t -> setEnv (Just $ EKStar _eloc) $ effKinds . at (name2String t)) _elamBoundEffVars
   setupIntfEnvs _elamBoundVars _elamArgs
-  mapMOf (elamExpr . _Just) selectIntf l
+  underScope $ mapMOf (elamExpr . _Just) selectIntf l
 selectIntf c@ECase{..} = do
   e <- selectIntf _ecaseExpr
-  cs <- mapMOf (traverse . caseExpr) selectIntf _ecaseBody
+  cs <- underScope $ mapMOf (traverse . caseExpr) selectIntf _ecaseBody
   return c{_ecaseExpr=e, _ecaseBody=cs}
 selectIntf w@EWhile{..} = do
   c <- selectIntf _ewhileCond
-  b <- selectIntf _ewhileBody
+  b <- underScope $ selectIntf _ewhileBody
   return w{_ewhileCond=c, _ewhileBody=b}
 selectIntf a@EApp{..} = do
   f <- selectIntf _eappFunc
@@ -754,7 +754,7 @@ selectIntf a@EApp{..} = do
   return a{_eappFunc=f, _eappArgs=args}
 selectIntf l@ELet{..} = do
   e <- selectIntf _eletExpr
-  b <- selectIntf _eletBody
+  b <- underScope $ selectIntf _eletBody
   return l{_eletExpr=e, _eletBody=b}
 selectIntf h@EHandle{..} = underScope $ do
   e <- selectIntf _ehandleScope
