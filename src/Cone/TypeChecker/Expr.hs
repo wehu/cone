@@ -725,11 +725,12 @@ selectIntf v@(EAnnMeta EVar{..} t' et loc) = do
   impls <- getEnv $ intfImpls . at (name2String _evarName)
   case impls of
     Just impls -> do
+      trace "aaaaa" return ()
       fs <- findSuperImpls t impls >>= findBestImpls t
       when (null fs) $ throwError $ "cannot find interface implementation " ++ ppr v ++ ppr loc
       when (L.length fs > 1) $ throwError $ "there are more than one interface implemention matched " ++ show fs ++ ppr loc
       let (cntr, ft, index) = head fs
-      
+      trace (ppr _evarName ++ ppr cntr) return () 
       return v
     Nothing -> return v
   where

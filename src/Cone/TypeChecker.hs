@@ -631,7 +631,7 @@ convertInterfaceDefs m = do
                       return (n, t)
                   )
                   (_intfArgs f)
-              let bvs = _intfBoundVars f
+              let bvs = (_interfaceTVar ^._1, _interfaceTVar ^._2, []) :_intfBoundVars f
                   bes = _intfBoundEffVars f
                   args = join $ map (\(n, _, cs) -> [TApp c [TVar n loc] loc | c <- cs]) (_intfBoundVars f)
                   ft =
@@ -676,6 +676,12 @@ convertInterfaceDefs m = do
                     ([], 0::Int)
                     intfs
       setEnv (Just $ impls ^. _1) $ intfFuncs . at (prefix ++ "/" ++ iname)
+      forM_ _interfaceFuncs $ \intf -> do
+        let n = prefix ++ "/" ++ intf ^. intfName
+        oldImpls <- getEnv $ intfImpls . at n . non []
+        setEnv (Just oldImpls) $ intfImpls . at n
+      oldCntrs <- getEnv $ intfCntrs . at (prefix ++ "/" ++ iname ++ "_$dict") . non []
+      setEnv (Just oldCntrs) $ intfCntrs . at (prefix ++ "/" ++ iname ++ "_$dict")
       return $ TDef {_tdef = t} : FDef {_fdef = placeHolder} : map FDef (intfs ^.. traverse . _2)
     convert prefix BoundInterfaceDef {..} =
       let (_, b) = unsafeUnbind _boundInterfaceDef
@@ -764,6 +770,14 @@ initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
 selectIntfs :: (Has EnvEff sig m) => Module -> m Module
 selectIntfs = mapMOf (topStmts . traverse . _FDef) select
   where select f@FuncDef{..} = underScope $ do
+          let pos = _funcLoc
+              star = KStar pos
+              btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
+              bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
+          -- add all bound type variables into env
+          forM_ btvars $ \(n, k) -> setEnv (Just k) $ typeKinds . at n
+          -- add all bound eff type variables into env
+          forM_ bevars $ \(n, k) -> setEnv (Just k) $ effKinds . at n
           foldM_ (\i (v, k, cs) -> do
             foldM (\i c -> do
               case c of
@@ -772,12 +786,14 @@ selectIntfs = mapMOf (topStmts . traverse . _FDef) select
                      cntr = (_funcArgs !! i ^. _1, TApp t [TVar v loc] loc)
                  oldCntrs <- getEnv $ intfCntrs . at cntrN . non []
                  setEnv (Just $ cntr:oldCntrs) $ intfCntrs . at cntrN
-                 
+
                  let intfN = name2String n
                  intfs <- getEnv $ intfFuncs . at intfN
                  when (isn't _Just intfs) $ throwError $ "cannot find interface " ++ ppr n ++ ppr loc
                  let prefix = join $ L.intersperse "/" $ init $ splitOn "/" intfN
-                     impls = map (\(n, t, index) -> (prefix ++ "/" ++ n, (_funcArgs !! i ^. _1, t, index))) (fromJust intfs)
+                 impls <- mapM (\(n, t', index) -> do
+                   t <- applyTypeArgs t' [TVar v loc]
+                   return (prefix ++ "/" ++ n, (_funcArgs !! i ^. _1, t, index))) (fromJust intfs)
                  forM_ impls $ \(intf, impl) -> do
                    oldImpls <- getEnv $ intfImpls . at intf . non []
                    setEnv (Just $ impl:oldImpls) $ intfImpls . at intf
@@ -787,7 +803,8 @@ selectIntfs = mapMOf (topStmts . traverse . _FDef) select
                cs)
             (0::Int)
             _funcBoundVars
-          mapMOf (funcExpr . _Just) selectIntf f
+          -- transformMOn (funcExpr . _Just) selectIntf f
+          return f
         select f = return f
 
 -- | Initialize a module
