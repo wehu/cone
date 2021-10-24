@@ -783,7 +783,6 @@ selectIntf a@(EAnnMeta (EApp _ (EAnnMeta (EVar n loc) _ _ _) targs [] _) t et _)
   t <- bindTypeEffVar [] . bindTypeVar [] <$> inferType t
   case impls of
     Just impls -> do
-      trace (ppr impls) return ()
       cntrs <- findSuperIntfImpls t impls >>= findBestIntfImpls t
       when (null cntrs) $ throwError $ "cannot find interface for " ++ ppr t ++ ppr loc
       when (L.length cntrs > 1) $ throwError $ "there are more than one interface matched " ++ show cntrs ++ ppr loc

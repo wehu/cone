@@ -117,7 +117,7 @@ fun main() : io unit {
    print(t3)
 
    // intf0([2])
-   test_i3(32)
+   print(test_i3(32))
 
    print(sin(0.2))
 
@@ -238,6 +238,9 @@ fun main() : io unit {
 
    // print(relu(feature))
    // print(diff relu(feature,feature))
+
+
+   print(test_i3(32))
 
 }
 
