@@ -777,6 +777,16 @@ selectIntf w@EWhile{..} = do
   c <- selectIntf _ewhileCond
   b <- underScope $ selectIntf _ewhileBody
   return w{_ewhileCond=c, _ewhileBody=b}
+selectIntf a@(EApp _ (EAnnMeta (EVar n loc) t et _) targs [] _) = do
+  impls <- getEnv $ intfCntrs . at (name2String n)
+  case impls of
+    Just impls -> do
+      cntrs <- findSuperIntfImpls t impls >>= findBestIntfImpls t
+      when (null cntrs) $ throwError $ "cannot find interface for " ++ ppr t ++ ppr loc
+      when (L.length cntrs > 1) $ throwError $ "there are more than one interface matched " ++ show cntrs ++ ppr loc
+      let (cntr, _, _) = head cntrs
+      genIntfCntr loc cntr
+    Nothing -> return a
 selectIntf a@EApp{..} = do
   f <- selectIntf _eappFunc
   args <- mapM selectIntf _eappArgs
