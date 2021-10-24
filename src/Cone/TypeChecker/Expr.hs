@@ -721,7 +721,7 @@ searchInterface m iname loc = do
 
 genIntfCntr :: (Has EnvEff sig m) => Location -> String -> m Expr
 genIntfCntr loc fn = do
-  ft <- getFuncType loc fn
+  ft <- getFuncType loc fn >>= unbindType
   case ft of
     TFunc args eff rt loc -> do
       args <- mapM (\t -> do
