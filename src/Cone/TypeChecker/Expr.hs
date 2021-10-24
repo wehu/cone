@@ -726,16 +726,16 @@ genIntfCntr loc fn = do
     TFunc args eff rt loc -> do
       args <- mapM (\t -> do
         case t of
-          TVar n loc -> do
-            impls <- getEnv $ intfCntrs . at (name2String n)
+          (TApp (TVar n loc) targs _) -> do
+            impls <- getEnv $ intfCntrs . at (name2String n ++ "_$dict")
             case impls of
               Just impls -> do
                 cntrs <- findSuperIntfImpls t impls >>= findBestIntfImpls t
-                when (null cntrs) $ throwError $ "cannot find interface " ++ ppr t ++ ppr loc
+                when (null cntrs) $ throwError $ "cannot find interface for " ++ ppr t ++ ppr loc
                 when (L.length cntrs > 1) $ throwError $ "there are more than one interface matched " ++ show cntrs ++ ppr loc
                 let (cntr, _, _) = head cntrs
                 genIntfCntr loc cntr
-              Nothing -> throwError $ "cannot find interface " ++ ppr t ++ ppr loc
+              Nothing -> throwError $ "cannot find interface for " ++ ppr t ++ ppr loc
           t -> throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)) args
       return $ EApp False (EVar (s2n fn) loc) [] args loc 
     _ -> return $ EVar (s2n fn) loc
@@ -751,8 +751,13 @@ selectIntf v@(EAnnMeta EVar{..} t et loc) = do
       when (L.length fs > 1) $ throwError $ "there are more than one interface implemention matched " ++ show fs ++ ppr loc
       let (cntr, _, index) = head fs
       c <- genIntfCntr loc cntr
-      
-      return v
+      ct <- inferExprType c >>= typeOfExpr
+      case ct of
+        TApp (TVar n loc) targs _ -> do
+          let vs = L.foldl' (\(s, i) _ -> (s++[PVar (s2n $ "____$tmp"++ show i) loc], i+1)) ([],0) targs
+              p = PApp (EVar (s2n $ name2String n) loc) [] (vs ^._1) loc
+          return $ ELet p c (EVar (s2n $ "____$tmp"++show index) loc) False loc
+        t -> throwError $ "unsupported type " ++ ppr ct ++ ppr loc
     Nothing -> return v
 selectIntf l@ELit{..} = return l
 selectIntf l@ELam{..} = underScope $ do
