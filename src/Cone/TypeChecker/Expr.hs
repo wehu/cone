@@ -165,13 +165,13 @@ selectFuncImpl targs e@(EAnnMeta (EVar fn' _) t eff _) loc = do
         then throwError $ "ambiguous implementations for " ++ fn ++ ppr impls ++ ppr loc
         else return fn
   f <- getEnv $ funcDefs . at newFn
-  when (fn /= "resume" &&
-        fn /= "data/tensor/full" && -- TODO should be removed
-        fn /= "core/prelude/inline_python" &&
-        fn /= "core/prelude/____assign" &&
-        fn /= "core/prelude/____zeros" &&
-        isConcreteType t && isn't _Nothing f && isn't _Just (_funcExpr $ fromJust f)) $
-    throwError $ "cannot find function implemenation for " ++ fn ++ " of type " ++ ppr t ++ ppr loc
+  -- when (fn /= "resume" &&
+  --       fn /= "data/tensor/full" && -- TODO should be removed
+  --       fn /= "core/prelude/inline_python" &&
+  --       fn /= "core/prelude/____assign" &&
+  --       fn /= "core/prelude/____zeros" &&
+  --       isConcreteType t && isn't _Nothing f && isn't _Just (_funcExpr $ fromJust f)) $
+  --   throwError $ "cannot find function implemenation for " ++ fn ++ " of type " ++ ppr t ++ ppr loc
   newFn <- getSpecializedFunc targs newFn t
   return $ EAnnMeta (EVar (s2n newFn) loc) t eff loc
   where
@@ -779,6 +779,7 @@ selectIntf w@EWhile{..} = do
   return w{_ewhileCond=c, _ewhileBody=b}
 selectIntf a@(EApp _ (EAnnMeta (EVar n loc) t et _) targs [] _) = do
   impls <- getEnv $ intfCntrs . at (name2String n)
+  t <- inferType t
   case impls of
     Just impls -> do
       cntrs <- findSuperIntfImpls t impls >>= findBestIntfImpls t
