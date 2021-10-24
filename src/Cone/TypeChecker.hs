@@ -675,7 +675,7 @@ convertInterfaceDefs m = do
           impls =
             L.foldl'
               ( \(s, i) (ft, _, fn) ->
-                  (s ++ [(fn, ft, i)], i + 1)
+                  (s ++ [(fn, ft, i, bind [tn] (tvar, ft))], i + 1)
               )
               ([], 0 :: Int)
               intfs
@@ -747,22 +747,25 @@ initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
           loc = _implInterfaceLoc i
           t = _implInterfaceDefType
       intf <- searchInterface m iname loc
-      funcNames <- getEnv $ intfFuncs . at intf
-      when (isn't _Just funcNames) $
+      funcNames' <- getEnv $ intfFuncs . at intf
+      when (isn't _Just funcNames') $
         throwError $ "cannot find interface " ++ ppr intf ++ ppr loc
       let implFuncNames = L.sort $ _implInterfaceDefFuncs ^.. traverse . funcName
-      when (fromJust funcNames ^.. traverse . _1 /= implFuncNames) $
+          funcNames = fromJust funcNames' ^.. traverse . _1
+      when (funcNames /= implFuncNames) $
         throwError $ "interface implementation function mismatch: " ++ ppr funcNames ++ " vs " ++ ppr implFuncNames
       let intfPrefix = join $ L.intersperse "/" $ init $ splitOn "/" intf
-      let impls =
+          intfT = TApp (TVar (s2n intf) loc) [t] loc
+          impls =
             L.foldl'
               ( \(s, i) f ->
-                  ( ( intfPrefix ++ "/" ++ _funcName f,
+                 let ft = TFunc (_funcArgs f ^.. traverse . _2) (_funcEffectType f) (_funcResultType f) (_funcLoc f)
+                  in ( ( intfPrefix ++ "/" ++ _funcName f,
                       ( prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
                         bindTypeEffVar (_funcBoundEffVars f) $
-                          bindTypeVar (_implInterfaceBoundVars ++ _funcBoundVars f) $
-                            TFunc (_funcArgs f ^.. traverse . _2) (_funcEffectType f) (_funcResultType f) (_funcLoc f),
-                        i
+                          bindTypeVar (_implInterfaceBoundVars ++ _funcBoundVars f) ft,
+                        i,
+                        bind (_implInterfaceBoundVars ^.. traverse . _1) (intfT, ft)
                       )
                     ) :
                     s,
@@ -774,9 +777,9 @@ initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
           cntr =
             ( prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
               bindTypeEffVar [] $
-                bindTypeVar _implInterfaceBoundVars $
-                  TApp (TVar (s2n intf) loc) [t] loc,
-              0
+                bindTypeVar _implInterfaceBoundVars intfT,
+              0,
+              bind (_implInterfaceBoundVars ^.. traverse . _1) (intfT, intfT)
             )
       forM_ (impls ^. _1) $ \(intf, impl) -> do
         oldImpls <- getEnv $ intfImpls . at intf . non []

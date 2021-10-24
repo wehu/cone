@@ -81,6 +81,12 @@ impl interface test_i<i32> {
     }
 }
 
+impl interface test_i2<i32> {
+    fun intf2(a : i32) : i32 {
+        a
+    }
+}
+
 impl interface<a <= test_i2> test_i<list<a>> {
     fun intf1(a:list<a>, b:list<a>) : list<a> {
         val x|_ = a
@@ -240,7 +246,7 @@ fun main() : io unit {
    // print(diff relu(feature,feature))
 
 
-   // print(test_i3(32))
+   print(test_i3([32]))
 
 }
 
