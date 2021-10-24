@@ -511,4 +511,3 @@ removeVarBindingsForCase c@Case {..} =
     { _caseExpr = removeVarBindingsForExpr _caseExpr,
       _casePattern = removeVarBindingsForPattern _casePattern
     }
-        

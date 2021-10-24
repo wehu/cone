@@ -797,39 +797,7 @@ selectIntfs = mapMOf (topStmts . traverse . _FDef) select
       forM_ btvars $ \(n, k) -> setEnv (Just k) $ typeKinds . at n
       -- add all bound eff type variables into env
       forM_ bevars $ \(n, k) -> setEnv (Just k) $ effKinds . at n
-      foldM_
-        ( \i (v, k, cs) -> do
-            foldM
-              ( \i c -> do
-                  case c of
-                    t@(TVar n loc) -> do
-                      let cntrN = name2String n ++ "_$dict"
-                          cntr = (_funcArgs !! i ^. _1, TApp t [TVar v loc] loc)
-                      oldCntrs <- getEnv $ intfCntrs . at cntrN . non []
-                      setEnv (Just $ cntr : oldCntrs) $ intfCntrs . at cntrN
-
-                      let intfN = name2String n
-                      intfs <- getEnv $ intfFuncs . at intfN
-                      when (isn't _Just intfs) $ throwError $ "cannot find interface " ++ ppr n ++ ppr loc
-                      let prefix = join $ L.intersperse "/" $ init $ splitOn "/" intfN
-                      impls <-
-                        mapM
-                          ( \(n, t', index) -> do
-                              t <- applyTypeArgs t' [TVar v loc]
-                              return (prefix ++ "/" ++ n, (_funcArgs !! i ^. _1, t, index))
-                          )
-                          (fromJust intfs)
-                      forM_ impls $ \(intf, impl) -> do
-                        oldImpls <- getEnv $ intfImpls . at intf . non []
-                        setEnv (Just $ impl : oldImpls) $ intfImpls . at intf
-                      return $ i + 1
-                    _ -> throwError $ "expect a type var, but got " ++ ppr c ++ ppr (_tloc c)
-              )
-              i
-              cs
-        )
-        (0 :: Int)
-        _funcBoundVars
+      setupIntfEnvs _funcBoundVars _funcArgs
       transformMOn (funcExpr . _Just) selectIntf f
       return f
     select f = return f

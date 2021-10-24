@@ -767,3 +767,40 @@ selectIntf v@(EAnnMeta EVar{..} t' et loc) = do
         []
         (M.toList indegrees)
 selectIntf e = return e
+
+
+setupIntfEnvs :: (Has EnvEff sig m) => [(TVar, Maybe Kind, [Type])] -> [(String, Type)] -> m ()
+setupIntfEnvs boundVars funcArgs =
+  foldM_
+        ( \i (v, k, cs) -> do
+            foldM
+              ( \i c -> do
+                  case c of
+                    t@(TVar n loc) -> do
+                      let cntrN = name2String n ++ "_$dict"
+                          cntr = (funcArgs !! i ^. _1, TApp t [TVar v loc] loc)
+                      oldCntrs <- getEnv $ intfCntrs . at cntrN . non []
+                      setEnv (Just $ cntr : oldCntrs) $ intfCntrs . at cntrN
+
+                      let intfN = name2String n
+                      intfs <- getEnv $ intfFuncs . at intfN
+                      when (isn't _Just intfs) $ throwError $ "cannot find interface " ++ ppr n ++ ppr loc
+                      let prefix = join $ L.intersperse "/" $ init $ splitOn "/" intfN
+                      impls <-
+                        mapM
+                          ( \(n, t', index) -> do
+                              t <- applyTypeArgs t' [TVar v loc]
+                              return (prefix ++ "/" ++ n, (funcArgs !! i ^. _1, t, index))
+                          )
+                          (fromJust intfs)
+                      forM_ impls $ \(intf, impl) -> do
+                        oldImpls <- getEnv $ intfImpls . at intf . non []
+                        setEnv (Just $ impl : oldImpls) $ intfImpls . at intf
+                      return $ i + 1
+                    _ -> throwError $ "expect a type var, but got " ++ ppr c ++ ppr (_tloc c)
+              )
+              i
+              cs
+        )
+        (0 :: Int)
+        boundVars
