@@ -341,32 +341,33 @@ initFuncDef f = do
   setEnv (Just ft) $ funcTypes . at fn
   --fBody <- mapMOf _Just (addImplicitVars (_funcBoundVars f) (_funcArgs f)) (_funcExpr f)
   --fBody <- transformMOn _Just addImplicitVarsForLam fBody
-  let f' = f {_funcName = fn{-, _funcExpr = fBody-}}
+  let f' = f {_funcName = fn {-, _funcExpr = fBody-}}
   setEnv (Just f') $ funcDefs . at fn
   return f'
-  --where addImplicitVars bvs args e = do
-  --        let pos = _eloc e
-  --        (r, _) <- foldM
-  --          ( \(s, i) (v, _, cs) -> do
-  --              foldM
-  --                ( \(s, i) c -> do
-  --                    let cn = name2String $ _tvar c
-  --                    intfs <- getEnv $ intfFuncs . at cn
-  --                    when (isn't _Just intfs) $
-  --                      throwError $ "cannot find interface " ++ cn ++ ppr pos
-  --                    let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n $ n ++ "_$" ++ name2String v) pos) $ fromJust intfs) pos
-  --                    return (ELet p (EVar (s2n $ args !! i ^. _1) pos) s False pos, i + 1)
-  --                )
-  --                (s, i)
-  --                cs
-  --          )
-  --          (e, 0)
-  --          bvs
-  --        return r
-  --      addImplicitVarsForLam l@ELam{..} = do
-  --        b <- mapMOf _Just (addImplicitVars _elamBoundVars _elamArgs) _elamExpr 
-  --        return l{_elamExpr = b}
-  --      addImplicitVarsForLam e = return e
+
+--where addImplicitVars bvs args e = do
+--        let pos = _eloc e
+--        (r, _) <- foldM
+--          ( \(s, i) (v, _, cs) -> do
+--              foldM
+--                ( \(s, i) c -> do
+--                    let cn = name2String $ _tvar c
+--                    intfs <- getEnv $ intfFuncs . at cn
+--                    when (isn't _Just intfs) $
+--                      throwError $ "cannot find interface " ++ cn ++ ppr pos
+--                    let p = PApp (EVar (s2n cn) pos) [] (map (\n -> PVar (s2n $ n ++ "_$" ++ name2String v) pos) $ fromJust intfs) pos
+--                    return (ELet p (EVar (s2n $ args !! i ^. _1) pos) s False pos, i + 1)
+--                )
+--                (s, i)
+--                cs
+--          )
+--          (e, 0)
+--          bvs
+--        return r
+--      addImplicitVarsForLam l@ELam{..} = do
+--        b <- mapMOf _Just (addImplicitVars _elamBoundVars _elamArgs) _elamExpr
+--        return l{_elamExpr = b}
+--      addImplicitVarsForLam e = return e
 
 -- | Initialize all function definitons
 initFuncDefs :: (Has EnvEff sig m) => Module -> m Module
@@ -631,7 +632,7 @@ convertInterfaceDefs m = do
                       return (n, t)
                   )
                   (_intfArgs f)
-              let bvs = (_interfaceTVar ^._1, _interfaceTVar ^._2, []) :_intfBoundVars f
+              let bvs = (_interfaceTVar ^. _1, _interfaceTVar ^. _2, []) : _intfBoundVars f
                   bes = _intfBoundEffVars f
                   args = join $ map (\(n, _, cs) -> [TApp c [TVar n loc] loc | c <- cs]) (_intfBoundVars f)
                   ft =
@@ -671,10 +672,13 @@ convertInterfaceDefs m = do
                 _funcExpr = Nothing,
                 _funcLoc = loc
               }
-          impls = L.foldl' (\(s, i) (ft, _, fn) ->
-                    (s++[(fn, ft, i)], i+1))
-                    ([], 0::Int)
-                    intfs
+          impls =
+            L.foldl'
+              ( \(s, i) (ft, _, fn) ->
+                  (s ++ [(fn, ft, i)], i + 1)
+              )
+              ([], 0 :: Int)
+              intfs
       setEnv (Just $ impls ^. _1) $ intfFuncs . at (prefix ++ "/" ++ iname)
       forM_ _interfaceFuncs $ \intf -> do
         let n = prefix ++ "/" ++ intf ^. intfName
@@ -706,7 +710,7 @@ convertImplInterfaceDefs m =
               (L.sortBy (\a b -> _funcName a `compare` _funcName b) _implInterfaceDefFuncs)
           c = EApp False (EVar (s2n iname) loc) [t] intfs loc
           dict = uniqueFuncImplName (iname ++ "_$dict") t
-      in FDef $ FuncDef dict bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc
+       in FDef $ FuncDef dict bvs [] [] (EffList [] loc) (TApp (TVar (s2n iname) loc) [t] loc) (Just c) loc
     convert BoundImplInterfaceDef {..} =
       let (_, b) = unsafeUnbind _boundImplInterfaceDef
        in convert b
@@ -736,76 +740,99 @@ addImplicitArgs m =
 
 initIntfImpls :: (Has EnvEff sig m) => Module -> m Module
 initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
-  where initIntfImpl i@ImplInterfaceDef{..} = do
-          prefix <- getEnv currentModuleName
-          let iname = _implInterfaceDefName
-              loc = _implInterfaceLoc i
-              t = _implInterfaceDefType
-          intf <- searchInterface m iname loc
-          funcNames <- getEnv $ intfFuncs . at intf
-          when (isn't _Just funcNames) $
-            throwError $ "cannot find interface " ++ ppr intf ++ ppr loc
-          let implFuncNames = L.sort $_implInterfaceDefFuncs ^.. traverse . funcName
-          when (fromJust funcNames ^.. traverse . _1 /= implFuncNames) $
-            throwError $ "interface implementation function mismatch: " ++ ppr funcNames ++ " vs " ++ ppr implFuncNames
-          let intfPrefix = join $ L.intersperse "/" $ init $ splitOn "/" intf
-          let impls = L.foldl' (\(s, i) f ->
-                             ((intfPrefix ++ "/" ++ _funcName f, (prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
-                               bindTypeEffVar (_funcBoundEffVars f) $
-                                                bindTypeVar (_implInterfaceBoundVars++_funcBoundVars f) $
-                                                   TFunc (_funcArgs f ^.. traverse . _2) (_funcEffectType f) (_funcResultType  f) (_funcLoc f),
-                               i)):s, i+1)) ([], 0) _implInterfaceDefFuncs
-              cntr = (prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
-                        bindTypeEffVar [] $
-                            bindTypeVar _implInterfaceBoundVars $
-                                TApp (TVar (s2n intf) loc) [t] loc)
-          forM_ (impls ^. _1) $ \(intf, impl) -> do
-            oldImpls <- getEnv $ intfImpls . at intf . non []
-            setEnv (Just $ impl:oldImpls) $ intfImpls . at intf
-          oldCntrs <- getEnv $ intfCntrs . at (intf ++ "_$dict") . non []
-          setEnv (Just $ cntr : oldCntrs) $ intfCntrs . at (intf ++ "_$dict")
-          return i
-        initIntfImpl i = return i
+  where
+    initIntfImpl i@ImplInterfaceDef {..} = do
+      prefix <- getEnv currentModuleName
+      let iname = _implInterfaceDefName
+          loc = _implInterfaceLoc i
+          t = _implInterfaceDefType
+      intf <- searchInterface m iname loc
+      funcNames <- getEnv $ intfFuncs . at intf
+      when (isn't _Just funcNames) $
+        throwError $ "cannot find interface " ++ ppr intf ++ ppr loc
+      let implFuncNames = L.sort $ _implInterfaceDefFuncs ^.. traverse . funcName
+      when (fromJust funcNames ^.. traverse . _1 /= implFuncNames) $
+        throwError $ "interface implementation function mismatch: " ++ ppr funcNames ++ " vs " ++ ppr implFuncNames
+      let intfPrefix = join $ L.intersperse "/" $ init $ splitOn "/" intf
+      let impls =
+            L.foldl'
+              ( \(s, i) f ->
+                  ( ( intfPrefix ++ "/" ++ _funcName f,
+                      ( prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
+                        bindTypeEffVar (_funcBoundEffVars f) $
+                          bindTypeVar (_implInterfaceBoundVars ++ _funcBoundVars f) $
+                            TFunc (_funcArgs f ^.. traverse . _2) (_funcEffectType f) (_funcResultType f) (_funcLoc f),
+                        i
+                      )
+                    ) :
+                    s,
+                    i + 1
+                  )
+              )
+              ([], 0)
+              _implInterfaceDefFuncs
+          cntr =
+            ( prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
+              bindTypeEffVar [] $
+                bindTypeVar _implInterfaceBoundVars $
+                  TApp (TVar (s2n intf) loc) [t] loc
+            )
+      forM_ (impls ^. _1) $ \(intf, impl) -> do
+        oldImpls <- getEnv $ intfImpls . at intf . non []
+        setEnv (Just $ impl : oldImpls) $ intfImpls . at intf
+      oldCntrs <- getEnv $ intfCntrs . at (intf ++ "_$dict") . non []
+      setEnv (Just $ cntr : oldCntrs) $ intfCntrs . at (intf ++ "_$dict")
+      return i
+    initIntfImpl i = return i
 
 selectIntfs :: (Has EnvEff sig m) => Module -> m Module
 selectIntfs = mapMOf (topStmts . traverse . _FDef) select
-  where select f@FuncDef{..} = underScope $ do
-          let pos = _funcLoc
-              star = KStar pos
-              btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
-              bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
-          -- add all bound type variables into env
-          forM_ btvars $ \(n, k) -> setEnv (Just k) $ typeKinds . at n
-          -- add all bound eff type variables into env
-          forM_ bevars $ \(n, k) -> setEnv (Just k) $ effKinds . at n
-          foldM_ (\i (v, k, cs) -> do
-            foldM (\i c -> do
-              case c of
-               t@(TVar n loc) -> do
-                 let cntrN = name2String n ++ "_$dict"
-                     cntr = (_funcArgs !! i ^. _1, TApp t [TVar v loc] loc)
-                 oldCntrs <- getEnv $ intfCntrs . at cntrN . non []
-                 setEnv (Just $ cntr:oldCntrs) $ intfCntrs . at cntrN
+  where
+    select f@FuncDef {..} = underScope $ do
+      let pos = _funcLoc
+          star = KStar pos
+          btvars = fmap (\t -> (name2String (t ^. _1), t ^. _2 . non star)) $ f ^. funcBoundVars
+          bevars = fmap (\t -> (name2String t, EKStar pos)) $ f ^. funcBoundEffVars
+      -- add all bound type variables into env
+      forM_ btvars $ \(n, k) -> setEnv (Just k) $ typeKinds . at n
+      -- add all bound eff type variables into env
+      forM_ bevars $ \(n, k) -> setEnv (Just k) $ effKinds . at n
+      foldM_
+        ( \i (v, k, cs) -> do
+            foldM
+              ( \i c -> do
+                  case c of
+                    t@(TVar n loc) -> do
+                      let cntrN = name2String n ++ "_$dict"
+                          cntr = (_funcArgs !! i ^. _1, TApp t [TVar v loc] loc)
+                      oldCntrs <- getEnv $ intfCntrs . at cntrN . non []
+                      setEnv (Just $ cntr : oldCntrs) $ intfCntrs . at cntrN
 
-                 let intfN = name2String n
-                 intfs <- getEnv $ intfFuncs . at intfN
-                 when (isn't _Just intfs) $ throwError $ "cannot find interface " ++ ppr n ++ ppr loc
-                 let prefix = join $ L.intersperse "/" $ init $ splitOn "/" intfN
-                 impls <- mapM (\(n, t', index) -> do
-                   t <- applyTypeArgs t' [TVar v loc]
-                   return (prefix ++ "/" ++ n, (_funcArgs !! i ^. _1, t, index))) (fromJust intfs)
-                 forM_ impls $ \(intf, impl) -> do
-                   oldImpls <- getEnv $ intfImpls . at intf . non []
-                   setEnv (Just $ impl:oldImpls) $ intfImpls . at intf
-                 return $ i+1
-               _ -> throwError $ "expect a type var, but got " ++ ppr c ++ ppr (_tloc c))
-               i
-               cs)
-            (0::Int)
-            _funcBoundVars
-          -- transformMOn (funcExpr . _Just) selectIntf f
-          return f
-        select f = return f
+                      let intfN = name2String n
+                      intfs <- getEnv $ intfFuncs . at intfN
+                      when (isn't _Just intfs) $ throwError $ "cannot find interface " ++ ppr n ++ ppr loc
+                      let prefix = join $ L.intersperse "/" $ init $ splitOn "/" intfN
+                      impls <-
+                        mapM
+                          ( \(n, t', index) -> do
+                              t <- applyTypeArgs t' [TVar v loc]
+                              return (prefix ++ "/" ++ n, (_funcArgs !! i ^. _1, t, index))
+                          )
+                          (fromJust intfs)
+                      forM_ impls $ \(intf, impl) -> do
+                        oldImpls <- getEnv $ intfImpls . at intf . non []
+                        setEnv (Just $ impl : oldImpls) $ intfImpls . at intf
+                      return $ i + 1
+                    _ -> throwError $ "expect a type var, but got " ++ ppr c ++ ppr (_tloc c)
+              )
+              i
+              cs
+        )
+        (0 :: Int)
+        _funcBoundVars
+      -- transformMOn (funcExpr . _Just) selectIntf f
+      return f
+    select f = return f
 
 -- | Initialize a module
 initModule :: Module -> Env -> Int -> Either String (Env, (Int, Module))
