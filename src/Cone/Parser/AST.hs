@@ -476,7 +476,7 @@ data ImplInterfaceDef = ImplInterfaceDef
     _implInterfaceDefName :: String,
     _implInterfaceDefType :: Type,
     _implInterfaceDefFuncs :: [FuncDef],
-    _implInferfaceLoc :: Location
+    _implInterfaceLoc :: Location
   }
   | BoundImplInterfaceDef {_boundImplInterfaceDef :: Bind [TVar] ImplInterfaceDef, _implInterfaceLoc :: Location}
   deriving

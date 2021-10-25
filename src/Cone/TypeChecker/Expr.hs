@@ -727,8 +727,8 @@ genIntfCntr :: (Has EnvEff sig m) => String -> Type -> m Expr
 genIntfCntr fn rt = do
   let loc = _tloc rt
   ft' <- getFuncType loc fn >>= unbindType
-  rt <- unbindType rt
-  binds <- collectVarBindings True (if isn't _TFunc ft' then ft' else _tfuncResult ft') rt >>= checkAndAddTypeVarBindings
+  rt <- inferType rt >>= unbindType
+  binds <- collectVarBindings False (if isn't _TFunc ft' then ft' else _tfuncResult ft') rt >>= checkAndAddTypeVarBindings
   let ft = substs binds ft'
   case ft of
     TFunc args eff rt loc -> do
@@ -764,13 +764,15 @@ selectIntf v@(EAnnMeta EVar{..} t et loc) = do
       let (cntrT, ft) = substs [(v, TVar t loc) | v <- vs | t <- nvs] tt
       ft <- unbindType ft
       t <- unbindType t
-      binds <- collectVarBindings True ft t >>= checkAndAddTypeVarBindings
+      binds <- collectVarBindings False ft t >>= checkAndAddTypeVarBindings
       c <- genIntfCntr cntr (substs binds cntrT)
       ct <- inferExprType c >>= typeOfExpr
       case ct of
         TApp (TVar n loc) targs _ -> do
+          intfs <- getEnv $ intfFuncs . at (name2String n)
+          when (isn't _Just intfs) $ throwError $ "cannot find interface " ++ ppr n ++ ppr loc
           id <- fresh
-          let vs = L.foldl' (\(s, i) _ -> (s++[PVar (s2n $ "____$tmp" ++ show id ++ "____" ++ show i) loc], i+1)) ([],0) targs
+          let vs = L.foldl' (\(s, i) _ -> (s++[PVar (s2n $ "____$tmp" ++ show id ++ "____" ++ show i) loc], i+1)) ([],0) (fromJust intfs)
               p = PApp (EVar (s2n $ name2String n) loc) [] (vs ^._1) loc
           return $ ELet p c (EVar (s2n $ "____$tmp" ++ show id ++ "____" ++show index) loc) False loc
         t -> throwError $ "unsupported type " ++ ppr ct ++ ppr loc

@@ -635,10 +635,10 @@ convertInterfaceDefs m = do
               let bvs = (_interfaceTVar ^. _1, _interfaceTVar ^. _2, []) : _intfBoundVars f
                   bes = _intfBoundEffVars f
                   args = join $ map (\(n, _, cs) -> [TApp c [TVar n loc] loc | c <- cs]) (_intfBoundVars f)
-                  ft =
+                  ft = TFunc (args ++ _intfArgs f) (_intfEffectType f) (_intfResultType f) (_intfLoc f)
+                  bft =
                     bindTypeEffVar bes $
-                      bindTypeVar bvs $
-                        TFunc (args ++ _intfArgs f) (_intfEffectType f) (_intfResultType f) (_intfLoc f)
+                      bindTypeVar bvs ft
                   fi =
                     FuncDef
                       { _funcName = _intfName f,
@@ -650,7 +650,7 @@ convertInterfaceDefs m = do
                         _funcExpr = Nothing,
                         _funcLoc = _intfLoc f
                       }
-               in return (ft, fi, _intfName f)
+               in return (bft, fi, _intfName f, ft)
           )
           (L.sortBy (\a b -> _intfName a `compare` _intfName b) _interfaceFuncs)
       let c = TypeCon iname {-deps ++ -} (intfs ^.. traverse . _1) loc
@@ -674,8 +674,8 @@ convertInterfaceDefs m = do
               }
           impls =
             L.foldl'
-              ( \(s, i) (ft, _, fn) ->
-                  (s ++ [(fn, ft, i, bind [tn] (tvar, ft))], i + 1)
+              ( \(s, i) (bft, _, fn, ft) ->
+                  (s ++ [(fn, bft, i, bind [tn] (TApp (TVar (s2n $ prefix ++ "/" ++ iname) loc) [tvar] loc, ft))], i + 1)
               )
               ([], 0 :: Int)
               intfs
@@ -698,7 +698,7 @@ convertImplInterfaceDefs m =
    in m {_topStmts = _topStmts m ++ intfs}
   where
     convert ImplInterfaceDef {..} =
-      let loc = _implInferfaceLoc
+      let loc = _implInterfaceLoc
           iname = _implInterfaceDefName
           t = _implInterfaceDefType
           bvs = _implInterfaceBoundVars
@@ -744,7 +744,7 @@ initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
     initIntfImpl i@ImplInterfaceDef {..} = do
       prefix <- getEnv currentModuleName
       let iname = _implInterfaceDefName
-          loc = _implInterfaceLoc i
+          loc = _implInterfaceLoc 
           t = _implInterfaceDefType
       intf <- searchInterface m iname loc
       funcNames' <- getEnv $ intfFuncs . at intf
