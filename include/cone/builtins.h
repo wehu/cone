@@ -29,8 +29,7 @@ namespace cone {
 
   typedef std::function<object_t(const cont_t &, stack_t, effects_t)> func_with_cont_t;
 
-  struct __attribute__ ((visibility("hidden"))) ____cone_py_wrapper : public py::none {
-    explicit ____cone_py_wrapper(const object_t &o) : obj(o) {}
+  struct ____cone_py_wrapper {
     object_t obj;
   };
 
@@ -46,7 +45,10 @@ namespace cone {
 
   inline py::object ____to_py_object(const object_t &o) {
     if (o.type() != typeid(py::object)) {
-      return ____cone_py_wrapper(o);
+      auto wrapper = py::module_::import("core.prelude____c").attr("ConePyWrapper")();
+      auto &w = py::cast<____cone_py_wrapper &>(wrapper);
+      w.obj = o;
+      return wrapper;
       //throw ____cone_exception(std::string("cannot cast to py object_t, expected py object_t, but got ") + o.type().name());
     }
     return std::experimental::any_cast<py::object>(o);
@@ -54,7 +56,8 @@ namespace cone {
 
   inline object_t ____to_cone_object(const py::object &o) {
     if (py::isinstance<____cone_py_wrapper>(o)) {
-      return py::cast<____cone_py_wrapper>(o).obj;
+      auto x = py::cast<____cone_py_wrapper>(o).obj;
+      return x;
     }
     return o;
   }

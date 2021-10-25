@@ -91,7 +91,11 @@ instance Backend CppSource where
 
   genPrologue _ = return emptyDoc
 
-  genEpilogue _ = return emptyDoc
+  genEpilogue _ = do
+    moduleN <- getEnv currentModuleName
+    if moduleN == "core/prelude"
+    then return "py::class_<____cone_py_wrapper>(m, \"ConePyWrapper\").def(py::init<>());"
+    else return emptyDoc
 
   genModule proxy Module {..} = do
     let modulePs = splitOn "/" _moduleName
