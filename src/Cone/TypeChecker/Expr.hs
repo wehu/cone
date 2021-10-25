@@ -134,7 +134,7 @@ getSpecializedFunc targs fn t = do
               setEnv (Just newT) $ funcTypes . at fSel
               setEnv (Just newT) $ specializedFuncTypes . at fSel
               setEnv (Just newF) $ specializedFuncs . at fSel
-              newF <- checkFuncDef newF
+              newF <- checkFuncDef newF >>= selectIntfForFunc
               setEnv (Just newF) $ specializedFuncs . at fSel
               return fSel
             else return fn
@@ -254,8 +254,8 @@ inferExprType a@EApp {..} = do
   (t, ft) <- inferAppResultType appFuncType typeArgs argTypes
   t <- inferType t
   ft <- inferType ft
-  appFunc <- selectFuncImpl typeArgs appFunc {_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft} _eloc
-  return $ annotateExpr a {_eappFunc = appFunc{-_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft-}, _eappArgs = args} t eff
+ 
+  return $ annotateExpr a {_eappFunc = appFunc{_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft}, _eappArgs = args} t eff
 inferExprType l@ELam {..} = underScope $ do
   -- refresh all bound variables
   (bvs, newLam') <- refreshTypeVar (_elamBoundVars ^.. traverse . _1) l{_elamExpr=fmap bindTypeExpr _elamExpr}
@@ -780,13 +780,13 @@ selectIntf l@ELam{..} = underScope $ do
   underScope $ mapMOf (elamExpr . _Just) selectIntf l
 selectIntf c@ECase{..} = do
   e <- selectIntf _ecaseExpr
-  cs <- underScope $ mapMOf (traverse . caseExpr) selectIntf _ecaseBody
+  cs <- underScope $ mapMOf (traverse . casePattern) selectIntfInPattern _ecaseBody >>= mapMOf (traverse . caseExpr) selectIntf
   return c{_ecaseExpr=e, _ecaseBody=cs}
 selectIntf w@EWhile{..} = do
   c <- selectIntf _ewhileCond
   b <- underScope $ selectIntf _ewhileBody
   return w{_ewhileCond=c, _ewhileBody=b}
-selectIntf a@(EAnnMeta (EApp _ (EAnnMeta (EVar n loc) _ _ _) targs [] _) t et _) = do
+selectIntf a@(EAnnMeta eapp@(EApp _ (EAnnMeta (EVar n loc) _ _ _) targs [] _) t et _) = do
   impls <- getEnv $ intfCntrs . at (name2String n)
   t <- bindTypeEffVar [] . bindTypeVar [] <$> inferType t
   case impls of
@@ -796,15 +796,24 @@ selectIntf a@(EAnnMeta (EApp _ (EAnnMeta (EVar n loc) _ _ _) targs [] _) t et _)
       when (L.length cntrs > 1) $ throwError $ "there are more than one interface matched " ++ show cntrs ++ ppr loc
       let (cntr, _, _, _) = head cntrs
       genIntfCntr cntr t
-    Nothing -> return a
+    Nothing -> do
+      f <- selectIntf (_eappFunc eapp)
+      args <- mapM selectIntf (_eappArgs eapp)
+      typeArgs <- mapM inferType (_eappTypeArgs eapp)
+      f <- selectFuncImpl typeArgs f loc
+      return a{_eannMetaExpr=eapp{_eappFunc=f, _eappArgs=args}}
 selectIntf a@EApp{..} = do
   f <- selectIntf _eappFunc
   args <- mapM selectIntf _eappArgs
+  typeArgs <- mapM inferType _eappTypeArgs 
+  f <- selectFuncImpl typeArgs f _eloc
   return a{_eappFunc=f, _eappArgs=args}
 selectIntf l@ELet{..} = do
   e <- selectIntf _eletExpr
-  b <- underScope $ selectIntf _eletBody
-  return l{_eletExpr=e, _eletBody=b}
+  underScope $ do
+    p <- selectIntfInPattern _eletPattern 
+    b <- selectIntf _eletBody
+    return l{_eletExpr=e, _eletPattern=p, _eletBody=b}
 selectIntf h@EHandle{..} = underScope $ do
   e <- selectIntf _ehandleScope
   binds <- mapM selectIntfForFunc _ehandleBindings
@@ -825,6 +834,16 @@ selectIntf b@EBoundVars{..} = do
   e <- selectIntf e
   return b{_eboundVars=bind vs e}
 selectIntf e = return e
+
+selectIntfInPattern :: (Has EnvEff sig m) => Pattern -> m Pattern
+selectIntfInPattern p@PVar {..} = return p
+selectIntfInPattern p@PApp {..} = do
+  args <- mapM selectIntfInPattern _pappArgs
+  return p{_pappArgs = args}
+selectIntfInPattern p@PExpr {..} = do
+  e <- selectIntf _pExpr
+  return p{_pExpr = e}
+
 
 findSuperIntfImpls :: (Has EnvEff sig m) => Type -> [IntfImpl] -> m [IntfImpl]
 findSuperIntfImpls t = foldM
