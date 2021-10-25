@@ -255,7 +255,7 @@ inferExprType a@EApp {..} = do
   t <- inferType t
   ft <- inferType ft
   appFunc <- selectFuncImpl typeArgs appFunc {_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft} _eloc
-  return $ annotateExpr a {_eappFunc = appFunc, _eappArgs = args} t eff
+  return $ annotateExpr a {_eappFunc = appFunc{-_eannMetaType = bindTypeEffVar [] $ bindTypeVar [] ft-}, _eappArgs = args} t eff
 inferExprType l@ELam {..} = underScope $ do
   -- refresh all bound variables
   (bvs, newLam') <- refreshTypeVar (_elamBoundVars ^.. traverse . _1) l{_elamExpr=fmap bindTypeExpr _elamExpr}

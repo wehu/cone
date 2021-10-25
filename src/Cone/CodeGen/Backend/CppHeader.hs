@@ -551,7 +551,7 @@ instance Backend CppHeader where
             return $
               parens $ "py::cast<bool>(____to_py_object(" <> b <> parens ee <> "))"
         )
-        [(arg, parens $ "py::object(____to_py_object(____e).attr(\"f" <> pretty id <> "\"))") | arg <- _pappArgs | id <- [0 :: Int ..]]
+        [(arg, parens $ "____to_cone_object(____to_py_object(____e).attr(\"f" <> pretty id <> "\"))") | arg <- _pappArgs | id <- [0 :: Int ..]]
     return $
       parens $
         "[=](const object_t &____e) -> object_t { return py::object(py::bool_"

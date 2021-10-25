@@ -29,6 +29,11 @@ namespace cone {
 
   typedef std::function<object_t(const cont_t &, stack_t, effects_t)> func_with_cont_t;
 
+  struct __attribute__ ((visibility("hidden"))) ____cone_py_wrapper : public py::none {
+    explicit ____cone_py_wrapper(const object_t &o) : obj(o) {}
+    object_t obj;
+  };
+
   stack_t ____make_empty_stack() {
     auto s = std::make_shared<std::vector<std::map<std::string, object_t>>>();
     s->push_back({});
@@ -41,9 +46,17 @@ namespace cone {
 
   inline py::object ____to_py_object(const object_t &o) {
     if (o.type() != typeid(py::object)) {
-      throw ____cone_exception(std::string("cannot cast to py object_t, expected py object_t, but got ") + o.type().name());
+      return ____cone_py_wrapper(o);
+      //throw ____cone_exception(std::string("cannot cast to py object_t, expected py object_t, but got ") + o.type().name());
     }
     return std::experimental::any_cast<py::object>(o);
+  }
+
+  inline object_t ____to_cone_object(const py::object &o) {
+    if (py::isinstance<____cone_py_wrapper>(o)) {
+      return py::cast<____cone_py_wrapper>(o).obj;
+    }
+    return o;
   }
 
   namespace core { namespace prelude {

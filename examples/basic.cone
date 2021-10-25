@@ -245,8 +245,7 @@ fun main() : io unit {
    // print(relu(feature))
    // print(diff relu(feature,feature))
 
-
-   print(test_i3([32]))
+   // print(test_i3([32]))
 
 }
 
