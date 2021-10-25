@@ -773,7 +773,7 @@ initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
                   )
               )
               ([], 0)
-              _implInterfaceDefFuncs
+              (L.sortBy (\a b -> _funcName a `compare` _funcName b) _implInterfaceDefFuncs)
           cntr =
             ( prefix ++ "/" ++ uniqueFuncImplName (iname ++ "_$dict") t,
               bindTypeEffVar [] $
