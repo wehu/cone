@@ -156,59 +156,63 @@ getSpecializedFunc targs fn t = do
 selectFuncImpl :: (Has EnvEff sig m) => [Type] -> Expr -> Location -> m Expr
 selectFuncImpl targs e@(EAnnMeta (EVar fn' _) t eff _) loc = do
   let fn = name2String fn'
-  impls <- getFuncImpls fn
-  impls <- findSuperImpls impls >>= findBestImpls
-  newFn <- if L.length impls == 1
-    then return $ name2String $ _evarName $ head impls ^. _1 -- return $ EAnnMeta (head impls ^. _1) t loc
-    else
-      if L.length impls > 1
-        then throwError $ "ambiguous implementations for " ++ fn ++ ppr impls ++ ppr loc
-        else return fn
-  f <- getEnv $ funcDefs . at newFn
-  -- when (fn /= "resume" &&
-  --       fn /= "data/tensor/full" && -- TODO should be removed
-  --       fn /= "core/prelude/inline_python" &&
-  --       fn /= "core/prelude/____assign" &&
-  --       fn /= "core/prelude/____zeros" &&
-  --       isConcreteType t && isn't _Nothing f && isn't _Just (_funcExpr $ fromJust f)) $
-  --   throwError $ "cannot find function implemenation for " ++ fn ++ " of type " ++ ppr t ++ ppr loc
-  newFn <- getSpecializedFunc targs newFn t
-  return $ EAnnMeta (EVar (s2n newFn) loc) t eff loc
-  where
-    findSuperImpls impls =
-      foldM
-        ( \f (e, it) -> do
-            is <- isEqOrSubType t it
-            if is
-              then return $ f ++ [(e, it)]
-              else return f
-        )
-        []
-        impls
-    findBestImpls impls' = do
-      let impls = L.nubBy aeq impls'
-      indegrees <-
-        foldM
-          ( \s (a, b) -> do
-              is <- isSubType (a ^. _2) (b ^. _2)
-              if is
-                then return $ s & at b ?~ (1 + fromJust (s ^. at b))
-                else do
-                  is <- isSubType (b ^. _2) (a ^. _2)
+  intfs <- getEnv $ intfImpls . at fn
+  case intfs of
+    Nothing -> do
+      impls <- getFuncImpls fn
+      impls <- findSuperImpls impls >>= findBestImpls
+      newFn <- if L.length impls == 1
+        then return $ name2String $ _evarName $ head impls ^. _1 -- return $ EAnnMeta (head impls ^. _1) t loc
+        else
+          if L.length impls > 1
+            then throwError $ "ambiguous implementations for " ++ fn ++ ppr impls ++ ppr loc
+            else return fn
+      f <- getEnv $ funcDefs . at newFn
+      -- when (fn /= "resume" &&
+      --       fn /= "data/tensor/full" && -- TODO should be removed
+      --       fn /= "core/prelude/inline_python" &&
+      --       fn /= "core/prelude/____assign" &&
+      --       fn /= "core/prelude/____zeros" &&
+      --       isConcreteType t && isn't _Nothing f && isn't _Just (_funcExpr $ fromJust f)) $
+      --   throwError $ "cannot find function implemenation for " ++ fn ++ " of type " ++ ppr t ++ ppr loc
+      newFn <- getSpecializedFunc targs newFn t
+      return $ EAnnMeta (EVar (s2n newFn) loc) t eff loc
+      where
+        findSuperImpls impls =
+          foldM
+            ( \f (e, it) -> do
+                is <- isEqOrSubType t it
+                if is
+                  then return $ f ++ [(e, it)]
+                  else return f
+            )
+            []
+            impls
+        findBestImpls impls' = do
+          let impls = L.nubBy aeq impls'
+          indegrees <-
+            foldM
+              ( \s (a, b) -> do
+                  is <- isSubType (a ^. _2) (b ^. _2)
                   if is
-                    then return $ s & at a ?~ (1 + fromJust (s ^. at a))
-                    else return s
-          )
-          (L.foldl' (\s e -> s & at e ?~ (0 :: Int)) M.empty impls)
-          [(a, b) | a <- impls, b <- impls]
-      foldM
-        ( \s (i, c) ->
-            if c == 0
-              then return $ s ++ [i]
-              else return s
-        )
-        []
-        (M.toList indegrees)
+                    then return $ s & at b ?~ (1 + fromJust (s ^. at b))
+                    else do
+                      is <- isSubType (b ^. _2) (a ^. _2)
+                      if is
+                        then return $ s & at a ?~ (1 + fromJust (s ^. at a))
+                        else return s
+              )
+              (L.foldl' (\s e -> s & at e ?~ (0 :: Int)) M.empty impls)
+              [(a, b) | a <- impls, b <- impls]
+          foldM
+            ( \s (i, c) ->
+                if c == 0
+                  then return $ s ++ [i]
+                  else return s
+            )
+            []
+            (M.toList indegrees)
+    Just _ -> return e
 selectFuncImpl _ e _ = return e
 
 -- | Infer expression's type
@@ -758,6 +762,8 @@ selectIntf v@(EAnnMeta EVar{..} t et loc) = do
       let (vs, tt) = unsafeUnbind b
       nvs <- mapM (\_ -> freeVarName <$> fresh) vs
       let (cntrT, ft) = substs [(v, TVar t loc) | v <- vs | t <- nvs] tt
+      ft <- unbindType ft
+      t <- unbindType t
       binds <- collectVarBindings True ft t >>= checkAndAddTypeVarBindings
       c <- genIntfCntr cntr (substs binds cntrT)
       ct <- inferExprType c >>= typeOfExpr
