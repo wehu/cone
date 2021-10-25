@@ -719,8 +719,9 @@ searchInterface m iname loc = do
         then return $ head found
         else throwError $ "found more than one interface for " ++ iname ++ ppr found ++ ppr loc
 
-genIntfCntr :: (Has EnvEff sig m) => Location -> String -> Type -> m Expr
-genIntfCntr loc fn rt = do
+genIntfCntr :: (Has EnvEff sig m) => String -> Type -> m Expr
+genIntfCntr fn rt = do
+  let loc = _tloc rt
   ft' <- getFuncType loc fn >>= unbindType
   rt <- unbindType rt
   binds <- collectVarBindings True (if isn't _TFunc ft' then ft' else _tfuncResult ft') rt >>= checkAndAddTypeVarBindings
@@ -738,7 +739,7 @@ genIntfCntr loc fn rt = do
                 when (null cntrs) $ throwError $ "cannot find interface for " ++ ppr t ++ ppr loc
                 when (L.length cntrs > 1) $ throwError $ "there are more than one interface matched " ++ show cntrs ++ ppr loc
                 let (cntr, _, _, _) = head cntrs
-                genIntfCntr loc cntr t
+                genIntfCntr cntr t
               Nothing -> throwError $ "cannot find interface for " ++ ppr t ++ ppr loc
           t -> throwError $ "unsupported type " ++ ppr t ++ ppr (_tloc t)) args
       return $ EApp False (EVar (s2n fn) loc) [] args loc
@@ -758,7 +759,7 @@ selectIntf v@(EAnnMeta EVar{..} t et loc) = do
       nvs <- mapM (\_ -> freeVarName <$> fresh) vs
       let (cntrT, ft) = substs [(v, TVar t loc) | v <- vs | t <- nvs] tt
       binds <- collectVarBindings True ft t >>= checkAndAddTypeVarBindings
-      c <- genIntfCntr loc cntr (substs binds cntrT)
+      c <- genIntfCntr cntr (substs binds cntrT)
       ct <- inferExprType c >>= typeOfExpr
       case ct of
         TApp (TVar n loc) targs _ -> do
@@ -794,7 +795,7 @@ selectIntf a@(EAnnMeta (EApp _ (EAnnMeta (EVar n loc) _ _ _) targs [] _) t et _)
       when (null cntrs) $ throwError $ "cannot find interface for " ++ ppr t ++ ppr loc
       when (L.length cntrs > 1) $ throwError $ "there are more than one interface matched " ++ show cntrs ++ ppr loc
       let (cntr, _, _, _) = head cntrs
-      genIntfCntr loc cntr t
+      genIntfCntr cntr t
     Nothing -> return a
 selectIntf a@EApp{..} = do
   f <- selectIntf _eappFunc
@@ -825,7 +826,7 @@ selectIntf b@EBoundVars{..} = do
   return b{_eboundVars=bind vs e}
 selectIntf e = return e
 
-findSuperIntfImpls :: (Has EnvEff sig m) => Type -> [(String, Type, Int, Bind [TVar] (Type, Type))] -> m [(String, Type, Int, Bind [TVar] (Type, Type))]
+findSuperIntfImpls :: (Has EnvEff sig m) => Type -> [IntfImpl] -> m [IntfImpl]
 findSuperIntfImpls t = foldM
     ( \f (e, it, i, b) -> do
         is <- isEqOrSubType t it
@@ -835,7 +836,7 @@ findSuperIntfImpls t = foldM
     )
     []
 
-findBestIntfImpls :: (Has EnvEff sig m) => Type -> [(String, Type, Int, Bind [TVar] (Type, Type))] -> m [(String, Type, Int, Bind [TVar] (Type, Type))]
+findBestIntfImpls :: (Has EnvEff sig m) => Type -> [IntfImpl] -> m [IntfImpl]
 findBestIntfImpls t impls' = do
   let impls = L.nubBy aeq impls'
   indegrees <-

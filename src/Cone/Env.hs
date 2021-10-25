@@ -54,11 +54,13 @@ type DiffAdjs = M.Map String DiffDef
 
 type FuncDefs = M.Map String FuncDef
 
-type IntfFuncs = M.Map String [(String, Type, Int, Bind [TVar] (Type, Type))]
+type IntfImpl = (String, Type, Int, Bind [TVar] (Type, Type))
 
-type IntfImpls = M.Map String [(String, Type, Int, Bind [TVar] (Type, Type))]
+type IntfFuncs = M.Map String [IntfImpl]
 
-type IntfCntrs = M.Map String [(String, Type, Int, Bind [TVar] (Type, Type))]
+type IntfImpls = M.Map String [IntfImpl]
+
+type IntfCntrs = M.Map String [IntfImpl]
 
 -- | The environment
 data Env = Env
