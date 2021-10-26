@@ -625,12 +625,13 @@ convertInterfaceDefs m = do
         mapM
           ( \f -> do
               fiArgs <-
-                mapM
-                  ( \t -> do
-                      id <- fresh
-                      let n = "__arg_$" ++ show id
-                      return (n, t)
+                foldM
+                  ( \(s, id) t -> do
+                      -- id <- fresh
+                      let n = "arg" ++ show id
+                      return (s++[(n, t)], id+1)
                   )
+                  ([], 0::Int)
                   (_intfArgs f)
               let bvs = (_interfaceTVar ^. _1, _interfaceTVar ^. _2, []) : _intfBoundVars f
                   bes = _intfBoundEffVars f
@@ -644,7 +645,7 @@ convertInterfaceDefs m = do
                       { _funcName = _intfName f,
                         _funcBoundVars = bvs,
                         _funcBoundEffVars = bes,
-                        _funcArgs = fiArgs,
+                        _funcArgs = fiArgs ^._1,
                         _funcEffectType = _intfEffectType f,
                         _funcResultType = _intfResultType f,
                         _funcExpr = Nothing,
