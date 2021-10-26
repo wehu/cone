@@ -2,94 +2,85 @@ module core.prelude
 
 // builtin functions
 
-fun ____negative<a>(a: a) : a
-
-impl fun ____negative(a: i32) : i32 {
-    inline_python<i32>("____result = -a")
+interface number<a> {
+    fun ____negative(a) : a
+    fun ____add(a, a) : a
+    fun ____sub(a, a) : a
+    fun ____mul(a, a) : a
+    fun ____div(a, a) : a
+    fun ____mod(a, a) : a
 }
 
-impl fun ____negative(a: f32) : f32 {
-    inline_python<f32>("____result = -a")
+impl interface number<i32> {
+    fun ____negative(a: i32) : i32 {
+        inline_python<i32>("____result = -a")
+    }
+    fun ____add(a : i32, b :i32) : i32 {
+        inline_python<i32>("____result = a + b")
+    }
+    fun ____sub(a : i32, b :i32) : i32 {
+        inline_python<i32>("____result = a - b")
+    }
+    fun ____mul(a : i32, b :i32) : i32 {
+        inline_python<i32>("____result = a * b")
+    }
+    fun ____div(a : i32, b :i32) : i32 {
+        inline_python<i32>("____result = a / b")
+    }
+    fun ____mod(a : i32, b :i32) : i32 {
+        inline_python<i32>("____result = a % b")
+    }
 }
 
-diff ____negative wrt (a) = ____negative_diff
+impl interface number<f32> {
+    fun ____negative(a: f32) : f32 {
+        inline_python<f32>("____result = -a")
+    }
+    fun ____add(a : f32, b :f32) : f32 {
+        inline_python<f32>("____result = a + b")
+    }
+    fun ____sub(a : f32, b :f32) : f32 {
+        inline_python<f32>("____result = a - b")
+    }
+    fun ____mul(a : f32, b :f32) : f32 {
+        inline_python<f32>("____result = a * b")
+    }
+    fun ____div(a : f32, b :f32) : f32 {
+        inline_python<f32>("____result = a / b")
+    }
+    fun ____mod(a : f32, b :f32) : f32 {
+        inline_python<f32>("____result = a % b")
+    }
+}
 
-fun ____negative_diff<a>(a: a, da: a) : a {
+diff ____negative wrt (arg0) = ____negative_diff
+
+fun ____negative_diff<a <= number>(a: a, da: a) : a {
     - da
 } 
 
-fun ____add<a>(a: a, b:a) : a
+diff ____add wrt (arg0, arg1) = ____add_diff
 
-impl fun ____add(a : i32, b :i32) : i32 {
-    inline_python<i32>("____result = a + b")
-}
-
-impl fun ____add(a : f32, b :f32) : f32 {
-    inline_python<f32>("____result = a + b")
-}
-
-diff ____add wrt (a, b) = ____add_diff
-
-fun ____add_diff<a>(a: a, b:a, do: a) : (a, a) {
+fun ____add_diff<a <= number>(a: a, b:a, do: a) : (a, a) {
     (do, do)
 }
 
-fun ____sub<a>(a: a, b:a) : a
+diff ____sub wrt (arg0, arg1) = ____sub_diff
 
-impl fun ____sub(a : i32, b :i32) : i32 {
-    inline_python<i32>("____result = a - b")
-}
-
-impl fun ____sub(a : f32, b :f32) : f32 {
-    inline_python<f32>("____result = a - b")
-}
-
-diff ____sub wrt (a, b) = ____sub_diff
-
-fun ____sub_diff<a>(a: a, b: a, do: a) : (a, a) {
+fun ____sub_diff<a <= number>(a: a, b: a, do: a) : (a, a) {
     (do, - do)
 }
 
-fun ____mul<a>(a: a, b:a) : a
+diff ____mul wrt (arg0, arg1) = ____mul_diff
 
-impl fun ____mul(a : i32, b :i32) : i32 {
-    inline_python<i32>("____result = a * b")
-}
-
-impl fun ____mul(a : f32, b :f32) : f32 {
-    inline_python<f32>("____result = a * b")
-}
-
-diff ____mul wrt (a, b) = ____mul_diff
-
-fun ____mul_diff<a>(a: a, b: a, do: a) : (a, a) {
+fun ____mul_diff<a <= number>(a: a, b: a, do: a) : (a, a) {
     (b * do, a * do)
 }
 
-fun ____div<a>(a: a, b:a) : a
+diff ____div wrt (arg0, arg1) = ____div_diff
 
-impl fun ____div(a : i32, b :i32) : i32 {
-    inline_python<i32>("____result = a / b")
-}
-
-impl fun ____div(a : f32, b :f32) : f32 {
-    inline_python<f32>("____result = a / b")
-}
-
-diff ____div wrt (a, b) = ____div_diff
-
-fun ____div_diff<a>(a: a, b: a, do: a) : (a, a) {
+fun ____div_diff<a <= number>(a: a, b: a, do: a) : (a, a) {
     (do / b,  - (a * do) / (b * b))
-}
-
-fun ____mod<a>(a: a, b:a) : a
-
-impl fun ____mod(a : i32, b :i32) : i32 {
-    inline_python<i32>("____result = a % b")
-}
-
-impl fun ____mod(a : f32, b :f32) : f32 {
-    inline_python<f32>("____result = a % b")
 }
 
 fun ____lt<a>(a: a, b:a) : bool
@@ -207,22 +198,36 @@ type pair<a, b> {
     pair(a, b)
 }
 
-impl fun ____add<a, b>(a : pair<a, b>, b : pair<a, b>) : pair<a, b> {
-    val (a0, a1) = a
-    val (b0, b1) = b
-    (a0+b0, a1+b1)
-}
-
-impl fun ____sub<a, b>(a : pair<a, b>, b : pair<a, b>) : pair<a, b> {
-    val (a0, a1) = a
-    val (b0, b1) = b
-    (a0-b0, a1-b1)
-}
-
-impl fun ____mul<a, b>(a : pair<a, b>, b : pair<a, b>) : pair<a, b> {
-    val (a0, a1) = a
-    val (b0, b1) = b
-    (a0*b0, a1*b1)
+impl interface<a <= number, b <= number> number<pair<a, b>> {
+    fun ____negative(a : pair<a, b>) : pair<a, b> {
+        val (a0, a1) = a
+        (-a0, -a1)
+    }
+    fun ____add(a : pair<a, b>, b : pair<a, b>) : pair<a, b> {
+        val (a0, a1) = a
+        val (b0, b1) = b
+        (a0+b0, a1+b1)
+    }
+    fun ____sub(a : pair<a, b>, b : pair<a, b>) : pair<a, b> {
+        val (a0, a1) = a
+        val (b0, b1) = b
+        (a0-b0, a1-b1)
+    }
+    fun ____mul(a : pair<a, b>, b : pair<a, b>) : pair<a, b> {
+        val (a0, a1) = a
+        val (b0, b1) = b
+        (a0*b0, a1*b1)
+    }
+    fun ____div(a : pair<a, b>, b : pair<a, b>) : pair<a, b> {
+        val (a0, a1) = a
+        val (b0, b1) = b
+        (a0/b0, a1/b1)
+    }
+    fun ____mod(a : pair<a, b>, b : pair<a, b>) : pair<a, b> {
+        val (a0, a1) = a
+        val (b0, b1) = b
+        (a0%b0, a1%b1)
+    }
 }
 
 impl fun ____eq<a, b>(a : pair<a, b>, b : pair<a, b>) : bool {

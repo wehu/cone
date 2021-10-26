@@ -6,17 +6,27 @@ import core.math
 
 type tensor<t, shape:[num]>
 
-impl fun ____add<t, shape:[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
-    inline_python<tensor<t, shape>>("____result = a + b")
+impl interface<t, shape:[num]> number<tensor<t, shape>> {
+    fun ____negative(a: tensor<t, shape>) : tensor<t, shape> {
+        inline_python<tensor<t, shape>>("____result = -a")
+    }
+    fun ____add(a : tensor<t, shape>, b :tensor<t, shape>) : tensor<t, shape> {
+        inline_python<tensor<t, shape>>("____result = a + b")
+    }
+    fun ____sub(a : tensor<t, shape>, b :tensor<t, shape>) : tensor<t, shape> {
+        inline_python<tensor<t, shape>>("____result = a - b")
+    }
+    fun ____mul(a : tensor<t, shape>, b :tensor<t, shape>) : tensor<t, shape> {
+        inline_python<tensor<t, shape>>("____result = a * b")
+    }
+    fun ____div(a : tensor<t, shape>, b :tensor<t, shape>) : tensor<t, shape> {
+        inline_python<tensor<t, shape>>("____result = a / b")
+    }
+    fun ____mod(a : tensor<t, shape>, b :tensor<t, shape>) : tensor<t, shape> {
+        inline_python<tensor<t, shape>>("____result = a % b")
+    }
 }
 
-impl fun ____sub<t, shape:[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
-    inline_python<tensor<t, shape>>("____result = a - b")
-}
-
-impl fun ____mul<t, shape:[num]>(a:tensor<t, shape>, b:tensor<t, shape>) : tensor<t, shape> {
-    inline_python<tensor<t, shape>>("____result = a * b")
-}
 
 fun rand<shape:[num]>(f: f32) : tensor<f32, shape> {
     inline_python<tensor<f32, shape>, shape>("""

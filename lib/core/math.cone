@@ -31,7 +31,7 @@ ____result = sqrt(a)
 
 diff sin wrt (arg0) = sin_diff
 
-fun sin_diff<a <= math>(a: a, da: a) : a {
+fun sin_diff<a <= [number, math]>(a: a, da: a) : a {
     cos(a) * da
 }
 
@@ -39,7 +39,7 @@ fun sin_diff<a <= math>(a: a, da: a) : a {
 
 diff cos wrt(arg0) = cos_diff
 
-fun cos_diff<a <= math>(a: a, da: a) : a {
+fun cos_diff<a <= [number, math]>(a: a, da: a) : a {
     sin(a) * da
 }
 

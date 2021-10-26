@@ -723,13 +723,13 @@ addImplicitArgs m =
   where
     convert f@FuncDef {..} =
       let loc = _funcLoc
-          args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _funcBoundVars
+          args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n ++ "$" ++ replace c, TApp c [TVar n loc] loc) | c <- cs]) _funcBoundVars
           e = fmap (transform convertLam) _funcExpr
        in f {_funcArgs = args ++ _funcArgs, _funcExpr = e}
       where
         convertLam l@ELam {..} =
           let loc = _eloc
-              args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n, TApp c [TVar n loc] loc) | c <- cs]) _elamBoundVars
+              args = join $ map (\(n, _, cs) -> [("____implicit_$" ++ name2String n ++ "$" ++ replace c, TApp c [TVar n loc] loc) | c <- cs]) _elamBoundVars
            in l {_elamArgs = args ++ _elamArgs}
         convertLam e = e
     convert BoundFuncDef {..} =
@@ -738,6 +738,9 @@ addImplicitArgs m =
     convert BoundEffFuncDef {..} =
       let (_, b) = unsafeUnbind _boundEffFuncDef
        in convert b
+    replace s = map (\c -> case c of
+                             '/' -> '$'
+                             _ -> c) (name2String $ _tvar s)
 
 initIntfImpls :: (Has EnvEff sig m) => Module -> m Module
 initIntfImpls m = transformMOn (topStmts . traverse . _ImplIDef) initIntfImpl m
