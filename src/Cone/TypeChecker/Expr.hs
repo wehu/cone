@@ -941,3 +941,18 @@ setupIntfEnvs boundVars funcArgs = do
     )
     (0 :: Int)
     boundVars
+
+isInlineFunction :: Expr -> Bool
+isInlineFunction (EApp _ (EVar n _) _ _ _) | name2String n == "inline_python" || name2String n == "core/prelude/inline_python" = True
+isInlineFunction (EAnnMeta e _ _ _) = isInlineFunction e
+isInlineFunction (EAnn e _ _) = isInlineFunction e
+isInlineFunction EBoundTypeVars{..} =
+  let (_, e) = unsafeUnbind _eboundTypeVars
+   in isInlineFunction e
+isInlineFunction EBoundEffTypeVars{..} =
+  let (_, e) = unsafeUnbind _eboundEffTypeVars
+   in isInlineFunction e
+isInlineFunction EBoundVars{..} =
+  let (_, e) = unsafeUnbind _eboundVars
+   in isInlineFunction e
+isInlineFunction _ = False

@@ -79,16 +79,28 @@ ____result = convolve(lhs, rhs, mode="valid")
 }
 
 // math related
-impl fun sin<shape:[num]>(a : tensor<f32, shape>) : tensor<f32, shape> {
+
+impl interface<shape:[num]> math<tensor<f32, shape>> {
+
+    fun sin(a : tensor<f32, shape>) : tensor<f32, shape> {
     inline_python<tensor<f32, shape>>("""
 from numpy import sin
 ____result = sin(a)
 """)
-}
+    }
 
-impl fun cos<shape:[num]>(a : tensor<f32, shape>) : tensor<f32, shape> {
+    fun cos(a : tensor<f32, shape>) : tensor<f32, shape> {
     inline_python<tensor<f32, shape>>("""
 from numpy import cos
 ____result = cos(a)
 """)
+    }
+
+    fun sqrt(a : tensor<f32, shape>) : tensor<f32, shape> {
+    inline_python<tensor<f32, shape>>("""
+from numpy import sqrt
+____result = sqrt(a)
+""")
+    }
+
 }

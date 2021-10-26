@@ -69,7 +69,7 @@ setupDiff d f@FuncDef {..} = do
       t <- getEnv $ funcTypes . at adjN
       forMOf _Nothing t $ \_ ->
         throwError $ "cannot find function " ++ ppr adjN ++ ppr (_diffLoc d)
-      checkTypeMatch fType (fromJust t)
+      -- checkTypeMatch fType (fromJust t)
       adj <- getEnv $ funcDefs . at adjN
       forMOf _Nothing adj $ \_ ->
         throwError $ "cannot find function " ++ ppr adjN ++ ppr (_diffLoc d)

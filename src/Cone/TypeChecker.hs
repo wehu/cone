@@ -438,7 +438,7 @@ renameLocalVarsInExpr = transformM rename
           )
           _ecaseBody
       return c {_ecaseBody = cs}
-    rename l@ELam {..} = do
+    rename l@ELam {..} | isn't _Nothing _elamExpr && not (isInlineFunction $ fromJust _elamExpr) = do
       vs <-
         mapM
           ( \v -> do

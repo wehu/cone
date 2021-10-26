@@ -1,44 +1,46 @@
 module core.math
 
-// sin
-fun sin<a>(a : a) : a
-
-diff sin wrt (a) = sin_diff
-
-fun sin_diff<a>(a: a, da: a) : a {
-    cos(a) * da
+interface math<a> {
+    fun sin(a) : a
+    fun cos(a) : a
+    fun sqrt(a) : a
 }
 
-impl fun sin(a : f32) : f32 {
+impl interface math<f32> {
+    fun sin(a : f32) : f32 {
     inline_python<f32>("""
 from math import sin
 ____result = sin(a)
 """)
-}
-
-// cos
-fun cos<a>(a : a) : a
-
-diff cos wrt(a) = cos_diff
-
-fun cos_diff<a>(a: a, da: a) : a {
-    sin(a) * da
-}
-
-impl fun cos(a : f32) : f32 {
+    }
+    fun cos(a : f32) : f32 {
     inline_python<f32>("""
 from math import cos
 ____result = cos(a)
 """)
-}
-
-// sqrt
-
-fun sqrt<a>(a : a) : a
-
-impl fun sqrt(a : f32) : f32 {
+    }
+    fun sqrt(a : f32) : f32 {
     inline_python<f32>("""
 from math import sqrt
 ____result = sqrt(a)
     """)
+    }
 }
+
+// sin
+
+diff sin wrt (arg0) = sin_diff
+
+fun sin_diff<a <= math>(a: a, da: a) : a {
+    cos(a) * da
+}
+
+// cos
+
+diff cos wrt(arg0) = cos_diff
+
+fun cos_diff<a <= math>(a: a, da: a) : a {
+    sin(a) * da
+}
+
+// sqrt

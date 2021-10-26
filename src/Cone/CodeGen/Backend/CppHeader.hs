@@ -359,9 +359,11 @@ instance Backend CppHeader where
       l <- getEnv localState
       setEnv (M.delete n l) localState
     es <- genBody _elamExpr
-    return $ parens $ "object_t(func_with_cont_t([=](const cont_t &____k2, stack_t ____stack, effects_t ____effs) -> object_t" <+> braces ("return" <+> es <> semi) <> "))"
+    return $ parens $ "object_t(func_with_cont_t([=](const cont_t &____k2, stack_t ____stack, effects_t ____effs) -> object_t" <+> braces (vsep [
+             "stack_t ____stack2 = ____make_empty_stack(); *____stack2 = *____stack; effects_t ____effs2 = ____make_empty_effs();",
+             "return" <+> es <> semi]) <> "))"
     where
-      genArgs prefix = encloseSep lparen rparen comma $ "const cont_t &____k" : "stack_t ____stack_unused" : "effects_t ____effs" : map (\a -> "const object_t &" <> funcN proxy prefix a) (_elamArgs ^.. traverse . _1)
+      genArgs prefix = encloseSep lparen rparen comma $ "const cont_t &____k" : "stack_t ____stack_unused" : "effects_t ____effs_unused" : map (\a -> "const object_t &" <> funcN proxy prefix a) (_elamArgs ^.. traverse . _1)
       genArgTypes = encloseSep lparen rparen comma $ "const cont_t &" : "stack_t" : "effects_t" : map (const "const object_t &") (_elamArgs ^.. traverse . _1)
       genBody e = do
         prefix <- getEnv currentModuleName
@@ -382,11 +384,11 @@ instance Backend CppHeader where
                       <> ")))"
                   )
           Nothing -> throwError "lambda expected a expression"
-      -- parameterNames prefix = encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)
-      -- parameterValues prefix = encloseSep lbrace rbrace comma (map (funcN proxy prefix) $ _elamArgs ^.. traverse . _1)
+      parameterNames prefix = encloseSep lbrace rbrace comma (map (\n -> "\"" <> funcN proxy prefix n <> "\"") $ _elamArgs ^.. traverse . _1)
+      parameterValues prefix = encloseSep lbrace rbrace comma (map (funcN proxy prefix) $ _elamArgs ^.. traverse . _1)
       callCpsWithclearedVars es prefix =
         encloseSep lparen rparen comma $
-          "____k" : "____stack" : "____effs" : {- parameterNames prefix : parameterValues prefix : -} [es]
+          "____k" : "____stack2" : "____effs2" : parameterNames prefix : parameterValues prefix : [es]
   genExpr proxy EWhile {..} = do
     c <- genExpr proxy _ewhileCond
     underScope $ do
