@@ -642,7 +642,7 @@ convertInterfaceDefs m = do
                   fi =
                     FuncDef
                       { _funcName = _intfName f,
-                        _funcBoundVars = (_interfaceTVar ^. _1, _interfaceTVar ^. _2, []) : bvs,
+                        _funcBoundVars = bvs,
                         _funcBoundEffVars = bes,
                         _funcArgs = fiArgs,
                         _funcEffectType = _intfEffectType f,
