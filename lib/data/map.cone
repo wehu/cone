@@ -2,12 +2,13 @@ module data.map
 
 type map<k, v>
 
-impl fun ____eq<k, v>(a : map<k, v>, b : map<k, v>) : bool {
-    inline_python<bool>("____result = a == b")
-}
-
-impl fun ____ne<k, v>(a : map<k, v>, b : map<k, v>) : bool {
-    inline_python<bool>("____result = a != b")
+impl interface<k, v> equal<map<k, v>> {
+    fun ____eq(a : map<k, v>, b : map<k, v>) : bool {
+        inline_python<bool>("____result = a == b")
+    }
+    fun ____ne(a : map<k, v>, b : map<k, v>) : bool {
+        inline_python<bool>("____result = a != b")
+    }
 }
 
 fun empty<k, v>() : map<k, v> {

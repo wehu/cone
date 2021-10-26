@@ -83,65 +83,65 @@ fun ____div_diff<a <= number>(a: a, b: a, do: a) : (a, a) {
     (do / b,  - (a * do) / (b * b))
 }
 
-fun ____lt<a>(a: a, b:a) : bool
-
-impl fun ____lt(a : i32, b :i32) : bool {
-    inline_python<bool>("____result = a < b")
+interface order<a> {
+    fun ____lt(a, a) : bool
+    fun ____gt(a, a) : bool
+    fun ____le(a, a) : bool 
+    fun ____ge(a, a) : bool
 }
 
-impl fun ____lt(a : f32, b :f32) : bool {
-    inline_python<bool>("____result = a < b")
+impl interface order<i32> {
+    fun ____lt(a : i32, b :i32) : bool {
+        inline_python<bool>("____result = a < b")
+    }
+    fun ____gt(a : i32, b :i32) : bool {
+        inline_python<bool>("____result = a > b")
+    }
+    fun ____le(a : i32, b :i32) : bool {
+        inline_python<bool>("____result = a <= b")
+    }
+    fun ____ge(a : i32, b :i32) : bool {
+        inline_python<bool>("____result = a >= b")
+    }
 }
 
-fun ____gt<a>(a: a, b:a) : bool
-
-impl fun ____gt(a : i32, b :i32) : bool {
-    inline_python<bool>("____result = a > b")
+impl interface order<f32> {
+    fun ____lt(a : f32, b :f32) : bool {
+        inline_python<bool>("____result = a < b")
+    }
+    fun ____gt(a : f32, b :f32) : bool {
+        inline_python<bool>("____result = a > b")
+    }
+    fun ____le(a : f32, b :f32) : bool {
+        inline_python<bool>("____result = a <= b")
+    }
+    fun ____ge(a : f32, b :f32) : bool {
+        inline_python<bool>("____result = a >= b")
+    }
 }
 
-impl fun ____gt(a : f32, b :f32) : bool {
-    inline_python<bool>("____result = a > b")
+interface equal<a> {
+    fun ____eq(a, a) : bool
+    fun ____ne(a, a) : bool
 }
 
-fun ____le<a>(a: a, b:a) : bool 
-
-impl fun ____le(a : i32, b :i32) : bool {
-    inline_python<bool>("____result = a <= b")
+impl interface equal<i32> {
+    fun ____eq(a : i32, b :i32) : bool {
+        inline_python<bool>("____result = a == b")
+    }
+    fun ____ne(a : i32, b :i32) : bool {
+        inline_python<bool>("____result = a != b")
+    }
 }
 
-impl fun ____le(a : f32, b :f32) : bool {
-    inline_python<bool>("____result = a <= b")
-}
-
-fun ____ge<a>(a: a, b:a) : bool
-
-impl fun ____ge(a : i32, b :i32) : bool {
-    inline_python<bool>("____result = a >= b")
-}
-
-impl fun ____ge(a : f32, b :f32) : bool {
-    inline_python<bool>("____result = a >= b")
-}
-
-fun ____eq<a>(a: a, b:a) : bool
-
-impl fun ____eq(a : i32, b :i32) : bool {
-    inline_python<bool>("____result = a == b")
-}
-
-impl fun ____eq(a : f32, b :f32) : bool {
-    inline_python<bool>("____result = a == b")
-}
-
-fun ____ne<a>(a: a, b:a) : bool
-
-impl fun ____ne(a : i32, b :i32) : bool {
-    inline_python<bool>("____result = a != b")
-}
-
-impl fun ____ne(a : f32, b :f32) : bool {
-    inline_python<bool>("____result = a != b")
-}
+impl interface equal<f32> {
+    fun ____eq(a : f32, b :f32) : bool {
+        inline_python<bool>("____result = a == b")
+    }
+    fun ____ne(a : f32, b :f32) : bool {
+        inline_python<bool>("____result = a != b")
+    }
+} 
 
 fun ____not<a>(a: bool) : bool {
     inline_python<bool>("____result = not a")
@@ -186,12 +186,13 @@ type list<a> {
     cons(a, list<a>)
 }
 
-impl fun ____eq<a>(a : list<a>, b : list<a>) : bool {
-    inline_python<bool>("____result = a == b")
-}
-
-impl fun ____ne<a>(a : list<a>, b : list<a>) : bool {
-    inline_python<bool>("____result = a != b")
+impl interface<a> equal<list<a>> {
+    fun ____eq(a : list<a>, b : list<a>) : bool {
+        inline_python<bool>("____result = a == b")
+    }
+    fun ____ne(a : list<a>, b : list<a>) : bool {
+        inline_python<bool>("____result = a != b")
+    }
 }
 
 type pair<a, b> {
@@ -230,12 +231,13 @@ impl interface<a <= number, b <= number> number<pair<a, b>> {
     }
 }
 
-impl fun ____eq<a, b>(a : pair<a, b>, b : pair<a, b>) : bool {
-    inline_python<bool>("____result = a == b")
-}
-
-impl fun ____ne<a, b>(a : pair<a, b>, b : pair<a, b>) : bool {
-    inline_python<bool>("____result = a != b")
+impl interface<a, b> equal<pair<a, b>> {
+    fun ____eq(a : pair<a, b>, b : pair<a, b>) : bool {
+        inline_python<bool>("____result = a == b")
+    }
+    fun ____ne(a : pair<a, b>, b : pair<a, b>) : bool {
+        inline_python<bool>("____result = a != b")
+    }
 }
 
 // inline python

@@ -668,8 +668,8 @@ topStmt =
       P.<|> A.EDef <$> effectDef
       P.<|> A.DDef <$> diffDef
       P.<|> A.IDef <$> interfaceDef
-      P.<|> P.try (A.ImplIDef <$> implInterfaceDef)
-      P.<|> (A.ImplFDef <$ kImpl <*> (A.ImplFuncDef <$> func) P.<?> "function implementation")
+      P.<|> A.ImplIDef <$> implInterfaceDef
+      -- P.<|> (A.ImplFDef <$ kImpl <*> (A.ImplFuncDef <$> func) P.<?> "function implementation")
   )
     <* semi
 

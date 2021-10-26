@@ -34,10 +34,6 @@ fun test2<a>(a: a) : a {
     a
 }
 
-impl fun test2(a:i32) : i32 {
-    a + 33
-}
-
 fun test_branch(a:i32) : [nodet<i32>] i32 {
     var b = 10
     if (branch(a)) {
