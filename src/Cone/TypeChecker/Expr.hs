@@ -765,8 +765,8 @@ selectIntf v@(EAnnMeta EVar{..} t et loc) = do
       ft <- unbindType ft
       t <- unbindType t
       binds <- collectVarBindings False ft t >>= checkAndAddTypeVarBindings
-      c <- genIntfCntr cntr (substs binds cntrT)
-      ct <- inferExprType c >>= typeOfExpr
+      let ct = substs binds cntrT
+      c <- genIntfCntr cntr ct
       case ct of
         TApp (TVar n loc) targs _ -> do
           intfs <- getEnv $ intfFuncs . at (name2String n)
