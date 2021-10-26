@@ -66,6 +66,15 @@ fun test4(a : t.tensor<f32, [4, 4]>) : t.tensor<f32, [4,4]> {
 interface test_i<a> {
     fun intf0(a) : a
     fun intf1(a, a) : a
+    fun intf3(a, a) : a
+    fun intf4(a, a) : a
+    fun intf5(a, a) : a
+    fun intf6(a, a) : a
+    fun intf7(a, a) : a
+    fun intf8(a, a) : a
+    fun intf9(a, a) : a
+    fun intf10(a, a) : a
+    fun intf11(a, a) : a
 }
 
 interface test_i2<a> {
@@ -77,6 +86,33 @@ impl interface test_i<i32> {
         a
     }
     fun intf1(a:i32, a:i32) : i32 {
+        a
+    }
+    fun intf3(a:i32, a:i32) : i32 {
+        a
+    }
+    fun intf4(a:i32, a:i32) : i32 {
+        a
+    }
+    fun intf5(a:i32, a:i32) : i32 {
+        a
+    }
+    fun intf6(a:i32, a:i32) : i32 {
+        a
+    }
+    fun intf7(a:i32, a:i32) : i32 {
+        a
+    }
+    fun intf8(a:i32, a:i32) : i32 {
+        a
+    }
+    fun intf9(a:i32, a:i32) : i32 {
+        a
+    }
+    fun intf10(a:i32, a:i32) : i32 {
+        a
+    }
+    fun intf11(a:i32, a:i32) : i32 {
         a
     }
 }
@@ -93,6 +129,42 @@ impl interface<a <= test_i2> test_i<list<a>> {
         intf2(x)|_
     }
     fun intf0(a:list<a>) : list<a> {
+        val x|_ = a
+        intf2(x)|_
+    }
+    fun intf3(a:list<a>, b:list<a>) : list<a> {
+        val x|_ = a
+        intf2(x)|_
+    }
+    fun intf4(a:list<a>, b:list<a>) : list<a> {
+        val x|_ = a
+        intf2(x)|_
+    }
+    fun intf5(a:list<a>, b:list<a>) : list<a> {
+        val x|_ = a
+        intf2(x)|_
+    }
+    fun intf6(a:list<a>, b:list<a>) : list<a> {
+        val x|_ = a
+        intf2(x)|_
+    }
+    fun intf7(a:list<a>, b:list<a>) : list<a> {
+        val x|_ = a
+        intf2(x)|_
+    }
+    fun intf8(a:list<a>, b:list<a>) : list<a> {
+        val x|_ = a
+        intf2(x)|_
+    }
+    fun intf9(a:list<a>, b:list<a>) : list<a> {
+        val x|_ = a
+        intf2(x)|_
+    }
+    fun intf10(a:list<a>, b:list<a>) : list<a> {
+        val x|_ = a
+        intf2(x)|_
+    }
+    fun intf11(a:list<a>, b:list<a>) : list<a> {
         val x|_ = a
         intf2(x)|_
     }

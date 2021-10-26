@@ -16,6 +16,7 @@ import Control.Monad
 import qualified Data.List as L
 import Data.List.Split
 import qualified Data.Map as M
+import qualified Data.Graph as G
 import Data.Maybe
 import Debug.Trace
 import GHC.Stack
@@ -775,9 +776,12 @@ getSpecialTypes [] = return []
 
 groupTypes :: (Has EnvEff sig m) => [[Type]] -> m [[Type]]
 groupTypes rels = do
-  let newRels = L.nubBy aeq [L.unionBy aeq a b| a <- rels, b <- rels, not $ null (L.intersectBy aeq a b)]
-  if aeq newRels rels then return newRels
-  else groupTypes newRels
+  let all = L.nubBy aeq $ join rels
+      allWithKeys = [(e, i) | e <- all | i <- [0::Int ..]]
+      kv = M.fromList allWithKeys
+      allWithEdges = map (\(e, i) -> (e, i, L.nub [fromJust $ kv ^. at e2| e2 <- all, isn't _Nothing $ L.find (\rel -> aeq [e, e2] rel || aeq [e2, e] rel) rels])) allWithKeys
+      gs = map G.flattenSCC $ G.stronglyConnComp allWithEdges
+  return gs
 
 checkAndAddTypeVarBindings :: (Has EnvEff sig m) => [(TVar, Type)] -> m [(TVar, Type)]
 checkAndAddTypeVarBindings bindings = do
@@ -829,9 +833,12 @@ getSpecialEffTypes [] = return []
 
 groupEffTypes :: (Has EnvEff sig m) => [[EffectType]] -> m [[EffectType]]
 groupEffTypes rels = do
-  let newRels = L.nubBy aeq [L.unionBy aeq a b| a <- rels, b <- rels, not $ null (L.intersectBy aeq a b)]
-  if aeq newRels rels then return newRels
-  else groupEffTypes newRels
+  let all = L.nubBy aeq $ join rels
+      allWithKeys = [(e, i) | e <- all | i <- [0::Int ..]]
+      kv = M.fromList allWithKeys
+      allWithEdges = map (\(e, i) -> (e, i, L.nub [fromJust $ kv ^. at e2| e2 <- all, isn't _Nothing $ L.find (\rel -> aeq [e, e2] rel || aeq [e2, e] rel) rels])) allWithKeys
+      gs = map G.flattenSCC $ G.stronglyConnComp allWithEdges
+  return gs
 
 checkAndAddEffVarBindings :: (Has EnvEff sig m) => [(EffVar, EffectType)] -> m [(EffVar, EffectType)]
 checkAndAddEffVarBindings bindings = do
