@@ -40,19 +40,7 @@ fun mnist_model<n:num>(input:tensor<f32, [n,1,28,28]>,
 fun mnist_train<n:num>(input:tensor<f32, [n,1,28,28]>,
                 target:tensor<i32, [n]>,
                 weights:mnist_weights) : f32 {
-    val (conv1, conv2, fcw1, fcb1, fcw2, fcb2) = weights
-    val x = conv2d(input, conv1)
-    val x = relu(x)
-    val x = conv2d(x, conv2)
-    val x = relu(x)
-    val x = maxpool2d<2,2>(x)
-    //val x = dropout(x, 0.25)
-    val x = reshape<[n, 9216]>(x)
-    val x = fc(x, fcw1, fcb1)
-    val x = relu(x)
-    //val x = dropout(x, 0.5)
-    val x = fc(x, fcw2, fcb2)
-    val x = log_softmax(x,1)
+    val x = mnist_model(input, weights)
     nll_loss(x, target)
 }
 
