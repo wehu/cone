@@ -808,13 +808,13 @@ selectIntf a@(EAnnMeta eapp@(EApp _ (EAnnMeta (EVar n loc) _ _ _) targs [] _) t 
       f <- selectIntf (_eappFunc eapp)
       args <- mapM selectIntf (_eappArgs eapp)
       typeArgs <- mapM inferType (_eappTypeArgs eapp)
-      f <- selectFuncImpl typeArgs f loc
+      -- f <- selectFuncImpl typeArgs f loc
       return a{_eannMetaExpr=eapp{_eappFunc=f, _eappArgs=args}}
 selectIntf a@EApp{..} = do
   f <- selectIntf _eappFunc
   args <- mapM selectIntf _eappArgs
   typeArgs <- mapM inferType _eappTypeArgs 
-  f <- selectFuncImpl typeArgs f _eloc
+  -- f <- selectFuncImpl typeArgs f _eloc
   return a{_eappFunc=f, _eappArgs=args}
 selectIntf l@ELet{..} = do
   e <- selectIntf _eletExpr
